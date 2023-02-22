@@ -86,3 +86,112 @@ section h1{
   .icon>div>h1{
    padding-left: 10px;
   }
+#footer>#g{
+  /* border: solid; */
+  background: #f5f5f5;
+  margin: 20px;
+  padding: 20px;
+}
+  #great{
+    /* border: solid; */
+    display: flex;
+    width: 80%;
+    margin:30px auto;
+  }
+  #great>.reviews{
+    /* border: solid; */
+    width:25%;
+    margin:0px auto;
+    text-align: center;
+    align-items: center;
+  }
+  .vertical{
+    border-left: 3px solid black;
+    height:250px;
+    width: 2px;
+    margin: 10px;
+  }
+  .stars{
+    /* border: solid; */
+    display: flex;
+    justify-content: center;
+  }
+  #imagebar{
+    /* border: solid; */
+    text-align: center;
+    margin: 20px;
+  }
+#deliverytext{
+  /* border: solid; */
+  width: 90%;
+  margin: auto;
+  
+}
+  .para>h5{
+    /* border: solid; */
+    margin: 15px auto;
+    padding: 10px;
+    font-size: 20px;
+    background-color: #e8eaec;
+  }
+  .para>p{
+    /* border: solid red; */
+    margin: 10px auto;
+    font-size: 18px;
+    padding: 10px;
+  }
+
+  #bottomtext{
+    /* border: solid; */
+    background-color: #65388b;
+    display: flex;
+    justify-content: space-around;
+  }
+
+  #bottomtext>div{
+    /* border: solid red; */
+    width: 20%;
+    margin:20px;
+    padding: 40px;
+    font-size: 20px;
+  }
+  .bottompart>h4{
+
+    /* border: solid; */
+    color: white;
+
+    margin: 15px auto;
+  }
+  .bottompart>p{
+    margin: 5px auto;
+    color: white;
+
+  }
+  .bottomicons>h4{
+    text-align: center
+  }
+  .bottomicons>div{
+    /* border: solid; */
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-around;
+    margin: 15px;
+    padding: 15px;
+
+  }
+#endline{
+  /* border: solid; */
+  background-color: #65388b;
+  padding: 30px;
+}
+  #endline>div{
+/* border: solid; */
+color: white;
+font-size: 30px;
+text-align: center;
+/* margin: 30px; */
+  }
+
+  #endline p{
+    color: white;
+  }
