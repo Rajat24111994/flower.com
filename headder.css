@@ -1,0 +1,126 @@
+#img-link{
+    display: grid;
+    gap: 2px;
+    height: 30px;
+    grid-template-columns: repeat(11,1fr);
+    border: 1px solid white;
+    margin-top: 10px;
+}
+#img-link>div{
+    width: 100%;
+    /* box-shadow: #faf9f9ec 0px 1px 2px 0px; */
+    box-shadow: hsl(90, 9%, 91%) 0px 1px 2px 0px;
+}
+#img-link div img{
+    width: 50%;
+    margin: auto;
+    /* margin-top: 5px; */
+    margin-left: 20px;
+    
+}
+   
+#img-link>div:hover {
+        border-bottom: 2px solid ;
+        border-radius: .1rem;
+ }
+ #nav{
+    display: flex;
+    margin: auto;
+    align-items: center;
+    justify-content: space-evenly;
+    box-shadow: rgba(9, 30, 66, 0.25) 0px 4px 8px -2px, rgba(9, 30, 66, 0.08) 0px 0px 0px 1px;
+    height:70px;
+    width: 100%;
+    margin-top: 17px;
+ }
+
+   #nav-left img{
+    height:60px;
+    /* margin: 50px; */
+ }
+
+  #nav-center{
+    width:40%;
+    display: flex;
+    margin-left: 10%;
+ }
+ #nav-center input{
+    width: 80%;
+    /* margin-left: 150px; */
+    padding: 10px 100px 10px 100px;
+ }
+  #nav-right{
+    /* border: 2px solid; */
+    display: flex;
+    justify-content: space-between;
+    width: 20%;
+    height: 90%;
+    margin-left :10%;
+    /* margin-bottom: 0px; */
+
+ }
+  #nav-right  div {
+    width: 30%;
+    height:100%;
+    text-align: center;
+    /* border: 2px solid red; */
+    margin-top: 7px;
+    /* padding-bottom: 0px; */
+ } 
+ h5{
+    margin-top: -1px;
+ }
+
+ #nav-right  div img{
+    width: 70px; 
+    height:40%;
+    /* margin-top: 5%; */
+ } 
+ #nav-right  div img:hover{
+   /* width: 70px;  */
+   height:45%;
+   /* margin-top: 5%; */
+} 
+ button{
+    padding: 10px;
+    padding-left: 20px;
+    padding-right: 20px;
+    color: white;
+    border: none;
+    background-color:hwb(263 27% 39%);
+
+ }
+ #banner-headder {
+   display: grid;
+   /* border: 2px solid red; */
+   grid-template-columns: repeat(2,1fr);
+
+ }
+
+ #banner-headder div{
+
+   height: 320px;
+   width: 200%;
+   margin-left:0.1%;
+ }
+ #banner-headder div:nth-child(2){  
+   height: auto;
+   /* display: block; */
+   /* border: 2px solid teal; */
+   width: 50%;
+   margin-left:15%;
+   /* margin-top: ; */
+   text-align: center;
+   align-items: center;
+   padding-top: 10px;
+   /* justify-content: center; */
+   /* margin: auto; */
+ }
+ #banner-headder img{
+   height: 99%;
+   width: 99.8%;   
+  /* width: 50%;     */
+
+   /* margin: auto; */
+ }
+
