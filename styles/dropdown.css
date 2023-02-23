@@ -1,0 +1,173 @@
+body{
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+nav {
+    height: 4rem;
+    display: flex;
+    justify-content: space-evenly;
+    align-items: center;
+    width:99.5%;
+    /* margin-left: 2px; */
+    margin: auto;
+    /* margin-bottom: 1rem; */
+    box-shadow: rgba(0, 0, 0, 0.1) 0px 10px 50px;
+    position: relative;
+}
+
+#options {
+   margin: auto;
+   margin-top: 1.2%;
+   width: 100%;
+}
+
+ul {
+    display: flex;
+    justify-content: space-evenly;
+    list-style-type: none;
+    margin: auto;
+    margin-right: 80px;
+    /* border: 2px solid; */
+}
+
+li > a{
+    text-decoration: none;
+    color: #282c3f;
+    margin-left: 1rem;
+    font-size: 80%;
+    font-weight: bold;
+    letter-spacing: .01rem;
+}
+
+
+#birthday {
+    /* border: 1px solid red;s */
+    max-height: 100%;
+    height: 2.6rem;
+    padding-right: 1rem;
+    padding-left: -1rem;
+    margin-left: 1rem;
+    /* margin-top: 1srem; */
+}
+#birthday:hover {
+    border-bottom: 4px solid #ee5f73;
+    border-radius: .1rem;
+}
+
+#sympathy {
+    max-height: 100%;
+    height: 2.6rem;
+    padding-right: 1rem;
+    padding-left: -1rem;
+}
+#sympathy:hover {
+    border-bottom: 4px solid #0db7af;
+    border-radius: .1rem;
+}
+#occasion {
+    /* border: 1px solid red;s */
+    max-height: 100%;
+    height: 2.6rem;
+    padding-right: .2rem;
+    padding-left: -1rem;
+    margin-left: -.1rem;
+    /* margin-top: 1srem; */
+}
+#occasion:hover {
+    border-bottom: 4px solid #ff3f6c;
+    border-radius: .1rem;
+}
+
+#flowers {
+    height: 2.6rem;
+    max-width: fit-content;
+    margin-left: 0.3rem;
+}
+
+#flowers:hover {
+    border-bottom: 4px solid #0db7af;
+    border-radius: .1rem;
+}
+
+#plants {
+    max-height: 100%;
+    height: 2.6rem;
+    padding-left: -1rem;
+    margin-left: -.1rem;
+}
+#plants:hover {
+    border-bottom: 4px solid #ff3f6c;
+    border-radius: .1rem;
+}
+
+
+#food {
+    max-height: 100%;
+    height: 2.6rem;
+    padding-right: 1rem;
+    padding-left: -1rem;
+}
+#food:hover {
+    border-bottom: 4px solid #0db7af;
+    border-radius: .1rem;
+}
+#gift {
+    max-height: 100%;
+    height: 2.6rem;
+    padding-right: 1rem;
+    padding-left: -1rem;
+}
+#gift:hover {
+    border-bottom: 4px solid #fb56c1;
+    border-radius: .1rem;
+}
+#delivery {
+    max-height: 100%;
+    height: 2.6rem;
+    padding-right: 1rem;
+    padding-left: -1rem;
+}
+#delivery:hover {
+    border-bottom: 4px solid#0db7af;
+    border-radius: .1rem;
+}
+#sale {
+    max-height: 100%;
+    height: 2.6rem;
+    padding-right: 1rem;
+    padding-left: -1rem;
+}
+#sale:hover {
+    border-bottom: 4px solid #fb56c1;
+    border-radius: .1rem;
+}
+#community {
+    max-height: 100%;
+    height: 2.6rem;
+    padding-right: 1rem;
+    padding-left: -1rem;
+}
+#community:hover {
+    border-bottom: 4px solid#0db7af;
+    border-radius: .1rem;
+}
+i {
+    cursor: pointer;
+}
+/* icons */
+#icons {
+    /* border: 1px solid red; */
+    width: 11%;
+    max-width: 12%;
+    position: absolute;
+    top: 3%;
+    right: 1%;
+    display: flex;
+    justify-content: space-evenly;
+    align-items: center;
+    font-size: 1.3rem;
+}
+
+
