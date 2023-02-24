@@ -5,6 +5,7 @@
     grid-template-columns: repeat(11,1fr);
     border: 1px solid white;
     margin-top: 10px;
+
 }
 #img-link>div{
     width: 100%;
@@ -32,6 +33,8 @@
     height:70px;
     width: 100%;
     margin-top: 17px;
+    /* position: fixed; */
+    /* z-index: 1; */
  }
 
    #nav-left img{
@@ -109,7 +112,7 @@
    /* border: 2px solid teal; */
    width: 50%;
    margin-left:15%;
-   /* margin-top: ; */
+   margin-top:40px ;
    text-align: center;
    align-items: center;
    padding-top: 10px;
