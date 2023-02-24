@@ -1,0 +1,71 @@
+
+*{
+    margin: 0px;
+    padding: 0px;
+}
+#container{
+    padding-left: 20px;
+    padding-top: 20px;
+    padding-bottom: 20px;
+    width:80%;
+    margin:auto;
+    display: grid;
+    grid-template-columns: repeat(4,1fr);
+    row-gap: 30px;
+}
+#container>div{
+    box-shadow: rgba(0, 0, 0, 0.1) 0px 4px 12px;
+    padding-top: 20px;
+    display: grid;
+   align-content: space-around;
+   text-align: center;
+    width:90%;
+    border-radius: 10px;
+}
+#container>div :nth-child(2){
+    margin-top: 10px;
+}
+#container>div p{
+    text-align: left;
+    margin-left: 10px;
+}
+.boxcontainer img{
+    margin: auto;
+    width:200px;
+    height:150px;
+    object-fit: contain;
+    transition: .05;
+}
+#container img:hover{
+    transform: scale(1.1);
+}
+#wish img{
+    width: 30px;
+}
+#container>div>div>button{
+    background-color:rgb(231, 74, 12);
+    border-radius: 8px;
+    width:200px;
+    height:40px;
+    margin-bottom: 20px;
+    margin-left: 10px;
+    font-size: medium;
+}
+
+main{
+    display: flex;
+    margin-left: 30px;
+    justify-content: space-between;
+}
+#filter{
+    margin-top: 40px;
+}
+input{
+    margin-top: 10px;
+}
+#category-filter{
+    margin-top: 40px;
+}
+h1{
+    text-align: center;
+}
