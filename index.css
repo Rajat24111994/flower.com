@@ -206,10 +206,15 @@ text-align: center;
     position: absolute;
     width: 200px;
     display: none;
+
   }
   ul li ul li { 
-    background: white; 
-    display: block; 
+    /* background:rgb(250, 247, 248);  */
+    background:#ffffff; 
+    padding: 10px;
+    
+    display: block;
+ 
   }
   ul li ul li a {display:block} 
   
