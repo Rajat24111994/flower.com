@@ -9,15 +9,15 @@ let wish = JSON.parse(localStorage.getItem('wish')) || []
 
 
 // Fetching the data
-fetch(API)
-    .then((request) => request.json())
-    .then((data) => {
-        console.log(data.flower)
-        display(data.flower)
-        fetchandrender(data.flower)
-        // FilterData(data.flower)
+// fetch(API)
+//     .then((request) => request.json())
+//     .then((data) => {
+//         console.log(data.flower)
+//         display(data.flower)
+//         fetchandrender(data.flower)
+//         // FilterData(data.flower)
 
-    })
+//     })
 let container = document.getElementById("container")
 
 
@@ -39,7 +39,7 @@ function display(data) {
         // Assigning Data
         img.src = el.image
         title.innerText = el.title
-        price.innerText = `₹${el.price}`
+        price.innerText = `₹ ${el.price}`
         btn.innerText = "Add to Cart"
         btn2.innerText = "Add to Wish"
 
@@ -102,13 +102,53 @@ function fetchandrender(Data) {
             })
 
 
+        }else{
+          return Data
         }
 
-        console.log(Data)
-        display(Data)
+        // console.log(Data)
+        // display(Data)
+        FilterData(Data)
     });
 }
 
+let filterBy = document.getElementById("filter")
+  filterBy.addEventListener("change", () => {
+    FetchData()
+  })
+
+
+  function FilterData(data) {
+    let filterValue = filterBy.value
+    if (filterValue === "") {
+      display(data)
+    } else {
+      data = data.filter((element) => {
+        // it will return boolean value
+        //
+        return element.title== filterValue
+      })
+      display(data)
+      console.log(data)
+    }
+
+  }
+
+  async function FetchData() {
+    try {
+      let link = await fetch(API)
+      link = await link.json()
+    //   console.log(link)
+      FilterData(link.flower)
+      // display(link.flower)
+      fetchandrender(link.flower)
+      
+    } catch (err) {
+      console.log(err)
+    }
+  }
+
+  FetchData()
 
 
 
@@ -118,10 +158,22 @@ function fetchandrender(Data) {
 
 
 
-
-
-
-
+  let user = document.querySelector(".signin");
+  user.onclick = () => {
+    location.href = "./login.html";
+  };
+  let order = document.querySelector(".orders");
+  order.onclick = () => {
+    location.href = "./wish.html";
+  };
+  // let shopnow = document.querySelector(".btn");
+  // shopnow.onclick = () => {
+  //   location.href = "./product.html";
+  // };
+  let bag = document.querySelector(".bag");
+  bag.onclick = () => {
+    location.href = "./cart.html";
+  };
 
 
 
