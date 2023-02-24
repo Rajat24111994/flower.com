@@ -1,0 +1,119 @@
+.nav{
+  /* border: solid; */
+  display: flex;
+  
+}
+
+.nav>div{
+  /* border: solid pink; */
+  width: 25%;
+  padding: 20px;
+  margin: 20px;
+}
+
+
+
+#product-container {
+    border: 2px solid red;
+    /* padding: 10%; */
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+  }
+  #product-container > div {
+    border: 2px solid red;
+    text-align: center;
+    width: 20%;
+    padding: 10px;
+    margin: 50px auto;
+    box-shadow: rgba(0, 0, 0, 0.35) 0px 5px 15px;
+  }
+  #product-container > div > img {
+    /* border: solid; */
+    /* width: 50%; */
+    height: 200px;
+  }
+  #product-container > div > button {
+    padding: 6px;
+    /* display: ; */
+    margin: 10px;
+    /* width: 100p; */
+    color: white;
+    border: none;
+    border-radius: 3px;
+    background-color: rgb(48, 203, 250);
+    cursor: pointer;
+  }
+
+  .checkout{
+    border: 1px solid grey;
+    width: 25%;
+  }
+
+  .checkout .details>div{
+    /* border: 1solid; */
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+  }
+
+  .details>div>div{
+    /* border: solid red; */
+    /* width: 50%; */
+    text-align: center;
+  }
+
+  #check{
+    /* border: solid; */
+    margin: 50px auto;
+    text-align: center;
+  }
+
+  #form{
+    border: 2px solid grey;
+    margin: 20px auto;
+  }
+
+  #form form{
+    /* border: solid; */
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  #form input{
+    margin: 10px;
+    height: 30px;
+  }
+
+  #form button{
+    margin: 10px;
+  }
+
+
+
+  #payment{
+    border: solid;
+    width: 30%;
+  }
+
+  #payment div{
+    /* border: solid; */
+    height: 50px;
+    align-items: center;
+    margin: 30px auto;
+  }
+
+  #payment button{
+    width: 100%;
+    margin: auto;
+  }
+
+
+  .placeorder button{
+    /* border: solid; */
+    background-color: #fc2779;
+    width: 100%;
+  }
