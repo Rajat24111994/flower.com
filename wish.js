@@ -26,7 +26,7 @@ function display(wish){
         // Assigning Data
         img.src=el.image
         title.innerText=el.title
-        price.innerText=el.price
+        price.innerText=`₹ ${el.price}`
         btn.innerText="Add to Cart"
 
         // Clssess
