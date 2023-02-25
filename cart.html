@@ -88,11 +88,11 @@
       </div>
 
       <div id="nav">
-        <div id="nav-left">
+        <div id="nav-left"><a href="index.html">
           <img
             src="https://images.contentstack.io/v3/assets/bltdd99f24e8a94d536/bltce6d6c480577e10e/5d4866eff9ece57fa9a82245/flowers.png?quality=60&auto=webp&optimize={medium}"
             alt=""
-          />
+          /></a>
         </div>
         <div id="nav-center">
           <input type="text" placeholder="Enter Keyword or Product Number" />
@@ -101,7 +101,7 @@
         <div id="nav-right">
           <!-- <i class="fa-regular fa-user"></i>
                   <i class="fa-regular fa-heart"></i>-->
-          <div>
+          <div class="signin">
             <i
               ><img
                 src="https://images.contentstack.io/v3/assets/bltdd99f24e8a94d536/blt88337dc20d1d8278/5e178293942caf0fc36b77ab/Header-Icon-PWA-profile.svg"
@@ -110,21 +110,26 @@
             </i>
             <h5>Sign In</h5>
           </div>
-          <div>
+
+          <div class="orders">
+            <i
+
+          
             <a href="./cart.html"
+
               ><img
                 src="https://images.contentstack.io/v3/assets/bltdd99f24e8a94d536/bltd7f3af8e242d37c1/5e1782936430b50f03d6ccc3/Header-Icon-PWA-truck.svg?height=25&width=44"
                 alt=""
             />
             <h5>My Orders</h5></a>
           </div>
-          <div>
+          <div class="bag">
             <i
               ><img
                 src="https://images.contentstack.io/v3/assets/bltdd99f24e8a94d536/blt7888ec93d3d5c1ec/5e17829300c38f0f022d3646/Header-Icon-PWA-bag.svg?height=25&width=44"
                 alt=""
             /></i>
-            <h5><span>(0)</span>Cart</h5>
+            <h5><span id="cartTotal">(0)</span>Cart</h5>
           </div>
         </div>
       </div>
@@ -298,6 +303,9 @@
       CartContainer.innerHTML = "";
 
       Cart.forEach((product) => {
+        let Total=document.getElementById("cartTotal")
+          Total.innerText=Cart.length
+         
         let image = document.createElement("img");
         let details = document.createElement("p");
         let price = document.createElement("h3");
@@ -330,6 +338,7 @@
         Remove.addEventListener("click", () => {
           Cart = Cart.filter((ele) => {
             return ele.id !== product.id;
+            location.reload()
           });
           localStorage.setItem("cart", JSON.stringify(Cart));
           DisplayProduct();
@@ -361,5 +370,21 @@
     DisplayProduct();
 
     // Write all necessery JS here
+
+    // localStorage.setItem("cart", JSON.stringify(Cart));
+    let user = document.querySelector(".signin");
+  user.onclick = () => {
+    location.href = "./login.html";
+  };
+  let order = document.querySelector(".orders");
+  order.onclick = () => {
+    location.href = "./wish.html";
+  };
+ 
+  let bag = document.querySelector(".bag");
+  bag.onclick = () => {
+    location.href = "./cart.html";
+  };
+
   </script>
 </html>

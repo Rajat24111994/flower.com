@@ -47,3 +47,20 @@ function display(wish){
         container.append(box)
     });
 }
+let Total=document.getElementById("cartTotal")
+Total.innerText=Cart.length
+
+
+let user = document.querySelector(".signin");
+user.onclick = () => {
+  location.href = "./login.html";
+};
+let order = document.querySelector(".orders");
+order.onclick = () => {
+  location.href = "./wish.html";
+};
+
+let bag = document.querySelector(".bag");
+bag.onclick = () => {
+  location.href = "./cart.html";
+};
