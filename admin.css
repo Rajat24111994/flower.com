@@ -1,0 +1,36 @@
+*{
+    padding: 0;
+    margin: 0;
+    box-sizing: border-box;
+
+}
+nav{
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    width: 100%;
+    background-color: red;
+    height:8vh
+}
+
+
+nav p{
+width: 18%;
+border: 1px solid white;
+text-align: center;
+
+}
+
+
+nav div{
+    display: flex;
+    justify-content: space-around;
+    width: 70%;
+}
+.productDiv{
+    display: grid;;
+    grid-template-columns: repeat(3,1fr);
+}
+.productDiv img{
+    width: 70%;
+}

@@ -52,6 +52,13 @@ function display(data) {
         btn.addEventListener("click", () => {
             cart.push(el)
             localStorage.setItem("cart", JSON.stringify(cart))
+            Swal.fire({
+              position: 'center',
+              icon: 'success',
+              title: 'Product Added To Cart',
+              showConfirmButton: false,
+              timer: 1500
+            })
         })
         btn2.addEventListener("click", () => {
             wish.push(el)
