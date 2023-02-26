@@ -84,7 +84,7 @@ signIn.addEventListener("submit", function (event) {
             // alert("login successful!");
             // we can use n number of methods to change the page. here we are using assign() method
             // window.location.assign('url')
-            window.location.assign("./index.html");
+            window.location.assign("./product.html");
         }
     }
 });
