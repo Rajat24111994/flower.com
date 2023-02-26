@@ -59,7 +59,7 @@ function display(data) {
               timer: 1500
             })
         }else{
-            cart.push(el)
+            cart.push({...el,quantity:1})
             localStorage.setItem("cart", JSON.stringify(cart))
             Swal.fire({
               position: 'center',
