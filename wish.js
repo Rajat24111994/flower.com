@@ -25,14 +25,14 @@ function display(wish){
         let title=document.createElement("h2")
         let price=document.createElement("h3")
         let btn=document.createElement("button")
-        // let btn2=document.createElement("button")
+        let btn2=document.createElement("button")
 
         // Assigning Data
         img.src=el.image
         title.innerText=el.title
         price.innerText=`₹ ${el.price}`
         btn.innerText="Add to Cart"
-        // btn2.innerText="Remove"
+        btn2.innerText="Remove"
 
         // Clssess
         box.className="box";
@@ -62,24 +62,29 @@ function display(wish){
 
               cart.push({...el,quantity:1})
               localStorage.setItem("cart",JSON.stringify(cart))
+              wish.splice(ind,1)
+              localStorage.setItem("wish",JSON.stringify(wish))
+              display(wish)
+              
           } 
       })
-    //   btn2.addEventListener("click",()=>{
-    //         Swal.fire({
-    //           position: 'center',
-    //           icon: 'success',
-    //           title: 'Removed',
-    //           showConfirmButton: false,
-    //           timer: 1500
-    //         })
-    //        wish.splice(ind,1)
-    //         localStorage.setItem("wish",JSON.stringify(wish))
-    // })
+      btn2.addEventListener("click",()=>{
+            Swal.fire({
+              position: 'center',
+              icon: 'success',
+              title: 'Removed',
+              showConfirmButton: false,
+              timer: 1500
+            })
+           wish.splice(ind,1)
+            localStorage.setItem("wish",JSON.stringify(wish))
+            display(wish)
+    })
 
 
         // Appending to Main 
         box2.append(img)
-        box3.append(btn)
+        box3.append(btn,btn2)
         box.append(box2,title,price,box3)
         container.append(box)
     });
@@ -94,7 +99,7 @@ user.onclick = () => {
 };
 let order = document.querySelector(".orders");
 order.onclick = () => {
-  location.href = "./wish.html";
+  location.href = "./cart.html";
 };
 
 let bag = document.querySelector(".bag");

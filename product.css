@@ -9,7 +9,6 @@
     padding-bottom: 20px;
     width:80%;
     margin:auto;
-    margin-left: 15%;
     display: grid;
     grid-template-columns: repeat(4,1fr);
     row-gap: 30px;
@@ -33,17 +32,15 @@
 }
 .boxcontainer img{
     margin: auto;
-    width:200px;
+    width:8%;
     height:150px;
-    object-fit: contain;
     transition: .05;
+    border: 1px solid rgb(0, 0, 0);
 }
 #container img:hover{
     transform: scale(1.1);
 }
-#wish img{
-    width: 30px;
-}
+
 #container button{
     background-color:rgb(232, 65, 65);
     border-radius: 8px;
@@ -102,9 +99,10 @@ select{
 
 #sidebar{
     /* border: 2px solid; */
-    position: fixed;
+    width: 20%;
+    position: sticky;
+    top: 0;
     height: 100vh;
-    padding: 20px;
     /* background-color: aqua; */
     background-image: url(https://images.unsplash.com/photo-1457089328109-e5d9bd499191?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=363&q=80);
 }
@@ -112,4 +110,83 @@ select{
     width: 210px;
     height: 250px;
     zoom: 50px;
+}
+
+@media only screen and (max-width: 1000px) {
+    #container{
+        padding-left: 40px;
+        padding-top: 20px;
+        padding-bottom: 20px;
+        width:80%;
+        margin:auto;
+        display: grid;
+        grid-template-columns: repeat(3,1fr);
+        row-gap: 30px;
+        /* border: 3px solid; */
+    }
+    .boxcontainer img{
+        margin: auto;
+        width:7%;
+        height:150px;
+        display: flex;
+        flex: wrap;
+        transition: .05;
+        border: 1px solid rgb(0, 0, 0);
+    }
+    #sidebar{
+        width: 20%;
+        /* border: 2px solid; */
+        position: sticky;
+        height: 100vh;
+        padding: 20px;
+        /* background-color: aqua; */
+        background-image: url(https://images.unsplash.com/photo-1457089328109-e5d9bd499191?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=363&q=80);
+    }
+    .canvaimage{
+       display: none;
+    }
+   
+    #sidebar select{
+        width: 80%;
+    }
+}
+
+
+@media only screen and (max-width: 600px) {
+    #container{
+        padding-left: 40px;
+        padding-top: 20px;
+        padding-bottom: 20px;
+        width:80%;
+        margin:auto;
+        display: grid;
+        grid-template-columns: repeat(2,1fr);
+        row-gap: 30px;
+        /* border: 3px solid; */
+    }
+    .boxcontainer img{
+        margin: auto;
+        width:5%;
+        height:150px;
+        transition: .05;
+        border: 1px solid rgb(0, 0, 0);
+    }
+    #sidebar{
+        width: 20%;
+        /* border: 2px solid; */
+        position: sticky;
+        top: 0;
+        height: 100vh;
+        padding: 20px;
+        /* background-color: aqua; */
+        background-image: url(https://images.unsplash.com/photo-1457089328109-e5d9bd499191?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=363&q=80);
+    }
+
+.canvaimage{
+   display: none;
+}
+
+#sidebar select{
+    width: 80%;
+}
 }
