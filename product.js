@@ -63,6 +63,13 @@ function display(data) {
         btn2.addEventListener("click", () => {
             wish.push(el)
             localStorage.setItem("wish", JSON.stringify(wish))
+            Swal.fire({
+              position: 'center',
+              icon: 'success',
+              title: 'Product Added To Wishlist',
+              showConfirmButton: false,
+              timer: 1500
+            })
         })
 
         // Appending to Main 
