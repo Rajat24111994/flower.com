@@ -154,10 +154,10 @@
         </div>
         <hr />
         <div>
-          <div>
-            <p>Delivery charges</p>
-          </div>
-          <div id="delivery">0</div>
+
+          <div><p>Delivery charges</p></div>
+          <div id="delivery">Free</div>
+
         </div>
         <hr />
         <div>
@@ -359,13 +359,13 @@
     for (let i = 0; i < Cart.length; i++) {
       sum += Cart[i].price * Cart[i].quantity;
     }
-    originalprice.textContent = sum;
-    savings.textContent = sum * 0.05;
-    delivery.textContent = sum * 0.1;
-    tax.textContent = sum * 0.1;
+    originalprice.textContent = Math.floor(sum);
+      savings.textContent = Math.floor(sum * 0.05);
+      delivery.textContent = sum;
+      tax.textContent = Math.floor(sum * 0.1);
 
-    total.textContent = eval(sum - sum * 0.05 + sum * 0.1 + sum * 0.1);
-  }
+      total.textContent = eval(Math.floor(sum - sum * 0.05 + sum * 0.1));
+    }
 
   DisplayProduct();
 
