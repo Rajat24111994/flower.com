@@ -2,6 +2,9 @@
 // Localstorage 
 let cart=JSON.parse(localStorage.getItem('cart'))||[]
 let wish=JSON.parse(localStorage.getItem('wish'))||[]
+let Cart = JSON.parse(localStorage.getItem("cart")) || [];
+
+
 
 
 // Fetching the data
@@ -38,6 +41,7 @@ function display(wish){
         //Event Listner
 
         btn.addEventListener("click",()=>{
+
           if(checkdub(el)){
               Swal.fire({
                 position: 'center',
@@ -47,6 +51,7 @@ function display(wish){
                 timer: 1500
               })
           }else{
+
             Swal.fire({
               position: 'center',
               icon: 'success',
@@ -54,6 +59,7 @@ function display(wish){
               showConfirmButton: false,
               timer: 1500
             })
+
               cart.push({...el,quantity:1})
               localStorage.setItem("cart",JSON.stringify(cart))
           } 
@@ -69,6 +75,7 @@ function display(wish){
     //        wish.splice(ind,1)
     //         localStorage.setItem("wish",JSON.stringify(wish))
     // })
+
 
         // Appending to Main 
         box2.append(img)
@@ -95,6 +102,7 @@ bag.onclick = () => {
   location.href = "./cart.html";
 };
 
+
 function checkdub(data){
   for(i=0;i<cart.length;i++){
       if(cart[i].id==data.id){
@@ -103,3 +111,4 @@ function checkdub(data){
   }
   return false
 }
+
