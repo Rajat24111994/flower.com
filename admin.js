@@ -78,11 +78,15 @@ if(deletingItem.ok){
 function getCard(id,image,title,price,description){
     let card=`
     <div id=${id}>
+    <div>
     <img src=${image} alt="Product image">
+    </div>
+    <div>
     <p>${title}</p>
     <p>${price}</p>
     <p>${description}</p>
     <button id=${id} class="removeBtn">Remove Item</button>
+    </div>
     </div>
     `
     return card;
