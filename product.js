@@ -197,14 +197,14 @@ order.onclick = () => {
 };
 
 
-  let user = document.querySelector(".signin");
-  user.onclick = () => {
-    location.href = "./login.html";
-  };
-  let order = document.querySelector(".orders");
-  order.onclick = () => {
-    location.href = "./cart.html";
-  };
+  // let user = document.querySelector(".signin");
+  // user.onclick = () => {
+  //   location.href = "./login.html";
+  // };
+  // let order = document.querySelector(".orders");
+  // order.onclick = () => {
+  //   location.href = "./cart.html";
+  // };
   // let shopnow = document.querySelector(".btn");
   // shopnow.onclick = () => {
   //   location.href = "./product.html";
