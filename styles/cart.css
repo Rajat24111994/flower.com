@@ -14,7 +14,6 @@
 
 
 #product-container {
-    border: 2px solid red;
     /* padding: 10%; */
     align-items: center;
     justify-content: center;
@@ -23,7 +22,8 @@
     flex-wrap: wrap;
   }
   #product-container > div {
-    border: 2px solid red;
+    /* border: 2px solid grey; */
+    border-radius: 20px;
     text-align: center;
     width: 20%;
     padding: 10px;
@@ -43,7 +43,7 @@
     color: white;
     border: none;
     border-radius: 3px;
-    background-color: rgb(48, 203, 250);
+    background-color: rgb(1, 18, 23);
     cursor: pointer;
   }
 
@@ -117,3 +117,4 @@
     background-color: #fc2779;
     width: 100%;
   }
+ 

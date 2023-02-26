@@ -5,10 +5,16 @@ let API = "./flower.json"
 let cart = JSON.parse(localStorage.getItem('cart')) || []
 let wish = JSON.parse(localStorage.getItem('wish')) || []
 let Cart = JSON.parse(localStorage.getItem("cart")) || [];
-let Total = document.getElementById("cartTotal")
-Total.innerText = Cart.length
 
+let Total = document.getElementById("cartTotal")
+Total.innerText = cart.length
+
+console.log(cart.length)
 let container = document.getElementById("container")
+
+
+let search=document.getElementById("sbtn")
+let searchv=document.getElementById("search")
 
 
 function display(data) {
@@ -52,6 +58,7 @@ function display(data) {
         }else{
             cart.push({...el,quantity:1})
             localStorage.setItem("cart", JSON.stringify(cart))
+            Total.innerText=cart.length
             Swal.fire({
               position: 'center',
               icon: 'success',
@@ -166,10 +173,28 @@ async function FetchData() {
   try {
     let link = await fetch(API)
     link = await link.json()
+
+    sbtn.addEventListener("click",()=>{
+      if(searchv.value==""){
+        display(link.flower)
+        console.log("vi")
+      }else{
+        let filterdata=link.flower.filter((el)=>{
+               if(el.title.toUpperCase().includes(searchv.value.toUpperCase())==true ){
+                  return true
+                  }else{
+                    return false
+                    }
+                  })
+                  display(filterdata)
+      }
+      })
+
     //   console.log(link)
     FilterData(link.flower)
     // display(link.flower)
     fetchandrender(link.flower)
+   
 
   } catch (err) {
     console.log(err)
@@ -177,7 +202,7 @@ async function FetchData() {
 }
 
 FetchData()
-console.log(data)
+// console.log(data)
 
 
 
@@ -232,7 +257,7 @@ order.onclick = () => {
     return false
   }
 
-  
+
 
 
 
