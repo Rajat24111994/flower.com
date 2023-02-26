@@ -28,9 +28,45 @@ nav div{
     width: 70%;
 }
 .productDiv{
-    display: grid;;
-    grid-template-columns: repeat(3,1fr);
+     display: grid;
+     margin: 50px;
+     padding: 200px;
+     grid-template-columns: repeat(2,1fr);  
+     border: 2px solid;
+     background-image: url(https://wallpaperaccess.com/full/3496257.jpg)
+    ;
+    background-size: 100%;
 }
+.productDiv> div{
+    display: flex;
+    /* /* display: grid;;  */
+     /* grid-template-columns: repeat(3,1fr);  */ 
+    background-color: yellowgreen;
+ } 
+ .productDiv div div:nth-child(1){
+    width: 10%;
+    margin: 10px 10px 10px 10px;
+    border: 2px solid;
+ }
+ .productDiv div div:nth-child(2){
+    /* width: 10%; */
+    display: flex;
+    gap: 25px;
+    width: 80%;
+    text-align: center;
+    justify-content: center;
+    align-items: center;
+    margin: 10px 10px 10px 10px;
+    /* border: 2px solid; */
+    color: red;
+ }
+ .productDiv div p{
+ display: inline-block;
+
+ }
+
+
 .productDiv img{
-    width: 70%;
+    width: 90%;
+    /* width: 10%; */
 }

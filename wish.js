@@ -2,6 +2,9 @@
 // Localstorage 
 let cart=JSON.parse(localStorage.getItem('cart'))||[]
 let wish=JSON.parse(localStorage.getItem('wish'))||[]
+let Cart = JSON.parse(localStorage.getItem("cart")) || [];
+
+
 
 
 // Fetching the data
@@ -38,6 +41,13 @@ function display(wish){
         btn.addEventListener("click",()=>{
             cart.push(el)
             localStorage.setItem("cart",JSON.stringify(cart))
+            Swal.fire({
+              position: 'center',
+              icon: 'success',
+              title: 'Product Added To Cart',
+              showConfirmButton: false,
+              timer: 1500
+            })
         })
 
         // Appending to Main 
