@@ -62,6 +62,7 @@ function display(data) {
         } 
         })
         btn2.addEventListener("click", () => {
+
               if(checkdub(el)){
                   Swal.fire({
                     position: 'center',
@@ -82,6 +83,7 @@ function display(data) {
                   })
               } 
           })
+
 
         // Appending to Main 
         box2.append(img)
