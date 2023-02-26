@@ -263,14 +263,14 @@
 
       let sum = 0;
       for (let i = 0; i < Cart.length; i++) {
-        sum += Math.floor(Cart[i].price * Cart[i].quantity) 
+        sum += Math.floor(Cart[i].price * Cart[i].quantity); 
       }
       originalprice.textContent = sum;
       savings.textContent = (sum * 0.05).toFixed(2);
       delivery.textContent =(sum * 0.1).toFixed(2);
       tax.textContent = (sum * 0.1).toFixed(2);
 
-      total.textContent = eval(Math.floor(sum - sum * 0.05 + sum * 0.1 + sum * 0.1));
+      total.textContent = eval(Math.floor(sum - sum * 0.05 + sum * 0.1 + sum * 0.1))
     }
 
     DisplayProduct();

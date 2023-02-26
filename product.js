@@ -177,6 +177,7 @@ async function FetchData() {
 }
 
 FetchData()
+console.log(data)
 
 
 
