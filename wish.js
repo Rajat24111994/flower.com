@@ -22,12 +22,14 @@ function display(wish){
         let title=document.createElement("h2")
         let price=document.createElement("h3")
         let btn=document.createElement("button")
+        // let btn2=document.createElement("button")
 
         // Assigning Data
         img.src=el.image
         title.innerText=el.title
         price.innerText=`₹ ${el.price}`
         btn.innerText="Add to Cart"
+        // btn2.innerText="Remove"
 
         // Clssess
         box.className="box";
@@ -36,9 +38,37 @@ function display(wish){
         //Event Listner
 
         btn.addEventListener("click",()=>{
-            cart.push(el)
-            localStorage.setItem("cart",JSON.stringify(cart))
-        })
+          if(checkdub(el)){
+              Swal.fire({
+                position: 'center',
+                icon: 'error',
+                title: 'Product Already in Cart',
+                showConfirmButton: false,
+                timer: 1500
+              })
+          }else{
+            Swal.fire({
+              position: 'center',
+              icon: 'success',
+              title: 'Product Added To Cart',
+              showConfirmButton: false,
+              timer: 1500
+            })
+              cart.push({...el,quantity:1})
+              localStorage.setItem("cart",JSON.stringify(cart))
+          } 
+      })
+    //   btn2.addEventListener("click",()=>{
+    //         Swal.fire({
+    //           position: 'center',
+    //           icon: 'success',
+    //           title: 'Removed',
+    //           showConfirmButton: false,
+    //           timer: 1500
+    //         })
+    //        wish.splice(ind,1)
+    //         localStorage.setItem("wish",JSON.stringify(wish))
+    // })
 
         // Appending to Main 
         box2.append(img)
@@ -48,7 +78,7 @@ function display(wish){
     });
 }
 let Total=document.getElementById("cartTotal")
-Total.innerText=Cart.length
+Total.innerText=cart.length
 
 
 let user = document.querySelector(".signin");
@@ -64,3 +94,12 @@ let bag = document.querySelector(".bag");
 bag.onclick = () => {
   location.href = "./cart.html";
 };
+
+function checkdub(data){
+  for(i=0;i<cart.length;i++){
+      if(cart[i].id==data.id){
+          return true
+      }
+  }
+  return false
+}

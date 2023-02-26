@@ -50,27 +50,49 @@ function display(data) {
         //Event Listner
 
         btn.addEventListener("click", () => {
+          if(checkdub2(el)){
+            Swal.fire({
+              position: 'center',
+              icon: 'error',
+              title: 'Already in Cart',
+              showConfirmButton: false,
+              timer: 1500
+            })
+        }else{
             cart.push(el)
             localStorage.setItem("cart", JSON.stringify(cart))
             Swal.fire({
               position: 'center',
               icon: 'success',
-              title: 'Product Added To Cart',
+              title: 'Added to Cart',
               showConfirmButton: false,
               timer: 1500
             })
+        } 
         })
         btn2.addEventListener("click", () => {
-            wish.push(el)
-            localStorage.setItem("wish", JSON.stringify(wish))
-            Swal.fire({
-              position: 'center',
-              icon: 'success',
-              title: 'Product Added To Wishlist',
-              showConfirmButton: false,
-              timer: 1500
-            })
-        })
+
+              if(checkdub(el)){
+                  Swal.fire({
+                    position: 'center',
+                    icon: 'error',
+                    title: 'Already in wishlist',
+                    showConfirmButton: false,
+                    timer: 1500
+                  })
+              }else{
+                  wish.push(el)
+                  localStorage.setItem("wish", JSON.stringify(wish))
+                  Swal.fire({
+                    position: 'center',
+                    icon: 'success',
+                    title: 'Added to wishlist',
+                    showConfirmButton: false,
+                    timer: 1500
+                  })
+              } 
+          })
+
 
         // Appending to Main 
         box2.append(img)
@@ -178,7 +200,7 @@ let filterBy = document.getElementById("filter")
   };
   let order = document.querySelector(".orders");
   order.onclick = () => {
-    location.href = "./wish.html";
+    location.href = "./cart.html";
   };
   // let shopnow = document.querySelector(".btn");
   // shopnow.onclick = () => {
@@ -188,6 +210,25 @@ let filterBy = document.getElementById("filter")
   bag.onclick = () => {
     location.href = "./cart.html";
   };
+
+  function checkdub(data){
+    for(i=0;i<wish.length;i++){
+        if(wish[i].id==data.id){
+            return true
+        }
+    }
+    return false
+  }
+  function checkdub2(data){
+    for(i=0;i<cart.length;i++){
+        if(cart[i].id==data.id){
+            return true
+        }
+    }
+    return false
+  }
+
+  
 
 
 
