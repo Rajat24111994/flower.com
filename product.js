@@ -12,62 +12,84 @@ let container = document.getElementById("container")
 
 
 function display(data) {
-  container.innerHTML = ""
 
-  data.forEach((el, ind) => {
+    container.innerHTML = ""
 
-    // Creating 
-    let box = document.createElement("div")
-    let box2 = document.createElement("div")
-    let box3 = document.createElement("div")
-    let img = document.createElement("img")
-    let title = document.createElement("h2")
-    let price = document.createElement("h3")
-    let btn = document.createElement("button")
-    let btn2 = document.createElement("button")
+    data.forEach((el, ind) => {
 
-    // Assigning Data
-    img.src = el.image
-    title.innerText = el.title
-    price.innerText = `₹ ${el.price}`
-    btn.innerText = "Add to Cart"
-    btn2.innerText = "Add to Wish"
+        // Creating 
+        let box = document.createElement("div")
+        let box2 = document.createElement("div")
+        let box3 = document.createElement("div")
+        let img = document.createElement("img")
+        let title = document.createElement("h2")
+        let price = document.createElement("h3")
+        let btn = document.createElement("button")
+        let btn2 = document.createElement("button")
 
-    // Clssess
-    box.className = "box";
-    box3.id = "wish";
+        // Assigning Data
+        img.src = el.image
+        title.innerText = el.title
+        price.innerText = `₹ ${el.price}`
+        btn.innerText = "Add to Cart"
+        btn2.innerText = "Add to Wish"
 
-    //Event Listner
+        // Clssess
+        box.className = "box";
+        box3.id = "wish";
 
-    btn.addEventListener("click", () => {
-      cart.push(el)
-      localStorage.setItem("cart", JSON.stringify(cart))
-      Swal.fire({
-        position: 'center',
-        icon: 'success',
-        title: 'Product Added To Cart',
-        showConfirmButton: false,
-        timer: 1500
-      })
-    })
-    btn2.addEventListener("click", () => {
-      wish.push(el)
-      localStorage.setItem("wish", JSON.stringify(wish))
-      Swal.fire({
-        position: 'center',
-        icon: 'success',
-        title: 'Product Added To Wishlist',
-        showConfirmButton: false,
-        timer: 1500
-      })
-    })
+        //Event Listner
 
-    // Appending to Main 
-    box2.append(img)
-    box3.append(btn, btn2)
-    box.append(box2, title, price, box3)
-    container.append(box)
-  });
+        btn.addEventListener("click", () => {
+          if(checkdub2(el)){
+            Swal.fire({
+              position: 'center',
+              icon: 'error',
+              title: 'Already in Cart',
+              showConfirmButton: false,
+              timer: 1500
+            })
+        }else{
+            cart.push(el)
+            localStorage.setItem("cart", JSON.stringify(cart))
+            Swal.fire({
+              position: 'center',
+              icon: 'success',
+              title: 'Added to Cart',
+              showConfirmButton: false,
+              timer: 1500
+            })
+        } 
+        })
+        btn2.addEventListener("click", () => {
+              if(checkdub(el)){
+                  Swal.fire({
+                    position: 'center',
+                    icon: 'error',
+                    title: 'Already in wishlist',
+                    showConfirmButton: false,
+                    timer: 1500
+                  })
+              }else{
+                  wish.push(el)
+                  localStorage.setItem("wish", JSON.stringify(wish))
+                  Swal.fire({
+                    position: 'center',
+                    icon: 'success',
+                    title: 'Added to wishlist',
+                    showConfirmButton: false,
+                    timer: 1500
+                  })
+              } 
+          })
+
+        // Appending to Main 
+        box2.append(img)
+        box3.append(btn, btn2)
+        box.append(box2, title, price, box3)
+        container.append(box)
+    });
+
 }
 
 
@@ -171,10 +193,43 @@ order.onclick = () => {
   location.href = "./wish.html";
 };
 
-let bag = document.querySelector(".bag");
-bag.onclick = () => {
-  location.href = "./cart.html";
-};
+
+  let user = document.querySelector(".signin");
+  user.onclick = () => {
+    location.href = "./login.html";
+  };
+  let order = document.querySelector(".orders");
+  order.onclick = () => {
+    location.href = "./cart.html";
+  };
+  // let shopnow = document.querySelector(".btn");
+  // shopnow.onclick = () => {
+  //   location.href = "./product.html";
+  // };
+  let bag = document.querySelector(".bag");
+  bag.onclick = () => {
+    location.href = "./cart.html";
+  };
+
+
+  function checkdub(data){
+    for(i=0;i<wish.length;i++){
+        if(wish[i].id==data.id){
+            return true
+        }
+    }
+    return false
+  }
+  function checkdub2(data){
+    for(i=0;i<cart.length;i++){
+        if(cart[i].id==data.id){
+            return true
+        }
+    }
+    return false
+  }
+
+  
 
 
 

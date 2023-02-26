@@ -73,12 +73,18 @@
  h5{
     margin-top: -1px;
  }
-
+ 
  #nav-right  div img{
     width: 70px; 
     height:40%;
     /* margin-top: 5%; */
  } 
+ #w div img{
+   width: 10px; 
+   height:40%;
+   border: 1px solid;
+ 
+}
  #nav-right  div img:hover{
    /* width: 70px;  */
    height:45%;
@@ -126,4 +132,5 @@
 
    /* margin: auto; */
  }
+
 
