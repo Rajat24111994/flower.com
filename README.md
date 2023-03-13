@@ -1,5 +1,5 @@
 # casual-metal-9545
-
+netlify link - https://genuine-malabi-a05086.netlify.app/
 # Landing Page 
 
 Hear you can see the landing page of our project :
