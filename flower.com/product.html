@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#fbf8f3">
+  <title>Cửa hàng hoa | Flowerflow</title>
+  <link rel="stylesheet" href="./store-header.css?v=1">
+  <link rel="stylesheet" href="./store-footer.css?v=2">
+  <link rel="stylesheet" href="./product.css?v=8">
+</head>
+
+<body id="top">
+  <script src="./store-header.js?v=2"></script>
+
+  <main class="product-page">
+    <div id="sidebar">
+      <div id="plz-sort" class="sortfilter">
+        <label for="sort" class="select">Sắp xếp theo:</label>
+        <select name="sort" id="sort" class="select arrange">
+          <option value="">Chọn</option>
+          <option value="dsc-p">Giá: cao đến thấp</option>
+          <option value="asc-p">Giá: thấp đến cao</option>
+          <option value="str-i">Tên: A đến Z</option>
+          <option value="str-d">Tên: Z đến A</option>
+        </select>
+      </div>
+
+      <div id="filtering" class="sortfilter">
+        <label for="flower-type" class="select">Lọc theo phân loại:</label>
+        <select name="flower-type" id="flower-type" class="select">
+          <option value="">Tất cả phân loại</option>
+        </select>
+      </div>
+
+      <div id="price-filtering" class="sortfilter">
+        <label for="price-filter" class="select">Lọc theo khoảng giá:</label>
+        <select name="price-filter" id="price-filter" class="select">
+          <option value="">Tất cả mức giá</option>
+          <option value="price-under-1500000">Dưới 1.500.000 ₫</option>
+          <option value="price-1500000-2000000">1.500.000 - 2.000.000 ₫</option>
+          <option value="price-over-2000000">Từ 2.000.000 ₫</option>
+        </select>
+      </div>
+    </div>
+
+    <section class="product-detail" id="product-detail" aria-labelledby="detail-name" hidden>
+      <nav class="product-breadcrumb" aria-label="Điều hướng">
+        <a href="./index.html">Trang chủ</a>
+        <span aria-hidden="true">/</span>
+        <a href="./product.html">Hoa tươi</a>
+        <span aria-hidden="true">/</span>
+        <span id="detail-breadcrumb-name" aria-current="page"></span>
+      </nav>
+      <div class="product-detail-layout">
+        <div class="product-gallery">
+          <div class="product-gallery-main">
+            <img id="detail-main-image" src="" alt="">
+            <span class="gallery-image-fallback" aria-hidden="true">✿</span>
+          </div>
+          <div class="product-gallery-thumbnails" id="detail-thumbnails" role="group" aria-label="Thư viện ảnh sản phẩm"></div>
+        </div>
+        <div class="product-detail-info">
+          <p class="catalog-eyebrow">FLOWERFLOW · HOA TƯƠI</p>
+          <h1 id="detail-name"></h1>
+          <p class="detail-category"><span>Danh mục</span><strong id="detail-category"></strong></p>
+          <p class="detail-price" id="detail-price"></p>
+          <p class="detail-stock" id="detail-stock"></p>
+          <div class="detail-description">
+            <h2>Mô tả sản phẩm</h2>
+            <p id="detail-description"></p>
+          </div>
+          <div class="detail-purchase">
+            <label for="detail-quantity">Số lượng</label>
+            <input id="detail-quantity" name="quantity" type="number" min="1" step="1" value="1" required>
+            <p class="quantity-error" id="detail-quantity-error" role="status" aria-live="polite"></p>
+            <div class="detail-actions">
+              <button class="detail-add-to-cart" id="detail-add-to-cart" type="button">Thêm vào giỏ</button>
+              <button class="detail-buy-now" id="detail-buy-now" type="button">Mua ngay</button>
+              <button class="detail-wishlist" id="detail-wishlist" type="button" aria-pressed="false">♡ Thêm vào yêu thích</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="related-flowers" id="related-flowers" aria-labelledby="related-flowers-title" hidden>
+      <div class="related-flowers-heading">
+        <p class="catalog-eyebrow">GỢI Ý DÀNH RIÊNG CHO BẠN</p>
+        <h2 id="related-flowers-title">Những bó hoa có thể bạn sẽ thích</h2>
+        <p>Dựa trên danh mục và những mẫu hoa đang có trong cửa hàng.</p>
+      </div>
+      <p class="related-flowers-status" id="related-flowers-status" role="status" aria-live="polite"></p>
+      <div class="related-flowers-grid" id="related-flowers-grid"></div>
+    </section>
+
+    <p class="shopping-action-message" id="shopping-action-message" role="status" aria-live="polite" hidden></p>
+
+    <section class="catalog" aria-labelledby="catalog-title">
+      <header class="catalog-heading">
+        <p class="catalog-eyebrow">FLOWERFLOW · HOA TƯƠI</p>
+        <h1 id="catalog-title">Hoa tươi dành cho bạn</h1>
+        <p>Chọn một bó hoa để gửi lời yêu thương.</p>
+      </header>
+      <div id="container" aria-live="polite" aria-label="Danh sách sản phẩm hoa"></div>
+    </section>
+  </main>
+
+  <script src="./store-footer.js?v=2"></script>
+  <script src="./product-names.js"></script>
+  <script src="./currency.js?v=3"></script>
+  <script src="./product-store.js?v=4"></script>
+  <script src="./shopping-store.js?v=1"></script>
+  <script src="./related-products.js?v=1"></script>
+  <script src="./product-categories.js?v=1"></script>
+  <script src="./product.js?v=10"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</body>
+
+</html>

@@ -1,0 +1,183 @@
+{% extends "base.html" %}
+{% load static %}
+
+
+{% block title %} New Purchase {% endblock title %}
+
+
+{% block content %}
+
+    <div style="color:#ea2088; font-style: bold; font-size: 3rem; border-bottom: 1px solid white;">New Purchase</div>
+    
+        <br>
+
+        <div class="panel panel-default">
+            <div class="panel-heading panel-heading-text">Supplier Details</div>
+            <div class="panel-body">
+                    
+                <div class="form-group">
+                    <label for="id_name" class="panel-body-text">Supplier Name:</label>
+                    <input type="text" class="form-control textinput" id="id_name" value="{{ supplier.name }}" disabled>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group col-md-6">
+                        <label for="id_phone" class="panel-body-text">Phone No:</label>
+                        <input type="text" class="form-control textinput" id="id_phone" value="{{ supplier.phone }}" disabled>
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="id_gstin" class="panel-body-text">GSTIN No:</label>
+                        <input type="gstin" class="form-control textinput" id="id_gstin" value="{{ supplier.gstin }}" disabled>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <br>
+
+        <form method="post" class="panel panel-default">
+            
+            {% csrf_token %}
+            {{ formset.management_form }}
+
+            <div class="panel-heading panel-heading-text">Product Details</div>
+            
+                <div id="stockitem"> 
+                    <div class="panel-body">
+                    {% for form in formset %}
+                        <div class="row form-row clone-row">
+                            <div class="form-group col-md-6">
+                                {{ form.stock.errors }}
+                                <label class="panel-body-text">Stock:</label>
+                                {{ form.stock }}
+                            </div>
+                            <div class="form-group col-md-2">
+                                <label class="panel-body-text">Price per item:</label>
+                                {{ form.perprice }}
+                            </div>
+                            <div class="form-group col-md-2">
+                                {{ form.quantity.errors }}
+                                <label class="panel-body-text">Quantity:</label>
+                                {{ form.quantity }}
+                            </div>
+                            <div class="form-group col-md-1">
+                                <label class="panel-body-text">Price:</label>
+                                <input type="text" class="textinput form-control totalprice" value="1" disabled required>
+                            </div>
+                            <div class="form-group col-md-1">
+                                <label class="panel-body-text" style="color: #000">.</label>
+                                <button class="form-control btn btn-danger remove-form-row">-</button>
+                            </div>
+                        </div>
+                    {% endfor %}
+                        <div style="text-align: right;">                    
+                            <a href="#" class="add-form-row">+ Add More</a>
+                        </div>
+                    </div>
+                </div>
+
+
+            <br>
+
+            <div class="align-middle">
+                <button type="submit" class="btn ghost-green">Add to Purchases</button>
+                <a href="{% url 'select-supplier' %}" class="btn ghost-button">Go Back</a>
+                <a href="{% url 'purchases-list' %}" class="btn ghost-button">Cancel</a>
+            </div>
+            
+        </form>
+
+    </div>
+
+    <!-- Custom JS to add and remove item forms -->
+    <script type="text/javascript" src="{% static 'js/jquery-3.2.1.slim.min.js' %}"></script>
+    <script type="text/javascript" src="{% static 'js/dialogbox.js' %}"></script>
+    <script type="text/javascript">
+        
+        //creates custom alert object
+        var custom_alert = new custom_alert();
+
+        function updateElementIndex(el, prefix, ndx) {
+            // Replace/reorder the numbers of the forms in formset
+            // I.E. inspection_report_form-0, ... -1, ... -2 if you delete -1 then two forms are left and reorder:
+            // inspection_report_form-0, and then inspection_report_form-2 becomes -1
+            var id_regex = new RegExp('(' + prefix + '-\\d+)');
+            var replacement = prefix + '-' + ndx;   
+            if ($(el).attr("for")) $(el).attr("for", $(el).attr("for").replace(id_regex, replacement));
+            if (el.id) el.id = el.id.replace(id_regex, replacement);
+            if (el.name) el.name = el.name.replace(id_regex, replacement);
+        };
+
+        function cloneMore(selector, prefix) {
+            var newElement = $(selector).clone(true);
+            var total = $('#id_' + prefix + '-TOTAL_FORMS').val();
+            newElement.find(':input:not([type=button]):not([type=submit]):not([type=reset])').each(function() {
+                var name = $(this).attr('name')
+                if(name) {
+                    name = name.replace('-' + (total-1) + '-', '-' + total + '-');
+                    var id = 'id_' + name;
+                    $(this).attr({'name': name, 'id': id}).val('').removeAttr('checked');
+                }
+            });
+            newElement.find('label').each(function() {
+                var forValue = $(this).attr('for');
+                if (forValue) {
+                    forValue = forValue.replace('-' + (total-1) + '-', '-' + total + '-');
+                    $(this).attr({'for': forValue});
+                }
+            });
+            total++;
+            $('#id_' + prefix + '-TOTAL_FORMS').val(total);
+            $(selector).after(newElement);
+            return false;
+        }
+        
+        function deleteForm(prefix, btn) {
+            var total = $('#id_' + prefix + '-TOTAL_FORMS').val();
+            if (total > 1){
+                btn.closest('.clone-row').remove();
+                var forms = $('.clone-row');
+                $('#id_' + prefix + '-TOTAL_FORMS').val(forms.length);
+                for (var i=0, formCount=forms.length; i<formCount; i++) {
+                    $(forms.get(i)).find(':input').each(function() {
+                        updateElementIndex(this, prefix, i);
+                    });
+                }
+                total--;
+            } else {
+                custom_alert.render('Field cannot be deleted');
+            }
+            return false;
+        };
+                
+        $(document).on('click', '.add-form-row', function(e){
+            e.preventDefault();
+            cloneMore('.clone-row:last', 'form');
+            return false;
+        });
+        
+        $(document).on('click', '.remove-form-row', function(e){
+            e.preventDefault();
+            deleteForm('form', $(this));
+            return false;
+        });
+
+
+        //updates the total price by multiplying 'price per item' and 'quantity' 
+        $(document).on('change', '.setprice', function(e){
+            e.preventDefault();
+            //gets the values
+            var element = $(this);
+            var quantity = element.parents('.form-row').find('.quantity').val();
+            var perprice = element.parents('.form-row').find('.price').val();
+            //calculates the total
+            var tprice = quantity * perprice;
+            //sets it to field
+            element.parents('.form-row').find('.totalprice').val(tprice);
+            return false;
+        });
+
+    </script>
+
+{% endblock content %}

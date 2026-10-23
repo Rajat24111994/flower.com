@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bảng điều khiển quản trị</title>
+    <link rel="stylesheet" href="./admin.css">
+</head>
+<body>
+    <nav>
+        <img src="./images/flowerflow-logo.png" alt="logo" style="height:44px;">
+        <div>
+            <p id="product_page">Sản phẩm</p>
+            <p id="categories_page">Phân loại</p>
+            <p id="orders_page">Đơn hàng</p>
+            <p id="reviews_page">Đánh giá</p>
+            <p id="messages_page">Phản hồi</p>
+            <p id="revenue_page">Doanh thu</p>
+            <p id="users_page">Tài khoản</p>
+            <p id="logout_page" class="danger-btn">Đăng xuất</p>
+        </div>
+    </nav>
+    <main aria-live="polite">Đang xác thực quyền quản trị...</main>
+    <script src="./currency.js?v=3"></script>
+    <script src="./product-store.js?v=3"></script>
+    <script type="module" src="./admin.js"></script>
+</body>
+</html>

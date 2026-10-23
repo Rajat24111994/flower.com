@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Tổng quan{% endblock title %}
+{% block body_class %}dashboard-page{% endblock body_class %}
+{% block page_styles %}<link rel="stylesheet" href="{% static 'css/dashboard.css' %}">{% endblock page_styles %}
+
+{% block content %}
+<div class="dashboard">
+    <header class="dashboard-header">
+        <div class="welcome-copy">
+            <p class="eyebrow">HOA XINH / BẢNG ĐIỀU KHIỂN</p>
+            <h1>Chào {{ request.user.username }} <span aria-hidden="true">🌷</span></h1>
+            <p class="welcome-note">Một ngày mới rực rỡ bắt đầu từ đây.</p>
+        </div>
+        <div class="header-actions">
+            <span class="today-label">{{ today|date:"d/m/Y" }}</span>
+            <a class="user-chip" href="{% url 'logout' %}" aria-label="Đăng xuất">
+                <span class="user-avatar">{{ request.user.username|first|upper }}</span>
+                <span>{{ request.user.username }}</span>
+                <span class="signout-mark" aria-hidden="true">↗</span>
+            </a>
+        </div>
+    </header>
+
+    <section class="metric-grid" aria-label="Tổng quan cửa hàng">
+        <article class="metric-card metric-flowers"><div class="metric-top"><span class="metric-icon" aria-hidden="true">✿</span><span class="metric-label">Mặt hàng đang bán</span></div><strong class="metric-value">{{ stock_count }}</strong><span class="metric-caption">Sản phẩm trong danh mục</span></article>
+        <article class="metric-card metric-stock"><div class="metric-top"><span class="metric-icon" aria-hidden="true">▦</span><span class="metric-label">Tổng tồn kho</span></div><strong class="metric-value">{{ total_stock_units }}</strong><span class="metric-caption">Đơn vị hàng hóa hiện có</span></article>
+        <article class="metric-card metric-orders"><div class="metric-top"><span class="metric-icon" aria-hidden="true">↗</span><span class="metric-label">Hóa đơn tháng này</span></div><strong class="metric-value">{{ monthly_order_count }}</strong><span class="metric-caption">Tính từ đầu tháng</span></article>
+        <article class="metric-card metric-revenue"><div class="metric-top"><span class="metric-icon" aria-hidden="true">₫</span><span class="metric-label">Doanh thu tháng này</span></div><strong class="metric-value metric-currency">{{ monthly_revenue }}<small>đ</small></strong><span class="metric-caption">Tổng giá trị hóa đơn bán</span></article>
+    </section>
+
+    <section class="dashboard-grid dashboard-grid-top">
+        <article class="panel revenue-panel">
+            <div class="panel-heading"><div><p class="eyebrow">HIỆU QUẢ KINH DOANH</p><h2>Doanh thu 7 ngày</h2></div><a href="{% url 'sales-list' %}" class="text-link">Tất cả hóa đơn <span aria-hidden="true">→</span></a></div>
+            <div class="revenue-list">
+                {% for day in revenue_by_day %}
+                <div class="revenue-row"><time class="revenue-date" datetime="{{ day.date|date:'Y-m-d' }}">{{ day.date|date:"d/m" }}</time><div class="revenue-track" aria-label="{{ day.formatted_revenue }} đồng"><span style="width: {{ day.bar_width }}%"></span></div><strong class="revenue-amount">{{ day.formatted_revenue }}đ</strong><span class="revenue-orders">{{ day.order_count }} đơn</span></div>
+                {% endfor %}
+            </div>
+        </article>
+
+        <article class="panel recent-panel">
+            <div class="panel-heading"><div><p class="eyebrow">CẬP NHẬT MỚI</p><h2>Hóa đơn gần đây</h2></div><a href="{% url 'sales-list' %}" class="text-link">Xem tất cả <span aria-hidden="true">→</span></a></div>
+            <div class="table-scroll"><table>
+                <thead><tr><th>Mã đơn</th><th>Khách hàng</th><th class="align-right">Thành tiền</th></tr></thead>
+                <tbody>
+                {% for sale in recent_sales %}
+                    <tr><td><a class="bill-link" href="{% url 'sale-bill' sale.billno %}">#{{ sale.billno|stringformat:"04d" }}</a></td><td><span class="customer-name">{{ sale.name }}</span><small>{{ sale.time|date:"d/m, H:i" }}</small></td><td class="align-right amount-cell">{{ sale.formatted_total }}đ</td></tr>
+                {% empty %}
+                    <tr><td class="empty-state" colspan="3">Chưa có hóa đơn bán nào.</td></tr>
+                {% endfor %}
+                </tbody>
+            </table></div>
+        </article>
+    </section>
+
+    <section class="dashboard-grid dashboard-grid-bottom">
+        <article class="panel inventory-panel">
+            <div class="panel-heading"><div><p class="eyebrow">THEO DÕI HÀNG HÓA</p><h2>Mặt hàng trong kho</h2></div><a href="{% url 'inventory' %}" class="text-link">Quản lý kho <span aria-hidden="true">→</span></a></div>
+            <div class="table-scroll"><table>
+                <thead><tr><th>Tên mặt hàng</th><th class="align-right">Tồn kho</th><th class="align-right">Thao tác</th></tr></thead>
+                <tbody>
+                {% for stock in stock_items %}
+                    <tr><td><span class="flower-dot" aria-hidden="true">✿</span><span class="product-name">{{ stock.name }}</span></td><td class="align-right"><span class="stock-pill {% if stock.quantity < 10 %}stock-low{% endif %}">{{ stock.quantity }}</span></td><td class="align-right"><a class="row-action" href="{% url 'edit-stock' stock.pk %}" aria-label="Sửa {{ stock.name }}">Sửa</a></td></tr>
+                {% empty %}
+                    <tr><td class="empty-state" colspan="3">Kho chưa có mặt hàng nào.</td></tr>
+                {% endfor %}
+                </tbody>
+            </table></div>
+        </article>
+
+        <article class="panel shortcuts-panel">
+            <div class="panel-heading"><div><p class="eyebrow">LỐI TẮT</p><h2>Thao tác nhanh</h2></div></div>
+            <div class="shortcut-list">
+                <a href="{% url 'new-stock' %}" class="shortcut shortcut-green"><span aria-hidden="true">＋</span><span>Thêm mặt hàng</span><span class="shortcut-arrow" aria-hidden="true">↗</span></a>
+                <a href="{% url 'select-supplier' %}" class="shortcut shortcut-blue"><span aria-hidden="true">↓</span><span>Tạo phiếu nhập</span><span class="shortcut-arrow" aria-hidden="true">↗</span></a>
+                <a href="{% url 'new-sale' %}" class="shortcut shortcut-pink"><span aria-hidden="true">↗</span><span>Tạo hóa đơn bán</span><span class="shortcut-arrow" aria-hidden="true">↗</span></a>
+                <a href="{% url 'suppliers-list' %}" class="shortcut shortcut-yellow"><span aria-hidden="true">◎</span><span>Nhà cung cấp</span><span class="shortcut-arrow" aria-hidden="true">↗</span></a>
+            </div>
+        </article>
+
+        <aside class="floral-note"><span class="note-sprig" aria-hidden="true">✿</span><p class="eyebrow">GÓC HOA XINH</p><h2>Mỗi đóa hoa<br>là một niềm vui.</h2><p>Chăm chút từng đơn hàng, vun trồng một cửa hàng bền vững.</p></aside>
+    </section>
+</div>
+{% endblock content %}

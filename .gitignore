@@ -1,0 +1,44 @@
+# Dependencies
+node_modules/
+
+# Environment variables and Vercel local config
+.env*
+.vercel/
+
+# Firebase service-account credentials
+serviceAccountKey.json
+*.service-account.json
+*-firebase-adminsdk-*.json
+
+# Django: auto-generated migrations (except the shop app) and local database
+**/migrations/**
+!shop/migrations/
+!shop/migrations/*.py
+db.sqlite3
+db.sqlite3-journal
+local_settings.py
+media
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.venv
+venv/
+env/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Logs
+*.log
+npm-debug.log*
+pip-log.txt
+
+# Editor and OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+major project.code-workspace

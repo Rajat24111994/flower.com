@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#fbf8f3">
+    <title>Theo dõi đơn hàng | Flowerflow</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="./store-header.css?v=1">
+    <link rel="stylesheet" href="./tracking.css?v=4">
+    <link rel="stylesheet" href="./store-footer.css?v=2">
+</head>
+<body>
+    <script src="./store-header.js?v=2"></script>
+
+    <main class="tracking-main">
+        <section class="tracking-heading">
+            <p class="tracking-eyebrow">FLOWERFLOW · ĐƠN HÀNG</p>
+            <h1>Theo dõi đơn hàng</h1>
+            <p>Tra cứu hành trình giao hoa bằng mã đơn hàng và số điện thoại đặt hàng.</p>
+        </section>
+
+        <form class="tracking-search" id="tracking-search">
+            <label for="tracking-order-id">Mã đơn hàng</label>
+            <input id="tracking-order-id" name="orderId" type="text" inputmode="numeric" autocomplete="off" required>
+            <label for="tracking-phone">Số điện thoại đặt hàng</label>
+            <input id="tracking-phone" name="phone" type="tel" autocomplete="tel" required>
+            <button type="submit">Tra cứu đơn hàng</button>
+        </form>
+        <p class="tracking-message" id="tracking-message" role="status" aria-live="polite"></p>
+
+        <section class="tracking-results" id="tracking-results" hidden aria-live="polite">
+            <div class="tracking-overview">
+                <div>
+                    <p class="tracking-eyebrow">ĐƠN HÀNG <span id="result-order-id"></span></p>
+                    <h2 id="result-status"></h2>
+                    <p class="current-location" id="result-location"></p>
+                </div>
+                <div class="eta-block">
+                    <span>Dự kiến giao đến</span>
+                    <strong id="result-eta"></strong>
+                </div>
+            </div>
+
+            <div class="tracking-details">
+                <section class="tracking-panel">
+                    <h2>Lịch trình vận chuyển</h2>
+                    <ol class="tracking-timeline" id="tracking-timeline"></ol>
+                </section>
+                <section class="tracking-panel order-details">
+                    <h2>Thông tin nhận hàng</h2>
+                    <dl>
+                        <div><dt>Người nhận</dt><dd id="result-customer"></dd></div>
+                        <div><dt>Số điện thoại</dt><dd id="result-phone"></dd></div>
+                        <div><dt>Địa chỉ</dt><dd id="result-address"></dd></div>
+                    </dl>
+                    <h3>Sản phẩm</h3>
+                    <div class="tracking-products" id="tracking-products"></div>
+                </section>
+            </div>
+
+            <section class="tracking-panel review-panel" id="review-panel" hidden>
+                <h2>Đánh giá đơn hàng</h2>
+                <form id="order-review-form">
+                    <fieldset class="review-rating">
+                        <legend>Chọn số sao</legend>
+                        <div class="rating-stars" role="group" aria-label="Đánh giá từ 1 đến 5 sao">
+                            <button type="button" class="rating-star" data-rating="1" aria-label="1 sao" aria-pressed="false">★</button>
+                            <button type="button" class="rating-star" data-rating="2" aria-label="2 sao" aria-pressed="false">★</button>
+                            <button type="button" class="rating-star" data-rating="3" aria-label="3 sao" aria-pressed="false">★</button>
+                            <button type="button" class="rating-star" data-rating="4" aria-label="4 sao" aria-pressed="false">★</button>
+                            <button type="button" class="rating-star" data-rating="5" aria-label="5 sao" aria-pressed="false">★</button>
+                        </div>
+                    </fieldset>
+                    <label class="review-comment-label" for="review-comment">Nhận xét của bạn</label>
+                    <textarea id="review-comment" name="comment" maxlength="1000" placeholder="Chia sẻ cảm nhận về đơn hàng..." required></textarea>
+                    <button class="review-submit" type="submit">Gửi đánh giá</button>
+                    <p class="review-feedback" id="review-feedback" role="status" aria-live="polite"></p>
+                </form>
+            </section>
+        </section>
+    </main>
+
+    <script type="module" src="./tracking.js?v=5"></script>
+    <script src="./store-footer.js?v=2"></script>
+</body>
+</html>
