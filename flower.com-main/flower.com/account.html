@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <script src="./safe-storage.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#f5f3ec">
+    <meta name="description" content="Xem và quản lý thông tin tài khoản Flowerflow cùng các đơn hàng đã đặt.">
+    <meta name="robots" content="noindex, nofollow">
+    <link rel="canonical" href="https://flower-com-six.vercel.app/account.html">
+    <link rel="icon" type="image/png" href="./images/flowerflow-logo.png">
+    <title>Tài khoản của tôi | Flowerflow</title>
+    <link rel="stylesheet" href="./account.css">
+    <link rel="stylesheet" href="./store-footer.css?v=2">
+<link rel="stylesheet" href="./contact-tools.css?v=2">
+</head>
+<body>
+    <main class="account-shell">
+        <a class="brand" href="./index.html"><span aria-hidden="true">✿</span> flowerflow</a>
+        <section class="account-card" aria-labelledby="account-title">
+            <div class="account-icon" aria-hidden="true">✿</div>
+            <p class="eyebrow">HỒ SƠ CỦA BẠN</p>
+            <h1 id="account-title">Tài khoản của tôi</h1>
+            <p class="intro">Thông tin tài khoản đang đăng nhập.</p>
+            <dl class="account-details">
+                <div><dt>Họ tên</dt><dd id="account-name"></dd></div>
+                <div><dt>Thư điện tử</dt><dd id="account-email"></dd></div>
+                <div><dt>Số điện thoại</dt><dd id="account-phone"></dd></div>
+                <div><dt>Đăng nhập bằng</dt><dd id="account-provider"></dd></div>
+            </dl>
+            <p class="account-message" id="account-message" role="status" aria-live="polite"></p>
+            <div class="account-actions">
+                <a class="shop-link" href="./product.html">Tiếp tục mua sắm</a>
+                <button id="logout-button" type="button">Đăng xuất</button>
+            </div>
+        </section>
+    </main>
+    <script type="module" src="./account.js?v=2"></script>
+    <script src="./store-footer.js?v=2"></script>
+<script src="./contact-tools.js?v=1"></script>
+</body>
+</html>
