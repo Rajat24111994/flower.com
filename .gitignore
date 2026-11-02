@@ -29,3 +29,6 @@ npm-debug.log*
 .idea/
 .DS_Store
 Thumbs.db
+
+# Bản sao repo khi tải ZIP từ GitHub rồi giải nén vào đây
+flower.com-main/
