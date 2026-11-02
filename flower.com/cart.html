@@ -8,11 +8,11 @@
     <meta name="description" content="Kiểm tra hoa đã chọn và tổng tiền trong giỏ hàng Flowerflow.">
     <link rel="icon" type="image/svg+xml" href="./favicon.svg">
     <title>Giỏ hàng</title>
-    <link rel="stylesheet" href="./store-header.css?v=2" />
-    <link rel="stylesheet" href="./cart.css?v=5" />
+    <link rel="stylesheet" href="./store-header.css?v=3" />
+    <link rel="stylesheet" href="./cart.css?v=6" />
     <link rel="stylesheet" href="./accessibility.css?v=1" />
     <link rel="stylesheet" href="./store-footer.css?v=3" />
-  <link rel="stylesheet" href="./contact-tools.css?v=2">
+  <link rel="stylesheet" href="./contact-tools.css?v=3">
   </head>
   <body>
     <script src="./store-header.js?v=5"></script>
@@ -126,7 +126,10 @@
           image.src = product.image;
           const bouquetSummary = FlowerBouquetOptions.summary(product);
           image.alt = productName;
-          details.textContent = productName + (bouquetSummary ? " · " + bouquetSummary : "");
+          details.textContent = productName;
+          const customization = document.createElement("p");
+          customization.className = "cart-item-options";
+          customization.textContent = bouquetSummary;
           price.textContent = formatVnd(product.price);
           [Decrease, Increase, Remove].forEach((button) => { button.type = "button"; });
           Remove.textContent = "Xóa";
@@ -137,11 +140,11 @@
           Remove.setAttribute("aria-label", `Xóa ${productName} khỏi giỏ hàng`);
           quantity.setAttribute("aria-live", "polite");
           const productQuantity = Math.max(1, Number(product.quantity) || 1);
+          Decrease.disabled = productQuantity <= 1;
           const stockQuantity = Number(product.stockQuantity);
           const hasStockLimit = Number.isFinite(stockQuantity) && stockQuantity >= 0;
           const requestedStock = FlowerBouquetOptions.demand(Cart, product.productId ?? product.id);
           quantity.textContent = productQuantity;
-          Decrease.disabled = productQuantity <= 1;
           // Stock is shared by every line of the same flower; the 50 limit is per line (as on the server).
           const atOrderLimit = productQuantity >= MAX_QUANTITY_PER_PRODUCT;
           Increase.disabled = atOrderLimit || (hasStockLimit && requestedStock >= stockQuantity);
@@ -174,7 +177,7 @@
             }
           });
           actions.append(Decrease, quantity, Increase, Remove);
-          info.append(details, price, stockNote, actions);
+          info.append(details, customization, price, stockNote, actions);
           card.append(image, info);
           CartContainer.append(card);
         });

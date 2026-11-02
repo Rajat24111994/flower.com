@@ -1408,3 +1408,17 @@ select{
 .filter-error:not(:empty) { padding: 8px; border-radius: 8px; background: #fff3f3; }
 #catalog-results-count { margin: 16px 20px 6px; font-weight: 600; color: #425d4b; }
 #catalog-sort-note { margin: 0 20px 12px; }
+@media (max-width: 800px) {
+  .product-gallery, .product-detail-info { min-width: 0; }
+  .product-gallery-main img { width: 100%; max-width: 100%; object-fit: contain; }
+  .product-gallery-thumbnails { flex-wrap: wrap; }
+  .gallery-thumbnail { min-width: 48px; min-height: 48px; }
+  .detail-purchase input, .bouquet-options select, .bouquet-options textarea, #sidebar select, .custom-price-range input { font-size: 16px; min-height: 48px; max-width: 100%; }
+  .detail-actions { gap: 12px; }
+  .detail-actions button, .related-flower-actions a, .related-flower-actions button, #container .product-actions > * { min-height: 48px; }
+  .related-flower-actions { grid-template-columns: minmax(0, 1fr) 44px; }
+  .related-flower-content h3, #container h2 { overflow-wrap: anywhere; }
+  #detail-name, #detail-description, #detail-meaning { overflow-wrap: anywhere; }
+  .product-breadcrumb { flex-wrap: wrap; }
+  .product-breadcrumb > span { min-width: 0; overflow-wrap: anywhere; }
+}
