@@ -477,6 +477,10 @@ function renderProductTab() {
                <form id="add-product-form" class="product-form">
                    <input type="text" id="product-title" placeholder="Tên hoa" value="${escapeHtml(getVietnameseProductName(editingProduct?.title || ""))}" required maxlength="120">
                    <input type="text" id="product-image" placeholder="Link hình ảnh (vd ./images/flower-01.webp hoặc https://...)" value="${escapeHtml(editingProduct?.image || "")}" required>
+                   <label class="field-label" for="product-images">Ảnh bổ sung (mỗi dòng một đường dẫn, tối đa 8 ảnh)</label>
+                   <textarea id="product-images" rows="3">${escapeHtml((editingProduct?.images || []).join("\n"))}</textarea>
+                   <label class="field-label" for="product-meaning">Ý nghĩa loài hoa</label>
+                   <textarea id="product-meaning" maxlength="1000" placeholder="Để trống để dùng gợi ý theo loài hoa">${escapeHtml(editingProduct?.meaning || "")}</textarea>
                    <label class="field-label" for="product-category">Phân loại sản phẩm</label>
                    <select id="product-category">
                        <option value="">Chưa phân loại</option>
@@ -824,13 +828,14 @@ function renderOrderCard(order, showCompletionAction = true) {
            <div class="section-label">Sản phẩm trong đơn</div>
            <div class="order-product-list">
                ${items.map((item) => {
-                   const product = getProductById(item.id) || {};
+                   const product = getProductById(item.productId ?? item.id) || {};
                    const image = getSafeImageUrl(item.image || product.image) || "./images/flowerflow-logo.png";
                    return `
                        <div class="product-card">
                            <img src="${escapeHtml(image)}" alt="${escapeHtml(getVietnameseProductName(item.title))}" width="64" height="64" loading="lazy" decoding="async">
                            <div class="product-card-content">
                                <strong>${escapeHtml(getVietnameseProductName(item.title))}</strong>
+                               <span>${escapeHtml(FlowerBouquetOptions.summary(item))}</span>
                                <span>Số lượng: ${Number(item.quantity) || 0}</span>
                                <span>Giá: ${moneyFormat(item.price)}</span>
                            </div>
@@ -1156,6 +1161,13 @@ async function addNewProduct(event) {
    const title = document.getElementById("product-title").value.trim();
    const image = document.getElementById("product-image").value.trim();
    const safeImageUrl = getStoredImageUrl(image);
+   const imageInputs = document.getElementById("product-images").value.split(/\r?\n/).map((value) => value.trim()).filter(Boolean);
+   const images = [...new Set(imageInputs.map(getStoredImageUrl))];
+   const meaning = document.getElementById("product-meaning").value.trim();
+   if (imageInputs.length > 8 || images.some((value) => !value)) {
+       alert("Nhập tối đa 8 đường dẫn ảnh hợp lệ, mỗi dòng một ảnh.");
+       return;
+   }
     const priceInVnd = Number(document.getElementById("product-price").value);
    const quantity = parseStockQuantity(document.getElementById("product-quantity").value);
    const description = document.getElementById("product-description").value.trim();
@@ -1175,7 +1187,7 @@ async function addNewProduct(event) {
    }
 
    const products = getProducts();
-    const productData = { title, image: safeImageUrl, price: priceInVnd, quantity, description, category };
+    const productData = { title, image: safeImageUrl, images, meaning, price: priceInVnd, quantity, description, category };
    const isEditing = editingProductId !== null;
    // Keep the live stock if the admin did not touch the quantity: orders may have changed it
    // since the form was opened.

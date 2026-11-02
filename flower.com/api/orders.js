@@ -1,3 +1,4 @@
+const bouquet = require("../bouquet-options.js");
 const { createHash, createHmac } = require("node:crypto");
 const { FieldValue, Timestamp } = require("firebase-admin/firestore");
 const { getAdminAuth, getAdminFirestore, sendError } = require("../lib/firebase-admin");
@@ -17,7 +18,7 @@ function normalizePhone(value) {
 function aggregateItems(items) {
     const quantities = new Map();
     (Array.isArray(items) ? items : []).forEach((item) => {
-        const id = String(item?.id ?? "");
+        const id = String(item?.productId ?? item?.id ?? "");
         quantities.set(id, (quantities.get(id) || 0) + Math.max(1, Number(item?.quantity) || 1));
     });
     return Array.from(quantities, ([id, quantity]) => ({ id, quantity }));
@@ -225,7 +226,9 @@ function validateCheckout(body = {}) {
             return null;
         }
         seenIds.add(id);
-        normalizedItems.push({ id, quantity });
+        const options = bouquet.normalize(item);
+        if (!options) return null;
+        normalizedItems.push({ id, quantity, ...options });
     }
 
     return {
@@ -258,7 +261,9 @@ function validateQuote(body = {}) {
         if (!id || id.length > 128 || id.includes("/") || seenIds.has(id)
             || !Number.isInteger(quantity) || quantity < 1 || quantity > MAX_QUANTITY_PER_PRODUCT) return null;
         seenIds.add(id);
-        items.push({ id, quantity });
+        const options = bouquet.normalize(item);
+        if (!options) return null;
+        items.push({ id, quantity, ...options });
     }
     return { items, promotionId };
 }
@@ -291,7 +296,7 @@ function priceCart(items, promotion) {
     const eligibleIds = new Set(Array.isArray(promotion?.productIds) ? promotion.productIds.map(String) : []);
     const appliesToAll = promotion?.allProducts === true;
     const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-    const savings = Math.min(subtotal, Math.round(items.reduce((sum, item) => sum + (promotion && (appliesToAll || eligibleIds.has(String(item.id)))
+    const savings = Math.min(subtotal, Math.round(items.reduce((sum, item) => sum + (promotion && (appliesToAll || eligibleIds.has(String(item.productId ?? item.id)))
         ? item.price * item.quantity * discountPercent / 100
         : 0), 0)));
     return { subtotal, savings, tax: 0, total: subtotal - savings };
@@ -303,7 +308,7 @@ async function quoteOrder(req, res) {
     try {
         const db = getAdminFirestore();
         await releaseExpiredReservations(db);
-        const productRefs = quote.items.map((item) => db.collection("products").doc(item.id));
+        const productRefs = quote.items.map((item) => db.collection("products").doc(item.productId ?? item.id));
         const [products, promotionsSnapshot] = await Promise.all([
             db.getAll(...productRefs),
             db.collection("metadata").doc("activePromotions").get()
@@ -314,9 +319,9 @@ async function quoteOrder(req, res) {
         const cart = quote.items.map((item, index) => {
             const snapshot = products[index];
             const data = snapshot.exists ? snapshot.data() : {};
-            const price = toVndPrice(data.price);
+            const price = bouquet.price(toVndPrice(data.price), item.size);
             const stock = Number(data.quantity);
-            if (!snapshot.exists || !Number.isFinite(price) || price <= 0 || !Number.isInteger(stock) || stock < item.quantity) {
+            if (!snapshot.exists || !Number.isFinite(price) || price <= 0 || !Number.isInteger(stock) || stock < bouquet.demand(quote.items, item.productId ?? item.id)) {
                 shortages.push({
                     id: item.id,
                     title: String(data.title || "").slice(0, 120),
@@ -341,6 +346,7 @@ async function quoteOrder(req, res) {
             totals: { subtotal, savings, tax: 0, total: subtotal - savings },
             items: cart.map((item) => ({
                 id: item.id,
+                ...bouquet.normalize(item),
                 title: String(item.data.title || "Sản phẩm").slice(0, 120),
                 image: String(item.data.image || "").slice(0, 1000),
                 quantity: item.quantity,
@@ -381,13 +387,22 @@ async function createOrder(req, res) {
         const db = getAdminFirestore();
         await releaseExpiredReservations(db);
         const idempotencyRef = db.collection("orderRequests").doc(checkout.idempotencyKey);
-        const productRefs = checkout.items.map((item) => db.collection("products").doc(item.id));
+        const productRefs = checkout.items.map((item) => db.collection("products").doc(item.productId ?? item.id));
         const promotionsRef = db.collection("metadata").doc("activePromotions");
         const now = new Date();
+        const requestHash = createHash("sha256").update(JSON.stringify({
+            ...checkout, orderNote: String(req.body.orderNote || "").trim(), uid: user?.uid || ""
+        })).digest("hex");
 
         const order = await db.runTransaction(async (transaction) => {
             const previousRequest = await transaction.get(idempotencyRef);
             if (previousRequest.exists) {
+                if (previousRequest.data().uid !== (user?.uid || "")
+                    || (previousRequest.data().requestHash && previousRequest.data().requestHash !== requestHash)) {
+                    const error = new Error("Mã yêu cầu đã được dùng cho nội dung đặt hàng khác. Hãy kiểm tra đơn đã gửi.");
+                    error.code = "idempotency-conflict";
+                    throw error;
+                }
                 const previousOrderRef = db.collection("orders").doc(String(previousRequest.data().orderId || ""));
                 const previousOrder = await transaction.get(previousOrderRef);
                 if (!previousOrder.exists) {
@@ -417,9 +432,9 @@ async function createOrder(req, res) {
                     throw error;
                 }
                 const data = snapshot.data();
-                const price = toVndPrice(data.price);
+                const price = bouquet.price(toVndPrice(data.price), item.size);
                 const stock = Number(data.quantity);
-                if (!Number.isFinite(price) || price <= 0 || !Number.isInteger(stock) || stock < item.quantity) {
+                if (!Number.isFinite(price) || price <= 0 || !Number.isInteger(stock) || stock < bouquet.demand(checkout.items, item.productId ?? item.id)) {
                     const error = new Error("Sản phẩm không đủ tồn kho hoặc có giá chưa hợp lệ.");
                     error.code = "insufficient-stock";
                     throw error;
@@ -445,6 +460,7 @@ async function createOrder(req, res) {
             const paymentReference = checkout.paymentReference || `FF${orderRef.id.slice(-12).toUpperCase()}`;
             const items = products.map((item) => ({
                 id: item.id,
+                ...bouquet.normalize(item),
                 title: String(item.data.title || "Sản phẩm").slice(0, 120),
                 image: String(item.data.image || "").slice(0, 1000),
                 quantity: item.quantity,
@@ -489,10 +505,17 @@ async function createOrder(req, res) {
                 ))
             };
 
-            products.forEach((item) => transaction.update(item.ref, { quantity: item.stock - item.quantity }));
+            const reservedProducts = new Set();
+            products.forEach((item) => {
+                const productId = item.productId ?? item.id;
+                if (reservedProducts.has(productId)) return;
+                reservedProducts.add(productId);
+                transaction.update(item.ref, { quantity: item.stock - bouquet.demand(checkout.items, productId) });
+            });
             transaction.create(orderRef, orderData);
             transaction.create(idempotencyRef, {
                 orderId: orderRef.id,
+                requestHash,
                 uid: user?.uid || "",
                 createdAt: FieldValue.serverTimestamp()
             });

@@ -1369,3 +1369,33 @@ select{
         grid-template-columns: minmax(0, 1fr);
     }
 }
+.bouquet-options {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  margin: 16px 0;
+  padding: 20px;
+  border: 1px solid #e6d9d2;
+  border-radius: 16px;
+  background: #fffaf7;
+}
+.bouquet-options legend { padding: 0 8px; font-weight: 700; color: #694039; }
+.bouquet-options label { font-weight: 600; font-size: 14px; }
+.bouquet-options label span { font-weight: 400; color: #746b66; }
+.bouquet-options select, .bouquet-options textarea {
+  width: 100%; box-sizing: border-box; min-height: 44px; padding: 11px 12px;
+  border: 1px solid #d6c7bd; border-radius: 9px; background: white; color: #352b27; font: inherit;
+}
+.bouquet-options textarea { resize: vertical; }
+.bouquet-options select:focus-visible, .bouquet-options textarea:focus-visible {
+  outline: 2px solid #955c50; outline-offset: 2px;
+}
+.bouquet-help { margin: 0; color: #746b66; font-size: 13px; line-height: 1.6; }
+.bouquet-meaning { margin-top: 20px; border-left: 3px solid #b98b79; padding-left: 16px; }
+.bouquet-meaning h2 { font-size: 17px; margin: 0 0 8px; }
+.bouquet-meaning p { line-height: 1.7; color: #65564e; margin: 0; }
+.bouquet-total { font-size: 19px; font-weight: 700; color: #754739; }
+.product-gallery-main { overflow: hidden; }
+.product-gallery-main.is-closeup img { transform: scale(1.65); }
+.gallery-closeup { overflow: hidden; }
+.gallery-closeup img { transform: scale(1.65); }

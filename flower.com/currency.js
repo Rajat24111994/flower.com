@@ -49,7 +49,7 @@ function getAvailableCartPromotions(cart) {
       && percent > 0
       && percent <= 100
       && (appliesToAllProducts
-        || promotion.productIds.some((id) => cart.some((product) => String(product.id) === String(id))));
+        || promotion.productIds.some((id) => cart.some((product) => String(product.productId ?? product.id) === String(id))));
   });
 }
 
@@ -71,7 +71,7 @@ function calculateCartTotals(cart, promotionId = window.FlowerSafeStorage.readTe
   }, 0);
   const savings = Math.min(subtotal, Math.round(cart.reduce((sum, product) => {
     if (!selectedPromotion
-      || (!appliesToAllProducts && !eligibleProductIds.has(String(product.id)))) return sum;
+      || (!appliesToAllProducts && !eligibleProductIds.has(String(product.productId ?? product.id)))) return sum;
     const quantity = Math.max(1, Number(product.quantity) || 1);
     return sum + Number(product.price || 0) * quantity * Number(selectedPromotion.discountPercent) / 100;
   }, 0)));

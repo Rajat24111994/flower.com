@@ -51,7 +51,8 @@
     </main>
 
     <script src="./store-footer.js?v=3"></script>
-    <script src="./currency.js?v=10"></script>
+    <script src="./bouquet-options.js?v=1"></script>
+    <script src="./currency.js?v=11"></script>
     <script src="./product-names.js?v=2"></script>
     <script>
       let CartContainer = document.getElementById("product-container");
@@ -94,7 +95,7 @@
           let stockNote = document.createElement("p");
 
           image.src = product.image;
-          details.textContent = getVietnameseProductName(product.title);
+          details.textContent = getVietnameseProductName(product.title) + (FlowerBouquetOptions.summary(product) ? " · " + FlowerBouquetOptions.summary(product) : "");
           price.textContent = formatVnd(product.price);
           Remove.textContent = "Xóa";
           Increase.textContent = "+";
@@ -102,10 +103,11 @@
           const productQuantity = Math.max(1, Number(product.quantity) || 1);
           const stockQuantity = Number(product.stockQuantity);
           const hasStockLimit = Number.isFinite(stockQuantity) && stockQuantity >= 0;
+          const requestedStock = FlowerBouquetOptions.demand(Cart, product.productId ?? product.id);
           quantity.textContent = productQuantity;
-          Increase.disabled = hasStockLimit && productQuantity >= stockQuantity;
+          Increase.disabled = hasStockLimit && requestedStock >= stockQuantity;
           stockNote.textContent = hasStockLimit
-            ? productQuantity > stockQuantity
+            ? requestedStock > stockQuantity
               ? `Số lượng trong giỏ vượt tồn kho (${stockQuantity}).`
               : `Tồn kho: ${stockQuantity}`
             : "";
@@ -118,7 +120,7 @@
             }
           });
           Increase.addEventListener("click", () => {
-            if (hasStockLimit && productQuantity >= stockQuantity) return;
+            if (hasStockLimit && requestedStock >= stockQuantity) return;
             saveCart(Cart.map((item) => item.id === product.id
               ? { ...item, quantity: productQuantity + 1 }
               : item));
@@ -157,7 +159,7 @@
           const stockById = new Map(products.map((product) => [String(product.id), Number(product.quantity)]));
           let changed = false;
           const nextCart = Cart.map((item) => {
-            const stock = stockById.has(String(item.id)) ? stockById.get(String(item.id)) : 0;
+            const stock = stockById.has(String(item.productId ?? item.id)) ? stockById.get(String(item.productId ?? item.id)) : 0;
             if (!Number.isInteger(stock) || stock === Number(item.stockQuantity)) return item;
             changed = true;
             return { ...item, stockQuantity: Math.max(0, stock) };

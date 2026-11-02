@@ -103,6 +103,7 @@
             <span class="gallery-image-fallback" aria-hidden="true">✿</span>
           </div>
           <div class="product-gallery-thumbnails" id="detail-thumbnails" role="group" aria-label="Thư viện ảnh sản phẩm"></div>
+          <p id="detail-gallery-caption" class="bouquet-help" aria-live="polite"></p>
         </div>
         <div class="product-detail-info">
           <p class="catalog-eyebrow">FLOWERFLOW · HOA TƯƠI</p>
@@ -115,9 +116,24 @@
             <p id="detail-description"></p>
           </div>
           <div class="detail-purchase">
+            <div class="bouquet-meaning"><h2>Ý nghĩa gửi trao</h2><p id="detail-meaning"></p></div>
+            <fieldset class="bouquet-options">
+              <legend>Thiết kế bó hoa của bạn</legend>
+              <label for="detail-size">Kích thước bó</label>
+              <select id="detail-size"></select>
+              <label for="detail-color">Tông màu</label>
+              <select id="detail-color"></select>
+              <p class="bouquet-help">Bó lớn thêm 30%, cao cấp thêm 60% so với tiêu chuẩn. Tông màu là yêu cầu phối hoa; ảnh minh họa giữ nguyên thiết kế mẫu. Tồn kho dùng chung cho các lựa chọn.</p>
+              <label for="detail-card">Lời chúc trên thiệp <span>(không bắt buộc)</span></label>
+              <textarea id="detail-card" maxlength="300" rows="3" placeholder="Gửi lời yêu thương…"></textarea>
+              <label for="detail-note">Ghi chú riêng cho bó hoa <span>(không bắt buộc)</span></label>
+              <textarea id="detail-note" maxlength="500" rows="2" placeholder="Ví dụ: Gói giấy kraft, không dùng hoa ly"></textarea>
+              <p id="detail-text-count" class="bouquet-help" aria-live="polite"></p>
+            </fieldset>
             <label for="detail-quantity">Số lượng</label>
             <input id="detail-quantity" name="quantity" type="number" min="1" step="1" value="1" required>
             <p class="quantity-error" id="detail-quantity-error" role="status" aria-live="polite"></p>
+            <p class="bouquet-total" id="detail-selection-total" role="status" aria-live="polite"></p>
             <div class="detail-actions">
               <button class="detail-add-to-cart" id="detail-add-to-cart" type="button">Thêm vào giỏ</button>
               <button class="detail-buy-now" id="detail-buy-now" type="button">Mua ngay</button>
@@ -215,15 +231,16 @@
   </main>
 
   <script defer src="./store-footer.js?v=3"></script>
-  <script defer src="./currency.js?v=10"></script>
+  <script defer src="./bouquet-options.js?v=1"></script>
+  <script defer src="./currency.js?v=11"></script>
   <script defer src="./product-store.js?v=21"></script>
-  <script defer src="./shopping-store.js?v=1"></script>
-  <script defer src="./related-products.js?v=1"></script>
-  <script defer src="./product-categories.js?v=2"></script>
-  <script defer src="./product-names.js?v=2"></script>
-  <script defer src="./review-store.js?v=5"></script>
+  <script defer src="./shopping-store.js?v=2"></script>
+  <script src="./related-products.js?v=1"></script>
+  <script src="./product-categories.js?v=2"></script>
+  <script src="./product-names.js?v=2"></script>
+  <script src="./review-store.js?v=5"></script>
   <script defer src="./product.js?v=22"></script>
-<script defer src="./contact-tools.js?v=1"></script>
+  <script defer src="./contact-tools.js?v=1"></script>
 </body>
 
 </html>

@@ -47,6 +47,7 @@
             categoryKey: String(product.categoryKey || "").trim(),
             sameDayDelivery: product.sameDayDelivery === true,
             onSale: product.onSale === true,
+            ...(product.meaning !== undefined ? { meaning: String(product.meaning).trim() } : {}),
             description
         };
     }

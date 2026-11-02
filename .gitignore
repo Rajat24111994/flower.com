@@ -12,6 +12,8 @@ serviceAccountKey.json
 
 # Test coverage reports
 coverage/
+test-results/
+playwright-report/
 
 # Logs
 *.log

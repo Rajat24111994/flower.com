@@ -149,6 +149,8 @@ function renderProducts(items) {
             makeElement("span", "tracking-product-name", getVietnameseProductName(product.title || "Sản phẩm")),
             makeElement("span", "tracking-product-quantity", `× ${Math.max(1, Number(product.quantity) || 1)}`)
         );
+        const selection = window.FlowerBouquetOptions.summary(product);
+        if (selection) row.append(makeElement("span", "tracking-product-options", selection));
         container.append(row);
     });
 }

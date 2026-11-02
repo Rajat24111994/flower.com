@@ -30,21 +30,26 @@
     <div class="placeorder">
       <button type="button">Xác nhận đặt hàng</button>
       <p id="payment-confirmation-note" role="status"></p>
+      <div><button type="button" id="retry-quote" hidden>Thử lại kiểm tra giá và tồn kho</button></div>
+      <a href="./checkout.html">Sửa thông tin hoặc giỏ hàng</a>
     </div>
   </main>
 
   <script src="./store-footer.js?v=3"></script>
-  <script src="./currency.js?v=10"></script>
+  <script src="./bouquet-options.js?v=1"></script>
+  <script src="./currency.js?v=11"></script>
   <script src="./product-names.js?v=2"></script>
-  <script src="./order-store.js?v=14"></script>
+  <script src="./order-store.js?v=15"></script>
   <script>
     let CartContainer = document.getElementById("product-container");
+    let pendingSubmission = FlowerSafeStorage.readJson("flowerPendingOrder", { fallback: null });
     let Cart = FlowerSafeStorage.readJson("cart", {
       fallback: [],
       validate: (value) => Array.isArray(value)
         && value.every((item) => item && typeof item === "object" && !Array.isArray(item) && item.id !== undefined)
     });
-    const checkoutData = FlowerSafeStorage.readJson("flowerCheckout", {
+    if (pendingSubmission?.cart) Cart = pendingSubmission.cart;
+    const checkoutData = pendingSubmission?.order || FlowerSafeStorage.readJson("flowerCheckout", {
       fallback: null,
       validate: (value) => value !== null && typeof value === "object" && !Array.isArray(value)
     });
@@ -53,12 +58,14 @@
     const reviewDetails = document.getElementById("order-review-details");
     const reviewTotals = document.getElementById("order-review-totals");
     let serverQuote = null;
+    document.getElementById("retry-quote").addEventListener("click", verifyOrderBeforeConfirmation);
     let orderSubmissionInProgress = false;
     paymentButton.disabled = true;
     if (checkoutData) {
       const fields = [
         ["Người đặt", checkoutData.customerName], ["Điện thoại", checkoutData.phone],
         ["Địa chỉ giao", checkoutData.address], ["Người nhận", checkoutData.recipientName || checkoutData.customerName],
+        ["Thanh toán", checkoutData.paymentMethod === "qr" ? "Chuyển khoản QR" : "Thanh toán khi nhận hàng"],
         ["Điện thoại người nhận", checkoutData.recipientPhone || checkoutData.phone],
         ["Ngày giao", checkoutData.deliveryDate], ["Khung giờ", checkoutData.deliveryTime],
         ["Thiệp chúc mừng", checkoutData.greetingCard || "Không có"],
@@ -82,7 +89,7 @@
 
     async function saveOrderToAdmin() {
       if (orderSubmissionInProgress) return;
-      if (!Cart.length) {
+      if (!Cart.length && !pendingSubmission) {
         alert("Giỏ hàng đang trống.");
         return;
       }
@@ -103,7 +110,7 @@
       }
 
       const { customerName, phone, address } = checkoutData;
-      const order = {
+      const order = pendingSubmission?.order || {
         customerName,
         phone,
         address,
@@ -118,23 +125,31 @@
         paymentReference: checkoutData.paymentReference || "",
         promotionId: checkoutData.promotionId || "",
         idempotencyKey: checkoutData.idempotencyKey,
-        items: Cart.map((item) => ({ id: item.id, quantity: Math.max(1, Number(item.quantity) || 1) }))
+        items: Cart.map((item) => ({ id: item.id, productId: item.productId, size: item.size, color: item.color, cardMessage: item.cardMessage, personalNote: item.personalNote, quantity: Math.max(1, Number(item.quantity) || 1) }))
       };
 
       let orderId;
       orderSubmissionInProgress = true;
       paymentButton.disabled = true;
       try {
-        orderId = await window.FlowerOrderStore.create(order, serverQuote.totals);
+        pendingSubmission = pendingSubmission || { order, totals: serverQuote.totals, cart: Cart };
+        FlowerSafeStorage.writeJson("flowerPendingOrder", pendingSubmission, { required: true });
+        orderId = await window.FlowerOrderStore.create(pendingSubmission.order, pendingSubmission.totals);
       } catch (error) {
         console.error("Không thể lưu đơn hàng tập trung:", error);
         orderSubmissionInProgress = false;
         paymentButton.disabled = false;
-        alert(error.message || "Chưa thể xác nhận giá và tồn kho. Hãy quay lại trang thanh toán rồi thử lại.");
+        if (["insufficient-stock", "product-unavailable", "price-changed", "invalid-checkout", "invalid-promotion", "note-too-long"].includes(error.code)) {
+          if (FlowerSafeStorage.remove("flowerPendingOrder")) pendingSubmission = null;
+          serverQuote = null;
+          paymentButton.disabled = true;
+          document.getElementById("retry-quote").hidden = false;
+        }
+        paymentNote.textContent = error.message || "Mất kết nối khi gửi đơn. Bấm xác nhận để thử lại cùng yêu cầu; giỏ hàng vẫn được giữ.";
         return;
       }
 
-      const cleanupSucceeded = ["cart", "flowerCheckout", "flowerSelectedPromotion", "flowerPaymentReference"]
+      const cleanupSucceeded = ["cart", "flowerCheckout", "flowerSelectedPromotion", "flowerPaymentReference", "flowerPendingOrder"]
         .map((key) => FlowerSafeStorage.remove(key))
         .every(Boolean);
       const successMessage = checkoutData.paymentMethod === "qr"
@@ -147,13 +162,22 @@
     }
 
     async function verifyOrderBeforeConfirmation() {
+      document.getElementById("retry-quote").hidden = true;
+      if (pendingSubmission?.order?.idempotencyKey === checkoutData?.idempotencyKey && pendingSubmission?.order) {
+        serverQuote = { totals: pendingSubmission.totals };
+        reviewTotals.textContent = `Tổng thanh toán: ${formatVnd(pendingSubmission.totals.total)}`;
+        paymentNote.textContent = "Lần gửi trước chưa nhận được kết quả. Bấm xác nhận để thử lại cùng yêu cầu, không tạo thêm đơn.";
+        paymentButton.disabled = false;
+        return;
+      }
+      paymentButton.disabled = true;
       if (!Cart.length) {
         paymentNote.textContent = "Giỏ hàng đang trống.";
         return;
       }
       try {
         serverQuote = await window.FlowerOrderStore.quote(
-          Cart.map((item) => ({ id: item.id, quantity: Math.max(1, Number(item.quantity) || 1) })),
+          Cart.map((item) => ({ id: item.id, productId: item.productId, size: item.size, color: item.color, cardMessage: item.cardMessage, personalNote: item.personalNote, quantity: Math.max(1, Number(item.quantity) || 1) })),
           checkoutData?.promotionId || ""
         );
         serverQuote.items.forEach((quotedItem) => {
@@ -181,6 +205,7 @@
         paymentButton.disabled = false;
       } catch (error) {
         console.error("Không xác minh được giá và tồn kho:", error);
+        document.getElementById("retry-quote").hidden = false;
         paymentNote.textContent = error.message || "Không thể xác minh giá và tồn kho. Vui lòng quay lại thanh toán.";
         paymentButton.disabled = true;
       }
@@ -202,7 +227,7 @@
 
         image.src = product.image;
         const productQuantity = Math.max(1, Number(product.quantity) || 1);
-        details.textContent = getVietnameseProductName(product.title);
+        details.textContent = getVietnameseProductName(product.title) + (FlowerBouquetOptions.summary(product) ? " · " + FlowerBouquetOptions.summary(product) : "");
         price.textContent = formatVnd(Number(product.price) * productQuantity);
         quantity.textContent = `${productQuantity} sản phẩm`;
 
