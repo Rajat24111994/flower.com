@@ -5,6 +5,7 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function createShoppingStoreModule(root) {
   // Same limit as MAX_QUANTITY_PER_PRODUCT in api/orders.js: the order API refuses more.
   const MAX_QUANTITY_PER_PRODUCT = 50;
+  const bouquet = root.FlowerBouquetOptions || (typeof require === "function" ? require("./bouquet-options.js") : null);
 
   class ShoppingStoreError extends Error {
     constructor(message, code, cause) {
@@ -106,7 +107,9 @@
     }
 
     function addToCart(product, requestedQuantity = 1) {
-      const productId = getProductId(product);
+      const productId = String(product.productId ?? getProductId(product));
+      const selection = bouquet?.normalize(product);
+      if (selection === null) throw new ShoppingStoreError("Lựa chọn bó hoa không hợp lệ.", "invalid-options");
       const quantity = Number(requestedQuantity);
       const stock = Number(product.quantity);
       const price = Number(product.price);
@@ -125,17 +128,8 @@
 
       const cart = readCart();
       const existingQuantity = cart
-        .filter((item) => String(item.id) === productId)
+        .filter((item) => String(item.productId ?? item.id) === productId)
         .reduce((sum, item) => sum + Number(item.quantity ?? 1), 0);
-      if (existingQuantity + quantity > MAX_QUANTITY_PER_PRODUCT && stock > MAX_QUANTITY_PER_PRODUCT) {
-        const remaining = Math.max(0, MAX_QUANTITY_PER_PRODUCT - existingQuantity);
-        throw new ShoppingStoreError(
-          remaining
-            ? `Mỗi đơn đặt tối đa ${MAX_QUANTITY_PER_PRODUCT} sản phẩm mỗi loại; bạn chỉ thêm được ${remaining} nữa.`
-            : `Mỗi đơn đặt tối đa ${MAX_QUANTITY_PER_PRODUCT} sản phẩm mỗi loại. Cần số lượng lớn hơn, hãy liên hệ cửa hàng.`,
-          "quantity-limit"
-        );
-      }
       if (existingQuantity + quantity > stock) {
         const remaining = Math.max(0, stock - existingQuantity);
         throw new ShoppingStoreError(
@@ -146,12 +140,27 @@
         );
       }
 
-      const nextCart = cart.filter((item) => String(item.id) !== productId);
+      const matching = cart.filter((item) => String(item.productId ?? item.id) === productId
+        && JSON.stringify(bouquet?.normalize(item) || {}) === JSON.stringify(selection || {}));
+      const lineQuantity = matching.reduce((sum, item) => sum + Number(item.quantity ?? 1), 0);
+      if (lineQuantity + quantity > MAX_QUANTITY_PER_PRODUCT) {
+        const remaining = Math.max(0, MAX_QUANTITY_PER_PRODUCT - lineQuantity);
+        throw new ShoppingStoreError(
+          remaining
+            ? `Mỗi lựa chọn bó hoa đặt tối đa ${MAX_QUANTITY_PER_PRODUCT} bó; bạn chỉ thêm được ${remaining} nữa.`
+            : `Mỗi lựa chọn bó hoa đặt tối đa ${MAX_QUANTITY_PER_PRODUCT} bó. Cần số lượng lớn hơn, hãy liên hệ cửa hàng.`,
+          "quantity-limit"
+        );
+      }
+      const lineId = matching[0]?.id || (selection?.productId ? `line_${root.crypto.randomUUID()}` : product.id);
+      const nextCart = cart.filter((item) => !matching.includes(item));
       nextCart.push({
         ...product,
+        ...selection,
+        id: lineId,
         price,
         stockQuantity: stock,
-        quantity: existingQuantity + quantity
+        quantity: lineQuantity + quantity
       });
       writeList("cart", nextCart);
       return nextCart;

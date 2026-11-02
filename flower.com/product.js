@@ -12,24 +12,57 @@ const relatedFlowersStatus = document.getElementById("related-flowers-status")
 const relatedFlowersGrid = document.getElementById("related-flowers-grid")
 
 function showShoppingFeedback(title, icon, detail = "") {
-  actionMessage.textContent = detail
-  actionMessage.hidden = !detail
+  actionMessage.textContent = detail || title
+  actionMessage.hidden = false
   actionMessage.classList.toggle("is-error", icon === "error")
-  if (typeof Swal !== "undefined") {
-    Swal.fire({
-      position: "center",
-      icon,
-      title,
-      text: detail,
-      showConfirmButton: false,
-      timer: 1800
-    })
-  }
 }
 
 function showShoppingError(error) {
   console.error("Không thể cập nhật giỏ hàng hoặc yêu thích:", error)
   showShoppingFeedback("Chưa thể hoàn tất thao tác", "error", error.message || "Vui lòng thử lại.")
+}
+
+function updateProductStructuredData(product, productName, productDescription) {
+  const baseUrl = "https://flower-com-six.vercel.app"
+  const canonicalUrl = `${baseUrl}/product.html?id=${encodeURIComponent(product.id)}`
+  const imageUrl = product.image
+    ? new URL(product.image, window.location.href).href
+    : `${baseUrl}/images/flowerflow-logo.png`
+  const price = Math.round(Number(product.price) || 0)
+  const available = Number(product.quantity) > 0
+  const descriptionMeta = document.querySelector('meta[name="description"]')
+  const canonicalLink = document.querySelector('link[rel="canonical"]')
+  const structuredData = document.getElementById("catalog-structured-data")
+  document.title = `${productName} | Hoa tươi Flowerflow`
+  if (descriptionMeta) descriptionMeta.content = productDescription
+  if (canonicalLink) canonicalLink.href = canonicalUrl
+  document.querySelector('meta[property="og:type"]')?.setAttribute("content", "product")
+  document.querySelector('meta[property="og:title"]')?.setAttribute("content", document.title)
+  document.querySelector('meta[property="og:description"]')?.setAttribute("content", productDescription)
+  document.querySelector('meta[property="og:url"]')?.setAttribute("content", canonicalUrl)
+  document.querySelector('meta[property="og:image"]')?.setAttribute("content", imageUrl)
+  document.querySelector('meta[name="twitter:title"]')?.setAttribute("content", document.title)
+  document.querySelector('meta[name="twitter:description"]')?.setAttribute("content", productDescription)
+  document.querySelector('meta[name="twitter:image"]')?.setAttribute("content", imageUrl)
+  if (structuredData) {
+    structuredData.textContent = JSON.stringify({
+      "@context": "https://schema.org",
+      "@type": "Product",
+      name: productName,
+      description: productDescription,
+      image: [imageUrl],
+      sku: String(product.id),
+      brand: { "@type": "Brand", name: "Flowerflow" },
+      offers: {
+        "@type": "Offer",
+        url: canonicalUrl,
+        priceCurrency: "VND",
+        price: price,
+        availability: `https://schema.org/${available ? "InStock" : "OutOfStock"}`,
+        itemCondition: "https://schema.org/NewCondition"
+      }
+    }).replace(/</g, "\\u003c")
+  }
 }
 
 function updateShoppingCounts() {
@@ -38,6 +71,25 @@ function updateShoppingCounts() {
   document.querySelectorAll(".favorite-count").forEach((count) => {
     count.textContent = String(wish.length)
   })
+}
+
+function updateCatalogStructuredData(catalog) {
+  const structuredData = document.getElementById("catalog-structured-data")
+  if (!structuredData || new URLSearchParams(window.location.search).has("id")) return
+  structuredData.textContent = JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    name: "Danh sách hoa tươi Flowerflow",
+    url: "https://flower-com-six.vercel.app/product.html",
+    itemListOrder: "https://schema.org/ItemListOrderAscending",
+    numberOfItems: catalog.length,
+    itemListElement: catalog.map((product, index) => ({
+      "@type": "ListItem",
+      position: index + 1,
+      name: getVietnameseProductName(product.title || "Sản phẩm hoa"),
+      url: `https://flower-com-six.vercel.app/product.html?id=${encodeURIComponent(product.id)}`
+    }))
+  }).replace(/</g, "\\u003c")
 }
 
 try {
@@ -109,7 +161,7 @@ function addProductToCart(product, quantity = 1) {
 
 function display(data) {
 
-    container.innerHTML = ""
+    container.replaceChildren()
 
     if (!data.length) {
       const emptyState = document.createElement("p")
@@ -119,7 +171,8 @@ function display(data) {
       return
     }
 
-    data.forEach((el) => {
+    const cards = document.createDocumentFragment()
+    data.forEach((el, index) => {
 
         const productName = getVietnameseProductName(el.title || "Sản phẩm hoa")
         const box = document.createElement("article")
@@ -139,7 +192,11 @@ function display(data) {
         imageFrame.className = "product-image"
         img.src = el.image || ""
         img.alt = productName
-        img.loading = "lazy"
+        img.width = 420
+        img.height = 315
+        img.loading = index === 0 ? "eager" : "lazy"
+        if (index === 0) img.fetchPriority = "high"
+        img.decoding = "async"
         img.addEventListener("error", () => {
           img.hidden = true
           imageFrame.classList.add("image-unavailable")
@@ -199,9 +256,9 @@ function display(data) {
         box.append(imageFrame, title)
         if (badges.childElementCount) box.append(badges)
         box.append(price, stock, actions)
-        container.append(box)
+        cards.append(box)
     });
-
+    container.append(cards)
 }
 
 function setRelatedFlowersStatus(message, state = "") {
@@ -238,7 +295,10 @@ function createRelatedFlowerCard(product) {
   fallback.textContent = "✿"
   image.src = product.image || ""
   image.alt = productName
+  image.width = 420
+  image.height = 315
   image.loading = "lazy"
+  image.decoding = "async"
   image.addEventListener("error", () => {
     image.hidden = true
     imageFrame.classList.add("image-unavailable")
@@ -312,6 +372,7 @@ const detailQuantityError = document.getElementById("detail-quantity-error")
 let selectedProduct = null
 let unsubscribeProductReviews = null
 let subscribedReviewProductId = null
+let productReviewObserver = null
 
 function renderProductReviews(reviews) {
   const section = document.getElementById("product-reviews")
@@ -373,16 +434,32 @@ function watchProductReviews(product) {
   if (subscribedReviewProductId === productId) return
 
   if (unsubscribeProductReviews) unsubscribeProductReviews()
+  if (productReviewObserver) productReviewObserver.disconnect()
+  productReviewObserver = null
   subscribedReviewProductId = productId
-  summary.textContent = "Đang tải đánh giá..."
+  summary.textContent = "Đánh giá sẽ tải khi bạn đến mục này."
   if (!window.FlowerReviewStore) {
     summary.textContent = "Chưa thể kết nối tới dịch vụ đánh giá."
     return
   }
 
-  unsubscribeProductReviews = window.FlowerReviewStore.subscribe(productId, renderProductReviews, () => {
-    summary.textContent = "Chưa thể tải đánh giá lúc này. Vui lòng tải lại trang."
-  })
+  const subscribe = () => {
+    if (subscribedReviewProductId !== productId) return
+    unsubscribeProductReviews = window.FlowerReviewStore.subscribe(productId, renderProductReviews, () => {
+      summary.textContent = "Chưa thể tải đánh giá lúc này. Vui lòng tải lại trang."
+    })
+  }
+  if (typeof window.IntersectionObserver === "function") {
+    productReviewObserver = new IntersectionObserver((entries) => {
+      if (!entries.some((entry) => entry.isIntersecting)) return
+      productReviewObserver.disconnect()
+      productReviewObserver = null
+      subscribe()
+    }, { rootMargin: "200px" })
+    productReviewObserver.observe(section)
+  } else {
+    window.setTimeout(subscribe, 3000)
+  }
 }
 
 const pageParams = new URLSearchParams(window.location.search)
@@ -485,14 +562,18 @@ function renderProductDetail(product) {
   selectedProduct = product
   watchProductReviews(product)
   const productName = getVietnameseProductName(product.title || "Sản phẩm hoa")
+  const productDescription = getVietnameseProductDescription(product.description)
+    || "Sản phẩm hoa tươi được tuyển chọn và sắp xếp chỉn chu để gửi trao những lời yêu thương."
+  updateProductStructuredData(product, productName, productDescription)
   const images = getProductImages(product)
   const thumbnails = document.getElementById("detail-thumbnails")
   const stock = Math.max(0, Number(product.quantity) || 0)
+  const sameProduct = previousImage !== "";
   let quantityInCart = 0
   try {
     cart = FlowerShoppingStore.readCart()
     quantityInCart = cart
-      .filter((item) => String(item.id) === String(product.id))
+      .filter((item) => String(item.productId ?? item.id) === String(product.id))
       .reduce((sum, item) => sum + Number(item.quantity ?? 1), 0)
   } catch (error) {
     showShoppingError(error)
@@ -505,9 +586,10 @@ function renderProductDetail(product) {
   document.getElementById("detail-name").textContent = productName
   document.getElementById("detail-category").textContent = getProductCategory(product)
   document.getElementById("detail-price").textContent = formatVnd(product.price)
-  document.getElementById("detail-stock").textContent = stock > 0 ? `Còn hàng · ${stock} sản phẩm` : "Hiện đã hết hàng"
+  document.getElementById("detail-stock").textContent = stock > 0 ? `Còn hàng · ${stock} bó · Có thể thêm ${Math.max(0, stock - quantityInCart)} bó` : "Hiện đã hết hàng"
   document.getElementById("detail-stock").classList.toggle("out-of-stock", stock === 0)
-  document.getElementById("detail-description").textContent = getVietnameseProductDescription(product.description) || "Sản phẩm hoa tươi được tuyển chọn và sắp xếp chỉn chu để gửi trao những lời yêu thương."
+  initializeBouquetOptions(product, sameProduct)
+  document.getElementById("detail-description").textContent = productDescription
 
   detailQuantity.min = "1"
   // At most what is in stock, and never more than the 50 per product an order may hold.
@@ -516,15 +598,20 @@ function renderProductDetail(product) {
   detailQuantity.value = stock > 0 ? "1" : "0"
   detailQuantity.disabled = stock === 0 || quantityInCart >= orderLimit
   detailQuantityError.textContent = ""
+  detailQuantity.setCustomValidity("")
   thumbnails.replaceChildren()
   mainImage.hidden = images.length === 0
   mainImage.alt = productName
+  mainImage.fetchPriority = "high"
+  mainImage.decoding = "async"
   mainImage.onerror = () => {
     mainImage.hidden = true
     mainImage.parentElement.classList.add("image-unavailable")
   }
   mainImage.parentElement.classList.toggle("image-unavailable", images.length === 0)
   mainImage.src = images[selectedImageIndex] || ""
+  mainImage.parentElement.classList.remove("is-closeup")
+  document.getElementById("detail-gallery-caption").textContent = "Ảnh toàn cảnh sản phẩm"
 
   images.forEach((imageUrl, index) => {
     const thumbnail = document.createElement("button")
@@ -535,10 +622,15 @@ function renderProductDetail(product) {
     thumbnail.setAttribute("aria-pressed", String(index === selectedImageIndex))
     image.src = imageUrl
     image.alt = ""
+    image.width = 96
+    image.height = 96
     image.loading = "lazy"
+    image.decoding = "async"
     image.addEventListener("error", () => thumbnail.remove(), { once: true })
     thumbnail.append(image)
     thumbnail.addEventListener("click", () => {
+      mainImage.parentElement.classList.remove("is-closeup")
+      document.getElementById("detail-gallery-caption").textContent = `Ảnh sản phẩm ${index + 1}`
       mainImage.src = imageUrl
       mainImage.hidden = false
       mainImage.parentElement.classList.remove("image-unavailable")
@@ -550,12 +642,85 @@ function renderProductDetail(product) {
     })
     thumbnails.append(thumbnail)
   })
+  if (images.length) {
+    const closeup = document.createElement("button")
+    closeup.type = "button"
+    closeup.className = "gallery-thumbnail gallery-closeup"
+    closeup.setAttribute("aria-label", "Xem cận cảnh từ ảnh gốc")
+    closeup.setAttribute("aria-pressed", "false")
+    const preview = document.createElement("img")
+    preview.src = images[0]
+    preview.alt = "Cận cảnh"
+    closeup.append(preview)
+    closeup.addEventListener("click", () => {
+      mainImage.src = images[0]
+      mainImage.hidden = false
+      mainImage.parentElement.classList.remove("image-unavailable")
+      mainImage.parentElement.classList.add("is-closeup")
+      document.getElementById("detail-gallery-caption").textContent = "Cận cảnh phóng to từ ảnh gốc"
+      thumbnails.querySelectorAll("button").forEach((button) => {
+        button.classList.toggle("is-active", button === closeup)
+        button.setAttribute("aria-pressed", String(button === closeup))
+      })
+    })
+    thumbnails.append(closeup)
+  }
 
   const outOfStock = stock === 0
   document.getElementById("detail-add-to-cart").disabled = outOfStock || quantityInCart >= stock
   document.getElementById("detail-buy-now").disabled = outOfStock || quantityInCart >= stock
   updateWishlistButton(document.getElementById("detail-wishlist"), product)
   document.title = `${productName} | Flowerflow`
+}
+
+function configuredBouquet() {
+  const size = document.getElementById("detail-size").value || "standard"
+  return { ...selectedProduct, productId: String(selectedProduct.id), size,
+    color: document.getElementById("detail-color").value || "original",
+    cardMessage: document.getElementById("detail-card").value.trim(),
+    personalNote: document.getElementById("detail-note").value.trim(),
+    price: FlowerBouquetOptions.price(selectedProduct.price, size) }
+}
+
+function updateBouquetPrice() {
+  if (!selectedProduct) return
+  const choice = configuredBouquet()
+  document.getElementById("detail-price").textContent = formatVnd(choice.price) + " / bó"
+  const quantity = Number(detailQuantity.value)
+  document.getElementById("detail-selection-total").textContent = Number.isInteger(quantity) && quantity > 0
+    ? "Tổng lựa chọn: " + formatVnd(choice.price * quantity) : "Nhập số lượng bó hợp lệ."
+  document.getElementById("detail-text-count").textContent = "Thiệp " + document.getElementById("detail-card").value.length + "/300 · Ghi chú " + document.getElementById("detail-note").value.length + "/500 ký tự"
+}
+
+function initializeBouquetOptions(product, sameProduct) {
+  if (!sameProduct) {
+    for (const [id, options] of [["detail-size", FlowerBouquetOptions.sizes], ["detail-color", FlowerBouquetOptions.colors]]) {
+      const select = document.getElementById(id)
+      select.replaceChildren(...options.map((option) => new Option(id === "detail-size"
+        ? `${option.label} · ${formatVnd(FlowerBouquetOptions.price(product.price, option.id))}` : option.label, option.id)))
+    }
+    document.getElementById("detail-card").value = ""
+    document.getElementById("detail-note").value = ""
+  }
+  const meanings = {
+    rose: "Hoa hồng gợi tình yêu và sự trân trọng dành cho người nhận.",
+    orchid: "Hoa lan gửi lời chúc thanh lịch, may mắn và thịnh vượng.",
+    lily: "Hoa ly gợi sự thanh cao và lời chúc hạnh phúc.",
+    lavender: "Oải hương gợi sự bình yên và tình cảm thủy chung.",
+    gerber: "Hoa đồng tiền gửi lời chúc vui vẻ và thành công.",
+    tulip: "Tulip gợi tình cảm chân thành và những khởi đầu mới.",
+    hydrangea: "Cẩm tú cầu gửi lời cảm ơn và sự thấu hiểu.",
+    peony: "Mẫu đơn gợi sự viên mãn và lời chúc sung túc.",
+    carnation: "Cẩm chướng thể hiện lòng biết ơn và tình yêu thương.",
+    sunflower: "Hướng dương gửi năng lượng tích cực và niềm tin vào ngày mai.",
+    babyBreath: "Hoa bi gợi sự dịu dàng và tình cảm bền lâu.",
+    iris: "Diên vĩ gợi hy vọng và niềm tin."
+  }
+  document.getElementById("detail-meaning").textContent = product.meaning || getFlowerTypes(product).filter((type) => meanings[type]).map((type) => meanings[type]).join(" ") || "Bó hoa phối nhiều loài gửi lời chúc tươi vui, sự quan tâm và gắn kết."
+}
+
+for (const id of ["detail-size", "detail-color", "detail-card", "detail-note"]) {
+  document.getElementById(id).addEventListener("input", updateBouquetPrice)
 }
 
 function showQuantityError(text) {
@@ -567,6 +732,10 @@ function getRequestedQuantity() {
   const quantity = Number(detailQuantity.value)
   if (!Number.isInteger(quantity) || quantity < 1) {
     showQuantityError("Số lượng phải là số nguyên lớn hơn 0.")
+    return null
+  }
+  if (quantity > Number(detailQuantity.max)) {
+    showQuantityError(`Chỉ có thể thêm tối đa ${detailQuantity.max} bó với tồn kho hiện tại.`)
     return null
   }
   showQuantityError("")
@@ -599,13 +768,14 @@ function navigateToProductDetail() {
 detailQuantity.addEventListener("input", () => {
   detailQuantity.setCustomValidity("")
   detailQuantityError.textContent = ""
+  updateBouquetPrice()
 })
 
 document.getElementById("detail-add-to-cart").addEventListener("click", () => {
   if (!selectedProduct) return
   const quantity = getRequestedQuantity()
   if (quantity === null) return
-  if (addProductToCart(selectedProduct, quantity)) renderProductDetail(selectedProduct)
+  if (addProductToCart(configuredBouquet(), quantity)) renderProductDetail(selectedProduct)
 })
 
 document.getElementById("detail-wishlist").addEventListener("click", () => {
@@ -616,7 +786,7 @@ document.getElementById("detail-buy-now").addEventListener("click", () => {
   if (!selectedProduct) return
   const quantity = getRequestedQuantity()
   if (quantity === null) return
-  if (addProductToCart(selectedProduct, quantity)) window.location.assign("./checkout.html")
+  if (addProductToCart(configuredBouquet(), quantity)) window.location.assign("./checkout.html")
 })
 
 function normalizeSearchText(value) {
@@ -651,6 +821,7 @@ function productHasFlowerType(product, type) {
 }
 
 function renderProducts() {
+  updateCatalogStructuredData(products)
   const searchTerm = normalizeSearchText(searchInput.value.trim())
   const flowerType = flowerTypeSelect.value
   const priceFilter = priceFilterSelect.value
@@ -798,12 +969,6 @@ async function fetchAndRenderProducts() {
   try {
     products = await FlowerInventory.initialize()
     if (!products.length) throw new Error("Kho sản phẩm hiện chưa có dữ liệu hoặc dịch vụ danh mục đang không khả dụng.")
-    try {
-      await FlowerInventory.getCategories()
-      FlowerInventory.subscribeCategories(() => {})
-    } catch (error) {
-      console.warn("Đang dùng cache danh mục do chưa tải được Firestore:", error)
-    }
     populateFlowerCategoryFilter()
     renderProducts()
     navigateToProductDetail()

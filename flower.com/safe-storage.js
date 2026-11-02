@@ -185,7 +185,7 @@
     const wish = readList("wish");
     if (cart.length) writeJson(`flowerCart_${uid}`, cart); else remove(`flowerCart_${uid}`);
     if (wish.length) writeJson(`flowerWish_${uid}`, wish); else remove(`flowerWish_${uid}`);
-    ["cart", "wish", "flowerCheckout", "flowerSelectedPromotion", "flowerPaymentReference"].forEach((key) => remove(key));
+    ["cart", "wish", "flowerCheckout", "flowerSelectedPromotion", "flowerPaymentReference", "flowerPendingOrder"].forEach((key) => remove(key));
   }
 
   function bringBack(uid) {

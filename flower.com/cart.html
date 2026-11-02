@@ -2,20 +2,23 @@
 <html lang="vi">
   <head>
     <meta charset="UTF-8" />
-    <script src="./safe-storage.js"></script>
+    <script src="./safe-storage.js?v=2"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="description" content="Kiểm tra hoa đã chọn và tổng tiền trong giỏ hàng Flowerflow.">
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg">
     <title>Giỏ hàng</title>
     <link rel="stylesheet" href="./store-header.css?v=2" />
     <link rel="stylesheet" href="./cart.css?v=5" />
+    <link rel="stylesheet" href="./accessibility.css?v=1" />
     <link rel="stylesheet" href="./store-footer.css?v=2" />
   <link rel="stylesheet" href="./contact-tools.css?v=2">
   </head>
   <body>
-    <script src="./store-header.js?v=4"></script>
+    <script src="./store-header.js?v=5"></script>
 
     <main class="nav">
       <div id="product-container"></div>
-
       <div class="checkout">
         <div class="checkout-heading">
           <span class="checkout-eyebrow">Flowerflow · Giỏ hàng</span>
@@ -41,18 +44,21 @@
           </div>
         </div>
         <div id="check">
+          <p class="cart-action-message" id="cart-action-message" role="status" aria-live="polite" hidden></p>
           <a class="checkout-continue" href="./checkout.html">Tiến hành thanh toán <span aria-hidden="true">→</span></a>
         </div>
       </div>
     </main>
 
-    <script src="./store-footer.js?v=2"></script>
-    <script src="./currency.js?v=10"></script>
+    <script src="./store-footer.js?v=3"></script>
+    <script src="./bouquet-options.js?v=1"></script>
+    <script src="./currency.js?v=11"></script>
     <script src="./product-names.js?v=2"></script>
     <script>
       // Same limit as the order API (api/orders.js MAX_QUANTITY_PER_PRODUCT).
       const MAX_QUANTITY_PER_PRODUCT = 50;
       let CartContainer = document.getElementById("product-container");
+      const cartActionMessage = document.getElementById("cart-action-message");
       let Cart = FlowerSafeStorage.readJson("cart", {
         fallback: [],
         validate: (value) => Array.isArray(value)
@@ -118,8 +124,9 @@
           actions.className = "cart-item-actions";
           Remove.className = "cart-remove";
           image.src = product.image;
+          const bouquetSummary = FlowerBouquetOptions.summary(product);
           image.alt = productName;
-          details.textContent = productName;
+          details.textContent = productName + (bouquetSummary ? " · " + bouquetSummary : "");
           price.textContent = formatVnd(product.price);
           [Decrease, Increase, Remove].forEach((button) => { button.type = "button"; });
           Remove.textContent = "Xóa";
@@ -132,16 +139,18 @@
           const productQuantity = Math.max(1, Number(product.quantity) || 1);
           const stockQuantity = Number(product.stockQuantity);
           const hasStockLimit = Number.isFinite(stockQuantity) && stockQuantity >= 0;
+          const requestedStock = FlowerBouquetOptions.demand(Cart, product.productId ?? product.id);
           quantity.textContent = productQuantity;
           Decrease.disabled = productQuantity <= 1;
+          // Stock is shared by every line of the same flower; the 50 limit is per line (as on the server).
           const atOrderLimit = productQuantity >= MAX_QUANTITY_PER_PRODUCT;
-          Increase.disabled = atOrderLimit || (hasStockLimit && productQuantity >= stockQuantity);
+          Increase.disabled = atOrderLimit || (hasStockLimit && requestedStock >= stockQuantity);
           stockNote.textContent = productQuantity > MAX_QUANTITY_PER_PRODUCT
-            ? `Mỗi đơn đặt tối đa ${MAX_QUANTITY_PER_PRODUCT} sản phẩm mỗi loại.`
+            ? `Mỗi lựa chọn bó hoa đặt tối đa ${MAX_QUANTITY_PER_PRODUCT} bó.`
             : hasStockLimit
-              ? productQuantity > stockQuantity
+              ? requestedStock > stockQuantity
                 ? `Số lượng trong giỏ vượt tồn kho (${stockQuantity}).`
-                : `Tồn kho: ${stockQuantity}${atOrderLimit ? ` · tối đa ${MAX_QUANTITY_PER_PRODUCT} mỗi đơn` : ""}`
+                : `Tồn kho: ${stockQuantity}${atOrderLimit ? ` · tối đa ${MAX_QUANTITY_PER_PRODUCT} mỗi lựa chọn` : ""}`
               : "";
 
           Decrease.addEventListener("click", () => {
@@ -152,7 +161,7 @@
             }
           });
           Increase.addEventListener("click", () => {
-            if (atOrderLimit || (hasStockLimit && productQuantity >= stockQuantity)) return;
+            if (atOrderLimit || (hasStockLimit && requestedStock >= stockQuantity)) return;
             saveCart(Cart.map((item) => item.id === product.id
               ? { ...item, quantity: productQuantity + 1 }
               : item));
@@ -160,13 +169,8 @@
           Remove.addEventListener("click", () => {
             const nextCart = Cart.filter((ele) => ele.id !== product.id);
             if (saveCart(nextCart)) {
-              Swal.fire({
-                position: "center",
-                icon: "success",
-                title: "Đã xóa sản phẩm khỏi giỏ hàng",
-                showConfirmButton: false,
-                timer: 1500
-              });
+              cartActionMessage.textContent = "Đã xóa sản phẩm khỏi giỏ hàng.";
+              cartActionMessage.hidden = false;
             }
           });
           actions.append(Decrease, quantity, Increase, Remove);
@@ -189,7 +193,7 @@
           const stockById = new Map(products.map((product) => [String(product.id), Number(product.quantity)]));
           let changed = false;
           const nextCart = Cart.map((item) => {
-            const stock = stockById.has(String(item.id)) ? stockById.get(String(item.id)) : 0;
+            const stock = stockById.has(String(item.productId ?? item.id)) ? stockById.get(String(item.productId ?? item.id)) : 0;
             if (!Number.isInteger(stock) || stock === Number(item.stockQuantity)) return item;
             changed = true;
             return { ...item, stockQuantity: Math.max(0, stock) };
@@ -198,7 +202,6 @@
         })
         .catch((error) => console.warn("Không thể cập nhật tồn kho mới nhất:", error));
     </script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script src="./contact-tools.js?v=1"></script>
+    <script defer src="./contact-tools.js?v=1"></script>
   </body>
 </html>

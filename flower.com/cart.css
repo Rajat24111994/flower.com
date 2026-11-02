@@ -318,6 +318,15 @@
   outline-offset: 3px;
 }
 
+.cart-action-message {
+  color: #39734b;
+  font-weight: 600;
+}
+
+.cart-action-message[hidden] {
+  display: none;
+}
+
 .checkout-continue span {
   font-size: 1.2rem;
   line-height: 1;

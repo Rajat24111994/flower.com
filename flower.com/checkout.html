@@ -3,17 +3,21 @@
 
 <head>
   <meta charset="UTF-8">
-  <script src="./safe-storage.js"></script>
+  <script src="./safe-storage.js?v=2"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="description" content="Nhập thông tin nhận hoa và xác nhận thanh toán đơn hàng Flowerflow.">
+  <link rel="icon" type="image/svg+xml" href="./favicon.svg">
   <title>Thanh toán</title>
   <link rel="stylesheet" href="./store-header.css?v=2">
   <link rel="stylesheet" href="./checkout.css?v=3">
+  <link rel="stylesheet" href="./accessibility.css?v=1">
   <link rel="stylesheet" href="./store-footer.css?v=2">
 <link rel="stylesheet" href="./contact-tools.css?v=2">
 </head>
 
 <body>
-  <script src="./store-header.js?v=4"></script>
+  <script src="./store-header.js?v=5"></script>
 
   <main class="checkout-page">
     <header class="checkout-heading">
@@ -152,14 +156,16 @@
 
           <button class="checkout-submit" type="submit">Đặt hàng</button>
           <a class="continue-shopping" href="./product.html">Tiếp tục chọn hoa</a>
+          <button type="button" id="retry-quote" hidden>Thử lại kiểm tra giá và tồn kho</button>
           <p id="checkout-message" class="checkout-message" role="status" aria-live="polite"></p>
         </section>
       </aside>
     </form>
   </main>
-  <script src="./store-footer.js?v=2"></script>
-  <script src="./currency.js?v=10"></script>
-  <script src="./order-store.js?v=15"></script>
+  <script src="./store-footer.js?v=3"></script>
+  <script src="./bouquet-options.js?v=1"></script>
+  <script src="./currency.js?v=11"></script>
+  <script src="./order-store.js?v=16"></script>
   <script src="./product-names.js?v=2"></script>
   <script>
   const CartContainer = document.getElementById("product-container");
@@ -198,6 +204,8 @@
     return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
   }
 
+  const pendingOrder = FlowerSafeStorage.readJson("flowerPendingOrder", { fallback: null });
+  if (pendingOrder?.order?.idempotencyKey) window.location.replace("./placeorder.html");
   const orderRequestId = createOrderRequestId();
   const paymentReference = `FF${orderRequestId.replaceAll("-", "").slice(0, 12).toUpperCase()}`;
   const deliveryDateInput = document.getElementById("delivery-date");
@@ -230,7 +238,7 @@
     return Cart.some((product) => {
       const stock = Number(product.stockQuantity);
       return Number.isFinite(stock) && stock >= 0
-        && Math.max(1, Number(product.quantity) || 1) > stock;
+        && FlowerBouquetOptions.demand(Cart, product.productId ?? product.id) > stock;
     });
   }
 
@@ -318,7 +326,8 @@
       const remove = document.createElement("button");
       const stock = Number(product.stockQuantity);
       const hasStockLimit = Number.isFinite(stock) && stock >= 0;
-      const exceedsStock = hasStockLimit && itemQuantity > stock;
+      const requestedStock = FlowerBouquetOptions.demand(Cart, product.productId ?? product.id);
+      const exceedsStock = hasStockLimit && requestedStock > stock;
 
       card.className = "checkout-item";
       image.src = product.image || "";
@@ -339,7 +348,7 @@
       increase.className = "quantity-button";
       increase.textContent = "+";
       increase.setAttribute("aria-label", `Tăng số lượng ${name.textContent}`);
-      increase.disabled = itemQuantity >= MAX_QUANTITY_PER_PRODUCT || (hasStockLimit && itemQuantity >= stock);
+      increase.disabled = itemQuantity >= MAX_QUANTITY_PER_PRODUCT || (hasStockLimit && requestedStock >= stock);
       lineTotal.className = "checkout-item-total";
       lineTotal.textContent = formatVnd(Number(product.price) * itemQuantity);
       remove.type = "button";
@@ -353,10 +362,10 @@
       });
       increase.addEventListener("click", () => {
         if (itemQuantity >= MAX_QUANTITY_PER_PRODUCT) {
-          checkoutMessage.textContent = `Mỗi đơn đặt tối đa ${MAX_QUANTITY_PER_PRODUCT} sản phẩm mỗi loại.`;
+          checkoutMessage.textContent = `Mỗi lựa chọn bó hoa đặt tối đa ${MAX_QUANTITY_PER_PRODUCT} bó.`;
           return;
         }
-        if (hasStockLimit && itemQuantity >= stock) {
+        if (hasStockLimit && requestedStock >= stock) {
           checkoutMessage.textContent = `Chỉ còn ${stock} sản phẩm trong kho.`;
           return;
         }
@@ -370,6 +379,10 @@
 
       controls.append(decrease, quantity, increase, remove);
       details.append(name, unitPrice);
+      const selectionSummary = document.createElement("p");
+      selectionSummary.className = "bouquet-line-summary";
+      selectionSummary.textContent = FlowerBouquetOptions.summary(product);
+      details.append(selectionSummary);
       if (hasStockLimit) {
         const stockMessage = document.createElement("p");
         stockMessage.className = "checkout-stock";
@@ -400,7 +413,9 @@
     if (refreshQuote) void refreshServerQuote();
   }
 
+  document.getElementById("retry-quote").addEventListener("click", refreshServerQuote);
   async function refreshServerQuote() {
+    document.getElementById("retry-quote").hidden = true;
     const requestId = ++quoteRequestId;
     serverQuote = null;
     updatePaymentQr();
@@ -414,7 +429,7 @@
 
     try {
       const quote = await window.FlowerOrderStore.quote(
-        Cart.map((item) => ({ id: item.id, quantity: Math.max(1, Number(item.quantity) || 1) })),
+        Cart.map((item) => ({ id: item.id, productId: item.productId, size: item.size, color: item.color, cardMessage: item.cardMessage, personalNote: item.personalNote, quantity: Math.max(1, Number(item.quantity) || 1) })),
         promotionSelect.value
       );
       if (requestId !== quoteRequestId) return;
@@ -454,6 +469,7 @@
       updatePaymentQr();
     } catch (error) {
       if (requestId !== quoteRequestId) return;
+      document.getElementById("retry-quote").hidden = false;
       if (error.code === "insufficient-stock" && error.items?.length) {
         // Show the real stock on each line so the customer sees which product to reduce.
         error.items.forEach((shortage) => {

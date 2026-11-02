@@ -139,12 +139,18 @@ function renderProducts(items) {
         const image = document.createElement("img");
         image.src = product.image || "";
         image.alt = getVietnameseProductName(product.title || "Sản phẩm trong đơn hàng");
+        image.width = 96;
+        image.height = 96;
+        image.loading = "lazy";
+        image.decoding = "async";
         image.addEventListener("error", () => image.remove(), { once: true });
         row.append(
             image,
             makeElement("span", "tracking-product-name", getVietnameseProductName(product.title || "Sản phẩm")),
             makeElement("span", "tracking-product-quantity", `× ${Math.max(1, Number(product.quantity) || 1)}`)
         );
+        const selection = window.FlowerBouquetOptions.summary(product);
+        if (selection) row.append(makeElement("span", "tracking-product-options", selection));
         container.append(row);
     });
 }
@@ -331,6 +337,10 @@ function createOrderCard(order) {
         const image = document.createElement("img");
         image.src = item.image || "";
         image.alt = "";
+        image.width = 96;
+        image.height = 96;
+        image.loading = "lazy";
+        image.decoding = "async";
         image.addEventListener("error", () => image.remove(), { once: true });
         products.append(image);
     });

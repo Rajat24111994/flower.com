@@ -6,19 +6,9 @@ let products = [];
 
 function showWishlistFeedback(title, icon, detail = "") {
   const message = document.getElementById("wishlist-message");
-  message.textContent = detail;
-  message.hidden = !detail;
+  message.textContent = detail || title;
+  message.hidden = false;
   message.classList.toggle("is-error", icon === "error");
-  if (typeof Swal !== "undefined") {
-    Swal.fire({
-      position: "center",
-      icon,
-      title,
-      text: detail,
-      showConfirmButton: false,
-      timer: 1800
-    });
-  }
 }
 
 function showWishlistError(error) {
@@ -64,7 +54,10 @@ function renderWishlist() {
     card.className = "wishlist-card";
     image.src = product.image || "";
     image.alt = getVietnameseProductName(product.title || "Sản phẩm hoa");
+    image.width = 420;
+    image.height = 315;
     image.loading = "lazy";
+    image.decoding = "async";
     image.addEventListener("error", () => image.remove(), { once: true });
     name.textContent = getVietnameseProductName(product.title || "Sản phẩm hoa");
     price.textContent = formatVnd(product.price);

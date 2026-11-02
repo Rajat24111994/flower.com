@@ -8,7 +8,7 @@
   <div class="store-footer-main">
     <div class="store-footer-brand">
       <a class="store-footer-logo" href="./index.html" aria-label="Flowerflow - Trang chủ">
-        <img src="./images/flowerflow-logo.png" alt="">
+        <img src="./images/flowerflow-logo.png" alt="" width="120" height="66" loading="lazy" decoding="async">
         <span>flowerflow</span>
       </a>
       <p>Chọn một bó hoa thật đẹp để gửi lời yêu thương đến người bạn quý mến.</p>
@@ -42,7 +42,7 @@
   <div class="store-footer-main">
     <div class="store-footer-brand">
       <a class="store-footer-logo" href="./index.html" aria-label="Flowerflow - Trang chủ">
-        <img src="./images/flowerflow-logo.png" alt="">
+        <img src="./images/flowerflow-logo.png" alt="" width="120" height="66" loading="lazy" decoding="async">
         <span>flowerflow</span>
       </a>
       <p>Gửi hoa tươi, gửi những điều chưa kịp nói. Cảm ơn bạn đã để Flowerflow góp mặt trong khoảnh khắc của mình.</p>

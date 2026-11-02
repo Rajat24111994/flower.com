@@ -134,7 +134,7 @@ select{
     align-content:start;
     gap:20px;
     /* background-color: aqua; */
-    background-image: url(https://images.unsplash.com/photo-1457089328109-e5d9bd499191?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=363&q=80);
+    background-image: url("./images/flower-04.webp");
 }
 .canvaimage{
     width: 210px;
@@ -170,7 +170,7 @@ select{
         height: 100vh;
         padding: 20px;
         /* background-color: aqua; */
-        background-image: url(https://images.unsplash.com/photo-1457089328109-e5d9bd499191?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=363&q=80);
+        background-image: url("./images/flower-04.webp");
     }
     .canvaimage{
        display: none;
@@ -209,7 +209,7 @@ select{
         height: 100vh;
         padding: 20px;
         /* background-color: aqua; */
-        background-image: url(https://images.unsplash.com/photo-1457089328109-e5d9bd499191?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=363&q=80);
+        background-image: url("./images/flower-04.webp");
     }
 
 .canvaimage{
@@ -274,9 +274,7 @@ select{
 }
 
 .product-page {
-    grid-template-columns: minmax(190px, 230px) minmax(0, 1fr);
-    gap: 24px;
-    align-items: start;
+    display: block;
     padding: 24px;
     background: #faf8f4;
 }
@@ -286,6 +284,8 @@ select{
 }
 
 .product-page #sidebar {
+    grid-column: 1;
+    grid-row: 2;
     position: sticky;
     top: 16px;
     width: auto;
@@ -293,9 +293,32 @@ select{
     min-height: 250px;
     border-radius: 16px;
     background-color: #526b55;
-    background-image: linear-gradient(160deg, rgba(38, 67, 49, .88), rgba(135, 81, 99, .76)), url("./images/House plants.webp");
+    background-image: linear-gradient(160deg, rgba(38, 67, 49, .88), rgba(135, 81, 99, .76));
     background-position: center;
     background-size: cover;
+}
+
+.product-page #sidebar[open] {
+    background-image: linear-gradient(160deg, rgba(38, 67, 49, .88), rgba(135, 81, 99, .76)), url("./images/House plants.webp");
+}
+
+.product-page #sidebar > summary {
+    padding: 14px 16px;
+    color: #fff;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.product-page #sidebar > summary::marker {
+    color: #fff;
+}
+
+.product-page #sidebar[open] > summary {
+    padding-bottom: 10px;
+}
+
+.product-page .filter-options {
+    padding: 0 16px 16px;
 }
 
 .product-page .sortfilter > label {
@@ -321,7 +344,14 @@ select{
 }
 
 .catalog {
+    display: grid;
+    grid-template-columns: minmax(190px, 230px) minmax(0, 1fr);
+    gap: 24px;
     min-width: 0;
+}
+
+.catalog-heading {
+    grid-column: 1 / -1;
 }
 
 .product-page.is-detail-view {
@@ -712,6 +742,8 @@ select{
 }
 
 #container {
+    grid-column: 2;
+    grid-row: 2;
     width: auto;
     margin: 0;
     padding: 0;
@@ -1187,13 +1219,28 @@ select{
     }
 
     .product-page {
-        grid-template-columns: minmax(0, 1fr);
         padding: 16px;
+    }
+
+    .product-page .catalog {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 16px;
+    }
+
+    .product-page .catalog-heading,
+    .product-page #sidebar,
+    .product-page #container {
+        grid-column: 1;
+        grid-row: auto;
     }
 
     .product-page #sidebar {
         position: static;
         min-height: 0;
+        display: block;
+    }
+
+    .product-page .filter-options {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 12px;
@@ -1322,3 +1369,33 @@ select{
         grid-template-columns: minmax(0, 1fr);
     }
 }
+.bouquet-options {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  margin: 16px 0;
+  padding: 20px;
+  border: 1px solid #e6d9d2;
+  border-radius: 16px;
+  background: #fffaf7;
+}
+.bouquet-options legend { padding: 0 8px; font-weight: 700; color: #694039; }
+.bouquet-options label { font-weight: 600; font-size: 14px; }
+.bouquet-options label span { font-weight: 400; color: #746b66; }
+.bouquet-options select, .bouquet-options textarea {
+  width: 100%; box-sizing: border-box; min-height: 44px; padding: 11px 12px;
+  border: 1px solid #d6c7bd; border-radius: 9px; background: white; color: #352b27; font: inherit;
+}
+.bouquet-options textarea { resize: vertical; }
+.bouquet-options select:focus-visible, .bouquet-options textarea:focus-visible {
+  outline: 2px solid #955c50; outline-offset: 2px;
+}
+.bouquet-help { margin: 0; color: #746b66; font-size: 13px; line-height: 1.6; }
+.bouquet-meaning { margin-top: 20px; border-left: 3px solid #b98b79; padding-left: 16px; }
+.bouquet-meaning h2 { font-size: 17px; margin: 0 0 8px; }
+.bouquet-meaning p { line-height: 1.7; color: #65564e; margin: 0; }
+.bouquet-total { font-size: 19px; font-weight: 700; color: #754739; }
+.product-gallery-main { overflow: hidden; }
+.product-gallery-main.is-closeup img { transform: scale(1.65); }
+.gallery-closeup { overflow: hidden; }
+.gallery-closeup img { transform: scale(1.65); }
