@@ -1,0 +1,29 @@
+name: Smoke test
+
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: Địa chỉ trang cần kiểm tra
+        required: true
+        default: https://flower-com-six.vercel.app
+  schedule:
+    - cron: "17 1 * * *"
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Smoke test (không tạo đơn, không đổi dữ liệu)
+        working-directory: flower.com
+        env:
+          SMOKE_URL: ${{ github.event.inputs.url || 'https://flower-com-six.vercel.app' }}
+        run: npm run smoke

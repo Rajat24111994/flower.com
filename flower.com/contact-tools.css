@@ -1,0 +1,101 @@
+:root {
+  --contact-dock-height: 54px;
+}
+
+body {
+  padding-bottom: var(--contact-dock-height);
+}
+
+.contact-tools,
+.contact-tools * {
+  box-sizing: border-box;
+}
+
+.contact-dock {
+  position: fixed;
+  z-index: 1000;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  flex-direction: row;
+  min-height: var(--contact-dock-height);
+  align-items: stretch;
+  justify-content: center;
+  padding: 0 max(12px, env(safe-area-inset-left)) env(safe-area-inset-bottom) max(12px, env(safe-area-inset-right));
+  color: #fff;
+  background: var(--berry, #743e59);
+  box-shadow: 0 -5px 20px rgb(41 39 43 / 12%);
+}
+
+.contact-dock__link {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 clamp(12px, 2.5vw, 30px);
+  color: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  transition: background-color 160ms ease, color 160ms ease;
+}
+
+.contact-dock__link + .contact-dock__link {
+  border-left: 1px solid rgb(255 255 255 / 35%);
+}
+
+.contact-dock__link:hover,
+.contact-dock__link:focus-visible {
+  color: #fff;
+  background: var(--berry-dark, #593044);
+}
+
+.contact-dock__link svg {
+  width: 21px;
+  height: 21px;
+  flex: 0 0 auto;
+}
+
+.contact-dock__link .contact-dock__zalo {
+  width: 20px;
+  height: 20px;
+}
+
+@media (max-width: 600px) {
+  :root {
+    --contact-dock-height: 50px;
+  }
+
+  .contact-dock {
+    padding-right: max(4px, env(safe-area-inset-right));
+    padding-left: max(4px, env(safe-area-inset-left));
+  }
+
+  .contact-dock__link {
+    flex: 1;
+    flex-direction: column;
+    gap: 1px;
+    padding: 3px 4px 2px;
+    font-size: clamp(0.6rem, 2.5vw, 0.72rem);
+    line-height: 1.15;
+    text-align: center;
+  }
+
+  .contact-dock__link svg {
+    width: 18px;
+    height: 18px;
+  }
+
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .contact-dock__link {
+    transition-duration: 0.01ms;
+  }
+}
+@media (max-width: 800px) {
+  body { padding-bottom: calc(var(--contact-dock-height) + env(safe-area-inset-bottom, 0px)); }
+  body:has(input:focus, textarea:focus, select:focus) .contact-dock { display: none; }
+  .contact-dock { padding-bottom: env(safe-area-inset-bottom, 0px); }
+}
