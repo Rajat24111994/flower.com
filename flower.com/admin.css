@@ -664,6 +664,13 @@ main {
     background: #fff;
 }
 
+.product-form .field-error {
+    margin: -4px 0 8px;
+    color: #b42318;
+    font-size: 13px;
+    font-weight: 600;
+}
+
 .status-select {
     max-width: 180px;
 }

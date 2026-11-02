@@ -57,6 +57,41 @@
         };
     }
 
+    function findDuplicateProductImages(products, candidateImages, { baseUrl, excludeProductId = null } = {}) {
+        const normalizeImageUrl = (value) => {
+            try {
+                const url = new URL(String(value || "").trim(), baseUrl);
+                if (!["http:", "https:"].includes(url.protocol)) return null;
+                url.search = "";
+                url.hash = "";
+                return url.href;
+            } catch {
+                return null;
+            }
+        };
+        const currentImages = new Map();
+        const usedByOtherProducts = new Set();
+        (Array.isArray(products) ? products : []).forEach((product) => {
+            const imageUrls = [product.image, ...(Array.isArray(product.images) ? product.images : [])]
+                .map(normalizeImageUrl)
+                .filter(Boolean);
+            if (excludeProductId !== null && String(product.id) === String(excludeProductId)) {
+                imageUrls.forEach((url) => currentImages.set(url, (currentImages.get(url) || 0) + 1));
+                return;
+            }
+            imageUrls.forEach((url) => usedByOtherProducts.add(url));
+        });
+
+        const candidateCounts = new Map();
+        (Array.isArray(candidateImages) ? candidateImages : []).map(normalizeImageUrl).filter(Boolean)
+            .forEach((url) => candidateCounts.set(url, (candidateCounts.get(url) || 0) + 1));
+
+        return [...candidateCounts].filter(([url, count]) => {
+            const newlyAdded = count > (currentImages.get(url) || 0);
+            return newlyAdded && (count > 1 || usedByOtherProducts.has(url));
+        }).map(([url]) => url);
+    }
+
     function deduplicateProducts(products) {
         const uniqueProducts = new Map();
         // Products are identified by id only: different products may share an image or a title.
@@ -590,6 +625,7 @@
         restoreCatalogProducts,
         readProducts,
         saveProducts,
+        findDuplicateProductImages,
         mergeCatalogProducts,
         normalizeProduct,
         toVndPrice,

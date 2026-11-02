@@ -1403,6 +1403,23 @@ async function addNewProduct(event) {
        images: inputProduct.images.map(getStoredImageUrl)
    };
    const products = getProducts();
+   const duplicateImages = FlowerInventory.findDuplicateProductImages(
+       products,
+       [productData.image, ...productData.images],
+       {
+           baseUrl: window.location.href,
+           excludeProductId: editingProductId
+       }
+   );
+   if (duplicateImages.length) {
+       const imageInput = document.getElementById("product-image");
+       const message = "Hình ảnh này đã được sử dụng hoặc bị lặp trong sản phẩm. Hãy chọn đường dẫn ảnh khác.";
+       imageInput.setCustomValidity(message);
+       imageInput.setAttribute("aria-invalid", "true");
+       document.getElementById("product-form-message").textContent = message;
+       imageInput.focus();
+       return;
+   }
    const isEditing = editingProductId !== null;
    // Keep the live stock if the admin did not touch the quantity: orders may have changed it
    // since the form was opened.

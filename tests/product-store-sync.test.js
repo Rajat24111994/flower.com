@@ -1,5 +1,5 @@
 const assert = require('assert');
-const { mergeCatalogProducts, normalizeProduct } = require('../flower.com/product-store.js');
+const { findDuplicateProductImages, mergeCatalogProducts, normalizeProduct } = require('../flower.com/product-store.js');
 
 const catalog = [
   { id: 1, title: 'Hoa hồng', price: 250000, quantity: 8, image: 'rose.jpg', description: 'Hoa hồng đỏ' },
@@ -79,6 +79,30 @@ assert.strictEqual(new Set(restoredFullCatalog.map((item) => String(item.id))).s
 assert.strictEqual(
   mergeCatalogProducts([], [{ id: 1, title: 'A', image: 'same.webp' }, { id: 2, title: 'B', image: 'same.webp' }]).length,
   2
+);
+
+const imageProducts = [
+  { id: 1, image: './images/rose.webp?v=2', images: ['./images/detail.webp'] },
+  { id: 2, image: 'https://cdn.example.test/tulip.webp' },
+];
+assert.deepStrictEqual(
+  findDuplicateProductImages(imageProducts, ['./images/rose.webp?v=5'], { baseUrl: 'https://shop.example.test/admin.html' }),
+  ['https://shop.example.test/images/rose.webp']
+);
+assert.deepStrictEqual(
+  findDuplicateProductImages(imageProducts, ['./images/unique.webp', 'https://shop.example.test/images/unique.webp'], { baseUrl: 'https://shop.example.test/admin.html' }),
+  ['https://shop.example.test/images/unique.webp']
+);
+assert.deepStrictEqual(
+  findDuplicateProductImages(imageProducts, ['./images/rose.webp?v=5'], {
+    baseUrl: 'https://shop.example.test/admin.html',
+    excludeProductId: 1,
+  }),
+  []
+);
+assert.deepStrictEqual(
+  findDuplicateProductImages(imageProducts, ['./images/rose.webp', './images/rose.webp'], { baseUrl: 'https://shop.example.test/admin.html' }),
+  ['https://shop.example.test/images/rose.webp']
 );
 
 console.log('product-store sync test passed');
