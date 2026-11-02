@@ -356,39 +356,61 @@
     // Writes only the fields the admin actually changed (compared with the copy they were
     // looking at), so saving one product never overwrites stock that orders changed meanwhile.
     async function writeRemoteProducts(products, previousProducts) {
+        if (typeof navigator !== "undefined" && navigator.onLine === false) {
+            throw new Error("Mất kết nối Firestore nên thay đổi chưa được lưu. Hãy kiểm tra mạng rồi thử lại.");
+        }
         const firebase = await getFirebaseApi();
         if (!firebase) return false;
         try {
             const { db, firestoreSdk } = firebase;
             const previousById = new Map(previousProducts.map((product) => [String(product.id), normalizeProduct(product)]));
             const keptIds = new Set();
-            const batch = firestoreSdk.writeBatch(db);
-            let writes = 0;
+            const operations = [];
             products.map(normalizeProduct).forEach((product) => {
                 const id = String(product.id);
                 keptIds.add(id);
                 const reference = firestoreSdk.doc(db, "products", id);
                 const previous = previousById.get(id);
                 if (!previous) {
-                    batch.set(reference, product);
-                    writes += 1;
+                    operations.push({ id, reference, product, previous });
                     return;
                 }
                 const changedFields = Object.fromEntries(Object.entries(product)
                     .filter(([key, value]) => key !== "id" && JSON.stringify(value) !== JSON.stringify(previous[key])));
                 if (!Object.keys(changedFields).length) return;
-                batch.update(reference, changedFields);
-                writes += 1;
+                operations.push({ id, reference, product, previous, changedFields });
             });
             previousById.forEach((_product, id) => {
                 if (keptIds.has(id)) return;
-                batch.delete(firestoreSdk.doc(db, "products", id));
-                writes += 1;
+                operations.push({ id, reference: firestoreSdk.doc(db, "products", id), previous: previousById.get(id), remove: true });
             });
-            if (writes) await batch.commit();
-            return true;
+            if (!operations.length) return products;
+            // Transactions fail offline rather than queuing an unacknowledged write. Read all
+            // affected documents before writing, preserving fields changed by other clients.
+            return await firestoreSdk.runTransaction(db, async (transaction) => {
+                const snapshots = await Promise.all(operations.map((operation) => transaction.get(operation.reference)));
+                const saved = new Map(products.map((product) => [String(product.id), product]));
+                operations.forEach((operation, index) => {
+                    const snapshot = snapshots[index];
+                    const current = snapshot.exists() ? normalizeProduct({ ...snapshot.data(), id: snapshot.id }) : null;
+                    const { id, reference, product, previous, changedFields, remove } = operation;
+                    const changedKeys = remove ? Object.keys(previous) : Object.keys(changedFields || {});
+                    if ((!previous && current) || (previous && (!current || changedKeys.some((key) =>
+                        JSON.stringify(current[key]) !== JSON.stringify(previous[key]))))) {
+                        throw Object.assign(new Error("Sản phẩm đã được thay đổi ở nơi khác. Hãy tải lại danh sách trước khi lưu."), { code: "product-changed" });
+                    }
+                    if (remove) transaction.delete(reference);
+                    else if (!previous) transaction.set(reference, product);
+                    else {
+                        transaction.update(reference, changedFields);
+                        saved.set(id, { ...current, ...changedFields });
+                    }
+                });
+                return [...saved.values()];
+            });
         } catch (error) {
             console.warn("Không ghi được sản phẩm lên Firestore:", error);
+            if (error.code === "product-changed") throw error;
             if (error.code === "permission-denied") {
                 throw new Error("Tài khoản không có quyền quản lý sản phẩm. Chỉ Admin hoặc Owner được phép lưu.");
             }
@@ -469,7 +491,7 @@
         if (!saved) {
             throw new Error("Không kết nối được Firestore để lưu sản phẩm. Thay đổi chưa được lưu.");
         }
-        return cacheProducts(normalized);
+        return cacheProducts(saved);
     }
 
     // Loads products from Firestore. flower.json is only used once, by an admin, to seed an
