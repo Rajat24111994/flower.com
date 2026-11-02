@@ -51,7 +51,7 @@
   "crons": [
     {
       "path": "/api/orders?action=expire",
-      "schedule": "* * * * *"
+      "schedule": "7 19 * * *"
     }
   ]
 }
