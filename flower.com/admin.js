@@ -481,6 +481,10 @@ function renderProductTab() {
                    <textarea id="product-images" rows="3">${escapeHtml((editingProduct?.images || []).join("\n"))}</textarea>
                    <label class="field-label" for="product-meaning">Ý nghĩa loài hoa</label>
                    <textarea id="product-meaning" maxlength="1000" placeholder="Để trống để dùng gợi ý theo loài hoa">${escapeHtml(editingProduct?.meaning || "")}</textarea>
+                   <label class="field-label" for="product-colors">Màu hoa (ngăn bằng dấu phẩy; để trống để nhận diện từ mô tả)</label>
+                   <input id="product-colors" maxlength="200" placeholder="đỏ, trắng" value="${escapeHtml((editingProduct?.colors || []).join(", "))}">
+                   <label class="field-label" for="product-occasions">Dịp tặng (ngăn bằng dấu phẩy)</label>
+                   <input id="product-occasions" maxlength="300" placeholder="sinh nhật, khai trương, tốt nghiệp" value="${escapeHtml((editingProduct?.occasions || []).join(", "))}">
                    <label class="field-label" for="product-category">Phân loại sản phẩm</label>
                    <select id="product-category">
                        <option value="">Chưa phân loại</option>
@@ -1164,6 +1168,9 @@ async function addNewProduct(event) {
    const imageInputs = document.getElementById("product-images").value.split(/\r?\n/).map((value) => value.trim()).filter(Boolean);
    const images = [...new Set(imageInputs.map(getStoredImageUrl))];
    const meaning = document.getElementById("product-meaning").value.trim();
+   const tags = (id) => [...new Set(document.getElementById(id).value.split(",").map((value) => value.trim()).filter(Boolean))];
+   const colors = tags("product-colors");
+   const occasions = tags("product-occasions");
    if (imageInputs.length > 8 || images.some((value) => !value)) {
        alert("Nhập tối đa 8 đường dẫn ảnh hợp lệ, mỗi dòng một ảnh.");
        return;
@@ -1187,7 +1194,7 @@ async function addNewProduct(event) {
    }
 
    const products = getProducts();
-    const productData = { title, image: safeImageUrl, images, meaning, price: priceInVnd, quantity, description, category };
+    const productData = { title, image: safeImageUrl, images, meaning, colors, occasions, price: priceInVnd, quantity, description, category };
    const isEditing = editingProductId !== null;
    // Keep the live stock if the admin did not touch the quantity: orders may have changed it
    // since the form was opened.

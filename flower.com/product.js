@@ -525,22 +525,20 @@ function populateFlowerCategoryFilter() {
     flowerTypeSelect.value = selectedValue
   }
 
-  if (!initialCategoryApplied) {
-    const requestedCategory = initialFlowerType.startsWith("category:")
-      ? initialFlowerType.slice("category:".length)
-      : flowerCategoryLabels[initialFlowerType] || initialFlowerType
-    const matchingOption = [...flowerTypeSelect.options].find((option) =>
-      option.value.startsWith("category:")
-      && normalizeSearchText(option.textContent) === normalizeSearchText(requestedCategory)
-    )
-    if (matchingOption) {
-      flowerTypeSelect.value = matchingOption.value
-      activeFlowerType = ""
-      initialCategoryApplied = true
-    } else if (!initialFlowerType) {
-      initialCategoryApplied = true
-    }
-  }
+  const species = document.createElement("optgroup")
+  species.label = "Loài hoa"
+  Object.entries(FlowerCatalogSearch.flowers).forEach(([id, labels]) => {
+    const option = new Option(labels[0], id)
+    species.append(option)
+  })
+  flowerTypeSelect.append(species)
+  species.append(new Option("Hoa phối nhiều loài", "mixed"))
+  const requested = initialCategoryApplied ? selectedValue : initialFlowerType
+  const matching = [...flowerTypeSelect.options].find((option) => option.value === requested)
+    || [...flowerTypeSelect.options].find((option) => normalizeSearchText(option.textContent) === normalizeSearchText(requested))
+  flowerTypeSelect.value = matching?.value || ""
+  activeFlowerType = ""
+  initialCategoryApplied = true
 }
 
 function getProductCategory(product) {
@@ -820,89 +818,71 @@ function productHasFlowerType(product, type) {
   return getFlowerTypes(product).includes(type)
 }
 
+function getCatalogResults() {
+  const minInput = document.getElementById("price-min")
+  const maxInput = document.getElementById("price-max")
+  const number = (input) => input.value === "" ? undefined : Number(input.value)
+  let min = number(minInput)
+  let max = number(maxInput)
+  const valid = [min, max].every((value) => value === undefined || (Number.isSafeInteger(value) && value >= 0))
+    && (min === undefined || max === undefined || min <= max) && !minInput.validity.badInput && !maxInput.validity.badInput
+  const error = valid ? "" : "Nhập khoảng giá VND hợp lệ: giá từ không được lớn hơn giá đến."
+  document.getElementById("price-range-error").textContent = error
+  minInput.setAttribute("aria-invalid", String(!valid))
+  maxInput.setAttribute("aria-invalid", String(!valid))
+  if (min === undefined && max === undefined) {
+    if (priceFilterSelect.value === "price-under-1500000") max = 1499999
+    if (priceFilterSelect.value === "price-1500000-2000000") { min = 1500000; max = 1999999 }
+    if (priceFilterSelect.value === "price-over-2000000") min = 2000000
+  }
+  const filters = { query: searchInput.value, flower: flowerTypeSelect.value, min, max,
+    color: colorFilterSelect.value, occasion: occasionFilterSelect.value, sort: sortSelect.value }
+  if (!initialCategory) document.getElementById("catalog-title").textContent = filters.flower
+    ? flowerTypeSelect.selectedOptions[0].textContent : "Hoa tươi dành cho bạn"
+  const params = new URLSearchParams(window.location.search)
+  params.delete("search")
+  for (const [key, value] of Object.entries({ q: filters.query.trim(), flower: filters.flower,
+    min: minInput.value, max: maxInput.value, price: priceFilterSelect.value,
+    color: filters.color, occasion: filters.occasion, sort: filters.sort })) {
+    if (value) params.set(key, value); else params.delete(key)
+  }
+  const query = params.toString()
+  window.history.replaceState(null, "", window.location.pathname + (query ? `?${query}` : "") + window.location.hash)
+  const candidates = products.filter((product) => FlowerProductCategories.matchesCategory(product, initialCategoryKey))
+  const result = valid ? FlowerCatalogSearch.search(candidates, filters, (product) => getVietnameseProductName(product.title)) : []
+  document.getElementById("catalog-results-count").textContent = valid
+    ? `${result.length} / ${products.length} sản phẩm phù hợp` : "Khoảng giá chưa hợp lệ"
+  document.getElementById("catalog-sort-note").textContent = filters.sort === "popular"
+    ? products.some((product) => Number(product.soldCount) > 0)
+      ? "Xếp theo số bó đã giao thành công được ghi nhận."
+      : "Chưa có số liệu bán hàng; sản phẩm tạm được xếp theo tên."
+    : ""
+  return result
+}
+
+for (const id of ["price-min", "price-max"]) {
+  document.getElementById(id).addEventListener("input", () => { priceFilterSelect.value = ""; renderProducts() })
+}
+for (const [id, key] of [["price-min", "min"], ["price-max", "max"], ["price-filter", "price"],
+  ["color-filter", "color"], ["occasion-filter", "occasion"], ["sort", "sort"]]) {
+  const input = document.getElementById(id)
+  const value = pageParams.get(key)
+  if (value !== null && (input.tagName !== "SELECT" || [...input.options].some((option) => option.value === value))) input.value = value
+}
+
 function renderProducts() {
   updateCatalogStructuredData(products)
-  const searchTerm = normalizeSearchText(searchInput.value.trim())
-  const flowerType = flowerTypeSelect.value
-  const priceFilter = priceFilterSelect.value
-  const colorFilter = colorFilterSelect.value
-  const occasionFilter = occasionFilterSelect.value
-  const collator = new Intl.Collator("vi", { sensitivity: "base" })
-  let visibleProducts = products.filter((product) => {
-    const englishName = normalizeSearchText(product.title)
-    const vietnameseName = normalizeSearchText(getVietnameseProductName(product.title))
-    const matchesSearch = !searchTerm
-      || englishName.includes(searchTerm)
-      || vietnameseName.includes(searchTerm)
-      || String(product.id).includes(searchTerm)
-      || normalizeSearchText(String(product.description || "")).includes(searchTerm)
-      || normalizeSearchText(String(product.category || "")).includes(searchTerm)
-    const matchesFlowerType = !flowerType
-      || normalizeSearchText(String(product.category || "")) === normalizeSearchText(flowerType.slice("category:".length))
-    const matchesCategory = FlowerProductCategories.matchesCategory(product, initialCategoryKey)
-      && (!activeFlowerType || productHasFlowerType(product, activeFlowerType))
-    const priceInVnd = Number(product.price) || 0
-    let matchesPrice = true
-
-    if (priceFilter === "price-under-1500000") {
-      matchesPrice = priceInVnd < 1500000
-    } else if (priceFilter === "price-1500000-2000000") {
-      matchesPrice = priceInVnd >= 1500000 && priceInVnd < 2000000
-    } else if (priceFilter === "price-over-2000000") {
-      matchesPrice = priceInVnd >= 2000000
-    }
-
-    const description = normalizeSearchText(`${product.title || ""} ${product.description || ""}`)
-    const matchesColor = !colorFilter || description.includes(normalizeSearchText(colorFilter))
-    const matchesOccasion = !occasionFilter || description.includes(normalizeSearchText(occasionFilter))
-
-    return matchesSearch && matchesFlowerType && matchesCategory && matchesPrice && matchesColor && matchesOccasion
-  })
-
-  switch (sortSelect.value) {
-    case "asc-p":
-      visibleProducts.sort((first, second) => first.price - second.price)
-      break
-    case "dsc-p":
-      visibleProducts.sort((first, second) => second.price - first.price)
-      break
-    case "newest":
-      visibleProducts.sort((first, second) => {
-        const firstDateValue = first.createdAt || first.updatedAt
-        const secondDateValue = second.createdAt || second.updatedAt
-        const firstDate = firstDateValue ? Date.parse(firstDateValue) : Number(first.id) || 0
-        const secondDate = secondDateValue ? Date.parse(secondDateValue) : Number(second.id) || 0
-        return secondDate - firstDate
-      })
-      break
-    case "str-i":
-      visibleProducts.sort((first, second) => collator.compare(
-        first.title,
-        second.title
-      ))
-      break
-    case "str-d":
-      visibleProducts.sort((first, second) => collator.compare(
-        second.title,
-        first.title
-      ))
-      break
-  }
-
+  const visibleProducts = getCatalogResults()
   if (!visibleProducts.length) {
     const emptyMessage = document.createElement("p")
     emptyMessage.className = "catalog-empty"
-    emptyMessage.textContent = initialCategory
-      ? `${initialCategory.title}: hiện chưa có sản phẩm phù hợp trong cửa hàng.`
-      : "Không tìm thấy sản phẩm phù hợp."
+    emptyMessage.textContent = "Không tìm thấy sản phẩm phù hợp. Hãy thử tên hoặc loại hoa khác, mở rộng khoảng giá hoặc xóa bộ lọc."
     container.replaceChildren(emptyMessage)
-    if (initialCategoryKey) {
-      const allProductsLink = document.createElement("a")
-      allProductsLink.className = "catalog-empty-link"
-      allProductsLink.href = "./product.html"
-      allProductsLink.textContent = "Xem tất cả sản phẩm"
-      container.append(allProductsLink)
-    }
+    const allProductsLink = document.createElement("a")
+    allProductsLink.className = "catalog-empty-link"
+    allProductsLink.href = "./product.html"
+    allProductsLink.textContent = "Xem tất cả sản phẩm"
+    container.append(allProductsLink)
     return
   }
 
@@ -915,14 +895,28 @@ flowerTypeSelect.addEventListener("change", () => {
   activeFlowerType = ""
   renderProducts()
 })
-priceFilterSelect.addEventListener("change", renderProducts)
+priceFilterSelect.addEventListener("change", () => {
+  document.getElementById("price-min").value = ""
+  document.getElementById("price-max").value = ""
+  renderProducts()
+})
 colorFilterSelect.addEventListener("change", renderProducts)
 occasionFilterSelect.addEventListener("change", renderProducts)
-searchButton.addEventListener("click", renderProducts)
-searchInput.addEventListener("input", renderProducts)
-searchInput.addEventListener("keydown", (event) => {
-  if (event.key === "Enter") renderProducts()
-})
+function searchCatalog() {
+  const params = new URLSearchParams(window.location.search)
+  if (params.has("id")) {
+    params.delete("id")
+    const query = params.toString()
+    window.history.replaceState(null, "", window.location.pathname + (query ? `?${query}` : ""))
+    detailPage.hidden = true
+    relatedFlowersSection.hidden = true
+    productPage.classList.remove("is-detail-view")
+    document.title = "Cửa hàng hoa | Flowerflow"
+  }
+  renderProducts()
+}
+document.querySelector(".search-form").addEventListener("submit", (event) => { event.preventDefault(); searchCatalog() })
+searchInput.addEventListener("input", searchCatalog)
 
 window.addEventListener("storage", (event) => {
   if (event.key === "flowerInventory") {

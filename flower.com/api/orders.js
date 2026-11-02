@@ -312,7 +312,7 @@ function priceCart(items, promotion) {
 function quantityLimitError(res, body) {
     const tooMany = Array.isArray(body?.items) && body.items.some((item) => Number(item?.quantity) > MAX_QUANTITY_PER_PRODUCT);
     if (!tooMany) return null;
-    return sendError(res, 400, "quantity-limit", `Mỗi đơn đặt tối đa ${MAX_QUANTITY_PER_PRODUCT} sản phẩm mỗi loại. Hãy giảm số lượng, hoặc liên hệ cửa hàng nếu cần số lượng lớn.`);
+    return sendError(res, 400, "quantity-limit", `Mỗi lựa chọn bó hoa đặt tối đa ${MAX_QUANTITY_PER_PRODUCT} bó. Hãy giảm số lượng, hoặc liên hệ cửa hàng nếu cần số lượng lớn.`);
 }
 
 async function quoteOrder(req, res) {

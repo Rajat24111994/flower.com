@@ -48,6 +48,10 @@
             sameDayDelivery: product.sameDayDelivery === true,
             onSale: product.onSale === true,
             ...(product.meaning !== undefined ? { meaning: String(product.meaning).trim() } : {}),
+            ...(product.soldCount !== undefined ? { soldCount: Math.max(0, Number(product.soldCount) || 0) } : {}),
+            ...(Array.isArray(product.flowerTypes) ? { flowerTypes: product.flowerTypes.map(String) } : {}),
+            ...(Array.isArray(product.colors) ? { colors: product.colors.map(String) } : {}),
+            ...(Array.isArray(product.occasions) ? { occasions: product.occasions.map(String) } : {}),
             description
         };
     }
