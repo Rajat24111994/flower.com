@@ -1399,3 +1399,12 @@ select{
 .product-gallery-main.is-closeup img { transform: scale(1.65); }
 .gallery-closeup { overflow: hidden; }
 .gallery-closeup img { transform: scale(1.65); }
+.custom-price-range { display: grid; gap: 6px; margin-top: 12px; padding: 12px; background: #fffaf7; border-radius: 10px; }
+.custom-price-range input { width: 100%; min-width: 0; box-sizing: border-box; padding: 10px; border: 1px solid #d6c7bd; border-radius: 8px; font: inherit; background: white; }
+.custom-price-range label { font-size: 13px; color: #65564e; }
+.filter-error { color: #a52d3b; font-size: 13px; line-height: 1.5; }
+.clear-catalog-filters, .catalog-empty-link { color: #8c415e; font-weight: 600; text-underline-offset: 4px; }
+.clear-catalog-filters { grid-column: 1 / -1; display: inline-flex; justify-content: center; padding: 12px 16px; background: #fffaf7; border-radius: 10px; }
+.filter-error:not(:empty) { padding: 8px; border-radius: 8px; background: #fff3f3; }
+#catalog-results-count { margin: 16px 20px 6px; font-weight: 600; color: #425d4b; }
+#catalog-sort-note { margin: 0 20px 12px; }

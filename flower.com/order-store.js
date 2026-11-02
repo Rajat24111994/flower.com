@@ -337,7 +337,8 @@
       }
 
       const items = aggregateOrderItems(order.items);
-      const productRefs = stockChange
+      const salesChange = root.FlowerProductSales.adjustment(order, changes.status, options.restockSold);
+      const productRefs = stockChange || salesChange
         ? items.map((item) => firestoreSdk.doc(db, "products", String(item.id)))
         : [];
       const productSnapshots = [];
@@ -361,7 +362,10 @@
         if (!snapshot.exists()) return;
         const quantity = Number(snapshot.data().quantity) || 0;
         const orderQuantity = Math.max(1, Number(items[index].quantity) || 1);
-        transaction.update(snapshot.ref, { quantity: quantity + stockChange * orderQuantity });
+        transaction.update(snapshot.ref, {
+          ...(stockChange ? { quantity: quantity + stockChange * orderQuantity } : {}),
+          ...(salesChange ? { soldCount: Math.max(0, (Number(snapshot.data().soldCount) || 0) + salesChange * orderQuantity) } : {})
+        });
       });
 
       // The hold timer only applies while the order waits for confirmation.
@@ -369,6 +373,7 @@
       const reserveAgain = state === "released" && nextState === "reserved" && waitsForConfirmation;
       transaction.update(orderRef, {
         ...changes,
+        ...(salesChange ? { salesCounted: salesChange > 0 } : {}),
         inventoryState: nextState,
         inventoryReserved: nextState === "reserved",
         // A restored QR order is waiting for the transfer again, not "expired".
