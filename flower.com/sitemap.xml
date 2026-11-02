@@ -1,6 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url><loc>https://flower-com-six.vercel.app/</loc></url>
+  <url><loc>https://flower-com-six.vercel.app/about.html</loc></url>
+  <url><loc>https://flower-com-six.vercel.app/contact.html</loc></url>
+  <url><loc>https://flower-com-six.vercel.app/delivery.html</loc></url>
+  <url><loc>https://flower-com-six.vercel.app/returns.html</loc></url>
+  <url><loc>https://flower-com-six.vercel.app/privacy.html</loc></url>
+  <url><loc>https://flower-com-six.vercel.app/terms.html</loc></url>
+  <url><loc>https://flower-com-six.vercel.app/ordering.html</loc></url>
+  <url><loc>https://flower-com-six.vercel.app/faq.html</loc></url>
   <url><loc>https://flower-com-six.vercel.app/product.html</loc></url>
   <url><loc>https://flower-com-six.vercel.app/product.html?id=1</loc></url>
   <url><loc>https://flower-com-six.vercel.app/product.html?id=2</loc></url>

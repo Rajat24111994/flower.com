@@ -16,12 +16,40 @@ const pages = [
   "forgot-password.html"
 ];
 
+const informationPages = [
+  "about.html",
+  "contact.html",
+  "delivery.html",
+  "returns.html",
+  "privacy.html",
+  "terms.html",
+  "ordering.html",
+  "faq.html"
+];
+
 for (const page of pages) {
   const html = fs.readFileSync(path.join(root, page), "utf8");
-  assert.match(html, /store-footer\.css\?v=2/, `${page} should load the current shared footer styles`);
-  assert.match(html, /store-footer\.js\?v=3/, `${page} should load the current shared footer markup`);
+  assert.match(html, /store-footer\.css\?v=3/, `${page} should load the current shared footer styles`);
+  assert.match(html, /store-footer\.js\?v=4/, `${page} should load the current shared footer markup`);
   if (page === "checkout.html") {
     assert.doesNotMatch(html, /id="bottomtext"|id="endline"/, "checkout should not retain its duplicate legacy footer");
+  }
+}
+
+for (const page of informationPages) {
+  const html = fs.readFileSync(path.join(root, page), "utf8");
+  assert.match(html, /store-header\.js\?v=4/, `${page} should load the shared header`);
+  assert.match(html, /store-footer\.css\?v=3/, `${page} should load the current shared footer styles`);
+  assert.match(html, /store-footer\.js\?v=4/, `${page} should load the current shared footer markup`);
+  assert.match(html, /information-page\.css\?v=1/, `${page} should load the information page styles`);
+  assert.match(html, /<main\b[^>]*id="main-content"/, `${page} should provide a main landmark`);
+  assert.match(html, /<title>[^<]+<\/title>/, `${page} should have a descriptive title`);
+  assert.match(html, /name="description"/, `${page} should have a meta description`);
+  for (const [, destination] of html.matchAll(/href="\.\/([^"#?]+)(?:[#?][^"]*)?"/g)) {
+    assert.ok(
+      fs.existsSync(path.join(root, destination)),
+      `${page} should link only to existing internal destinations (missing ${destination})`
+    );
   }
 }
 
@@ -33,8 +61,17 @@ assert.match(footer, /store-footer--checkout/);
 assert.match(footer, /store-footer-brand/);
 assert.match(footer, /aria-label="Mua sắm"/);
 assert.match(footer, /aria-label="Hỗ trợ"/);
+assert.match(footer, /aria-label="Thông tin cửa hàng"/);
 assert.match(footer, /new Date\(\)\.getFullYear\(\)/);
 assert.match(footer, /index\.html#top/);
+for (const page of informationPages) {
+  assert.equal(
+    footer.match(new RegExp(`href="./${page}"`, "g"))?.length,
+    2,
+    `${page} should be linked from both standard and checkout footer variants`
+  );
+  assert.ok(fs.existsSync(path.join(root, page)), `${page} should resolve to an existing page`);
+}
 
 const footerStyles = fs.readFileSync(path.join(root, "store-footer.css"), "utf8");
 assert.match(footerStyles, /\.store-footer--checkout\s*\{[^}]*background:\s*#382a31/s);
