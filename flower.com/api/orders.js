@@ -384,10 +384,19 @@ async function createOrder(req, res) {
         const productRefs = checkout.items.map((item) => db.collection("products").doc(item.id));
         const promotionsRef = db.collection("metadata").doc("activePromotions");
         const now = new Date();
+        const requestHash = createHash("sha256").update(JSON.stringify({
+            ...checkout, orderNote: String(req.body.orderNote || "").trim(), uid: user?.uid || ""
+        })).digest("hex");
 
         const order = await db.runTransaction(async (transaction) => {
             const previousRequest = await transaction.get(idempotencyRef);
             if (previousRequest.exists) {
+                if (previousRequest.data().uid !== (user?.uid || "")
+                    || (previousRequest.data().requestHash && previousRequest.data().requestHash !== requestHash)) {
+                    const error = new Error("Mã yêu cầu đã được dùng cho nội dung đặt hàng khác. Hãy kiểm tra đơn đã gửi.");
+                    error.code = "idempotency-conflict";
+                    throw error;
+                }
                 const previousOrderRef = db.collection("orders").doc(String(previousRequest.data().orderId || ""));
                 const previousOrder = await transaction.get(previousOrderRef);
                 if (!previousOrder.exists) {
@@ -493,6 +502,7 @@ async function createOrder(req, res) {
             transaction.create(orderRef, orderData);
             transaction.create(idempotencyRef, {
                 orderId: orderRef.id,
+                requestHash,
                 uid: user?.uid || "",
                 createdAt: FieldValue.serverTimestamp()
             });

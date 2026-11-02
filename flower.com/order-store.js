@@ -1,6 +1,23 @@
 (function initializeFlowerOrderStore(root) {
   let firebasePromise;
 
+  async function orderRequest(options) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 20000);
+    try {
+      const response = await fetch("/api/orders", { ...options, signal: controller.signal });
+      const result = await response.json();
+      return { response, result };
+    } catch (cause) {
+      const error = new Error("Không nhận được phản hồi từ cửa hàng. Kiểm tra kết nối rồi thử lại; yêu cầu đặt hàng vẫn được giữ để tránh tạo trùng đơn.");
+      error.code = "order-network-error";
+      error.cause = cause;
+      throw error;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
   async function getFirebase() {
     if (!firebasePromise) {
       firebasePromise = (async () => {
@@ -68,7 +85,7 @@
     }
     const headers = { "Content-Type": "application/json", Accept: "application/json" };
     if (auth.currentUser) headers.Authorization = `Bearer ${await auth.currentUser.getIdToken()}`;
-    const response = await fetch("/api/orders", {
+    const { response, result } = await orderRequest({
       method: "POST",
       headers,
       body: JSON.stringify({
@@ -93,17 +110,21 @@
         }))
       })
     });
-    const result = await response.json().catch(() => ({}));
     if (!response.ok) {
       const error = new Error(result.error || "Không thể xác nhận đơn hàng.");
       error.code = result.code || "order-create-failed";
+      throw error;
+    }
+    if (typeof result.order?.id !== "string" || !result.order.id) {
+      const error = new Error("Chưa nhận được mã đơn. Hãy thử lại cùng yêu cầu đặt hàng.");
+      error.code = "order-network-error";
       throw error;
     }
     return result.order.id;
   }
 
   async function quote(items, promotionId = "") {
-    const response = await fetch("/api/orders", {
+    const { response, result } = await orderRequest({
       method: "POST",
       headers: { "Content-Type": "application/json", Accept: "application/json" },
       body: JSON.stringify({
@@ -112,7 +133,6 @@
         promotionId: promotionId || ""
       })
     });
-    const result = await response.json().catch(() => ({}));
     if (!response.ok) {
       const error = new Error(result.error || "Không thể kiểm tra giá sản phẩm.");
       error.code = result.code || "order-quote-failed";

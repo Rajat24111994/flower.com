@@ -54,6 +54,38 @@ test("giá thay đổi sau khi báo giá thì không đặt được đơn", asy
     assert.equal(await h.stockOf("1"), 10);
 });
 
+test("hai yêu cầu đồng thời cùng mã chỉ lưu một đơn; đổi nội dung bị từ chối", async () => {
+    const quote = await h.callApi("orders", { body: { action: "quote", items: [{ id: "2", quantity: 1 }] } });
+    const body = {
+        customerName: "Khách", phone: "0908123456", address: "1 Lê Lợi", deliveryDate: h.deliveryDate(),
+        deliveryTime: "12:00–16:00", paymentMethod: "cod", idempotencyKey: randomUUID(),
+        expectedTotals: quote.body.totals, items: [{ id: "2", quantity: 1 }]
+    };
+    const results = await Promise.all([h.callApi("orders", { body }), h.callApi("orders", { body })]);
+    results.forEach((result) => assert.equal(result.status, 201, JSON.stringify(result.body)));
+    assert.equal(results[0].body.order.id, results[1].body.order.id);
+    assert.equal((await h.db().collection("orders").get()).size, 1);
+    assert.equal(await h.stockOf("2"), 9);
+    const changed = await h.callApi("orders", { body: { ...body, address: "Địa chỉ khác" } });
+    assert.equal(changed.status, 409);
+    assert.equal(changed.body.code, "idempotency-conflict");
+});
+
+test("hai khách tranh sản phẩm cuối cùng: chỉ một đơn giữ được hàng", async () => {
+    await h.db().doc("products/2").update({ quantity: 1 });
+    const quote = await h.callApi("orders", { body: { action: "quote", items: [{ id: "2", quantity: 1 }] } });
+    const body = {
+        customerName: "Khách", phone: "0908123456", address: "1 Lê Lợi", deliveryDate: h.deliveryDate(),
+        deliveryTime: "12:00–16:00", paymentMethod: "cod", expectedTotals: quote.body.totals,
+        items: [{ id: "2", quantity: 1 }]
+    };
+    const results = await Promise.all([1, 2].map(() => h.callApi("orders", { body: { ...body, idempotencyKey: randomUUID() } })));
+    assert.deepEqual(results.map((result) => result.status).sort(), [201, 409]);
+    assert.equal(results.find((result) => result.status === 409).body.code, "insufficient-stock");
+    assert.equal(await h.stockOf("2"), 0);
+    assert.equal((await h.db().collection("orders").get()).size, 1);
+});
+
 test("thiếu hàng: báo rõ sản phẩm nào còn bao nhiêu", async () => {
     await h.db().doc("products/6").update({ quantity: 1 });
     const quote = await h.callApi("orders", { body: { action: "quote", items: [{ id: "6", quantity: 3 }] } });
