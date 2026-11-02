@@ -77,5 +77,26 @@
     });
     return rows.map(({ product }) => product);
   }
-  return { normalize, flowers, flowerTypes, search, matchesColor, matchesOccasion };
+  // Occasions offered in the shop's filter: the usual ones first, then every occasion the admin
+  // set on a product (admin → Sản phẩm → "Dịp tặng"), without duplicates.
+  const defaultOccasions = ["Sinh nhật", "Kỷ niệm", "Khai trương", "Tốt nghiệp", "Chúc mừng", "Cảm ơn", "Tân gia", "Thăm hỏi"];
+  function occasionOptions(products) {
+    const seen = new Set();
+    const options = [];
+    const add = (value) => {
+      const label = String(value ?? "").trim().replace(/\s+/g, " ");
+      const key = normalize(label);
+      if (!key || seen.has(key)) return;
+      seen.add(key);
+      options.push(label.charAt(0).toLocaleUpperCase("vi") + label.slice(1));
+    };
+    defaultOccasions.forEach(add);
+    const custom = [];
+    (Array.isArray(products) ? products : []).forEach((product) => {
+      (Array.isArray(product?.occasions) ? product.occasions : []).forEach((value) => custom.push(value));
+    });
+    custom.sort((first, second) => String(first).localeCompare(String(second), "vi")).forEach(add);
+    return options;
+  }
+  return { normalize, flowers, flowerTypes, search, matchesColor, matchesOccasion, occasionOptions };
 });
