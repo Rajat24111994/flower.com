@@ -1,4 +1,4 @@
-import { firebaseConfig, isFirebaseConfigured } from "./firebase-config.js";
+import { firebaseConfig, isFirebaseConfigured } from "./firebase-config.js?v=1";
 
 const form = document.getElementById("recovery-form");
 const emailInput = document.getElementById("recovery-email");

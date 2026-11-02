@@ -8,7 +8,7 @@
   <div class="store-footer-main">
     <div class="store-footer-brand">
       <a class="store-footer-logo" href="./index.html" aria-label="Flowerflow - Trang chủ">
-        <img src="./images/flowerflow-logo.png" alt="">
+        <img src="./images/flowerflow-logo.png" alt="" width="44" height="44">
         <span>flowerflow</span>
       </a>
       <p>Chọn một bó hoa thật đẹp để gửi lời yêu thương đến người bạn quý mến.</p>
@@ -26,7 +26,17 @@
       <a href="./tracking.html">Theo dõi đơn hàng</a>
       <a href="./account.html">Tài khoản của tôi</a>
       <a href="./login.html">Đăng nhập</a>
-      <a href="mailto:hello@flowerflow.vn">Liên hệ với chúng tôi</a>
+      <a href="./contact.html">Liên hệ với chúng tôi</a>
+      <a href="./faq.html">Câu hỏi thường gặp</a>
+    </nav>
+    <nav class="store-footer-column" aria-label="Thông tin và chính sách">
+      <h2>Thông tin & chính sách</h2>
+      <a href="./about.html">Giới thiệu Flowerflow</a>
+      <a href="./shipping.html">Giao hàng</a>
+      <a href="./returns.html">Đổi trả và hỗ trợ</a>
+      <a href="./payment.html">Thanh toán</a>
+      <a href="./privacy.html">Chính sách bảo mật</a>
+      <a href="./terms.html">Điều khoản sử dụng</a>
     </nav>
     <div class="store-footer-help">
       <h2>Cần giúp chọn hoa?</h2>
@@ -42,7 +52,7 @@
   <div class="store-footer-main">
     <div class="store-footer-brand">
       <a class="store-footer-logo" href="./index.html" aria-label="Flowerflow - Trang chủ">
-        <img src="./images/flowerflow-logo.png" alt="">
+        <img src="./images/flowerflow-logo.png" alt="" width="44" height="44">
         <span>flowerflow</span>
       </a>
       <p>Gửi hoa tươi, gửi những điều chưa kịp nói. Cảm ơn bạn đã để Flowerflow góp mặt trong khoảnh khắc của mình.</p>
@@ -60,7 +70,17 @@
       <a href="./tracking.html">Theo dõi đơn hàng</a>
       <a href="./account.html">Tài khoản của tôi</a>
       <a href="./login.html">Đăng nhập</a>
-      <a href="mailto:hello@flowerflow.vn">Liên hệ với chúng tôi</a>
+      <a href="./contact.html">Liên hệ với chúng tôi</a>
+      <a href="./faq.html">Câu hỏi thường gặp</a>
+    </nav>
+    <nav class="store-footer-column" aria-label="Thông tin và chính sách">
+      <h2>Thông tin & chính sách</h2>
+      <a href="./about.html">Giới thiệu Flowerflow</a>
+      <a href="./shipping.html">Giao hàng</a>
+      <a href="./returns.html">Đổi trả và hỗ trợ</a>
+      <a href="./payment.html">Thanh toán</a>
+      <a href="./privacy.html">Chính sách bảo mật</a>
+      <a href="./terms.html">Điều khoản sử dụng</a>
     </nav>
     <div class="store-footer-help">
       <h2>Cần giúp chọn hoa?</h2>

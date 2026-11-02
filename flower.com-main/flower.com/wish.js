@@ -64,6 +64,8 @@ function renderWishlist() {
     card.className = "wishlist-card";
     image.src = product.image || "";
     image.alt = getVietnameseProductName(product.title || "Sản phẩm hoa");
+    image.width = 480;
+    image.height = 480;
     image.loading = "lazy";
     image.addEventListener("error", () => image.remove(), { once: true });
     name.textContent = getVietnameseProductName(product.title || "Sản phẩm hoa");

@@ -5,7 +5,7 @@
     if (!firebasePromise) {
       firebasePromise = (async () => {
         const [configModule, appSdk, authSdk, firestoreSdk] = await Promise.all([
-          import("./firebase-config.js"),
+          import("./firebase-config.js?v=1"),
           import("https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js"),
           import("https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js"),
           import("https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js")

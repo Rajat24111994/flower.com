@@ -1,4 +1,4 @@
-import { normalizeOrderStatus } from "./order-status.js";
+import { normalizeOrderStatus } from "./order-status.js?v=1";
 
 const searchForm = document.getElementById("tracking-search");
 const orderIdInput = document.getElementById("tracking-order-id");
@@ -139,6 +139,9 @@ function renderProducts(items) {
         const image = document.createElement("img");
         image.src = product.image || "";
         image.alt = getVietnameseProductName(product.title || "Sản phẩm trong đơn hàng");
+        image.width = 96;
+        image.height = 96;
+        image.loading = "lazy";
         image.addEventListener("error", () => image.remove(), { once: true });
         row.append(
             image,
@@ -330,7 +333,10 @@ function createOrderCard(order) {
     items.slice(0, 3).forEach((item) => {
         const image = document.createElement("img");
         image.src = item.image || "";
-        image.alt = "";
+        image.alt = getVietnameseProductName(item.title || "Sản phẩm hoa");
+        image.width = 96;
+        image.height = 96;
+        image.loading = "lazy";
         image.addEventListener("error", () => image.remove(), { once: true });
         products.append(image);
     });

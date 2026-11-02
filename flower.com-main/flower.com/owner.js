@@ -1,4 +1,4 @@
-import { firebaseConfig } from "./firebase-config.js";
+import { firebaseConfig } from "./firebase-config.js?v=1";
 
 const status = document.getElementById("owner-status");
 const usersBody = document.getElementById("owner-users");

@@ -1,4 +1,4 @@
-import { firebaseConfig, isFirebaseConfigured, connectFirebaseEmulators } from "./firebase-config.js";
+import { firebaseConfig, isFirebaseConfigured, connectFirebaseEmulators } from "./firebase-config.js?v=1";
 
 const signUpButton = document.getElementById("signup");
 const signInButton = document.getElementById("signin");

@@ -8,7 +8,7 @@
   <header class="site-header">
     <div class="header-main">
       <a class="brand" href="./index.html" aria-label="Flowerflow - Trang chủ">
-        <img src="./images/flowerflow-logo.png" alt="">
+        <img src="./images/flowerflow-logo.png" alt="" width="44" height="44">
         <span>flowerflow</span>
       </a>
 
@@ -166,7 +166,7 @@ async function verifyStoredSession() {
     let auth;
     try {
         const [{ firebaseConfig }, appSdk, authSdk] = await Promise.all([
-            import("./firebase-config.js"),
+            import("./firebase-config.js?v=1"),
             import("https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js"),
             import("https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js")
         ]);

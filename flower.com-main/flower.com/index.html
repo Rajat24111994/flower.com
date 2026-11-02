@@ -3,7 +3,7 @@
 
 <head>
   <meta charset="UTF-8" />
-    <script src="./safe-storage.js"></script>
+    <script src="./safe-storage.js?v=1" defer></script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#fbf8f3" />
   <meta name="description" content="Chọn hoa tươi và quà tặng ý nghĩa cho những người bạn yêu thương tại Flowerflow." />
@@ -20,18 +20,19 @@
   <meta name="twitter:title" content="Flowerflow | Trao hoa, gửi yêu thương" />
   <meta name="twitter:description" content="Chọn hoa tươi và quà tặng ý nghĩa cho những người bạn yêu thương tại Flowerflow." />
   <meta name="twitter:image" content="https://flower-com-six.vercel.app/images/bestseller.webp" />
+  <link rel="preload" as="image" href="./images/bestseller.webp" fetchpriority="high" />
   <title>Flowerflow | Trao hoa, gửi yêu thương</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="./store-header.css?v=2" />
   <link rel="stylesheet" href="./homepage.css?v=2" />
-  <link rel="stylesheet" href="./store-footer.css?v=2" />
+  <link rel="stylesheet" href="./store-footer.css?v=3" />
 <link rel="stylesheet" href="./contact-tools.css?v=2">
 </head>
 
 <body id="top">
-  <script src="./store-header.js?v=3"></script>
+  <script src="./store-header.js?v=4" defer></script>
 
   <main>
     <section class="hero" aria-labelledby="hero-title">
@@ -96,7 +97,7 @@
 
     <section class="story-section page-section" aria-labelledby="story-title">
       <div class="story-image">
-        <img src="./images/start.jpeg" alt="Cùng nhau tự tay cắm hoa và tạo nên món quà ý nghĩa" width="800" height="600" loading="lazy" />
+        <img src="./images/start.jpeg" alt="Cùng nhau tự tay cắm hoa và tạo nên món quà ý nghĩa" width="1182" height="300" loading="lazy" />
         <span class="image-label">Chăm chút bằng yêu thương</span>
       </div>
       <div class="story-copy">
@@ -124,8 +125,8 @@
     </section>
   </main>
 
-  <script src="./store-footer.js?v=2"></script>
-<script src="./contact-tools.js?v=1"></script>
+  <script src="./store-footer.js?v=3" defer></script>
+  <script src="./contact-tools.js?v=1" defer></script>
 </body>
 
 </html>

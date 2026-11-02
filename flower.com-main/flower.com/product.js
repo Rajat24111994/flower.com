@@ -595,8 +595,8 @@ function renderProductDetail(product) {
   document.getElementById("detail-buy-now").disabled = outOfStock || quantityInCart >= stock
   updateWishlistButton(document.getElementById("detail-wishlist"), product)
   document.title = `${productName} | Flowerflow`
-  const canonicalUrl = new URL(`./product.html?id=${encodeURIComponent(product.id)}`, window.location.href).href
-  const imageUrl = images[0] ? new URL(images[0], window.location.href).href : ""
+  const canonicalUrl = new URL(`./product.html?id=${encodeURIComponent(product.id)}`, productMetadataDefaults.canonical).href
+  const imageUrl = images[0] ? new URL(images[0], productMetadataDefaults.canonical).href : ""
   const availability = stock > 0
     ? "https://schema.org/InStock"
     : "https://schema.org/OutOfStock"
@@ -618,7 +618,7 @@ function renderProductDetail(product) {
     "@type": "Product",
     name: productName,
     description: productDescription,
-    image: images.map((image) => new URL(image, window.location.href).href),
+    image: images.map((image) => new URL(image, productMetadataDefaults.canonical).href),
     sku: String(product.id),
     url: canonicalUrl,
     offers: {

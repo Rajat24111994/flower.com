@@ -1,15 +1,5 @@
 User-agent: *
 Allow: /
-Disallow: /admin.html
-Disallow: /owner.html
-Disallow: /account.html
-Disallow: /cart.html
-Disallow: /checkout.html
-Disallow: /placeorder.html
-Disallow: /tracking.html
-Disallow: /wish.html
-Disallow: /login.html
-Disallow: /forgot-password.html
 Disallow: /api/
 
 Sitemap: https://flower-com-six.vercel.app/sitemap.xml

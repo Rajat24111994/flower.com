@@ -2,7 +2,7 @@
 <html lang="vi">
 <head>
   <meta charset="UTF-8">
-    <script src="./safe-storage.js"></script>
+    <script src="./safe-storage.js?v=1"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="Xác nhận thông tin đơn hàng hoa trước khi gửi đến Flowerflow.">
   <meta name="robots" content="noindex, nofollow">
@@ -11,12 +11,12 @@
   <title>Xác nhận đơn hàng</title>
   <link rel="stylesheet" href="./store-header.css?v=2">
   <link rel="stylesheet" href="./cart.css?v=2">
-  <link rel="stylesheet" href="./store-footer.css?v=2">
+  <link rel="stylesheet" href="./store-footer.css?v=3">
 <link rel="stylesheet" href="./contact-tools.css?v=2">
 </head>
 
 <body>
-  <script src="./store-header.js?v=3"></script>
+  <script src="./store-header.js?v=4"></script>
 
   <main class="nav">
     <div id="product-container"></div>
@@ -33,7 +33,7 @@
     </div>
   </main>
 
-  <script src="./store-footer.js?v=2"></script>
+  <script src="./store-footer.js?v=3"></script>
   <script src="./currency.js?v=10"></script>
   <script src="./product-names.js?v=2"></script>
   <script src="./order-store.js?v=14"></script>
@@ -201,6 +201,10 @@
         let quantity = document.createElement("span");
 
         image.src = product.image;
+        image.alt = getVietnameseProductName(product.title || "Sản phẩm hoa");
+        image.width = 480;
+        image.height = 480;
+        image.loading = "lazy";
         const productQuantity = Math.max(1, Number(product.quantity) || 1);
         details.textContent = getVietnameseProductName(product.title);
         price.textContent = formatVnd(Number(product.price) * productQuantity);
