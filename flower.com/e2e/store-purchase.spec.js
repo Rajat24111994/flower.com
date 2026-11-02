@@ -1,4 +1,37 @@
 import { test, expect } from "@playwright/test";
+import { readFileSync } from "node:fs";
+import path from "node:path";
+
+const FIRESTORE = "http://127.0.0.1:8080/v1/projects/web-ban-hoa-9fe0b/databases/(default)/documents";
+const catalog = JSON.parse(readFileSync(path.join(__dirname, "..", "flower.json"), "utf8")).flower;
+
+// Firestore REST values for plain JSON (strings, numbers, booleans, arrays, objects).
+function toFirestoreValue(value) {
+  if (value === null || value === undefined) return { nullValue: null };
+  if (typeof value === "boolean") return { booleanValue: value };
+  if (typeof value === "number") return Number.isInteger(value) ? { integerValue: String(value) } : { doubleValue: value };
+  if (Array.isArray(value)) return { arrayValue: { values: value.map(toFirestoreValue) } };
+  if (typeof value === "object") return { mapValue: { fields: toFirestoreFields(value) } };
+  return { stringValue: String(value) };
+}
+
+function toFirestoreFields(object) {
+  return Object.fromEntries(Object.entries(object).map(([key, value]) => [key, toFirestoreValue(value)]));
+}
+
+// The shop reads its products from Firestore, and the emulator starts empty: load the catalog
+// first (the "Bearer owner" token lets the emulator skip Security Rules for this setup).
+test.beforeAll(async ({ request }) => {
+  const headers = { Authorization: "Bearer owner" };
+  for (const product of catalog) {
+    const response = await request.patch(`${FIRESTORE}/products/${product.id}`, {
+      headers,
+      data: { fields: toFirestoreFields({ ...product, quantity: product.quantity ?? 10 }) }
+    });
+    expect(response.ok(), `Không nạp được sản phẩm ${product.id} vào Firestore Emulator: ${await response.text()}`).toBeTruthy();
+  }
+  await request.patch(`${FIRESTORE}/metadata/productCatalog`, { headers, data: { fields: toFirestoreFields({ catalogSeeded: true }) } });
+});
 
 const email = `e2e-${Date.now()}-${Math.random().toString(16).slice(2)}@example.test`;
 const password = "FlowerFlow-E2E-Password-1!";
@@ -12,6 +45,8 @@ test("customer can browse, add a flower, sign in, and place an order", async ({ 
   });
   page.on("pageerror", (error) => consoleErrors.push(error.message));
   page.on("requestfailed", (requestEvent) => {
+    // Requests cancelled because the test moved to the next page are not failures.
+    if (requestEvent.failure()?.errorText === "net::ERR_ABORTED") return;
     failedRequests.push(`${requestEvent.method()} ${requestEvent.url()}: ${requestEvent.failure()?.errorText}`);
   });
   await page.addInitScript(() => sessionStorage.setItem("flowerflowE2e", "true"));
@@ -22,6 +57,10 @@ test("customer can browse, add a flower, sign in, and place an order", async ({ 
   );
   expect(signup.ok(), `Firebase Auth Emulator account setup failed: ${await signup.text()}`).toBeTruthy();
 
+  // The static test server has no API: answer the catalog request the way api/products.js does.
+  await page.route("**/api/products", (route) => route.fulfill({
+    json: { products: catalog.map((product) => ({ ...product, quantity: product.quantity ?? 10 })) }
+  }));
   await page.route("**/api/orders", async (route) => {
     const body = route.request().postDataJSON();
     if (body.action === "quote") {
