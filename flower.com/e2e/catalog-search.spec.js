@@ -72,7 +72,12 @@ test("search, combined filters, sorting, URL restoration and empty state", async
   await page.locator("#color-filter").selectOption("đỏ");
   await expect(page.locator(".catalog-empty")).toContainText("Không tìm thấy sản phẩm");
   await expect(page.locator("#catalog-results-count")).toContainText("0 / 4");
-  await page.getByRole("link", { name: "Xóa bộ lọc và tìm kiếm" }).click();
+  // The link reloads the page, and on a phone the new page starts with the filters folded:
+  // wait for it before unfolding them, or the old (open) page is checked instead.
+  await Promise.all([
+    page.waitForEvent("load"),
+    page.getByRole("link", { name: "Xóa bộ lọc và tìm kiếm" }).click()
+  ]);
   await openFilters(page);
   await expect(names).toHaveCount(4);
   await page.locator("#price-min").fill("900000");
