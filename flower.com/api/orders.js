@@ -1,4 +1,5 @@
 const bouquet = require("../bouquet-options.js");
+const { validateReviewPhotos } = require("../lib/review-images");
 const { createHash, createHmac } = require("node:crypto");
 const { FieldValue, Timestamp } = require("firebase-admin/firestore");
 const { getAdminAuth, getAdminFirestore, sendError } = require("../lib/firebase-admin");
@@ -7,6 +8,7 @@ const { toVndPrice } = require("../product-store.js");
 
 const MAX_QUANTITY_PER_PRODUCT = 50;
 const QR_RESERVATION_MS = 30 * 60 * 1000;
+const VNPAY_RESERVATION_MS = 15 * 60 * 1000;
 const COD_RESERVATION_MS = 24 * 60 * 60 * 1000;
 const ORDER_LOOKUP_WINDOW_MS = 10 * 60 * 1000;
 const ORDER_LOOKUP_MAX_ATTEMPTS = 20;
@@ -101,6 +103,10 @@ async function expireOneReservation(db, orderRef, now) {
             || (order.paymentMethod === "qr" && order.paymentVerified === true)) return false;
 
         const items = aggregateItems(order.items);
+        const paymentAttemptRef = order.paymentMethod === "vnpay" && order.vnpTxnRef
+            ? db.collection("paymentTransactions").doc(String(order.vnpTxnRef))
+            : null;
+        const paymentAttempt = paymentAttemptRef ? await transaction.get(paymentAttemptRef) : null;
         const shouldRestoreStock = order.status !== "Đã giao";
         const productRefs = shouldRestoreStock
             ? items.map((item) => db.collection("products").doc(item.id))
@@ -111,6 +117,11 @@ async function expireOneReservation(db, orderRef, now) {
         const expiredAt = new Date(now.toMillis()).toISOString();
         const status = shouldRestoreStock ? "Đã hủy" : order.status;
         const location = shouldRestoreStock ? "Đơn hàng hết thời hạn giữ sản phẩm" : order.currentLocation || "";
+        const paymentExpiryChanges = order.paymentMethod === "qr" && order.paymentVerified !== true
+            ? { paymentStatus: "Hết hạn chờ thanh toán" }
+            : order.paymentMethod === "vnpay" && order.paymentVerified !== true
+                ? { paymentStatus: "that_bai", vnpResponseCode: "expired" }
+                : {};
         productSnapshots.forEach((snapshot, index) => {
             if (!snapshot.exists) return;
             const currentQuantity = Number(snapshot.data().quantity) || 0;
@@ -123,9 +134,7 @@ async function expireOneReservation(db, orderRef, now) {
             inventoryReserved: false,
             inventoryState: shouldRestoreStock ? "released" : "sold",
             reservationExpiredAt: Timestamp.fromMillis(now.toMillis()),
-            ...(order.paymentMethod === "qr" && order.paymentVerified !== true
-                ? { paymentStatus: "Hết hạn chờ thanh toán" }
-                : {}),
+            ...paymentExpiryChanges,
             trackingUpdatedAt: Timestamp.fromMillis(now.toMillis()),
             trackingHistory: [...(Array.isArray(order.trackingHistory) ? order.trackingHistory : []), {
                 status,
@@ -134,6 +143,12 @@ async function expireOneReservation(db, orderRef, now) {
                 updatedAt: expiredAt
             }]
         });
+        if (paymentAttempt?.exists && paymentAttempt.data().status === "pending") {
+            transaction.update(paymentAttemptRef, {
+                status: "expired",
+                processedAt: Timestamp.fromMillis(now.toMillis())
+            });
+        }
         return true;
     });
 }
@@ -192,6 +207,9 @@ function publicTrackingOrder(id, data) {
             total: Number(data.total) || 0,
             paymentReference: data.paymentReference || "",
             reservationExpiresAt: serializeTimestamp(data.reservationExpiresAt)
+        } : data.paymentMethod === "vnpay" ? {
+            paymentMethod: "vnpay",
+            paymentStatus: data.paymentStatus || "chua_thanh_toan"
         } : {}),
         privacyLimited: true
     };
@@ -267,7 +285,7 @@ function validateCheckout(body = {}) {
         || !/^[A-Za-z0-9_-]{1,80}$/.test(deliveryZoneId)
         || greetingCard.length > 300
         || !["none", "pastel", "classic"].includes(giftWrap)
-        || !["qr", "cod"].includes(paymentMethod)
+        || !["qr", "cod", "vnpay"].includes(paymentMethod)
         || !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(idempotencyKey)
         || promotionId.length > 100
         || !expectedTotals
@@ -405,6 +423,15 @@ async function quoteOrder(req, res) {
             const data = snapshot.exists ? snapshot.data() : {};
             const price = bouquet.price(toVndPrice(data.price), item.size);
             const stock = Number(data.quantity);
+            if (data.status === "hidden") {
+                shortages.push({
+                    id: item.id,
+                    title: String(data.title || "").slice(0, 120),
+                    available: 0,
+                    hidden: true
+                });
+                return { ...item, data, price, stock };
+            }
             if (!snapshot.exists || !Number.isFinite(price) || price <= 0 || !Number.isInteger(stock) || stock < bouquet.demand(quote.items, item.productId ?? item.id)) {
                 shortages.push({
                     id: item.id,
@@ -414,6 +441,14 @@ async function quoteOrder(req, res) {
             }
             return { ...item, data, price, stock };
         });
+        const unavailable = shortages.filter((item) => item.hidden);
+        if (unavailable.length) {
+            const names = unavailable.map((item) => `“${item.title || "Sản phẩm"}”`).join(", ");
+            return res.status(409).json({
+                code: "product-unavailable",
+                error: `${names} hiện đang tạm ẩn và không thể đặt hàng. Hãy chọn sản phẩm khác.`
+            });
+        }
         if (shortages.length) {
             const message = shortages.map((item) => item.available
                 ? `“${item.title || "Một sản phẩm"}” chỉ còn ${item.available} sản phẩm`
@@ -539,6 +574,11 @@ async function createOrder(req, res) {
                     throw error;
                 }
                 const data = snapshot.data();
+                if (data.status === "hidden") {
+                    const error = new Error(`“${String(data.title || "Sản phẩm").slice(0, 120)}” hiện đang tạm ẩn và không thể đặt hàng.`);
+                    error.code = "product-unavailable";
+                    throw error;
+                }
                 const price = bouquet.price(toVndPrice(data.price), item.size);
                 const stock = Number(data.quantity);
                 const title = String(data.title || "Một sản phẩm");
@@ -616,7 +656,9 @@ async function createOrder(req, res) {
                 shippingFee,
                 total,
                 paymentMethod: checkout.paymentMethod,
-                paymentStatus: checkout.paymentMethod === "qr" ? "Chờ xác minh thanh toán" : "Thanh toán khi nhận hàng",
+                paymentStatus: checkout.paymentMethod === "qr"
+                    ? "Chờ xác minh thanh toán"
+                    : checkout.paymentMethod === "vnpay" ? "chua_thanh_toan" : "Thanh toán khi nhận hàng",
                 paymentReference,
                 paidAt: "",
                 paymentVerified: false,
@@ -626,7 +668,8 @@ async function createOrder(req, res) {
                 inventoryReserved: true,
                 inventoryState: "reserved",
                 reservationExpiresAt: Timestamp.fromMillis(now.getTime() + (
-                    checkout.paymentMethod === "qr" ? QR_RESERVATION_MS : COD_RESERVATION_MS
+                    checkout.paymentMethod === "qr" ? QR_RESERVATION_MS
+                        : checkout.paymentMethod === "vnpay" ? VNPAY_RESERVATION_MS : COD_RESERVATION_MS
                 ))
             };
 
@@ -698,6 +741,24 @@ function reviewIdForOrder(orderId) {
     return createHash("sha256").update(`review:${orderId}`).digest("hex").slice(0, 40);
 }
 
+async function getOwnReview(req, res) {
+    const orderId = String(req.body?.orderId || "").trim();
+    if (!orderId || orderId.length > 128 || orderId.includes("/")) return sendError(res, 400, "invalid-argument", "Mã đơn không hợp lệ.");
+    try {
+        const user = await optionalAuthenticatedUser(req);
+        if (!user) return sendError(res, 401, "unauthenticated", "Đăng nhập để xem đánh giá của bạn.");
+        const db = getAdminFirestore();
+        const order = await db.collection("orders").doc(orderId).get();
+        if (!order.exists || order.data().uid !== user.uid) return sendError(res, 404, "order-not-found", "Không tìm thấy đơn trong tài khoản.");
+        const review = await db.collection("reviews").doc(reviewIdForOrder(orderId)).get();
+        return res.status(200).json({ review: review.exists ? { ...review.data(), id: review.id,
+            createdAt: serializeTimestamp(review.data().createdAt), orderId } : null });
+    } catch (error) {
+        if (String(error.code || "").startsWith("auth/")) return sendError(res, 401, "unauthenticated", "Phiên đăng nhập hết hạn.");
+        return sendError(res, 503, "review-unavailable", "Chưa tải được đánh giá. Hãy thử lại.");
+    }
+}
+
 // Only the signed-in owner of a delivered order may review it. Products and the shown name come
 // from the order, never from the browser.
 async function submitReview(req, res) {
@@ -706,6 +767,8 @@ async function submitReview(req, res) {
     const orderId = String(req.body?.orderId || "").trim();
     const rating = Number(req.body?.rating);
     const comment = String(req.body?.comment || "").trim();
+    const photos = validateReviewPhotos(req.body?.photos);
+    if (!photos) return sendError(res, 400, "invalid-photos", "Tối đa 3 ảnh JPEG đã tối ưu, mỗi ảnh không quá 120 KB và 1600px.");
     if (!orderId || orderId.length > 128 || orderId.includes("/")
         || !Number.isInteger(rating) || rating < 1 || rating > 5
         || !comment || comment.length > 1000) {
@@ -750,6 +813,10 @@ async function submitReview(req, res) {
             }
             const name = String(order.customerName || "").trim().slice(0, 80);
             const data = {
+                authorUid: user.uid,
+                verifiedPurchase: true,
+                moderationStatus: "pending",
+                photoIds: photos.map((_, index) => `${reviewRef.id}_${index}`),
                 productIds,
                 productName: items.map((item) => String(item?.title || "")).filter(Boolean).join(", ").slice(0, 500) || "Sản phẩm hoa",
                 // Customers cannot post under the shop's name.
@@ -759,6 +826,9 @@ async function submitReview(req, res) {
                 createdAt: FieldValue.serverTimestamp()
             };
             transaction.create(reviewRef, data);
+            photos.forEach((bytes, index) => transaction.create(db.collection("reviewImages").doc(`${reviewRef.id}_${index}`), {
+                reviewId: reviewRef.id, bytes, createdAt: FieldValue.serverTimestamp()
+            }));
             return data;
         });
         return res.status(201).json({ review: { ...review, id: reviewRef.id, createdAt: new Date().toISOString() } });
@@ -778,6 +848,7 @@ module.exports = async function handler(req, res) {
         if (req.body?.action === "quote") return quoteOrder(req, res);
         if (req.body?.action === "lookup") return lookupOrder(req, res);
         if (req.body?.action === "review") return submitReview(req, res);
+        if (req.body?.action === "review-get") return getOwnReview(req, res);
         return createOrder(req, res);
     }
     if (req.method !== "GET") {
@@ -825,6 +896,9 @@ module.exports.internals = {
     paymentReferenceFor,
     publicTrackingOrder,
     reviewIdForOrder,
+    expireReservations,
+    aggregateItems,
     MAX_ORDER_NOTE_LENGTH,
-    MAX_QUANTITY_PER_PRODUCT
+    MAX_QUANTITY_PER_PRODUCT,
+    VNPAY_RESERVATION_MS
 };

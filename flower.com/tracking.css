@@ -811,3 +811,7 @@ h1,
   .order-progress-number { grid-row: span 3; }
   .order-progress-step strong, .order-progress-step small, .order-progress-step time { grid-column: 2; }
 }
+.review-photos { display: flex; flex-wrap: wrap; gap: 12px; margin: 12px 0; }
+.review-photos img { width: 120px; height: 120px; object-fit: cover; border-radius: 10px; }
+#review-photos, #review-clear-photos { min-height: 44px; font-size: 16px; max-width: 100%; }
+#review-photo-help { color: #65564e; font-size: 13px; line-height: 1.6; }

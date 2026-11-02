@@ -2,7 +2,7 @@
 
 Tab **Tổng quan** giữ các chỉ số toàn thời gian hiện có và thêm bảng báo cáo. Tab **Doanh thu** mở riêng bảng báo cáo, dùng cùng bộ lọc và cùng dữ liệu Firestore đã được Admin tải. Không có API công khai mới hoặc thay đổi quyền truy cập.
 
-Chọn hôm nay, tháng, toàn thời gian hoặc đủ ngày bắt đầu/kết thúc rồi bấm **Áp dụng bộ lọc**. Múi giờ báo cáo là Việt Nam (`Asia/Ho_Chi_Minh`), gồm cả hai ngày biên. Ngưỡng tồn thấp mặc định 5 bó và có thể thay đổi.
+Chọn hôm nay, tháng, toàn thời gian hoặc đủ ngày bắt đầu/kết thúc rồi bấm **Áp dụng bộ lọc**. Nút **Đặt lại** đưa kỳ báo cáo về tháng hiện tại và ngưỡng tồn thấp về 5 bó. Múi giờ báo cáo là Việt Nam (`Asia/Ho_Chi_Minh`), gồm cả hai ngày biên. Ngưỡng tồn thấp mặc định 5 bó và có thể thay đổi.
 
 - **Doanh thu:** chỉ đơn hoàn thành (`Đã giao` và các tên tương thích) và đã thanh toán. QR bắt buộc `paymentVerified: true`; COD theo trạng thái thanh toán được xác nhận. Dùng tổng tiền net trên đơn, không cộng lại giá từng sản phẩm. Ngày ghi nhận ưu tiên ngày trả tiền, rồi ngày giao, rồi ngày đặt như quy tắc báo cáo trước đây.
 - **Thống kê đơn:** lọc theo ngày đặt, bao gồm cả đơn hủy/chưa hoàn thành. Doanh thu và số đơn đặt có thể khác kỳ vì chúng dùng hai mốc ngày khác nhau; giao diện nêu rõ.

@@ -43,6 +43,7 @@
             quantity: Number(product.quantity ?? product.stock ?? 10),
             image: product.image || "",
             images: Array.isArray(product.images) ? product.images.filter((image) => typeof image === "string" && image) : [],
+            status: product.status === "hidden" ? "hidden" : "active",
             category: String(product.category || "").trim(),
             categoryKey: String(product.categoryKey || "").trim(),
             sameDayDelivery: product.sameDayDelivery === true,
@@ -54,6 +55,41 @@
             ...(Array.isArray(product.occasions) ? { occasions: product.occasions.map(String) } : {}),
             description
         };
+    }
+
+    function findDuplicateProductImages(products, candidateImages, { baseUrl, excludeProductId = null } = {}) {
+        const normalizeImageUrl = (value) => {
+            try {
+                const url = new URL(String(value || "").trim(), baseUrl);
+                if (!["http:", "https:"].includes(url.protocol)) return null;
+                url.search = "";
+                url.hash = "";
+                return url.href;
+            } catch {
+                return null;
+            }
+        };
+        const currentImages = new Map();
+        const usedByOtherProducts = new Set();
+        (Array.isArray(products) ? products : []).forEach((product) => {
+            const imageUrls = [product.image, ...(Array.isArray(product.images) ? product.images : [])]
+                .map(normalizeImageUrl)
+                .filter(Boolean);
+            if (excludeProductId !== null && String(product.id) === String(excludeProductId)) {
+                imageUrls.forEach((url) => currentImages.set(url, (currentImages.get(url) || 0) + 1));
+                return;
+            }
+            imageUrls.forEach((url) => usedByOtherProducts.add(url));
+        });
+
+        const candidateCounts = new Map();
+        (Array.isArray(candidateImages) ? candidateImages : []).map(normalizeImageUrl).filter(Boolean)
+            .forEach((url) => candidateCounts.set(url, (candidateCounts.get(url) || 0) + 1));
+
+        return [...candidateCounts].filter(([url, count]) => {
+            const newlyAdded = count > (currentImages.get(url) || 0);
+            return newlyAdded && (count > 1 || usedByOtherProducts.has(url));
+        }).map(([url]) => url);
     }
 
     function deduplicateProducts(products) {
@@ -152,10 +188,25 @@
     }
 
     // The public server API avoids downloading the Firestore client just to read the catalog.
-    async function readProductsFromApi() {
+    async function readProductsFromApi(manage = false) {
         try {
-            const response = await fetch("/api/products", { headers: { Accept: "application/json" }, cache: "no-store" });
-            if (!response.ok) return null;
+            const headers = { Accept: "application/json" };
+            if (manage) {
+                const firebase = await getFirebaseApi();
+                if (!firebase) return null;
+                await firebase.auth.authStateReady();
+                const user = firebase.auth.currentUser;
+                if (!user || (await user.getIdTokenResult()).claims.admin !== true) return null;
+                headers.Authorization = `Bearer ${await user.getIdToken()}`;
+            }
+            const response = await fetch(`/api/products${manage ? "?manage=1" : ""}`, {
+                headers,
+                cache: "no-store"
+            });
+            if (!response.ok) {
+                console.warn("Máy chủ từ chối tải danh sách sản phẩm:", response.status);
+                return null;
+            }
             const result = await response.json();
             return Array.isArray(result.products) ? result.products.map((product) => normalizeProduct(product)) : null;
         } catch (error) {
@@ -165,11 +216,14 @@
     }
 
     async function readRemoteProducts() {
-        const apiProducts = await readProductsFromApi();
-        if (apiProducts?.length) {
-            firestoreReachable = false;
-            scheduleProductSubscription();
-            return apiProducts;
+        const isAdminPage = window.location.pathname.endsWith("/admin.html");
+        if (!isAdminPage) {
+            const apiProducts = await readProductsFromApi();
+            if (apiProducts !== null) {
+                firestoreReachable = false;
+                scheduleProductSubscription();
+                return apiProducts;
+            }
         }
 
         const firebase = await getFirebaseApi();
@@ -185,8 +239,14 @@
                 console.warn("Không đọc được sản phẩm trên Firestore:", error);
             }
         }
+        const apiProducts = await readProductsFromApi(isAdminPage);
+        if (apiProducts !== null) {
+            firestoreReachable = false;
+            scheduleProductSubscription();
+            return apiProducts;
+        }
         firestoreReachable = false;
-        return apiProducts ?? readProductsFromApi();
+        return null;
     }
 
     function normalizeCategories(categories) {
@@ -296,40 +356,68 @@
     // Writes only the fields the admin actually changed (compared with the copy they were
     // looking at), so saving one product never overwrites stock that orders changed meanwhile.
     async function writeRemoteProducts(products, previousProducts) {
+        if (typeof navigator !== "undefined" && navigator.onLine === false) {
+            throw new Error("Mất kết nối Firestore nên thay đổi chưa được lưu. Hãy kiểm tra mạng rồi thử lại.");
+        }
         const firebase = await getFirebaseApi();
         if (!firebase) return false;
         try {
             const { db, firestoreSdk } = firebase;
             const previousById = new Map(previousProducts.map((product) => [String(product.id), normalizeProduct(product)]));
             const keptIds = new Set();
-            const batch = firestoreSdk.writeBatch(db);
-            let writes = 0;
+            const operations = [];
             products.map(normalizeProduct).forEach((product) => {
                 const id = String(product.id);
                 keptIds.add(id);
                 const reference = firestoreSdk.doc(db, "products", id);
                 const previous = previousById.get(id);
                 if (!previous) {
-                    batch.set(reference, product);
-                    writes += 1;
+                    operations.push({ id, reference, product, previous });
                     return;
                 }
                 const changedFields = Object.fromEntries(Object.entries(product)
                     .filter(([key, value]) => key !== "id" && JSON.stringify(value) !== JSON.stringify(previous[key])));
                 if (!Object.keys(changedFields).length) return;
-                batch.update(reference, changedFields);
-                writes += 1;
+                operations.push({ id, reference, product, previous, changedFields });
             });
             previousById.forEach((_product, id) => {
                 if (keptIds.has(id)) return;
-                batch.delete(firestoreSdk.doc(db, "products", id));
-                writes += 1;
+                operations.push({ id, reference: firestoreSdk.doc(db, "products", id), previous: previousById.get(id), remove: true });
             });
-            if (writes) await batch.commit();
-            return true;
+            if (!operations.length) return products;
+            // Transactions fail offline rather than queuing an unacknowledged write. Read all
+            // affected documents before writing, preserving fields changed by other clients.
+            return await firestoreSdk.runTransaction(db, async (transaction) => {
+                const snapshots = await Promise.all(operations.map((operation) => transaction.get(operation.reference)));
+                const saved = new Map(products.map((product) => [String(product.id), product]));
+                operations.forEach((operation, index) => {
+                    const snapshot = snapshots[index];
+                    const current = snapshot.exists() ? normalizeProduct({ ...snapshot.data(), id: snapshot.id }) : null;
+                    const { id, reference, product, previous, changedFields, remove } = operation;
+                    const changedKeys = remove ? Object.keys(previous) : Object.keys(changedFields || {});
+                    if ((!previous && current) || (previous && (!current || changedKeys.some((key) =>
+                        JSON.stringify(current[key]) !== JSON.stringify(previous[key]))))) {
+                        throw Object.assign(new Error("Sản phẩm đã được thay đổi ở nơi khác. Hãy tải lại danh sách trước khi lưu."), { code: "product-changed" });
+                    }
+                    if (remove) transaction.delete(reference);
+                    else if (!previous) transaction.set(reference, product);
+                    else {
+                        transaction.update(reference, changedFields);
+                        saved.set(id, { ...current, ...changedFields });
+                    }
+                });
+                return [...saved.values()];
+            });
         } catch (error) {
             console.warn("Không ghi được sản phẩm lên Firestore:", error);
-            return false;
+            if (error.code === "product-changed") throw error;
+            if (error.code === "permission-denied") {
+                throw new Error("Tài khoản không có quyền quản lý sản phẩm. Chỉ Admin hoặc Owner được phép lưu.");
+            }
+            if (["unavailable", "network-request-failed", "deadline-exceeded", "cancelled"].includes(error.code)) {
+                throw new Error("Mất kết nối Firestore nên thay đổi chưa được lưu. Hãy kiểm tra mạng rồi thử lại.");
+            }
+            throw new Error("Firestore không lưu được thay đổi sản phẩm. Hãy thử lại sau.");
         }
     }
 
@@ -401,9 +489,9 @@
         const normalized = deduplicateProducts(products);
         const saved = await writeRemoteProducts(normalized, readProducts());
         if (!saved) {
-            throw new Error("Could not synchronize the product catalog with Firestore.");
+            throw new Error("Không kết nối được Firestore để lưu sản phẩm. Thay đổi chưa được lưu.");
         }
-        return cacheProducts(normalized);
+        return cacheProducts(saved);
     }
 
     // Loads products from Firestore. flower.json is only used once, by an admin, to seed an
@@ -559,6 +647,7 @@
         restoreCatalogProducts,
         readProducts,
         saveProducts,
+        findDuplicateProductImages,
         mergeCatalogProducts,
         normalizeProduct,
         toVndPrice,

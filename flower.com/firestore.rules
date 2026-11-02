@@ -10,9 +10,26 @@ service cloud.firestore {
     }
 
     match /products/{productId} {
+      function validFields(keys) {
+        let data = request.resource.data;
+        return (!keys.hasAny(['title']) || (data.title is string && data.title.size() <= 120 && data.title.matches('.*\\S.*')))
+          && (!keys.hasAny(['price']) || (data.price is int && data.price >= 1000))
+          && (!keys.hasAny(['description']) || (data.description is string && data.description.size() > 0 && data.description.size() <= 1000))
+          && (!keys.hasAny(['image']) || (data.image is string && data.image.size() > 0))
+          && (!keys.hasAny(['category']) || data.category is string)
+          && (!keys.hasAny(['images']) || (data.images is list && data.images.size() <= 8));
+      }
       allow get, list: if true;
-      allow create, update: if isAdmin()
-        && request.resource.data.quantity is int && request.resource.data.quantity >= 0;
+      allow create: if isAdmin()
+        && request.resource.data.keys().hasAll(['title', 'price', 'quantity', 'image', 'description'])
+        && validFields(request.resource.data.keys())
+        && request.resource.data.quantity is int && request.resource.data.quantity >= 0
+        && request.resource.data.get('status', 'active') in ['active', 'hidden'];
+      // Validate changed fields so legacy records can still receive stock/status corrections.
+      allow update: if isAdmin()
+        && validFields(request.resource.data.diff(resource.data).affectedKeys())
+        && request.resource.data.quantity is int && request.resource.data.quantity >= 0
+        && request.resource.data.get('status', 'active') in ['active', 'hidden'];
       allow delete: if isAdmin();
     }
 
@@ -24,8 +41,26 @@ service cloud.firestore {
     // Customers review through /api/orders (action "review"), which checks that the order is
     // theirs and delivered and allows one review per order.
     match /reviews/{reviewId} {
-      allow get, list: if true;
-      allow create, update, delete: if isAdmin();
+      allow get, list: if resource.data.get('moderationStatus', 'pending') == 'approved'
+        || isAdmin()
+        || (request.auth != null && resource.data.get('authorUid', '') == request.auth.uid);
+      allow create, delete: if false;
+      allow update: if isAdmin()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'reply', 'completedAt', 'moderationStatus', 'moderationReason', 'moderatedAt', 'moderatedBy'
+        ])
+        && request.resource.data.get('reply', '') is string
+        && request.resource.data.get('reply', '').size() <= 1000
+        && request.resource.data.get('moderationReason', '') is string
+        && request.resource.data.get('moderationReason', '').size() <= 500
+        && request.resource.data.get('moderationStatus', 'pending') in ['pending', 'approved', 'hidden']
+        && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['moderationStatus'])
+          || (request.resource.data.moderatedBy == request.auth.uid && request.resource.data.moderatedAt == request.time));
+    }
+
+    // Image bytes are immutable; the API checks the parent review's current visibility.
+    match /reviewImages/{photoId} {
+      allow read, write: if false;
     }
 
     match /messages/{messageId} {

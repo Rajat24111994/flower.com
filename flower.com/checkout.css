@@ -290,7 +290,7 @@ body {
     font-size: 11px;
 }
 
-.payment-qr-panel {
+.payment-online-panel {
     display: grid;
     justify-items: center;
     gap: 10px;
@@ -304,11 +304,9 @@ body {
     text-align: center;
 }
 
-.payment-qr-panel[hidden] { display: none; }
-.payment-qr-panel p { margin: 0; }
-.payment-qr-panel img { display: block; width: min(220px, 100%); height: auto; }
-.payment-qr-amount { color: #354a3f; font-weight: 700; }
-.payment-qr-note { max-width: 390px; color: #87938c; font-size: 12px; line-height: 1.5; }
+.payment-online-panel[hidden] { display: none; }
+.payment-online-panel p { margin: 0; }
+.payment-online-note { max-width: 390px; color: #87938c; font-size: 12px; line-height: 1.5; }
 
 .checkout-summary {
     min-width: 0;
@@ -1003,8 +1001,7 @@ body {
   .payment-option { min-height: 64px; gap: 10px; padding: 14px 10px; }
   .payment-option strong { font-size: 15px; }
   .payment-option small { font-size: 13px; line-height: 1.5; }
-  .payment-qr-panel img { max-width: 100%; height: auto; }
-  .payment-qr-amount, .checkout-message, .checkout-totals dd { overflow-wrap: anywhere; }
+  .checkout-message, .checkout-totals dd { overflow-wrap: anywhere; }
   .checkout-progress { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
   .checkout-progress-step { flex-direction: column; font-size: 12px; text-align: center; }
   .checkout-progress-line { display: none; }

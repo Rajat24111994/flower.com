@@ -18,11 +18,18 @@ let currentUser;
 let currentUserRole = "admin";
 let editingProductId = null;
 let productSearchTerm = "";
+let productFilterCategory = "";
+let productFilterStatus = "";
+let productFilterMinPrice = "";
+let productFilterMaxPrice = "";
+let productPriceSort = "";
+let isSavingProductForm = false;
 let ordersCache = [];
 let orderStoreError = null;
 let stopOrderSubscription = null;
 let stopPromotionSubscription = null;
 let reviewsCache = [];
+let reviewModerationFilter = "pending";
 let stopReviewSubscription = null;
 let categoriesCache = [];
 let stopCategorySubscription = null;
@@ -51,7 +58,7 @@ function isOrderPaid(order) {
    // confirmed it with "Xác nhận đã nhận tiền" (Security Rules: admin-only write).
    if (order.paymentMethod === "qr") return order.paymentVerified === true;
    const status = String(order.paymentStatus || "").trim().toLocaleLowerCase("vi");
-   return ["đã thanh toán", "paid"].includes(status);
+   return ["đã thanh toán", "paid", "da_thanh_toan"].includes(status);
 }
 
 // How the customer pays, shown next to the payment status (#48).
@@ -65,6 +72,14 @@ function getPaymentDisplayStatus(order) {
    if (order.paymentMethod === "qr") {
        if (order.paymentVerified === true) return "Đã thanh toán (đã đối soát)";
        return order.paymentStatus === "Hết hạn chờ thanh toán" ? order.paymentStatus : "Chờ cửa hàng xác minh";
+   }
+   if (order.paymentMethod === "vnpay") {
+       if (order.latePayment === true) return "Thanh toán muộn – cần kiểm tra";
+       return ({
+           chua_thanh_toan: "Chưa thanh toán VNPay",
+           da_thanh_toan: "Đã thanh toán VNPay",
+           that_bai: "Thanh toán VNPay thất bại"
+       })[order.paymentStatus] || "Chưa xác nhận VNPay";
    }
    return order.paymentStatus || (order.paymentMethod === "cod" ? "Thanh toán khi nhận hàng" : "Chưa xác nhận");
 }
@@ -294,6 +309,21 @@ function renderProductTab() {
    const searchTerm = productSearchTerm.trim().toLocaleLowerCase("vi");
    const filteredProducts = products.filter((item) =>
        `${item.title} ${item.description || ""} ${item.category || ""}`.toLocaleLowerCase("vi").includes(searchTerm)
+       && (!productFilterCategory || item.category === productFilterCategory)
+       && (productFilterMinPrice === "" || Number(item.price) >= productFilterMinPrice)
+       && (productFilterMaxPrice === "" || Number(item.price) <= productFilterMaxPrice)
+       && (!productFilterStatus
+           || (productFilterStatus === "hidden" && item.status === "hidden")
+           || (productFilterStatus === "out-of-stock" && item.status !== "hidden" && Number(item.quantity) <= 0)
+           || (productFilterStatus === "low-stock" && item.status !== "hidden" && Number(item.quantity) > 0 && Number(item.quantity) <= 5)
+           || (productFilterStatus === "active" && item.status !== "hidden" && Number(item.quantity) > 0))
+   );
+   if (productPriceSort) {
+       const direction = productPriceSort === "price-desc" ? -1 : 1;
+       filteredProducts.sort((left, right) => (Number(left.price) - Number(right.price)) * direction);
+   }
+   const lowStockProducts = products.filter((item) =>
+       item.status !== "hidden" && Number(item.quantity) > 0 && Number(item.quantity) <= 5
    );
    const editingProduct = products.find((item) => String(item.id) === String(editingProductId));
    main.innerHTML = `
@@ -302,11 +332,44 @@ function renderProductTab() {
                <h2>Quản lý kho hoa</h2>
                ${renderRestoreCatalogNotice()}
                <form id="product-search-form" class="product-search" role="search">
-                   <label class="visually-hidden" for="product-search">Tìm sản phẩm</label>
-                   <input id="product-search" name="search" type="search" placeholder="Tìm theo tên hoặc mô tả..." value="${escapeHtml(productSearchTerm)}">
-                   <button type="submit" class="secondary-btn">Tìm kiếm</button>
-                   ${productSearchTerm ? '<button type="button" class="clear-search" data-action="clear-search">Xóa tìm kiếm</button>' : ""}
+                   <label class="product-filter-field" for="product-search"><span>Tìm sản phẩm</span>
+                       <input id="product-search" name="search" type="search" placeholder="Tên, mô tả hoặc danh mục..." value="${escapeHtml(productSearchTerm)}">
+                   </label>
+                   <label class="product-filter-field" for="product-filter-category"><span>Danh mục</span>
+                       <select id="product-filter-category" name="category">
+                           <option value="">Tất cả danh mục</option>
+                           ${categories.map((category) => `<option value="${escapeHtml(category)}" ${productFilterCategory === category ? "selected" : ""}>${escapeHtml(category)}</option>`).join("")}
+                       </select>
+                   </label>
+                   <label class="product-filter-field" for="product-filter-status"><span>Tình trạng</span>
+                       <select id="product-filter-status" name="status">
+                           <option value="" ${productFilterStatus === "" ? "selected" : ""}>Tất cả tình trạng</option>
+                           <option value="active" ${productFilterStatus === "active" ? "selected" : ""}>Đang bán</option>
+                           <option value="hidden" ${productFilterStatus === "hidden" ? "selected" : ""}>Tạm ẩn</option>
+                           <option value="out-of-stock" ${productFilterStatus === "out-of-stock" ? "selected" : ""}>Hết hàng</option>
+                           <option value="low-stock" ${productFilterStatus === "low-stock" ? "selected" : ""}>Sắp hết hàng (≤ 5)</option>
+                       </select>
+                   </label>
+                   <label class="product-filter-field" for="product-filter-min-price"><span>Giá từ (VND)</span>
+                       <input id="product-filter-min-price" name="minPrice" type="number" min="0" step="1" inputmode="numeric" value="${escapeHtml(productFilterMinPrice)}">
+                   </label>
+                   <label class="product-filter-field" for="product-filter-max-price"><span>Giá đến (VND)</span>
+                       <input id="product-filter-max-price" name="maxPrice" type="number" min="0" step="1" inputmode="numeric" value="${escapeHtml(productFilterMaxPrice)}">
+                   </label>
+                   <label class="product-filter-field" for="product-filter-price-sort"><span>Sắp xếp theo giá</span>
+                       <select id="product-filter-price-sort" name="priceSort">
+                           <option value="" ${productPriceSort === "" ? "selected" : ""}>Mặc định</option>
+                           <option value="price-asc" ${productPriceSort === "price-asc" ? "selected" : ""}>Giá tăng dần</option>
+                           <option value="price-desc" ${productPriceSort === "price-desc" ? "selected" : ""}>Giá giảm dần</option>
+                       </select>
+                   </label>
+                   <button type="submit" class="secondary-btn">Lọc sản phẩm</button>
+                   ${productSearchTerm || productFilterCategory || productFilterStatus || productFilterMinPrice !== "" || productFilterMaxPrice !== "" || productPriceSort
+                       ? '<button type="button" class="clear-search" data-action="clear-search">Xóa bộ lọc</button>' : ""}
                </form>
+               <p id="product-search-message" class="product-search-message" role="alert" aria-live="assertive"></p>
+               ${renderSharedProductImageNotice(products)}
+               ${lowStockProducts.length ? `<p class="product-stock-alert" role="status"><strong>Cảnh báo tồn kho:</strong> ${lowStockProducts.length} sản phẩm đang bán chỉ còn từ 1–5 bó. Hãy chuẩn bị nhập thêm hoa.</p>` : ""}
                <div class="product-table-wrap">
                <table class="product-table">
                    <thead>
@@ -316,54 +379,101 @@ function renderProductTab() {
                            <th>Phân loại</th>
                            <th>Giá</th>
                            <th>Số lượng</th>
+                           <th>Trạng thái</th>
                            <th>Thao tác</th>
                        </tr>
                    </thead>
                    <tbody>
-                       ${filteredProducts.map((item) => `
-                           <tr>
-                               <td><img src="${escapeHtml(getSafeImageUrl(item.image) || "./images/flowerflow-logo.png")}" alt="${escapeHtml(getVietnameseProductName(item.title))}" width="64" height="64" loading="lazy" decoding="async"></td>
-                               <td>
-                                   <div><strong>${escapeHtml(getVietnameseProductName(item.title))}</strong></div>
-                                   <small>${escapeHtml(getVietnameseProductDescription(item.description || ""))}</small>
-                               </td>
-                               <td>${escapeHtml(item.category || "Chưa phân loại")}</td>
-                               <td>${formatVnd(item.price)}</td>
-                               <td><input class="qty-input" data-id="${escapeHtml(item.id)}" type="number" min="0" value="${Number(item.quantity) || 0}"></td>
-                               <td>
-                                   <div class="product-row-actions">
-                                       <button class="save-qty" data-id="${escapeHtml(item.id)}" type="button">Lưu tồn kho</button>
-                                       <button class="secondary-btn edit-product" data-id="${escapeHtml(item.id)}" type="button">Sửa</button>
-                                       <button class="delete-product" data-id="${escapeHtml(item.id)}" type="button">Xóa</button>
-                                   </div>
-                               </td>
-                           </tr>
-                       `).join("") || `<tr><td colspan="6" class="empty-state">${products.length ? "Không tìm thấy sản phẩm phù hợp." : "Chưa có sản phẩm nào."}</td></tr>`}
+                       ${filteredProducts.map((item) => {
+                           const quantity = Number(item.quantity) || 0;
+                           const status = item.status === "hidden" ? "hidden" : quantity === 0 ? "out-of-stock" : "active";
+                           const statusLabel = status === "hidden" ? "Tạm ẩn" : status === "out-of-stock" ? "Hết hàng" : "Đang bán";
+                           const imageUrl = getSafeImageUrl(item.image);
+                           const imageSource = String(item.image || "").trim();
+                           const productTitle = getVietnameseProductName(item.title);
+                           const imageMessage = imageUrl
+                               ? ""
+                               : imageSource
+                                   ? `Đường dẫn ảnh không hợp lệ cho ${escapeHtml(productTitle)}: ${escapeHtml(imageSource)}`
+                                   : `Chưa có ảnh: ${escapeHtml(productTitle)} (mã ${escapeHtml(item.id)})`;
+                           return `
+                               <tr>
+                                   <td>
+                                       <div class="product-image-thumb">
+                                           <img class="product-admin-image" src="${escapeHtml(imageUrl || "")}" data-product-id="${escapeHtml(item.id)}" data-image-url="${escapeHtml(imageSource)}" alt="${escapeHtml(productTitle)}" width="64" height="64" loading="lazy" decoding="async" ${imageUrl ? "" : "hidden"}>
+                                           <span class="product-image-thumb-error" ${imageUrl ? "hidden" : ""}>${imageMessage}</span>
+                                       </div>
+                                   </td>
+                                   <td>
+                                       <div><strong>${escapeHtml(getVietnameseProductName(item.title))}</strong></div>
+                                       <small>${escapeHtml(getVietnameseProductDescription(item.description || ""))}</small>
+                                   </td>
+                                   <td>${escapeHtml(item.category || "Chưa phân loại")}</td>
+                                   <td>${formatVnd(item.price)}</td>
+                                   <td><input class="qty-input" data-id="${escapeHtml(item.id)}" type="number" min="0" step="1" value="${quantity}" aria-label="Tồn kho ${escapeHtml(getVietnameseProductName(item.title))}"></td>
+                                   <td>
+                                       <span class="product-state product-state--${status}">${statusLabel}</span>
+                                       ${status === "active" && quantity <= 5 ? '<small class="product-low-stock">Sắp hết hàng</small>' : ""}
+                                   </td>
+                                   <td>
+                                       <div class="product-row-actions">
+                                           <button class="save-qty" data-id="${escapeHtml(item.id)}" type="button">Lưu tồn kho</button>
+                                           <button class="secondary-btn edit-product" data-id="${escapeHtml(item.id)}" type="button">Sửa</button>
+                                           <button class="secondary-btn" data-action="toggle-product-visibility" data-id="${escapeHtml(item.id)}" type="button">${item.status === "hidden" ? "Hiện bán lại" : "Tạm ẩn"}</button>
+                                           <button class="delete-product" data-id="${escapeHtml(item.id)}" type="button">Xóa</button>
+                                       </div>
+                                   </td>
+                               </tr>
+                           `;
+                       }).join("") || `<tr><td colspan="7" class="empty-state">${products.length ? "Không tìm thấy sản phẩm phù hợp." : "Chưa có sản phẩm nào."}</td></tr>`}
                    </tbody>
                </table>
                </div>
            </div>
            <div class="panel">
                <h2>${editingProduct ? "Chỉnh sửa sản phẩm" : "Thêm hoa mới"}</h2>
-               <form id="add-product-form" class="product-form">
-                   <input type="text" id="product-title" placeholder="Tên hoa" value="${escapeHtml(getVietnameseProductName(editingProduct?.title || ""))}" required maxlength="120">
-                   <input type="text" id="product-image" placeholder="Link hình ảnh (vd ./images/flower-01.webp hoặc https://...)" value="${escapeHtml(editingProduct?.image || "")}" required>
+               <form id="add-product-form" class="product-form" novalidate>
+                   <p id="product-form-message" class="product-form-message" role="alert" aria-live="assertive"></p>
+                   <label class="product-form-field" for="product-title"><span>Tên sản phẩm</span>
+                       <input type="text" id="product-title" value="${escapeHtml(getVietnameseProductName(editingProduct?.title || ""))}" required maxlength="120" autocomplete="off">
+                   </label>
+                   <label class="product-form-field" for="product-image"><span>Ảnh đại diện (URL)</span>
+                       <input type="url" id="product-image" placeholder="https://... hoặc ./images/..." value="${escapeHtml(editingProduct?.image || "")}" required>
+                   </label>
                    <label class="field-label" for="product-images">Ảnh bổ sung (mỗi dòng một đường dẫn, tối đa 8 ảnh)</label>
-                   <textarea id="product-images" rows="3">${escapeHtml((editingProduct?.images || []).join("\n"))}</textarea>
-                   <label class="field-label" for="product-meaning">Ý nghĩa loài hoa</label>
-                   <textarea id="product-meaning" maxlength="1000" placeholder="Để trống để dùng gợi ý theo loài hoa">${escapeHtml(editingProduct?.meaning || "")}</textarea>
-                   <label class="field-label" for="product-colors">Màu hoa (ngăn bằng dấu phẩy; để trống để nhận diện từ mô tả)</label>
-                   <input id="product-colors" maxlength="200" placeholder="đỏ, trắng" value="${escapeHtml((editingProduct?.colors || []).join(", "))}">
-                   <label class="field-label" for="product-occasions">Dịp tặng (ngăn bằng dấu phẩy)</label>
-                   <input id="product-occasions" maxlength="300" placeholder="sinh nhật, khai trương, tốt nghiệp" value="${escapeHtml((editingProduct?.occasions || []).join(", "))}">
-                   <label class="field-label" for="product-category">Phân loại sản phẩm</label>
-                   <select id="product-category">
-                       <option value="">Chưa phân loại</option>
+                   <textarea id="product-images" rows="3" placeholder="https://...">${escapeHtml((editingProduct?.images || []).join("\n"))}</textarea>
+                   <div id="product-image-previews" class="product-image-previews" aria-live="polite"></div>
+                   <label class="product-form-field" for="product-category"><span>Danh mục</span>
+                       <select id="product-category" required>
+                       <option value="" disabled ${editingProduct?.category || !editingProduct ? "selected" : ""}>Chọn danh mục</option>
+                       <option value="${window.FlowerProductAdminValidation.UNCATEGORIZED}" ${editingProduct && !editingProduct.category ? "selected" : ""}>Chưa phân loại</option>
                        ${categories.map((category) => `<option value="${escapeHtml(category)}" ${editingProduct?.category === category ? "selected" : ""}>${escapeHtml(category)}</option>`).join("")}
-                   </select>
-                   <input type="number" id="product-price" placeholder="Giá (VND)" value="${editingProduct ? escapeHtml(editingProduct.price) : ""}" min="1000" step="1000" required>
-                   <input type="number" id="product-quantity" placeholder="Số lượng" value="${editingProduct ? Number(editingProduct.quantity) || 0 : ""}" data-shown-value="${editingProduct ? Number(editingProduct.quantity) || 0 : ""}" min="0" step="1" required>
-                   <textarea id="product-description" placeholder="Mô tả sản phẩm" required maxlength="1000">${escapeHtml(editingProduct?.description || "")}</textarea>
+                       </select>
+                   </label>
+                   <label class="product-form-field" for="product-price"><span>Giá bán (VND)</span>
+                       <input type="number" id="product-price" value="${editingProduct ? escapeHtml(editingProduct.price) : ""}" min="1000" step="1000" required inputmode="numeric">
+                   </label>
+                   <label class="product-form-field" for="product-quantity"><span>Số lượng tồn kho</span>
+                       <input type="number" id="product-quantity" value="${editingProduct ? Number(editingProduct.quantity) || 0 : ""}" data-shown-value="${editingProduct ? Number(editingProduct.quantity) || 0 : ""}" min="0" step="1" required inputmode="numeric">
+                   </label>
+                   <label class="product-form-field" for="product-status"><span>Trạng thái bán</span>
+                       <select id="product-status">
+                           <option value="active" ${editingProduct?.status !== "hidden" ? "selected" : ""}>Đang bán</option>
+                           <option value="hidden" ${editingProduct?.status === "hidden" ? "selected" : ""}>Tạm ẩn</option>
+                       </select>
+                   </label>
+                   <label class="product-form-field" for="product-description"><span>Mô tả sản phẩm</span>
+                       <textarea id="product-description" required maxlength="1000">${escapeHtml(editingProduct?.description || "")}</textarea>
+                   </label>
+                   <label class="product-form-field" for="product-meaning"><span>Ý nghĩa loài hoa <small>(không bắt buộc)</small></span>
+                       <textarea id="product-meaning" maxlength="1000" placeholder="Để trống để dùng gợi ý theo loài hoa">${escapeHtml(editingProduct?.meaning || "")}</textarea>
+                   </label>
+                   <label class="product-form-field" for="product-colors"><span>Màu hoa <small>(ngăn bằng dấu phẩy)</small></span>
+                       <input id="product-colors" maxlength="200" placeholder="đỏ, trắng" value="${escapeHtml((editingProduct?.colors || []).join(", "))}">
+                   </label>
+                   <label class="product-form-field" for="product-occasions"><span>Dịp tặng <small>(ngăn bằng dấu phẩy)</small></span>
+                       <input id="product-occasions" maxlength="300" placeholder="sinh nhật, khai trương, tốt nghiệp" value="${escapeHtml((editingProduct?.occasions || []).join(", "))}">
+                   </label>
                    <div class="product-form-actions">
                        <button type="submit" class="submit-btn">${editingProduct ? "Lưu thay đổi" : "Thêm sản phẩm"}</button>
                        ${editingProduct ? '<button type="button" class="secondary-btn" data-action="cancel-edit">Hủy</button>' : ""}
@@ -372,6 +482,97 @@ function renderProductTab() {
            </div>
        </section>
    `;
+   const form = document.getElementById("add-product-form");
+   const searchForm = document.getElementById("product-search-form");
+   searchForm.addEventListener("input", () => {
+       document.getElementById("product-search-message").textContent = "";
+   });
+   form.addEventListener("input", (event) => {
+       event.target.setCustomValidity("");
+       event.target.setAttribute("aria-invalid", "false");
+       document.getElementById("product-form-message").textContent = "";
+       if (["product-image", "product-images"].includes(event.target.id)) renderProductImagePreviews();
+   });
+   renderProductImagePreviews();
+   main.querySelectorAll(".product-admin-image").forEach((image) => {
+       if (image.hidden) return;
+       image.addEventListener("error", () => {
+           image.hidden = true;
+           const productName = image.alt || "Sản phẩm";
+           const imageUrl = image.dataset.imageUrl || "chưa có đường dẫn";
+           image.nextElementSibling.textContent = `Không tải được ảnh cho ${productName} (mã ${image.dataset.productId || "không rõ"}): ${imageUrl}`;
+           image.nextElementSibling.hidden = false;
+       }, { once: true });
+   });
+}
+
+function renderSharedProductImageNotice(products) {
+   const imageGroups = new Map();
+   products.forEach((product) => {
+       const image = String(product.image || "").trim();
+       if (!image) return;
+       if (!imageGroups.has(image)) imageGroups.set(image, []);
+       imageGroups.get(image).push(product);
+   });
+   const sharedGroups = [...imageGroups.entries()].filter(([, items]) => items.length > 1);
+   if (!sharedGroups.length) return "";
+   const sharedProductCount = sharedGroups.reduce((count, [, items]) => count + items.length, 0);
+   return `
+       <details class="product-image-audit">
+           <summary>Kiểm tra ảnh dùng chung: ${sharedProductCount} sản phẩm · ${sharedGroups.length} đường dẫn ảnh</summary>
+           <p>Catalog đang gán cùng một ảnh đại diện cho nhiều sản phẩm. Ảnh được giữ nguyên; hãy bổ sung ảnh gốc riêng nếu đây không phải chủ ý.</p>
+           <ul>
+               ${sharedGroups.map(([image, items]) => `
+                   <li><code>${escapeHtml(image)}</code>
+                       <ul>${items.map((item) => `<li>${escapeHtml(getVietnameseProductName(item.title))} (mã ${escapeHtml(item.id)})</li>`).join("")}</ul>
+                   </li>
+               `).join("")}
+           </ul>
+       </details>
+   `;
+}
+
+function renderProductImagePreviews() {
+   const previewContainer = document.getElementById("product-image-previews");
+   const primaryImage = document.getElementById("product-image");
+   const extraImages = document.getElementById("product-images");
+   if (!previewContainer || !primaryImage || !extraImages) return;
+   previewContainer.replaceChildren();
+   const entries = [
+       { label: "Ảnh đại diện", value: primaryImage.value.trim() },
+       ...extraImages.value.split(/\r?\n/).map((value, index) => ({ label: `Ảnh phụ ${index + 1}`, value: value.trim() }))
+           .filter((entry) => entry.value)
+   ].filter((entry) => entry.value);
+
+   entries.forEach((entry) => {
+       const card = document.createElement("div");
+       card.className = "product-image-preview";
+       const label = document.createElement("span");
+       label.textContent = entry.label;
+       const imageUrl = getSafeImageUrl(entry.value);
+       if (imageUrl) {
+           const image = document.createElement("img");
+           image.src = imageUrl;
+           image.alt = `Xem trước ${entry.label.toLocaleLowerCase("vi")}`;
+           image.loading = "lazy";
+           image.addEventListener("error", () => {
+               image.hidden = true;
+               card.classList.add("image-unavailable");
+               label.textContent = `${entry.label} · Không tải được ảnh`;
+           }, { once: true });
+           card.append(image);
+       } else {
+           card.classList.add("image-unavailable");
+           label.textContent = `${entry.label} · Đường dẫn không hợp lệ`;
+       }
+       card.append(label);
+       previewContainer.append(card);
+   });
+   if (!entries.length) {
+       const empty = document.createElement("small");
+       empty.textContent = "Ảnh xem trước sẽ xuất hiện khi nhập URL.";
+       previewContainer.append(empty);
+   }
 }
 
 function renderCategoriesTab() {
@@ -727,12 +928,18 @@ async function saveAdminProducts(products) {
        return true;
    } catch (error) {
        console.error("Could not synchronize product catalog:", error);
-       alert("Không thể đồng bộ thay đổi sản phẩm với kho dữ liệu chung. Vui lòng thử lại.");
-       return false;
+      const reason = error.code === "permission-denied"
+          ? "Tài khoản không có quyền quản lý sản phẩm."
+          : ["unavailable", "network-request-failed", "deadline-exceeded"].includes(error.code)
+              ? "Mất kết nối Firestore. Dữ liệu chưa được lưu; hãy kiểm tra mạng rồi thử lại."
+              : error.message || "Vui lòng kiểm tra kết nối và thử lại.";
+      alert(`Không thể lưu thay đổi sản phẩm. ${reason}`);
+      return false;
    }
 }
 
 function renderCompletionAction(type, record) {
+   if (type === "reviews") return "";
    const attributes = `data-record-type="${escapeHtml(type)}" data-record-id="${escapeHtml(record.id)}"`;
    const deleteButton = `<button class="delete-record" ${attributes} type="button">Xóa</button>`;
    if (record.completedAt) {
@@ -1034,6 +1241,17 @@ function renderReviewCard(review, showCompletionAction = true) {
 
            <div class="section-label">Nội dung đánh giá</div>
            <div class="detail-block quote-box">${escapeHtml(review.comment || "Không có nhận xét")}</div>
+           <p class="review-original-note">${review.verifiedPurchase === true ? "Khách đã mua hàng" : "Đánh giá cũ"} · Nội dung gốc chỉ đọc. Quản trị không được sửa sao, nhận xét hoặc ảnh.</p>
+           <p><strong>Kiểm duyệt:</strong> ${escapeHtml(({ pending: "Chờ duyệt", approved: "Đã duyệt", hidden: "Đã ẩn" })[review.moderationStatus || "pending"] || "Chờ duyệt")}</p>
+           <div class="review-admin-photos" data-review-gallery="${escapeHtml(review.id)}"></div>
+           ${review.photoIds?.length ? `<button type="button" class="secondary-btn" data-review-photos="${escapeHtml(review.id)}">Xem ${review.photoIds.length} ảnh khách gửi</button>` : ""}
+           <label class="field-label">Lý do kiểm duyệt (không bắt buộc)
+               <input class="review-moderation-reason" data-review-reason="${escapeHtml(review.id)}" maxlength="500" value="${escapeHtml(review.moderationReason || "")}">
+           </label>
+           <div class="review-moderation-actions">
+               <button type="button" class="submit-btn" data-review-moderation="approved" data-review-id="${escapeHtml(review.id)}">Duyệt hiển thị</button>
+               <button type="button" class="secondary-btn" data-review-moderation="hidden" data-review-id="${escapeHtml(review.id)}">Ẩn đánh giá</button>
+           </div>
 
            <div class="reply-box">
                <label class="field-label">Phản hồi của bạn</label>
@@ -1058,6 +1276,7 @@ function renderReviewSummary(review) {
            <div class="completed-order-info">
                <strong>${escapeHtml(review.customerName)} · ${escapeHtml(getVietnameseProductName(review.productName))}</strong>
                <span class="rating-value">${"★".repeat(Number(review.rating || 0))}${"☆".repeat(5 - Number(review.rating || 0))}</span>
+               <span>${escapeHtml(({ pending: "Chờ duyệt", approved: "Đã duyệt", hidden: "Đã ẩn" })[review.moderationStatus || "pending"] || "Chờ duyệt")}</span>
                <span class="record-summary-preview"><b>Đánh giá:</b> ${escapeHtml(review.comment || "Không có nhận xét")}</span>
                <span><b>Thời gian:</b> ${new Date(review.createdAt).toLocaleString("vi-VN")}</span>
            </div>
@@ -1073,17 +1292,41 @@ function renderReviewSummary(review) {
 
 function renderReviewsTab() {
    const reviews = getReviews();
-   const activeReviews = reviews.filter((review) => !review.completedAt);
-   const completedReviews = reviews.filter((review) => review.completedAt);
+   const visible = reviews.filter((review) => reviewModerationFilter === "all" || (review.moderationStatus || "pending") === reviewModerationFilter);
    main.innerHTML = `
        <section class="panel">
            <h2>Đánh giá khách hàng</h2>
+           <label for="review-moderation-filter">Lọc kiểm duyệt</label>
+           <select id="review-moderation-filter">
+               ${[["pending", "Chờ duyệt"], ["approved", "Đã duyệt"], ["hidden", "Đã ẩn"], ["all", "Tất cả"]].map(([value, label]) => `<option value="${value}" ${reviewModerationFilter === value ? "selected" : ""}>${label}</option>`).join("")}
+           </select>
+           <p>Chỉ đánh giá đã duyệt xuất hiện trên sản phẩm. Trả lời của cửa hàng tách riêng với nội dung khách.</p>
            <div class="list-stack">
-               ${activeReviews.length ? activeReviews.map(renderActiveReviewSummary).join("") : '<div class="empty-state">Không có đánh giá nào cần xử lý.</div>'}
+               ${visible.length ? visible.map(renderActiveReviewSummary).join("") : '<div class="empty-state">Không có đánh giá phù hợp.</div>'}
            </div>
-           ${renderCompletedSection(completedReviews, renderCompletedReviewSummary, "đánh giá")}
        </section>
    `;
+   document.getElementById("review-moderation-filter").addEventListener("change", (event) => {
+       reviewModerationFilter = event.target.value;
+       renderReviewsTab();
+   });
+}
+
+async function moderateReview(id, status) {
+   const reason = [...main.querySelectorAll("[data-review-reason]")].find((input) => input.dataset.reviewReason === id)?.value.trim() || "";
+   try { await window.FlowerReviewStore.update(id, { moderationStatus: status, moderationReason: reason }); }
+   catch (error) { alert(error.message || "Chưa lưu được kiểm duyệt. Hãy thử lại."); }
+}
+async function loadReviewPhotos(id) {
+   const review = getReviews().find((item) => item.id === id);
+   const gallery = [...main.querySelectorAll("[data-review-gallery]")].find((element) => element.dataset.reviewGallery === id);
+   if (!review || !gallery) return;
+   try {
+       const urls = await window.FlowerReviewStore.loadPhotos(review);
+       gallery.replaceChildren(...urls.map((url, index) => {
+           const image = document.createElement("img"); image.src = url; image.alt = `Ảnh khách gửi ${index + 1}`; return image;
+       }));
+   } catch (error) { gallery.textContent = error.message || "Chưa tải được ảnh."; }
 }
 
 function renderMessageCard(message, showCompletionAction = true) {
@@ -1195,52 +1438,99 @@ async function saveProductQuantity(id, value) {
 
 async function addNewProduct(event) {
    event.preventDefault();
-   const title = document.getElementById("product-title").value.trim();
-   const image = document.getElementById("product-image").value.trim();
-   const safeImageUrl = getStoredImageUrl(image);
-   const imageInputs = document.getElementById("product-images").value.split(/\r?\n/).map((value) => value.trim()).filter(Boolean);
-   const images = [...new Set(imageInputs.map(getStoredImageUrl))];
-   const meaning = document.getElementById("product-meaning").value.trim();
-   const tags = (id) => [...new Set(document.getElementById(id).value.split(",").map((value) => value.trim()).filter(Boolean))];
-   const colors = tags("product-colors");
-   const occasions = tags("product-occasions");
-   if (imageInputs.length > 8 || images.some((value) => !value)) {
-       alert("Nhập tối đa 8 đường dẫn ảnh hợp lệ, mỗi dòng một ảnh.");
+   if (isSavingProductForm) return;
+   const form = document.getElementById("add-product-form");
+   const read = (id) => document.getElementById(id).value;
+   const { product: inputProduct, errors } = window.FlowerProductAdminValidation.validateProductInput({
+       title: read("product-title"),
+       image: read("product-image"),
+       images: read("product-images"),
+       meaning: read("product-meaning"),
+       colors: read("product-colors"),
+       occasions: read("product-occasions"),
+       category: read("product-category"),
+       price: read("product-price"),
+       quantity: read("product-quantity"),
+       description: read("product-description"),
+       status: read("product-status")
+   }, getCategories());
+   const fields = {
+       title: "product-title",
+       image: "product-image",
+       images: "product-images",
+       category: "product-category",
+       price: "product-price",
+       quantity: "product-quantity",
+       description: "product-description",
+       meaning: "product-meaning",
+       colors: "product-colors",
+       occasions: "product-occasions",
+       status: "product-status"
+   };
+   Object.entries(fields).forEach(([key, id]) => {
+       document.getElementById(id).setCustomValidity(errors[key] || "");
+       document.getElementById(id).setAttribute("aria-invalid", String(Boolean(errors[key])));
+   });
+   if (!inputProduct) {
+       const firstError = Object.keys(errors)[0];
+       const field = document.getElementById(fields[firstError]);
+       document.getElementById("product-form-message").textContent = errors[firstError];
+       field.focus();
        return;
    }
-    const priceInVnd = Number(document.getElementById("product-price").value);
-   const quantity = parseStockQuantity(document.getElementById("product-quantity").value);
-   const description = document.getElementById("product-description").value.trim();
-   const category = document.getElementById("product-category").value;
-
-    if (!title || !safeImageUrl || !description || !Number.isFinite(priceInVnd) || priceInVnd < 1) {
-       alert("Vui lòng nhập đầy đủ thông tin.");
-       return;
-   }
-   if (!Number.isSafeInteger(priceInVnd) || priceInVnd < 1000) {
-       alert("Giá phải là số nguyên VND từ 1.000 trở lên (ví dụ 450000).");
-       return;
-   }
-   if (quantity === null) {
-       alert("Số lượng phải là số nguyên từ 0 trở lên (ví dụ 0, 5, 12).");
-       return;
-   }
-
+   const productData = {
+       ...inputProduct,
+       image: getStoredImageUrl(inputProduct.image),
+       images: inputProduct.images.map(getStoredImageUrl)
+   };
    const products = getProducts();
-    const productData = { title, image: safeImageUrl, images, meaning, colors, occasions, price: priceInVnd, quantity, description, category };
+   const duplicateImages = FlowerInventory.findDuplicateProductImages(
+       products,
+       [productData.image, ...productData.images],
+       {
+           baseUrl: window.location.href,
+           excludeProductId: editingProductId
+       }
+   );
+   if (duplicateImages.length) {
+       const imageInput = document.getElementById("product-image");
+       const message = "Hình ảnh này đã được sử dụng hoặc bị lặp trong sản phẩm. Hãy chọn đường dẫn ảnh khác.";
+       imageInput.setCustomValidity(message);
+       imageInput.setAttribute("aria-invalid", "true");
+       document.getElementById("product-form-message").textContent = message;
+       imageInput.focus();
+       return;
+   }
    const isEditing = editingProductId !== null;
+   if (isEditing && !products.some((item) => String(item.id) === String(editingProductId))) {
+       alert("Sản phẩm đã bị xóa ở nơi khác. Hãy tải lại danh sách.");
+       return;
+   }
    // Keep the live stock if the admin did not touch the quantity: orders may have changed it
    // since the form was opened.
    const quantityInput = document.getElementById("product-quantity");
    if (isEditing && quantityInput.value === quantityInput.dataset.shownValue) delete productData.quantity;
    const nextProducts = isEditing
        ? products.map((item) => String(item.id) === String(editingProductId) ? { ...item, ...productData } : item)
-       : [...products, { id: Date.now(), ...productData }];
+       : [...products, { id: crypto.randomUUID(), ...productData }];
 
-    if (!await saveAdminProducts(nextProducts)) return;
-   editingProductId = null;
-   alert(isEditing ? "Cập nhật sản phẩm thành công!" : "Thêm sản phẩm thành công!");
-   renderProductTab();
+   const submitButton = form.querySelector('button[type="submit"]');
+   const originalButtonText = submitButton.textContent;
+   isSavingProductForm = true;
+   submitButton.disabled = true;
+   submitButton.textContent = "Đang lưu...";
+   try {
+       if (!await saveAdminProducts(nextProducts)) return;
+       editingProductId = null;
+       alert(isEditing ? "Cập nhật sản phẩm thành công!" : "Thêm sản phẩm thành công!");
+       renderProductTab();
+   } finally {
+       isSavingProductForm = false;
+       if (form.isConnected) {
+           submitButton.disabled = false;
+           submitButton.textContent = originalButtonText;
+       }
+   }
 }
 
 async function deleteProduct(id) {
@@ -1250,6 +1540,21 @@ async function deleteProduct(id) {
    const products = getProducts().filter((item) => String(item.id) !== String(id));
     if (!await saveAdminProducts(products)) return;
    if (String(editingProductId) === String(id)) editingProductId = null;
+   renderProductTab();
+}
+
+async function toggleProductVisibility(id) {
+   const product = getProductById(id);
+   if (!product) return;
+   const status = product.status === "hidden" ? "active" : "hidden";
+   const prompt = status === "hidden"
+       ? `Tạm ẩn “${getVietnameseProductName(product.title)}” khỏi cửa hàng khách hàng?`
+       : `Hiện bán lại “${getVietnameseProductName(product.title)}” trên cửa hàng?`;
+   if (!window.confirm(prompt)) return;
+   const products = getProducts().map((item) =>
+       String(item.id) === String(id) ? { ...item, status } : item
+   );
+   if (!await saveAdminProducts(products)) return;
    renderProductTab();
 }
 
@@ -1377,7 +1682,7 @@ async function deleteAdminRecord(type, id) {
        ? "Bạn có chắc muốn xóa đơn hàng này không? Nếu đơn còn đang giữ hàng, số lượng sẽ được trả lại kho. Không thể hoàn tác."
        : type === "messages"
            ? "Ẩn lời nhắn này khỏi danh sách phản hồi? Ghi chú gốc vẫn được giữ trong đơn hàng."
-           : `Bạn có chắc muốn xóa ${record.label} này không? Không thể hoàn tác.`;
+           : "Ẩn đánh giá khỏi sản phẩm? Nội dung gốc vẫn được lưu, không bị sửa hoặc xóa.";
    if (!window.confirm(warning)) return;
 
    if (type === "orders") {
@@ -1646,6 +1951,10 @@ if (currentUserRole === "owner") {
 }
 
 main.addEventListener("click", (event) => {
+   const moderation = event.target.closest("[data-review-moderation]");
+   if (moderation) { void moderateReview(moderation.dataset.reviewId, moderation.dataset.reviewModeration); return; }
+   const reviewPhotos = event.target.closest("[data-review-photos]");
+   if (reviewPhotos) { void loadReviewPhotos(reviewPhotos.dataset.reviewPhotos); return; }
    const reloadDeliveryZones = event.target.closest("[data-delivery-zone-reload]");
    if (reloadDeliveryZones) {
        deliveryZonesLoadError = "";
@@ -1728,7 +2037,16 @@ main.addEventListener("click", (event) => {
    }
    if (actionButton?.dataset.action === "clear-search") {
        productSearchTerm = "";
+       productFilterCategory = "";
+       productFilterStatus = "";
+       productFilterMinPrice = "";
+       productFilterMaxPrice = "";
+       productPriceSort = "";
        renderProductTab();
+       return;
+   }
+   if (actionButton?.dataset.action === "toggle-product-visibility") {
+       void toggleProductVisibility(actionButton.dataset.id);
        return;
    }
    if (actionButton?.dataset.action === "cancel-edit") {
@@ -1813,7 +2131,29 @@ main.addEventListener("submit", (event) => {
 
    if (event.target && event.target.id === "product-search-form") {
        event.preventDefault();
-       productSearchTerm = new FormData(event.target).get("search") || "";
+       const formData = new FormData(event.target);
+       const minPriceText = String(formData.get("minPrice") || "").trim();
+       const maxPriceText = String(formData.get("maxPrice") || "").trim();
+       const minPrice = minPriceText === "" ? "" : Number(minPriceText);
+       const maxPrice = maxPriceText === "" ? "" : Number(maxPriceText);
+       const priceMessage = document.getElementById("product-search-message");
+       if (event.target.elements.minPrice.validity.badInput || event.target.elements.maxPrice.validity.badInput
+           || (minPrice !== "" && (!Number.isSafeInteger(minPrice) || minPrice < 0))
+           || (maxPrice !== "" && (!Number.isSafeInteger(maxPrice) || maxPrice < 0))) {
+           priceMessage.textContent = "Khoảng giá phải là số nguyên VND không âm.";
+           return;
+       }
+       if (minPrice !== "" && maxPrice !== "" && minPrice > maxPrice) {
+           priceMessage.textContent = "Giá từ không được lớn hơn giá đến.";
+           event.target.elements.minPrice.focus();
+           return;
+       }
+       productSearchTerm = String(formData.get("search") || "");
+       productFilterCategory = String(formData.get("category") || "");
+       productFilterStatus = String(formData.get("status") || "");
+       productFilterMinPrice = minPrice;
+       productFilterMaxPrice = maxPrice;
+       productPriceSort = String(formData.get("priceSort") || "");
        renderProductTab();
    }
 
@@ -2038,6 +2378,7 @@ function rerenderKeepingEdits(render) {
 
 function refreshProductTabKeepingEdits() {
    rerenderKeepingEdits(renderProductTab);
+   renderProductImagePreviews();
 }
 
 window.addEventListener("storage", (event) => {

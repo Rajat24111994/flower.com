@@ -413,6 +413,32 @@ function renderProductReviews(reviews) {
     comment.textContent = review.comment || ""
     meta.append(name, stars, date)
     card.append(meta, comment)
+    if (review.verifiedPurchase === true) {
+      const verified = document.createElement("p")
+      verified.className = "review-verified"
+      verified.textContent = "Đã mua hàng"
+      card.append(verified)
+    }
+    if (Array.isArray(review.photoIds) && review.photoIds.length) {
+      const photos = document.createElement("div")
+      photos.className = "review-photos"
+      review.photoIds.forEach((id, index) => {
+        const link = document.createElement("a")
+        link.href = window.FlowerReviewStore.photoUrl(id)
+        link.target = "_blank"
+        link.rel = "noopener"
+        link.setAttribute("aria-label", `Xem ảnh đánh giá ${index + 1}`)
+        const image = document.createElement("img")
+        image.src = link.href
+        image.alt = `Ảnh khách hàng sau mua ${index + 1}`
+        image.loading = "lazy"
+        image.width = 120
+        image.height = 120
+        link.append(image)
+        photos.append(link)
+      })
+      card.append(photos)
+    }
     const replyText = String(review.reply || "").trim()
     if (replyText) {
       const reply = document.createElement("p")
@@ -930,7 +956,7 @@ searchInput.addEventListener("input", searchCatalog)
 
 window.addEventListener("storage", (event) => {
   if (event.key === "flowerInventory") {
-    products = FlowerInventory.readProducts()
+    products = FlowerInventory.readProducts().filter((product) => product.status !== "hidden")
     populateFlowerCategoryFilter()
     renderProducts()
     navigateToProductDetail()
@@ -953,7 +979,7 @@ window.addEventListener("storage", (event) => {
 })
 
 window.addEventListener("flowerinventorychange", (event) => {
-  products = event.detail || FlowerInventory.readProducts()
+  products = (event.detail || FlowerInventory.readProducts()).filter((product) => product.status !== "hidden")
   populateFlowerCategoryFilter()
   renderProducts()
   navigateToProductDetail()
@@ -971,7 +997,7 @@ async function fetchAndRenderProducts() {
     setRelatedFlowersStatus("Đang tìm những bó hoa phù hợp...", "loading")
   }
   try {
-    products = await FlowerInventory.initialize()
+    products = (await FlowerInventory.initialize()).filter((product) => product.status !== "hidden")
     if (!products.length) throw new Error("Kho sản phẩm hiện chưa có dữ liệu hoặc dịch vụ danh mục đang không khả dụng.")
     populateFlowerCategoryFilter()
     renderProducts()

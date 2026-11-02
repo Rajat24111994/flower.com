@@ -20,6 +20,19 @@ test("báo giá trả tổng tiền, giá từng sản phẩm và tồn kho", as
     assert.equal(quote.body.items[0].stock, 10);
 });
 
+test("sản phẩm tạm ẩn không được báo giá hoặc đặt hàng", async () => {
+    await h.db().doc("products/1").update({ status: "hidden" });
+    const quote = await h.callApi("orders", { body: { action: "quote", items: [{ id: "1", quantity: 1 }] } });
+    assert.equal(quote.status, 409);
+    assert.equal(quote.body.code, "product-unavailable");
+    assert.match(quote.body.error, /tạm ẩn/);
+
+    const result = await h.placeOrder({ items: [{ id: "1", quantity: 1 }] });
+    assert.equal(result.status, 409);
+    assert.equal(result.body.code, "product-unavailable");
+    assert.equal(await h.stockOf("1"), 10);
+});
+
 test("đặt đơn COD: lưu đơn, trừ kho, trạng thái chờ xác nhận", async () => {
     const result = await h.placeOrder({ items: [{ id: "1", quantity: 3 }] });
     assert.equal(result.status, 201, JSON.stringify(result.body));

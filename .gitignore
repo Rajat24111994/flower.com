@@ -1,5 +1,6 @@
 # Dependencies
 node_modules/
+.tools/
 
 # Environment variables and Vercel local config
 .env*

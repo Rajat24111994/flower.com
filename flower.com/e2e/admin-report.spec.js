@@ -67,6 +67,20 @@ test("dashboard filters, revenue, stock, live refresh and Excel snapshot", async
   await page.locator("#dashboard_page").click();
   await expect(page.locator(".dashboard")).toBeVisible();
   await expect(page.locator("#report-period-label")).toContainText("2026-11-03");
+  await page.locator("#revenue_page").click();
+  await page.locator("#report-reset").click();
+  const currentMonth = await page.evaluate(() => {
+    const parts = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Ho_Chi_Minh",
+      year: "numeric",
+      month: "2-digit"
+    }).formatToParts(new Date());
+    return `${parts.find((part) => part.type === "year").value}-${parts.find((part) => part.type === "month").value}`;
+  });
+  await expect(page.locator('[name="period"]')).toHaveValue("month");
+  await expect(page.locator('[name="month"]')).toHaveValue(currentMonth);
+  await expect(page.locator('[name="lowStock"]')).toHaveValue("5");
+  await expect(page.locator("#report-period-label")).toContainText(`${currentMonth}-01`);
   expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
   expect(errors).toEqual([]);
 });

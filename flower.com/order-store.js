@@ -18,6 +18,72 @@
     }
   }
 
+  async function paymentRequest(options) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 20000);
+    try {
+      const response = await fetch(options.url || "/api/payments", {
+        method: options.method || "GET",
+        headers: options.headers || { Accept: "application/json" },
+        ...(options.body ? { body: options.body } : {}),
+        signal: controller.signal
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        const error = new Error(result.error || "Không thể xử lý thanh toán.");
+        error.code = result.code || "payment-service-unavailable";
+        throw error;
+      }
+      return result;
+    } catch (cause) {
+      if (typeof cause?.code === "string") throw cause;
+      const error = new Error("Không nhận được phản hồi từ dịch vụ thanh toán. Vui lòng thử lại.");
+      error.code = "payment-network-error";
+      error.cause = cause;
+      throw error;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  function paymentUrlFrom(result) {
+    let url;
+    try {
+      url = new URL(result.paymentUrl);
+    } catch {
+      throw new Error("Dịch vụ thanh toán trả về liên kết không hợp lệ.");
+    }
+    if (![
+      "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html",
+      "https://pay.vnpay.vn/vpcpay.html"
+    ].includes(`${url.origin}${url.pathname}`)) {
+      throw new Error("Dịch vụ thanh toán trả về liên kết không được phép.");
+    }
+    return url.toString();
+  }
+
+  async function createPaymentLink(orderId, paymentReference) {
+    const result = await paymentRequest({
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify({ action: "create", orderId, paymentReference })
+    });
+    return { paymentUrl: paymentUrlFrom(result), expiresAt: result.expiresAt };
+  }
+
+  async function retryPaymentLink(txnRef) {
+    const result = await paymentRequest({
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify({ action: "retry", txnRef })
+    });
+    return { paymentUrl: paymentUrlFrom(result), expiresAt: result.expiresAt };
+  }
+
+  async function getPaymentStatus(txnRef) {
+    return paymentRequest({ url: `/api/payments?action=status&txnRef=${encodeURIComponent(txnRef)}` });
+  }
+
   async function deliveryZonesRequest(options = {}) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 20000);
@@ -535,6 +601,9 @@
 
   root.FlowerOrderStore = {
     create,
+    createPaymentLink,
+    retryPaymentLink,
+    getPaymentStatus,
     quote,
     getPromotions,
     getDeliveryZones,

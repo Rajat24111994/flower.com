@@ -25,7 +25,8 @@ test.beforeEach(async () => {
         await setDoc(doc(db, "products/1"), { id: 1, title: "Hoa", price: 10, quantity: 5 });
         await setDoc(doc(db, "orders/o1"), { uid: "alice", phone: "0908123456", status: "Chờ xác nhận", total: 100 });
         await setDoc(doc(db, "orders/o2"), { uid: "bob", phone: "0911222333", status: "Chờ xác nhận", total: 100 });
-        await setDoc(doc(db, "reviews/r1"), { productIds: ["1"], customerName: "Alice", rating: 5, comment: "Đẹp" });
+        await setDoc(doc(db, "reviews/r1"), { productIds: ["1"], customerName: "Alice", authorUid: "alice", rating: 5, comment: "Đẹp", moderationStatus: "approved" });
+        await setDoc(doc(db, "reviews/pending"), { productIds: ["1"], customerName: "Alice", authorUid: "alice", rating: 1, comment: "Chưa hài lòng", photoIds: ["photo"], moderationStatus: "pending" });
         await setDoc(doc(db, "metadata/activePromotions"), { items: [] });
         await setDoc(doc(db, "metadata/productCatalog"), { catalogSeeded: true });
         await setDoc(doc(db, "adminRoles/admin1"), { role: "admin" });
@@ -45,6 +46,9 @@ test("sản phẩm: ai cũng xem được, chỉ admin sửa được", async ()
     await assertFails(updateDoc(doc(alice(), "products/1"), { quantity: 999 }));
     await assertFails(updateDoc(doc(revokedAdmin(), "products/1"), { quantity: 1 }));
     await assertSucceeds(updateDoc(doc(admin(), "products/1"), { quantity: 7 }));
+    await assertFails(updateDoc(doc(guest(), "products/1"), { status: "hidden" }));
+    await assertSucceeds(updateDoc(doc(admin(), "products/1"), { status: "hidden" }));
+    await assertFails(updateDoc(doc(admin(), "products/1"), { status: "deleted" }));
 });
 
 test("sản phẩm: tồn kho phải là số nguyên không âm", async () => {
@@ -71,12 +75,39 @@ test("đơn hàng: admin xem và cập nhật được, admin đã bị thu hồ
 });
 
 test("đánh giá: ai cũng đọc được, khách không ghi trực tiếp được", async () => {
-    await assertSucceeds(getDocs(collection(guest(), "reviews")));
+    await assertSucceeds(getDocs(query(collection(guest(), "reviews"), where("moderationStatus", "==", "approved"))));
+    await assertFails(getDocs(collection(guest(), "reviews")));
     await assertFails(addDoc(collection(alice(), "reviews"), {
         productIds: ["1"], productName: "Hoa", customerName: "FlowerFlow", rating: 1, comment: "Lừa đảo", createdAt: serverTimestamp()
     }));
     await assertFails(updateDoc(doc(alice(), "reviews/r1"), { reply: "Giả mạo" }));
     await assertSucceeds(updateDoc(doc(admin(), "reviews/r1"), { reply: "Cảm ơn bạn" }));
+});
+
+test("kiểm duyệt không cho admin sửa nội dung, sao, ảnh, tác giả hoặc xóa đánh giá", async () => {
+    await assertFails(getDoc(doc(guest(), "reviews/pending")));
+    await assertSucceeds(getDoc(doc(alice(), "reviews/pending")));
+    await assertSucceeds(getDocs(collection(admin(), "reviews")));
+    for (const changes of [{ comment: "Admin sửa" }, { rating: 5 }, { photoIds: [] }, { customerName: "Khác" },
+        { productIds: ["2"] }, { authorUid: "admin1" }, { verifiedPurchase: true }]) {
+        await assertFails(updateDoc(doc(admin(), "reviews/pending"), changes));
+    }
+    await assertFails(deleteDoc(doc(admin(), "reviews/pending")));
+    await assertFails(setDoc(doc(admin(), "reviews/fake"), { rating: 5, comment: "Tự tạo" }));
+    await assertFails(updateDoc(doc(admin(), "reviews/pending"), { moderationStatus: "approved" }));
+    await assertSucceeds(updateDoc(doc(admin(), "reviews/pending"), {
+        moderationStatus: "approved", moderatedBy: "admin1", moderatedAt: serverTimestamp(), reply: "Cửa hàng xin ghi nhận"
+    }));
+    await assertSucceeds(getDoc(doc(guest(), "reviews/pending")));
+    await assertSucceeds(updateDoc(doc(admin(), "reviews/pending"), {
+        moderationStatus: "hidden", moderatedBy: "admin1", moderatedAt: serverTimestamp(), moderationReason: "Ảnh chứa thông tin cá nhân"
+    }));
+    await assertFails(getDoc(doc(guest(), "reviews/pending")));
+    const preserved = (await getDoc(doc(alice(), "reviews/pending"))).data();
+    assert.equal(preserved.comment, "Chưa hài lòng");
+    assert.equal(preserved.rating, 1);
+    assert.deepEqual(preserved.photoIds, ["photo"]);
+    await assertFails(setDoc(doc(admin(), "reviewImages/photo"), { bytes: "changed" }));
 });
 
 test("dữ liệu nội bộ: danh sách admin, lời nhắn, cấu hình chỉ admin truy cập", async () => {

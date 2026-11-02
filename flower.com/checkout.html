@@ -10,7 +10,7 @@
   <link rel="icon" type="image/svg+xml" href="./favicon.svg">
   <title>Thanh toán</title>
   <link rel="stylesheet" href="./store-header.css?v=3">
-  <link rel="stylesheet" href="./checkout.css?v=5">
+  <link rel="stylesheet" href="./checkout.css?v=6">
   <link rel="stylesheet" href="./accessibility.css?v=1">
   <link rel="stylesheet" href="./store-footer.css?v=3">
 <link rel="stylesheet" href="./contact-tools.css?v=3">
@@ -100,7 +100,15 @@
             </label>
             <p id="delivery-schedule-message" class="checkout-field-wide checkout-schedule-message" role="status" aria-live="polite">Đơn giao trong ngày cần được đặt trước 15:00 (giờ Việt Nam).</p>
             <div class="checkout-field checkout-field-wide">
-              <label for="greeting-card">Lời chúc trên thiệp <small>(không bắt buộc)</small></label>
+              <label for="greeting-template">Lời chúc trên thiệp <small>(không bắt buộc)</small></label>
+              <select name="greetingTemplate" id="greeting-template" aria-label="Chọn lời chúc gợi ý">
+                <option value="">Chọn lời chúc gợi ý hoặc tự viết bên dưới</option>
+                <option value="Chúc mừng sinh nhật! Chúc bạn luôn rạng rỡ và hạnh phúc.">Chúc mừng sinh nhật</option>
+                <option value="Chúc mừng ngày đặc biệt của chúng mình. Mong yêu thương luôn nở hoa.">Chúc mừng kỷ niệm</option>
+                <option value="Chúc bạn luôn bình an, mạnh khỏe và ngập tràn niềm vui.">Chúc bình an và hạnh phúc</option>
+                <option value="Cảm ơn bạn vì luôn ở bên và mang đến thật nhiều yêu thương.">Lời cảm ơn</option>
+              </select>
+              <label for="greeting-card">Nội dung thiệp</label>
               <textarea name="greetingCard" id="greeting-card" rows="2" maxlength="300" aria-describedby="greeting-card-counter" placeholder="Nhập lời chúc ngắn gửi kèm bó hoa"></textarea>
               <small class="checkout-note-counter" id="greeting-card-counter" aria-live="polite">0/300 ký tự</small>
               <label class="checkout-checkbox">
@@ -139,17 +147,15 @@
               <span><strong>Thanh toán khi nhận hàng</strong><small>Thanh toán trực tiếp khi nhận hoa</small></span>
             </label>
             <label class="payment-option">
-              <input type="radio" name="paymentMethod" value="qr" checked>
-              <span class="payment-option-icon" aria-hidden="true">▦</span>
-              <span><strong>Quét mã QR Vietcombank</strong><small>Chuyển khoản nhanh qua ứng dụng ngân hàng</small></span>
+              <input type="radio" name="paymentMethod" value="vnpay" checked>
+              <span class="payment-option-icon" aria-hidden="true">↗</span>
+              <span><strong>Thanh toán online qua VNPay</strong><small>Chuyển đến cổng thanh toán bảo mật của VNPay</small></span>
             </label>
           </div>
-          <div id="payment-qr-panel" class="payment-qr-panel" hidden>
-            <p>Quét mã bằng ứng dụng ngân hàng. Nội dung chuyển khoản gồm mã đơn tạm thời.</p>
-            <img id="payment-qr-image" alt="Mã QR chuyển khoản Vietcombank" width="220" height="220">
-            <p id="payment-qr-amount" class="payment-qr-amount"></p>
-            <p class="payment-qr-note">Mã QR chỉ hướng dẫn chuyển khoản. Đơn hàng chờ cửa hàng đối chiếu giao dịch; thao tác gửi đơn không xác nhận đã nhận tiền.</p>
-            <p class="payment-qr-note"><strong>Hàng được giữ 30 phút sau khi gửi đơn.</strong> Quá hạn mà cửa hàng chưa nhận được tiền, đơn sẽ tự hủy. Bạn có thể xem lại mã QR và nội dung chuyển khoản ở trang Theo dõi đơn hàng.</p>
+          <div id="payment-online-panel" class="payment-online-panel" hidden>
+            <p>Đơn sẽ được tạo với tổng tiền do máy chủ xác nhận, sau đó bạn được chuyển đến VNPay để thanh toán.</p>
+            <p class="payment-online-note">Đơn chưa được coi là đã thanh toán khi bạn quay lại trang này. Cửa hàng chỉ xác nhận tiền sau khi nhận IPN hợp lệ từ VNPay.</p>
+            <p class="payment-online-note"><strong>Hàng được giữ trong 15 phút.</strong> Nếu thanh toán chưa hoàn tất đúng hạn, đơn sẽ tự hủy và tồn kho được hoàn lại.</p>
           </div>
         </section>
       </div>
@@ -193,7 +199,7 @@
   <script src="./store-footer.js?v=4"></script>
   <script src="./bouquet-options.js?v=1"></script>
   <script src="./currency.js?v=11"></script>
-  <script src="./order-store.js?v=17"></script>
+  <script src="./order-store.js?v=18"></script>
   <script src="./product-names.js?v=2"></script>
   <script>
   const CartContainer = document.getElementById("product-container");
@@ -202,6 +208,7 @@
   const orderNoteInput = checkoutForm.querySelector('textarea[name="orderNote"]');
   const orderNoteCounter = document.getElementById("order-note-counter");
   const greetingCardInput = document.getElementById("greeting-card");
+  const greetingTemplateInput = document.getElementById("greeting-template");
   const greetingCardCounter = document.getElementById("greeting-card-counter");
   const selfRecipientInput = document.getElementById("customer-is-recipient");
   const recipientFields = document.getElementById("recipient-fields");
@@ -222,6 +229,12 @@
   }
   orderNoteInput.addEventListener("input", updateOrderNoteCounter);
   greetingCardInput.addEventListener("input", () => {
+    greetingCardCounter.textContent = `${greetingCardInput.value.length}/300 ký tự`;
+    greetingTemplateInput.value = "";
+  });
+  greetingTemplateInput.addEventListener("change", () => {
+    if (!greetingTemplateInput.value) return;
+    greetingCardInput.value = greetingTemplateInput.value;
     greetingCardCounter.textContent = `${greetingCardInput.value.length}/300 ký tự`;
   });
   function syncRecipientFields() {
@@ -253,9 +266,7 @@
   const MAX_QUANTITY_PER_PRODUCT = 50;
   let serverQuote = null;
   let quoteRequestId = 0;
-  const paymentQrPanel = document.getElementById("payment-qr-panel");
-  const paymentQrImage = document.getElementById("payment-qr-image");
-  const paymentQrAmount = document.getElementById("payment-qr-amount");
+  const paymentOnlinePanel = document.getElementById("payment-online-panel");
   function createOrderRequestId() {
     if (!window.crypto?.getRandomValues) {
       throw new Error("Trình duyệt không hỗ trợ tạo mã đặt hàng an toàn. Hãy dùng HTTPS hoặc localhost.");
@@ -370,26 +381,12 @@
     void refreshServerQuote();
   });
 
-  function updatePaymentQr() {
-    const isQrPayment = checkoutForm.querySelector('input[name="paymentMethod"]:checked')?.value === "qr";
-    paymentQrPanel.hidden = !isQrPayment;
-    if (!isQrPayment) return;
-    if (!serverQuote || !serverQuote.deliveryZone?.id) {
-      paymentQrImage.removeAttribute("src");
-      paymentQrAmount.textContent = "Chọn khu vực giao hàng để kiểm tra tổng tiền trước khi chuyển khoản.";
-      return;
-    }
-    const total = serverQuote.totals.total;
-    const imageUrl = new URL(`https://img.vietqr.io/image/VCB-1063118243-compact2.png`);
-    imageUrl.searchParams.set("amount", String(total));
-    imageUrl.searchParams.set("addInfo", paymentReference);
-    imageUrl.searchParams.set("accountName", "DO BA THAI");
-    paymentQrImage.src = imageUrl.toString();
-    paymentQrAmount.textContent = `Số tiền: ${formatVnd(total)} · Nội dung: ${paymentReference}`;
+  function updatePaymentOnlinePanel() {
+    paymentOnlinePanel.hidden = checkoutForm.querySelector('input[name="paymentMethod"]:checked')?.value !== "vnpay";
   }
 
   checkoutForm.querySelectorAll('input[name="paymentMethod"]').forEach((input) => {
-    input.addEventListener("change", updatePaymentQr);
+    input.addEventListener("change", updatePaymentOnlinePanel);
   });
 
   function hasOverstockItem() {
@@ -565,7 +562,7 @@
       checkoutMessage.textContent = "";
     }
     renderCartSummary(Cart);
-    updatePaymentQr();
+    updatePaymentOnlinePanel();
     const cartTotal = document.getElementById("cartTotal");
     if (cartTotal) cartTotal.textContent = Cart.length;
     if (refreshQuote) void refreshServerQuote();
@@ -576,7 +573,7 @@
     document.getElementById("retry-quote").hidden = true;
     const requestId = ++quoteRequestId;
     serverQuote = null;
-    updatePaymentQr();
+    updatePaymentOnlinePanel();
     const submitButton = checkoutForm.querySelector(".checkout-submit");
     submitButton.disabled = true;
     if (!Cart.length) {
@@ -627,7 +624,7 @@
       });
       checkoutMessage.textContent = "Giá, ưu đãi và tồn kho đã được xác minh từ cửa hàng.";
       submitButton.disabled = !selectedDeliveryZoneId || !deliveryZonesLoaded || !deliveryZonesConfigured;
-      updatePaymentQr();
+      updatePaymentOnlinePanel();
     } catch (error) {
       if (requestId !== quoteRequestId) return;
       document.getElementById("retry-quote").hidden = false;
@@ -642,7 +639,7 @@
       }
       checkoutMessage.textContent = error.message || "Không thể xác minh giá và tồn kho. Vui lòng thử lại.";
       renderCartSummary(Cart);
-      updatePaymentQr();
+      updatePaymentOnlinePanel();
     }
   }
 

@@ -1,0 +1,46 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // The claim alone stays valid until the ID token expires (up to an hour); the adminRoles
+    // document is deleted the moment an Owner removes admin access (api/owner/users.js).
+    function isAdmin() {
+      return request.auth != null && request.auth.token.admin == true
+        && exists(/databases/$(database)/documents/adminRoles/$(request.auth.uid));
+    }
+
+    match /products/{productId} {
+      allow get, list: if true;
+      allow create, update: if isAdmin()
+        && request.resource.data.quantity is int && request.resource.data.quantity >= 0;
+      allow delete: if isAdmin();
+    }
+
+    match /metadata/{metadataId} {
+      allow get: if isAdmin() || metadataId in ['activePromotions', 'storeCategories'];
+      allow list, create, update, delete: if isAdmin();
+    }
+
+    // Customers review through /api/orders (action "review"), which checks that the order is
+    // theirs and delivered and allows one review per order.
+    match /reviews/{reviewId} {
+      allow get, list: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /messages/{messageId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /orders/{orderId} {
+      allow create: if false;
+      allow get, list: if isAdmin()
+        || (request.auth != null && resource.data.uid == request.auth.uid);
+      allow update, delete: if isAdmin();
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

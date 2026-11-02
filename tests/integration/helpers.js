@@ -24,7 +24,11 @@ Object.assign(process.env, {
         client_email: `test@${PROJECT_ID}.iam.gserviceaccount.com`,
         private_key: privateKey.export({ type: "pkcs8", format: "pem" })
     }),
-    CRON_SECRET: "test-cron-secret"
+    CRON_SECRET: "test-cron-secret",
+    VNPAY_TMN_CODE: "DEMOV210",
+    VNPAY_HASH_SECRET: "integration-test-secret",
+    PUBLIC_APP_URL: "https://flowerflow.example",
+    VNPAY_ENV: "sandbox"
 });
 
 const { getAdminAuth, getAdminFirestore } = require(path.join(ROOT, "lib/firebase-admin.js"));
@@ -34,6 +38,9 @@ const catalog = JSON.parse(fs.readFileSync(path.join(ROOT, "flower.json"), "utf8
 
 const handlers = {
     orders: require(path.join(ROOT, "api/orders.js")),
+    payments: require(path.join(ROOT, "api/payments.js")),
+    vnpayIpn: require(path.join(ROOT, "api/vnpay-ipn.js")),
+    reviewImages: require(path.join(ROOT, "api/review-images.js")),
     deliveryZones: require(path.join(ROOT, "api/delivery-zones.js")),
     products: require(path.join(ROOT, "api/products.js")),
     adminUsers: require(path.join(ROOT, "api/admin/users.js")),
@@ -48,7 +55,7 @@ async function callApi(name, { method = "POST", body, query = {}, token, headers
         getHeader(key) { return response.headers[key.toLowerCase()]; },
         status(code) { response.statusCode = code; return res; },
         json(data) { response.body = JSON.parse(JSON.stringify(data)); return res; },
-        end() { return res; }
+        end(data) { if (data !== undefined) response.body = data; return res; }
     };
     const req = {
         method,

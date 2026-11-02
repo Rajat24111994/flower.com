@@ -1,6 +1,14 @@
 {
   "indexes": [
     {
+      "collectionGroup": "reviews",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "moderationStatus", "order": "ASCENDING" },
+        { "fieldPath": "productIds", "arrayConfig": "CONTAINS" }
+      ]
+    },
+    {
       "collectionGroup": "orders",
       "queryScope": "COLLECTION",
       "fields": [
@@ -11,6 +19,7 @@
     }
   ],
   "fieldOverrides": [
+    { "collectionGroup": "reviewImages", "fieldPath": "bytes", "indexes": [] },
     {
       "collectionGroup": "orderLookupLimits",
       "fieldPath": "expiresAt",

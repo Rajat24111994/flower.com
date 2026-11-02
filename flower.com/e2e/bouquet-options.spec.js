@@ -21,7 +21,11 @@ test("personalized bouquet keeps its price, color and message through cart and r
       + `\nwindow.FlowerOrderStore.getPromotions = async () => [];
         window.FlowerOrderStore.getDeliveryZones = async () => ({ configured: true, zones: [
           { id: "fixture-zone", province: "Test Province", district: "Test District", fee: 0, enabled: true }
-        ] });` }));
+        ] });
+        window.FlowerOrderStore.create = async (order) => {
+          sessionStorage.setItem("submittedCheckoutOrder", JSON.stringify(order));
+          return "ORDER-PERSONALIZED";
+        };` }));
   await page.route("**/api/products", (route) => route.fulfill({ json: { products: catalog } }));
   const quoteRequests = [];
   await page.route("**/api/orders", (route) => {
@@ -67,23 +71,50 @@ test("personalized bouquet keeps its price, color and message through cart and r
   await page.locator("#customer-is-recipient").check();
   await expect(page.locator("#recipient-fields")).toBeHidden();
   await expect(page.locator('[name="recipientName"]')).toHaveValue("Khách thử nghiệm");
+  await page.locator("#customer-is-recipient").uncheck();
+  await page.locator('[name="recipientName"]').fill("Người nhận thử nghiệm");
+  await page.locator('[name="recipientPhone"]').fill("0987654321");
+  await page.locator("#greeting-template").selectOption({ label: "Chúc mừng sinh nhật" });
+  await expect(page.locator("#greeting-card")).toHaveValue("Chúc mừng sinh nhật! Chúc bạn luôn rạng rỡ và hạnh phúc.");
   await page.locator("#greeting-card").fill("Chúc mừng bạn!");
   await expect(page.locator("#greeting-card-counter")).toHaveText("14/300 ký tự");
+  await expect(page.locator("#greeting-template")).toHaveValue("");
+  await page.locator('[name="giftWrap"]').selectOption("classic");
+  await page.locator('[name="orderNote"]').fill("Gọi người nhận trước khi giao.");
   await page.locator("#anonymous-greeting-card").check();
   await page.locator('[name="deliveryProvince"]').selectOption("Test Province");
   await page.locator('[name="deliveryDistrict"]').selectOption("fixture-zone");
   await expect(page.locator(".checkout-submit")).toBeEnabled();
-  await page.locator('[name="deliveryDate"]').fill(new Date(Date.now() + 86400000 * 3).toISOString().slice(0, 10));
+  const deliveryDate = new Date(Date.now() + 86400000 * 3).toISOString().slice(0, 10);
+  await page.locator('[name="deliveryDate"]').fill(deliveryDate);
   await page.locator('[name="deliveryTime"]').selectOption("08:00–11:00");
   await page.locator('[name="paymentMethod"][value="cod"]').check();
   await page.locator(".checkout-submit").click();
   await expect(page.locator(".placeorder > button").first()).toBeEnabled();
   await expect(page.locator("#product-container")).toContainText("Gói giấy kraft");
-  await expect(page.locator("#order-review-details")).toContainText("Người đặt (tôi là người nhận)");
+  await expect(page.locator("#order-review-details")).toContainText("Người nhận thử nghiệm");
   await expect(page.locator("#order-review-details")).toContainText("Ẩn tên người gửi trên thiệp");
+  await expect(page.locator("#order-review-details")).toContainText("Chúc mừng bạn!");
+  await expect(page.locator("#order-review-details")).toContainText("Kraft, ruy băng đỏ");
+  await expect(page.locator("#order-review-details")).toContainText("Gọi người nhận trước khi giao.");
+  await expect(page.locator("#order-review-details")).toContainText(deliveryDate);
   await expect(page.locator("#order-review-details")).toContainText("Test District, Test Province");
   await expect(page.locator("#order-review-totals")).toContainText(new Intl.NumberFormat("vi-VN").format(expected));
   expect(quoteRequests.at(-1).items[0]).toMatchObject({ productId: "1", size: "large", color: "pink",
     cardMessage: "Chúc mừng sinh nhật mẹ!", personalNote: "Gói giấy kraft", quantity: 2 });
+  page.once("dialog", (dialog) => dialog.accept());
+  await page.locator(".placeorder > button").click();
+  await expect(page).toHaveURL(/tracking\.html\?id=ORDER-PERSONALIZED/);
+  expect(await page.evaluate(() => JSON.parse(sessionStorage.getItem("submittedCheckoutOrder")))).toMatchObject({
+    recipientName: "Người nhận thử nghiệm",
+    recipientPhone: "0987654321",
+    customerIsRecipient: false,
+    deliveryDate,
+    deliveryTime: "08:00–11:00",
+    greetingCard: "Chúc mừng bạn!",
+    anonymousGreetingCard: true,
+    giftWrap: "classic",
+    orderNote: "Gọi người nhận trước khi giao."
+  });
   expect(errors).toEqual([]);
 });

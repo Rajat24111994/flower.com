@@ -5,7 +5,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const { initializeTestEnvironment } = require("@firebase/rules-unit-testing");
-const { doc, getDoc, getDocs, updateDoc, collection, query, where } = require("firebase/firestore");
+const { doc, getDoc, getDocs, updateDoc, collection, query, where, serverTimestamp } = require("firebase/firestore");
 const h = require("./helpers");
 
 let env;
@@ -58,8 +58,8 @@ test("khách đặt hàng → admin giao hàng → khách theo dõi và đánh g
     // 6. Khách đánh giá; admin trả lời; khách vãng lai thấy cả hai ở trang sản phẩm.
     const review = await h.callApi("orders", { token: customer.token, body: { action: "review", orderId: id, rating: 5, comment: "Hoa tươi lắm" } });
     assert.equal(review.status, 201);
-    await updateDoc(doc(adminDb, "reviews", review.body.review.id), { reply: "Cảm ơn bạn!" });
-    const publicReviews = await getDocs(query(collection(guestDb, "reviews"), where("productIds", "array-contains", "5")));
+    await updateDoc(doc(adminDb, "reviews", review.body.review.id), { reply: "Cảm ơn bạn!", moderationStatus: "approved", moderatedBy: admin.uid, moderatedAt: serverTimestamp() });
+    const publicReviews = await getDocs(query(collection(guestDb, "reviews"), where("productIds", "array-contains", "5"), where("moderationStatus", "==", "approved")));
     assert.equal(publicReviews.size, 1);
     assert.equal(publicReviews.docs[0].data().reply, "Cảm ơn bạn!");
 });
