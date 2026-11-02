@@ -46,3 +46,18 @@ test("chỉ ghi nhận bán một lần khi giao, giảm khi nhận lại hàng 
   assert.equal(adjustment({ salesCounted: true }, "Đã hủy", true), -1);
   assert.equal(adjustment({ salesCounted: false }, "Đã hủy", true), 0);
 });
+
+{
+  // #30: the occasion filter lists the usual occasions plus every occasion the admin set on a product.
+  const { occasionOptions } = require("../flower.com/catalog-search.js");
+  const options = occasionOptions([
+    { occasions: ["Valentine", "sinh nhật"] },
+    { occasions: ["  Lễ tốt nghiệp  "] },
+    { title: "Không có dịp" }
+  ]);
+  assert.ok(options.includes("Sinh nhật"), "giữ các dịp có sẵn");
+  assert.ok(options.includes("Valentine"), "thêm dịp admin tự gắn");
+  assert.ok(options.includes("Lễ tốt nghiệp"), "bỏ khoảng trắng thừa");
+  assert.equal(options.filter((value) => value.toLocaleLowerCase("vi") === "sinh nhật").length, 1, "không lặp dịp đã có");
+  assert.equal(options.indexOf("Sinh nhật"), 0, "dịp có sẵn đứng trước");
+}

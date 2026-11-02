@@ -273,6 +273,13 @@ function showExistingReview(existingReview) {
     }
 }
 
+// Same wording as the gift-wrap choices on checkout.html.
+const GIFT_WRAP_LABELS = {
+    none: "Không yêu cầu thêm",
+    pastel: "Giấy gói pastel, ruy băng kem",
+    classic: "Giấy kraft, ruy băng đỏ"
+};
+
 function renderOrder(order) {
     currentOrder = order;
     document.getElementById("result-order-id").textContent = `#${order.id}`;
@@ -297,7 +304,7 @@ function renderOrder(order) {
     document.getElementById("result-delivery-time").textContent = order.deliveryTime || "";
     document.getElementById("result-greeting-card").textContent = order.greetingCard || "";
     document.getElementById("result-anonymous-greeting").textContent = order.anonymousGreetingCard === true ? "Có" : "Không";
-    document.getElementById("result-gift-wrap").textContent = order.giftWrap || "";
+    document.getElementById("result-gift-wrap").textContent = GIFT_WRAP_LABELS[order.giftWrap] || order.giftWrap || "Không yêu cầu thêm";
     const formatVnd = (amount) => new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(Number(amount) || 0);
     document.getElementById("result-shipping-fee").textContent = formatVnd(order.shippingFee);
     document.getElementById("result-total").textContent = formatOrderTotal(order);

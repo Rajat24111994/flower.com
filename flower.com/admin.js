@@ -61,6 +61,13 @@ function isOrderPaid(order) {
    return ["đã thanh toán", "paid", "da_thanh_toan"].includes(status);
 }
 
+// How the customer pays, shown next to the payment status (#48).
+function getPaymentMethodLabel(order) {
+   if (order.paymentMethod === "qr") return "Chuyển khoản QR";
+   if (order.paymentMethod === "cod") return "Tiền mặt khi nhận hàng (COD)";
+   return "Chưa rõ";
+}
+
 function getPaymentDisplayStatus(order) {
    if (order.paymentMethod === "qr") {
        if (order.paymentVerified === true) return "Đã thanh toán (đã đối soát)";
@@ -970,6 +977,7 @@ function renderOrderSummary(order) {
                <strong>Đơn #${escapeHtml(order.id)} · ${escapeHtml(order.customerName)}</strong>
                <span><b>Sản phẩm:</b> ${itemSummary}</span>
                <span><b>Thời gian đặt:</b> ${new Date(order.createdAt).toLocaleString("vi-VN")}</span>
+               <span><b>Thanh toán:</b> ${escapeHtml(getPaymentMethodLabel(order))} · ${escapeHtml(getPaymentDisplayStatus(order))}</span>
            </div>
            <div class="record-summary-actions">
                <button class="secondary-btn show-record-details" data-record-type="orders" data-record-id="${escapeHtml(order.id)}" type="button" aria-expanded="false">Xem chi tiết</button>
@@ -1035,7 +1043,11 @@ function renderOrderCard(order, showCompletionAction = true) {
                    <span class="field-value">${order.anonymousGreetingCard === true ? "Có" : "Không"}</span>
                </div>
                <div class="field">
-                   <span class="field-label">Thanh toán</span>
+                   <span class="field-label">Phương thức thanh toán</span>
+                   <span class="field-value">${escapeHtml(getPaymentMethodLabel(order))}</span>
+               </div>
+               <div class="field">
+                   <span class="field-label">Trạng thái thanh toán</span>
                    <span class="field-value">${escapeHtml(getPaymentDisplayStatus(order))}</span>
                </div>
                <div class="field full-width">

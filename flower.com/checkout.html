@@ -185,7 +185,7 @@
             <div><dt>Giá gốc</dt><dd id="originalprice">0 ₫</dd></div>
             <div><dt>Tiền giảm</dt><dd id="savings">0 ₫</dd></div>
             <div><dt>Phí giao hàng</dt><dd id="deliveryCharge">Chọn khu vực</dd></div>
-            <div class="checkout-grand-total"><dt>Tổng tiền</dt><dd id="total">0 ₫</dd></div>
+            <div class="checkout-grand-total"><dt>Tổng tiền <small>(đã gồm VAT)</small></dt><dd id="total">0 ₫</dd></div>
           </dl>
 
           <button class="checkout-submit" type="submit">Đặt hàng</button>
@@ -330,6 +330,8 @@
   window.setInterval(updateDeliveryAvailability, 60000);
 
   function renderProvinceOptions() {
+    const previousProvince = deliveryProvinceInput.value;
+    const previousZoneId = selectedDeliveryZoneId || deliveryDistrictInput.value;
     const provinces = [...new Set(deliveryZones.map((zone) => zone.province))]
       .sort((left, right) => left.localeCompare(right, "vi"));
     deliveryProvinceInput.replaceChildren(new Option(
@@ -341,6 +343,18 @@
     deliveryDistrictInput.replaceChildren(new Option("Chọn tỉnh / thành phố trước", ""));
     deliveryDistrictInput.disabled = true;
     selectedDeliveryZoneId = "";
+    if (provinces.includes(previousProvince)) {
+      deliveryProvinceInput.value = previousProvince;
+      const districts = deliveryZones.filter((zone) => zone.province === previousProvince)
+        .sort((left, right) => left.district.localeCompare(right.district, "vi"));
+      deliveryDistrictInput.replaceChildren(new Option("Chọn quận / huyện", ""));
+      districts.forEach((zone) => deliveryDistrictInput.add(new Option(zone.district, zone.id)));
+      deliveryDistrictInput.disabled = false;
+      if (districts.some((zone) => zone.id === previousZoneId)) {
+        deliveryDistrictInput.value = previousZoneId;
+        selectedDeliveryZoneId = previousZoneId;
+      }
+    }
 
     if (!deliveryZonesLoaded) {
       deliveryZoneMessage.textContent = "Đang tải khu vực giao hàng…";
@@ -629,30 +643,37 @@
     }
   }
 
+  // Zones and promotions load together and the page is drawn once, so a customer who fills the
+  // form quickly (or lets the browser autofill it) keeps what they chose. The form is marked
+  // data-ready when this is done (browser tests wait for it).
   async function initializeCheckout() {
-    try {
-      const result = await window.FlowerOrderStore.getDeliveryZones();
+    const [zonesResult, promotionsResult] = await Promise.allSettled([
+      window.FlowerOrderStore.getDeliveryZones(),
+      window.FlowerOrderStore.getPromotions()
+    ]);
+    if (zonesResult.status === "fulfilled") {
+      const result = zonesResult.value;
       deliveryZones = Array.isArray(result.zones) ? result.zones.filter((zone) => zone?.enabled === true) : [];
       deliveryZonesConfigured = result.configured === true && deliveryZones.length > 0;
       deliveryZonesLoaded = true;
       renderProvinceOptions();
-    } catch (error) {
+    } else {
       deliveryZones = [];
       deliveryZonesConfigured = false;
       deliveryZonesLoaded = true;
       renderProvinceOptions();
-      deliveryZoneMessage.textContent = error.message || "Chưa thể tải khu vực giao hàng. Vui lòng thử lại sau.";
-      console.error("Không thể tải khu vực giao hàng:", error);
+      deliveryZoneMessage.textContent = zonesResult.reason?.message || "Chưa thể tải khu vực giao hàng. Vui lòng thử lại sau.";
+      console.error("Không thể tải khu vực giao hàng:", zonesResult.reason);
     }
-    try {
-      const promotions = await window.FlowerOrderStore.getPromotions();
-      setTrustedPromotions(promotions);
-    } catch (error) {
-      console.error("Không thể tải ưu đãi từ Firestore:", error);
+    if (promotionsResult.status === "fulfilled") {
+      setTrustedPromotions(promotionsResult.value);
+    } else {
+      console.error("Không thể tải ưu đãi từ Firestore:", promotionsResult.reason);
       setTrustedPromotions([]);
     }
     renderPromotionOptions();
     DisplayProduct();
+    checkoutForm.dataset.ready = "true";
   }
 
   // Checks what the server will check, but next to the field and in Vietnamese, so the customer

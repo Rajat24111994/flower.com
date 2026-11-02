@@ -275,6 +275,10 @@ select{
 
 .product-page {
     display: block;
+    /* Products arrive after the page loads: keep the footer below the first screen meanwhile,
+       so it does not jump down when the list appears (layout shift). */
+    min-height: 100vh;
+    min-height: 100dvh;
     padding: 24px;
     background: #faf8f4;
 }

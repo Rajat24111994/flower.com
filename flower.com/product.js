@@ -528,7 +528,17 @@ function getAdminCategories() {
   return FlowerInventory.readCategories()
 }
 
+// Occasions the admin set on products appear in the filter next to the usual ones (#30).
+function populateOccasionFilter() {
+  const wanted = FlowerCatalogSearch.normalize(occasionFilterSelect.value || pageParams.get("occasion") || "")
+  occasionFilterSelect.replaceChildren(new Option("Mọi dịp", ""))
+  FlowerCatalogSearch.occasionOptions(products).forEach((label) => occasionFilterSelect.append(new Option(label, label.toLocaleLowerCase("vi"))))
+  const match = [...occasionFilterSelect.options].find((option) => option.value && FlowerCatalogSearch.normalize(option.value) === wanted)
+  occasionFilterSelect.value = match ? match.value : ""
+}
+
 function populateFlowerCategoryFilter() {
+  populateOccasionFilter()
   const selectedValue = flowerTypeSelect.value
   const allCategoriesOption = document.createElement("option")
   allCategoriesOption.value = ""
