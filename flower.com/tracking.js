@@ -1,4 +1,4 @@
-import { normalizeOrderStatus } from "./order-status.js";
+import { normalizeOrderStatus, orderStatusLabel, getOrderProgress } from "./order-status.js?v=2";
 
 const searchForm = document.getElementById("tracking-search");
 const orderIdInput = document.getElementById("tracking-order-id");
@@ -18,12 +18,13 @@ const myOrdersTabs = [...document.querySelectorAll(".my-orders-tab")];
 const lookupToggle = document.getElementById("tracking-lookup-toggle");
 const STATUS_CLASSES = {
     "Chờ xác nhận": "is-pending",
+    "Đang chuẩn bị": "is-preparing",
     "Đang giao": "is-shipping",
     "Đã giao": "is-delivered",
     "Đã hủy": "is-cancelled"
 };
 const ORDER_GROUPS = {
-    active: { statuses: ["Chờ xác nhận", "Đang giao"], empty: "Bạn không có đơn hàng nào đang xử lý." },
+    active: { statuses: ["Chờ xác nhận", "Đang chuẩn bị", "Đang giao"], empty: "Bạn không có đơn hàng nào đang xử lý." },
     done: { statuses: ["Đã giao"], empty: "Bạn chưa có đơn hàng nào đã hoàn thành." },
     cancelled: { statuses: ["Đã hủy"], empty: "Bạn không có đơn hàng nào đã hủy." }
 };
@@ -108,6 +109,21 @@ function getOrderHistory(order) {
 }
 
 function renderHistory(order) {
+    const progress = getOrderProgress(order);
+    const steps = document.getElementById("order-progress");
+    steps.replaceChildren();
+    progress.steps.forEach((step, index) => {
+        const row = makeElement("li", `order-progress-step is-${step.state}`);
+        const number = makeElement("span", "order-progress-number", String(index + 1));
+        number.setAttribute("aria-hidden", "true");
+        row.append(number, makeElement("strong", "", step.label));
+        if (step.state === "current") row.setAttribute("aria-current", "step");
+        const description = { complete: "Đã qua bước", current: "Trạng thái hiện tại", upcoming: "Chưa đến bước", stopped: "Đơn đã hủy" };
+        row.append(makeElement("small", "", description[step.state]));
+        if (step.updatedAt) row.append(makeElement("time", "", formatDate(step.updatedAt)));
+        steps.append(row);
+    });
+    document.getElementById("order-cancelled-note").hidden = !progress.cancelled;
     const timeline = document.getElementById("tracking-timeline");
     const history = getOrderHistory(order);
     timeline.replaceChildren();
@@ -117,7 +133,7 @@ function renderHistory(order) {
         const dot = makeElement("span", "timeline-dot");
         dot.setAttribute("aria-hidden", "true");
         const copy = makeElement("div", "timeline-copy");
-        copy.append(makeElement("strong", "", event.status || "Cập nhật đơn hàng"));
+        copy.append(makeElement("strong", "", orderStatusLabel(event.status) || "Cập nhật đơn hàng"));
         if (event.location) copy.append(makeElement("p", "", event.location));
         if (event.estimatedDelivery) {
             copy.append(makeElement("p", "", `Dự kiến giao: ${formatDate(event.estimatedDelivery, false)}`));
@@ -214,7 +230,7 @@ function renderOrder(order) {
     document.getElementById("result-order-id").textContent = `#${order.id}`;
     const status = normalizeOrderStatus(order.status);
     const statusElement = document.getElementById("result-status");
-    statusElement.textContent = status;
+    statusElement.textContent = orderStatusLabel(status);
     statusElement.className = "order-status-badge";
     statusElement.classList.add(STATUS_CLASSES[status] || "is-pending");
     document.getElementById("result-location").textContent = order.currentLocation || "Cửa hàng chưa cập nhật vị trí vận chuyển.";
@@ -262,7 +278,7 @@ function toDateValue(value) {
 function renderPaymentInstructions(order) {
     const panel = document.getElementById("tracking-payment");
     const waiting = order.paymentMethod === "qr" && order.paymentVerified !== true
-        && normalizeOrderStatus(order.status) === "Chờ xác nhận" && Number(order.total) > 0;
+        && ["Chờ xác nhận", "Đang chuẩn bị"].includes(normalizeOrderStatus(order.status)) && Number(order.total) > 0;
     panel.hidden = !waiting;
     if (!waiting) return;
     const total = Number(order.total);
@@ -329,7 +345,7 @@ function createOrderCard(order) {
     const header = makeElement("div", "my-order-header");
     const title = makeElement("div", "my-order-title");
     title.append(makeElement("strong", "", `Đơn #${order.id}`), makeElement("span", "", formatDate(order.createdAt)));
-    const badge = makeElement("span", `order-status-badge ${STATUS_CLASSES[status] || "is-pending"}`, status);
+    const badge = makeElement("span", `order-status-badge ${STATUS_CLASSES[status] || "is-pending"}`, orderStatusLabel(status));
     header.append(title, badge);
 
     const products = makeElement("div", "my-order-products");
@@ -531,7 +547,8 @@ async function startAccountOrderSync() {
         stopAccountOrderSubscription = await window.FlowerOrderStore.subscribeAccount(account.uid, (orders) => {
             accountOrdersCache = orders;
             accountOrdersError = "";
-            const accountOrderFromUrl = orderFromUrl && orders.find((order) => String(order.id) === orderFromUrl);
+            const selectedOrderId = currentOrder?.privacyLimited !== true && currentOrder?.id || orderFromUrl;
+            const accountOrderFromUrl = selectedOrderId && orders.find((order) => String(order.id) === String(selectedOrderId));
             if (accountOrderFromUrl) {
                 selectOrderGroup(getOrderGroup(accountOrderFromUrl));
                 renderOrder(accountOrderFromUrl);

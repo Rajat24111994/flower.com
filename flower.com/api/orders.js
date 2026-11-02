@@ -139,7 +139,8 @@ function publicTrackingOrder(id, data) {
 }
 
 function awaitsQrTransfer(data) {
-    return data.paymentMethod === "qr" && data.paymentVerified !== true && (data.status || "Chờ xác nhận") === "Chờ xác nhận";
+    return data.paymentMethod === "qr" && data.paymentVerified !== true
+        && ["Chờ xác nhận", "Đang chuẩn bị"].includes(data.status || "Chờ xác nhận");
 }
 
 async function checkOrderLookupLimit(db, req) {

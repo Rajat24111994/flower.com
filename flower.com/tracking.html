@@ -13,7 +13,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="./store-header.css?v=3">
-    <link rel="stylesheet" href="./tracking.css?v=7">
+    <link rel="stylesheet" href="./tracking.css?v=8">
     <link rel="stylesheet" href="./accessibility.css?v=1">
     <link rel="stylesheet" href="./store-footer.css?v=3">
 <link rel="stylesheet" href="./contact-tools.css?v=3">
@@ -78,11 +78,17 @@
                 <img id="tracking-payment-qr" alt="Mã QR chuyển khoản Vietcombank" width="200" height="200">
             </section>
 
+            <section class="tracking-panel order-progress-panel" aria-labelledby="order-progress-title">
+                <h2 id="order-progress-title">Tiến độ đơn hàng</h2>
+                <p id="order-cancelled-note" role="status" hidden>Đơn hàng đã hủy. Các bước tiếp theo sẽ không được thực hiện.</p>
+                <ol id="order-progress" class="order-progress" aria-label="Các bước xử lý đơn hàng"></ol>
+            </section>
+
             <p class="tracking-privacy-note" id="tracking-privacy-note" hidden>Để bảo vệ thông tin cá nhân, tra cứu bằng mã đơn và số điện thoại chỉ hiển thị tiến độ. Đăng nhập đúng tài khoản để xem thông tin nhận hàng và sản phẩm.</p>
 
             <div class="tracking-details">
                 <section class="tracking-panel">
-                    <h2>Lịch trình vận chuyển</h2>
+                    <h2>Lịch sử cập nhật đơn hàng</h2>
                     <ol class="tracking-timeline" id="tracking-timeline"></ol>
                 </section>
                 <section class="tracking-panel order-details">
@@ -131,7 +137,7 @@
     <script src="./product-names.js?v=2"></script>
     <script src="./order-store.js?v=16"></script>
     <script src="./bouquet-options.js?v=1"></script>
-    <script type="module" src="./tracking.js?v=15"></script>
+    <script type="module" src="./tracking.js?v=16"></script>
     <script src="./store-footer.js?v=4"></script>
 <script src="./contact-tools.js?v=1"></script>
 </body>
