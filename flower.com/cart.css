@@ -503,8 +503,8 @@
 }
 
 .cart-item-actions button {
-  min-width: 38px;
-  min-height: 36px;
+  min-width: 44px;
+  min-height: 44px;
   padding: 6px 10px;
   border: 1px solid #e9e2dc;
   border-radius: 8px;
@@ -652,8 +652,8 @@
   }
 
   .cart-item-actions button {
-    min-width: 34px;
-    min-height: 34px;
+    min-width: 44px;
+    min-height: 44px;
     padding: 5px 8px;
   }
 
