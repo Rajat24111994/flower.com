@@ -129,3 +129,11 @@ test("không đặt được nội dung chuyển khoản trùng với đơn củ
     assert.notEqual(copyReference, firstReference);
     assert.equal(copy.body.order.paymentReference, copyReference);
 });
+
+test("đặt quá 50 sản phẩm một loại: báo rõ giới hạn thay vì 'không hợp lệ' (F46)", async () => {
+    await h.db().doc("products/3").update({ quantity: 100 });
+    const quote = await h.callApi("orders", { body: { action: "quote", items: [{ id: "3", quantity: 60 }] } });
+    assert.equal(quote.status, 400);
+    assert.equal(quote.body.code, "quantity-limit");
+    assert.match(quote.body.error, /50/);
+});

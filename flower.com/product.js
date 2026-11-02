@@ -510,9 +510,11 @@ function renderProductDetail(product) {
   document.getElementById("detail-description").textContent = getVietnameseProductDescription(product.description) || "Sản phẩm hoa tươi được tuyển chọn và sắp xếp chỉn chu để gửi trao những lời yêu thương."
 
   detailQuantity.min = "1"
-  detailQuantity.max = String(Math.max(0, stock - quantityInCart))
+  // At most what is in stock, and never more than the 50 per product an order may hold.
+  const orderLimit = Math.min(stock, FlowerShoppingStore.MAX_QUANTITY_PER_PRODUCT || 50)
+  detailQuantity.max = String(Math.max(0, orderLimit - quantityInCart))
   detailQuantity.value = stock > 0 ? "1" : "0"
-  detailQuantity.disabled = stock === 0 || quantityInCart >= stock
+  detailQuantity.disabled = stock === 0 || quantityInCart >= orderLimit
   detailQuantityError.textContent = ""
   thumbnails.replaceChildren()
   mainImage.hidden = images.length === 0

@@ -303,7 +303,15 @@ function priceCart(items, promotion) {
     return { subtotal, savings, tax: 0, total: subtotal - savings };
 }
 
+// A clear answer for the one limit customers can actually hit, instead of "invalid list".
+function quantityLimitError(res, body) {
+    const tooMany = Array.isArray(body?.items) && body.items.some((item) => Number(item?.quantity) > MAX_QUANTITY_PER_PRODUCT);
+    if (!tooMany) return null;
+    return sendError(res, 400, "quantity-limit", `Mỗi đơn đặt tối đa ${MAX_QUANTITY_PER_PRODUCT} sản phẩm mỗi loại. Hãy giảm số lượng, hoặc liên hệ cửa hàng nếu cần số lượng lớn.`);
+}
+
 async function quoteOrder(req, res) {
+    if (quantityLimitError(res, req.body)) return;
     const quote = validateQuote(req.body);
     if (!quote) return sendError(res, 400, "invalid-checkout", "Danh sách sản phẩm không hợp lệ.");
     try {
@@ -377,6 +385,7 @@ async function createOrder(req, res) {
     if (String(req.body?.orderNote || "").trim().length > MAX_ORDER_NOTE_LENGTH) {
         return sendError(res, 400, "note-too-long", `Ghi chú tối đa ${MAX_ORDER_NOTE_LENGTH} ký tự. Hãy rút gọn ghi chú rồi đặt lại.`);
     }
+    if (quantityLimitError(res, req.body)) return;
     const checkout = validateCheckout(req.body);
     if (!checkout) {
         return sendError(res, 400, "invalid-checkout", "Thông tin đặt hàng hoặc danh sách sản phẩm không hợp lệ.");
@@ -687,5 +696,6 @@ module.exports.internals = {
     paymentReferenceFor,
     publicTrackingOrder,
     reviewIdForOrder,
-    MAX_ORDER_NOTE_LENGTH
+    MAX_ORDER_NOTE_LENGTH,
+    MAX_QUANTITY_PER_PRODUCT
 };

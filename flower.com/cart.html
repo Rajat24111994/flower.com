@@ -50,6 +50,8 @@
     <script src="./currency.js?v=10"></script>
     <script src="./product-names.js?v=2"></script>
     <script>
+      // Same limit as the order API (api/orders.js MAX_QUANTITY_PER_PRODUCT).
+      const MAX_QUANTITY_PER_PRODUCT = 50;
       let CartContainer = document.getElementById("product-container");
       let Cart = FlowerSafeStorage.readJson("cart", {
         fallback: [],
@@ -98,12 +100,15 @@
           const stockQuantity = Number(product.stockQuantity);
           const hasStockLimit = Number.isFinite(stockQuantity) && stockQuantity >= 0;
           quantity.textContent = productQuantity;
-          Increase.disabled = hasStockLimit && productQuantity >= stockQuantity;
-          stockNote.textContent = hasStockLimit
-            ? productQuantity > stockQuantity
-              ? `Số lượng trong giỏ vượt tồn kho (${stockQuantity}).`
-              : `Tồn kho: ${stockQuantity}`
-            : "";
+          const atOrderLimit = productQuantity >= MAX_QUANTITY_PER_PRODUCT;
+          Increase.disabled = atOrderLimit || (hasStockLimit && productQuantity >= stockQuantity);
+          stockNote.textContent = productQuantity > MAX_QUANTITY_PER_PRODUCT
+            ? `Mỗi đơn đặt tối đa ${MAX_QUANTITY_PER_PRODUCT} sản phẩm mỗi loại.`
+            : hasStockLimit
+              ? productQuantity > stockQuantity
+                ? `Số lượng trong giỏ vượt tồn kho (${stockQuantity}).`
+                : `Tồn kho: ${stockQuantity}${atOrderLimit ? ` · tối đa ${MAX_QUANTITY_PER_PRODUCT} mỗi đơn` : ""}`
+              : "";
 
           Decrease.addEventListener("click", () => {
             if (productQuantity > 1) {
@@ -113,7 +118,7 @@
             }
           });
           Increase.addEventListener("click", () => {
-            if (hasStockLimit && productQuantity >= stockQuantity) return;
+            if (atOrderLimit || (hasStockLimit && productQuantity >= stockQuantity)) return;
             saveCart(Cart.map((item) => item.id === product.id
               ? { ...item, quantity: productQuantity + 1 }
               : item));

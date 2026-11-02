@@ -179,6 +179,8 @@
     validate: (value) => Array.isArray(value)
       && value.every((item) => item && typeof item === "object" && !Array.isArray(item) && item.id !== undefined)
   });
+  // Same limit as the order API (api/orders.js MAX_QUANTITY_PER_PRODUCT).
+  const MAX_QUANTITY_PER_PRODUCT = 50;
   let serverQuote = null;
   let quoteRequestId = 0;
   const paymentQrPanel = document.getElementById("payment-qr-panel");
@@ -337,7 +339,7 @@
       increase.className = "quantity-button";
       increase.textContent = "+";
       increase.setAttribute("aria-label", `Tăng số lượng ${name.textContent}`);
-      increase.disabled = hasStockLimit && itemQuantity >= stock;
+      increase.disabled = itemQuantity >= MAX_QUANTITY_PER_PRODUCT || (hasStockLimit && itemQuantity >= stock);
       lineTotal.className = "checkout-item-total";
       lineTotal.textContent = formatVnd(Number(product.price) * itemQuantity);
       remove.type = "button";
@@ -350,6 +352,10 @@
           : item));
       });
       increase.addEventListener("click", () => {
+        if (itemQuantity >= MAX_QUANTITY_PER_PRODUCT) {
+          checkoutMessage.textContent = `Mỗi đơn đặt tối đa ${MAX_QUANTITY_PER_PRODUCT} sản phẩm mỗi loại.`;
+          return;
+        }
         if (hasStockLimit && itemQuantity >= stock) {
           checkoutMessage.textContent = `Chỉ còn ${stock} sản phẩm trong kho.`;
           return;

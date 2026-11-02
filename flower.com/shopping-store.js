@@ -3,6 +3,9 @@
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   if (root) root.FlowerShoppingStore = api.createShoppingStore(() => root.localStorage);
 })(typeof globalThis !== "undefined" ? globalThis : this, function createShoppingStoreModule(root) {
+  // Same limit as MAX_QUANTITY_PER_PRODUCT in api/orders.js: the order API refuses more.
+  const MAX_QUANTITY_PER_PRODUCT = 50;
+
   class ShoppingStoreError extends Error {
     constructor(message, code, cause) {
       super(message);
@@ -124,6 +127,15 @@
       const existingQuantity = cart
         .filter((item) => String(item.id) === productId)
         .reduce((sum, item) => sum + Number(item.quantity ?? 1), 0);
+      if (existingQuantity + quantity > MAX_QUANTITY_PER_PRODUCT && stock > MAX_QUANTITY_PER_PRODUCT) {
+        const remaining = Math.max(0, MAX_QUANTITY_PER_PRODUCT - existingQuantity);
+        throw new ShoppingStoreError(
+          remaining
+            ? `Mỗi đơn đặt tối đa ${MAX_QUANTITY_PER_PRODUCT} sản phẩm mỗi loại; bạn chỉ thêm được ${remaining} nữa.`
+            : `Mỗi đơn đặt tối đa ${MAX_QUANTITY_PER_PRODUCT} sản phẩm mỗi loại. Cần số lượng lớn hơn, hãy liên hệ cửa hàng.`,
+          "quantity-limit"
+        );
+      }
       if (existingQuantity + quantity > stock) {
         const remaining = Math.max(0, stock - existingQuantity);
         throw new ShoppingStoreError(
@@ -162,8 +174,8 @@
       return nextWishlist;
     }
 
-    return { readCart, readWishlist, addToCart, toggleWishlist, removeFromWishlist };
+    return { readCart, readWishlist, addToCart, toggleWishlist, removeFromWishlist, MAX_QUANTITY_PER_PRODUCT };
   }
 
-  return { createShoppingStore, ShoppingStoreError };
+  return { createShoppingStore, ShoppingStoreError, MAX_QUANTITY_PER_PRODUCT };
 });
