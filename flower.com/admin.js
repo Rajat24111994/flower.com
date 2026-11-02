@@ -451,7 +451,7 @@ function renderProductTab() {
                    <tbody>
                        ${filteredProducts.map((item) => `
                            <tr>
-                               <td><img src="${escapeHtml(getSafeImageUrl(item.image) || "./images/flowerflow-logo.png")}" alt="${escapeHtml(getVietnameseProductName(item.title))}"></td>
+                               <td><img src="${escapeHtml(getSafeImageUrl(item.image) || "./images/flowerflow-logo.png")}" alt="${escapeHtml(getVietnameseProductName(item.title))}" width="64" height="64" loading="lazy" decoding="async"></td>
                                <td>
                                    <div><strong>${escapeHtml(getVietnameseProductName(item.title))}</strong></div>
                                    <small>${escapeHtml(getVietnameseProductDescription(item.description || ""))}</small>
@@ -828,7 +828,7 @@ function renderOrderCard(order, showCompletionAction = true) {
                    const image = getSafeImageUrl(item.image || product.image) || "./images/flowerflow-logo.png";
                    return `
                        <div class="product-card">
-                           <img src="${escapeHtml(image)}" alt="${escapeHtml(getVietnameseProductName(item.title))}">
+                           <img src="${escapeHtml(image)}" alt="${escapeHtml(getVietnameseProductName(item.title))}" width="64" height="64" loading="lazy" decoding="async">
                            <div class="product-card-content">
                                <strong>${escapeHtml(getVietnameseProductName(item.title))}</strong>
                                <span>Số lượng: ${Number(item.quantity) || 0}</span>

@@ -10,6 +10,7 @@
     let catalogProducts = [];
     let firestoreReachable = null;
     let productsLoaded = false;
+    let productSubscriptionTimer = null;
 
     function storage() {
         try {
@@ -145,7 +146,7 @@
         return firebaseApiPromise;
     }
 
-    // Products from the server-side API (works when the browser cannot reach Firestore).
+    // The public server API avoids downloading the Firestore client just to read the catalog.
     async function readProductsFromApi() {
         try {
             const response = await fetch("/api/products", { headers: { Accept: "application/json" }, cache: "no-store" });
@@ -159,6 +160,13 @@
     }
 
     async function readRemoteProducts() {
+        const apiProducts = await readProductsFromApi();
+        if (apiProducts?.length) {
+            firestoreReachable = false;
+            scheduleProductSubscription();
+            return apiProducts;
+        }
+
         const firebase = await getFirebaseApi();
         if (firebase) {
             try {
@@ -173,7 +181,7 @@
             }
         }
         firestoreReachable = false;
-        return readProductsFromApi();
+        return apiProducts ?? readProductsFromApi();
     }
 
     function normalizeCategories(categories) {
@@ -372,6 +380,18 @@
         });
     }
 
+    function scheduleProductSubscription() {
+        if (window.location.pathname.endsWith("/admin.html")) {
+            subscribeToProducts();
+            return;
+        }
+        if (productSubscriptionTimer !== null) return;
+        productSubscriptionTimer = window.setTimeout(() => {
+            productSubscriptionTimer = null;
+            subscribeToProducts();
+        }, 5000);
+    }
+
     async function saveProducts(products) {
         const normalized = deduplicateProducts(products);
         const saved = await writeRemoteProducts(normalized, readProducts());
@@ -384,7 +404,6 @@
     // Loads products from Firestore. flower.json is only used once, by an admin, to seed an
     // empty catalog; after that, products an admin deleted stay deleted.
     async function synchronizeProducts(catalog) {
-        const firebase = await getFirebaseApi();
         const remoteProducts = await readRemoteProducts();
         if (remoteProducts === null) return false;
         productsLoaded = true;
@@ -394,6 +413,9 @@
             scheduleApiRefresh();
             return true;
         }
+
+        const firebase = await getFirebaseApi();
+        if (!firebase) return false;
 
         let isAdmin = false;
         try {
@@ -452,6 +474,25 @@
         if (initialization) return initialization;
         initialization = (async () => {
             const localProducts = readProducts();
+            const isAdminPage = window.location.pathname.endsWith("/admin.html");
+
+            if (!isAdminPage && localProducts.length) {
+                startProductSynchronization([]);
+                return localProducts;
+            }
+
+            if (!isAdminPage) {
+                const apiProducts = await readProductsFromApi();
+                if (apiProducts?.length) {
+                    firestoreReachable = false;
+                    productsLoaded = true;
+                    cacheProducts(apiProducts);
+                    scheduleApiRefresh();
+                    scheduleProductSubscription();
+                    return apiProducts;
+                }
+            }
+
             let catalog = [];
             try {
                 const response = await fetch("./flower.json?v=2");

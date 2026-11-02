@@ -8,7 +8,7 @@
   <header class="site-header">
     <div class="header-main">
       <a class="brand" href="./index.html" aria-label="Flowerflow - Trang chủ">
-        <img src="./images/flowerflow-logo.png" alt="">
+        <img src="./images/flowerflow-logo.png" alt="" width="120" height="66" decoding="async">
         <span>flowerflow</span>
       </a>
 

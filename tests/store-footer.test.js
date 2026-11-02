@@ -19,7 +19,7 @@ const pages = [
 for (const page of pages) {
   const html = fs.readFileSync(path.join(root, page), "utf8");
   assert.match(html, /store-footer\.css\?v=2/, `${page} should load the current shared footer styles`);
-  assert.match(html, /store-footer\.js\?v=2/, `${page} should load the current shared footer markup`);
+  assert.match(html, /store-footer\.js\?v=3/, `${page} should load the current shared footer markup`);
   if (page === "checkout.html") {
     assert.doesNotMatch(html, /id="bottomtext"|id="endline"/, "checkout should not retain its duplicate legacy footer");
   }

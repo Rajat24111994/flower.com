@@ -12,24 +12,57 @@ const relatedFlowersStatus = document.getElementById("related-flowers-status")
 const relatedFlowersGrid = document.getElementById("related-flowers-grid")
 
 function showShoppingFeedback(title, icon, detail = "") {
-  actionMessage.textContent = detail
-  actionMessage.hidden = !detail
+  actionMessage.textContent = detail || title
+  actionMessage.hidden = false
   actionMessage.classList.toggle("is-error", icon === "error")
-  if (typeof Swal !== "undefined") {
-    Swal.fire({
-      position: "center",
-      icon,
-      title,
-      text: detail,
-      showConfirmButton: false,
-      timer: 1800
-    })
-  }
 }
 
 function showShoppingError(error) {
   console.error("Không thể cập nhật giỏ hàng hoặc yêu thích:", error)
   showShoppingFeedback("Chưa thể hoàn tất thao tác", "error", error.message || "Vui lòng thử lại.")
+}
+
+function updateProductStructuredData(product, productName, productDescription) {
+  const baseUrl = "https://flower-com-six.vercel.app"
+  const canonicalUrl = `${baseUrl}/product.html?id=${encodeURIComponent(product.id)}`
+  const imageUrl = product.image
+    ? new URL(product.image, window.location.href).href
+    : `${baseUrl}/images/flowerflow-logo.png`
+  const price = Math.round(Number(product.price) || 0)
+  const available = Number(product.quantity) > 0
+  const descriptionMeta = document.querySelector('meta[name="description"]')
+  const canonicalLink = document.querySelector('link[rel="canonical"]')
+  const structuredData = document.getElementById("catalog-structured-data")
+  document.title = `${productName} | Hoa tươi Flowerflow`
+  if (descriptionMeta) descriptionMeta.content = productDescription
+  if (canonicalLink) canonicalLink.href = canonicalUrl
+  document.querySelector('meta[property="og:type"]')?.setAttribute("content", "product")
+  document.querySelector('meta[property="og:title"]')?.setAttribute("content", document.title)
+  document.querySelector('meta[property="og:description"]')?.setAttribute("content", productDescription)
+  document.querySelector('meta[property="og:url"]')?.setAttribute("content", canonicalUrl)
+  document.querySelector('meta[property="og:image"]')?.setAttribute("content", imageUrl)
+  document.querySelector('meta[name="twitter:title"]')?.setAttribute("content", document.title)
+  document.querySelector('meta[name="twitter:description"]')?.setAttribute("content", productDescription)
+  document.querySelector('meta[name="twitter:image"]')?.setAttribute("content", imageUrl)
+  if (structuredData) {
+    structuredData.textContent = JSON.stringify({
+      "@context": "https://schema.org",
+      "@type": "Product",
+      name: productName,
+      description: productDescription,
+      image: [imageUrl],
+      sku: String(product.id),
+      brand: { "@type": "Brand", name: "Flowerflow" },
+      offers: {
+        "@type": "Offer",
+        url: canonicalUrl,
+        priceCurrency: "VND",
+        price: price,
+        availability: `https://schema.org/${available ? "InStock" : "OutOfStock"}`,
+        itemCondition: "https://schema.org/NewCondition"
+      }
+    }).replace(/</g, "\\u003c")
+  }
 }
 
 function updateShoppingCounts() {
@@ -38,6 +71,25 @@ function updateShoppingCounts() {
   document.querySelectorAll(".favorite-count").forEach((count) => {
     count.textContent = String(wish.length)
   })
+}
+
+function updateCatalogStructuredData(catalog) {
+  const structuredData = document.getElementById("catalog-structured-data")
+  if (!structuredData || new URLSearchParams(window.location.search).has("id")) return
+  structuredData.textContent = JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    name: "Danh sách hoa tươi Flowerflow",
+    url: "https://flower-com-six.vercel.app/product.html",
+    itemListOrder: "https://schema.org/ItemListOrderAscending",
+    numberOfItems: catalog.length,
+    itemListElement: catalog.map((product, index) => ({
+      "@type": "ListItem",
+      position: index + 1,
+      name: getVietnameseProductName(product.title || "Sản phẩm hoa"),
+      url: `https://flower-com-six.vercel.app/product.html?id=${encodeURIComponent(product.id)}`
+    }))
+  }).replace(/</g, "\\u003c")
 }
 
 try {
@@ -109,7 +161,7 @@ function addProductToCart(product, quantity = 1) {
 
 function display(data) {
 
-    container.innerHTML = ""
+    container.replaceChildren()
 
     if (!data.length) {
       const emptyState = document.createElement("p")
@@ -119,7 +171,8 @@ function display(data) {
       return
     }
 
-    data.forEach((el) => {
+    const cards = document.createDocumentFragment()
+    data.forEach((el, index) => {
 
         const productName = getVietnameseProductName(el.title || "Sản phẩm hoa")
         const box = document.createElement("article")
@@ -139,7 +192,11 @@ function display(data) {
         imageFrame.className = "product-image"
         img.src = el.image || ""
         img.alt = productName
-        img.loading = "lazy"
+        img.width = 420
+        img.height = 315
+        img.loading = index === 0 ? "eager" : "lazy"
+        if (index === 0) img.fetchPriority = "high"
+        img.decoding = "async"
         img.addEventListener("error", () => {
           img.hidden = true
           imageFrame.classList.add("image-unavailable")
@@ -199,9 +256,9 @@ function display(data) {
         box.append(imageFrame, title)
         if (badges.childElementCount) box.append(badges)
         box.append(price, stock, actions)
-        container.append(box)
+        cards.append(box)
     });
-
+    container.append(cards)
 }
 
 function setRelatedFlowersStatus(message, state = "") {
@@ -238,7 +295,10 @@ function createRelatedFlowerCard(product) {
   fallback.textContent = "✿"
   image.src = product.image || ""
   image.alt = productName
+  image.width = 420
+  image.height = 315
   image.loading = "lazy"
+  image.decoding = "async"
   image.addEventListener("error", () => {
     image.hidden = true
     imageFrame.classList.add("image-unavailable")
@@ -312,6 +372,7 @@ const detailQuantityError = document.getElementById("detail-quantity-error")
 let selectedProduct = null
 let unsubscribeProductReviews = null
 let subscribedReviewProductId = null
+let productReviewObserver = null
 
 function renderProductReviews(reviews) {
   const section = document.getElementById("product-reviews")
@@ -373,16 +434,32 @@ function watchProductReviews(product) {
   if (subscribedReviewProductId === productId) return
 
   if (unsubscribeProductReviews) unsubscribeProductReviews()
+  if (productReviewObserver) productReviewObserver.disconnect()
+  productReviewObserver = null
   subscribedReviewProductId = productId
-  summary.textContent = "Đang tải đánh giá..."
+  summary.textContent = "Đánh giá sẽ tải khi bạn đến mục này."
   if (!window.FlowerReviewStore) {
     summary.textContent = "Chưa thể kết nối tới dịch vụ đánh giá."
     return
   }
 
-  unsubscribeProductReviews = window.FlowerReviewStore.subscribe(productId, renderProductReviews, () => {
-    summary.textContent = "Chưa thể tải đánh giá lúc này. Vui lòng tải lại trang."
-  })
+  const subscribe = () => {
+    if (subscribedReviewProductId !== productId) return
+    unsubscribeProductReviews = window.FlowerReviewStore.subscribe(productId, renderProductReviews, () => {
+      summary.textContent = "Chưa thể tải đánh giá lúc này. Vui lòng tải lại trang."
+    })
+  }
+  if (typeof window.IntersectionObserver === "function") {
+    productReviewObserver = new IntersectionObserver((entries) => {
+      if (!entries.some((entry) => entry.isIntersecting)) return
+      productReviewObserver.disconnect()
+      productReviewObserver = null
+      subscribe()
+    }, { rootMargin: "200px" })
+    productReviewObserver.observe(section)
+  } else {
+    window.setTimeout(subscribe, 3000)
+  }
 }
 
 const pageParams = new URLSearchParams(window.location.search)
@@ -485,6 +562,9 @@ function renderProductDetail(product) {
   selectedProduct = product
   watchProductReviews(product)
   const productName = getVietnameseProductName(product.title || "Sản phẩm hoa")
+  const productDescription = getVietnameseProductDescription(product.description)
+    || "Sản phẩm hoa tươi được tuyển chọn và sắp xếp chỉn chu để gửi trao những lời yêu thương."
+  updateProductStructuredData(product, productName, productDescription)
   const images = getProductImages(product)
   const thumbnails = document.getElementById("detail-thumbnails")
   const stock = Math.max(0, Number(product.quantity) || 0)
@@ -507,7 +587,7 @@ function renderProductDetail(product) {
   document.getElementById("detail-price").textContent = formatVnd(product.price)
   document.getElementById("detail-stock").textContent = stock > 0 ? `Còn hàng · ${stock} sản phẩm` : "Hiện đã hết hàng"
   document.getElementById("detail-stock").classList.toggle("out-of-stock", stock === 0)
-  document.getElementById("detail-description").textContent = getVietnameseProductDescription(product.description) || "Sản phẩm hoa tươi được tuyển chọn và sắp xếp chỉn chu để gửi trao những lời yêu thương."
+  document.getElementById("detail-description").textContent = productDescription
 
   detailQuantity.min = "1"
   detailQuantity.max = String(Math.max(0, stock - quantityInCart))
@@ -517,6 +597,8 @@ function renderProductDetail(product) {
   thumbnails.replaceChildren()
   mainImage.hidden = images.length === 0
   mainImage.alt = productName
+  mainImage.fetchPriority = "high"
+  mainImage.decoding = "async"
   mainImage.onerror = () => {
     mainImage.hidden = true
     mainImage.parentElement.classList.add("image-unavailable")
@@ -533,7 +615,10 @@ function renderProductDetail(product) {
     thumbnail.setAttribute("aria-pressed", String(index === selectedImageIndex))
     image.src = imageUrl
     image.alt = ""
+    image.width = 96
+    image.height = 96
     image.loading = "lazy"
+    image.decoding = "async"
     image.addEventListener("error", () => thumbnail.remove(), { once: true })
     thumbnail.append(image)
     thumbnail.addEventListener("click", () => {
@@ -649,6 +734,7 @@ function productHasFlowerType(product, type) {
 }
 
 function renderProducts() {
+  updateCatalogStructuredData(products)
   const searchTerm = normalizeSearchText(searchInput.value.trim())
   const flowerType = flowerTypeSelect.value
   const priceFilter = priceFilterSelect.value
@@ -796,12 +882,6 @@ async function fetchAndRenderProducts() {
   try {
     products = await FlowerInventory.initialize()
     if (!products.length) throw new Error("Kho sản phẩm hiện chưa có dữ liệu hoặc dịch vụ danh mục đang không khả dụng.")
-    try {
-      await FlowerInventory.getCategories()
-      FlowerInventory.subscribeCategories(() => {})
-    } catch (error) {
-      console.warn("Đang dùng cache danh mục do chưa tải được Firestore:", error)
-    }
     populateFlowerCategoryFilter()
     renderProducts()
     navigateToProductDetail()

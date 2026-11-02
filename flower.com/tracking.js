@@ -139,6 +139,10 @@ function renderProducts(items) {
         const image = document.createElement("img");
         image.src = product.image || "";
         image.alt = getVietnameseProductName(product.title || "Sản phẩm trong đơn hàng");
+        image.width = 96;
+        image.height = 96;
+        image.loading = "lazy";
+        image.decoding = "async";
         image.addEventListener("error", () => image.remove(), { once: true });
         row.append(
             image,
@@ -331,6 +335,10 @@ function createOrderCard(order) {
         const image = document.createElement("img");
         image.src = item.image || "";
         image.alt = "";
+        image.width = 96;
+        image.height = 96;
+        image.loading = "lazy";
+        image.decoding = "async";
         image.addEventListener("error", () => image.remove(), { once: true });
         products.append(image);
     });
