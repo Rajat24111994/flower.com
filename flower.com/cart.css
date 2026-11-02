@@ -338,11 +338,12 @@
 }
 
 .nav.is-empty #product-container {
-  display: none;
+  display: block;
 }
 
+/* An empty cart shows the "giỏ hàng trống" message only: no 0 ₫ summary, no checkout button. */
 .nav.is-empty .checkout {
-  grid-column: 1;
+  display: none;
 }
 
 @media (max-width: 800px) {
@@ -511,8 +512,8 @@
 }
 
 .cart-item-actions button {
-  min-width: 38px;
-  min-height: 36px;
+  min-width: 44px;
+  min-height: 44px;
   padding: 6px 10px;
   border: 1px solid #e9e2dc;
   border-radius: 8px;
@@ -660,8 +661,8 @@
   }
 
   .cart-item-actions button {
-    min-width: 34px;
-    min-height: 34px;
+    min-width: 44px;
+    min-height: 44px;
     padding: 5px 8px;
   }
 

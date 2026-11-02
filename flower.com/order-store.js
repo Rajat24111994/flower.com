@@ -100,7 +100,6 @@
         giftWrap: order.giftWrap || "none",
         orderNote: order.orderNote || "",
         paymentMethod: order.paymentMethod,
-        paymentReference: order.paymentReference || "",
         idempotencyKey: order.idempotencyKey || "",
         promotionId: order.promotionId || "",
         expectedTotals,

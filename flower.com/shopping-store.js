@@ -3,7 +3,10 @@
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   if (root) root.FlowerShoppingStore = api.createShoppingStore(() => root.localStorage);
 })(typeof globalThis !== "undefined" ? globalThis : this, function createShoppingStoreModule(root) {
+  // Same limit as MAX_QUANTITY_PER_PRODUCT in api/orders.js: the order API refuses more.
+  const MAX_QUANTITY_PER_PRODUCT = 50;
   const bouquet = root.FlowerBouquetOptions || (typeof require === "function" ? require("./bouquet-options.js") : null);
+
   class ShoppingStoreError extends Error {
     constructor(message, code, cause) {
       super(message);
@@ -140,8 +143,14 @@
       const matching = cart.filter((item) => String(item.productId ?? item.id) === productId
         && JSON.stringify(bouquet?.normalize(item) || {}) === JSON.stringify(selection || {}));
       const lineQuantity = matching.reduce((sum, item) => sum + Number(item.quantity ?? 1), 0);
-      if (lineQuantity + quantity > 50) {
-        throw new ShoppingStoreError("Mỗi cấu hình bó hoa đặt tối đa 50 bó.", "invalid-quantity");
+      if (lineQuantity + quantity > MAX_QUANTITY_PER_PRODUCT) {
+        const remaining = Math.max(0, MAX_QUANTITY_PER_PRODUCT - lineQuantity);
+        throw new ShoppingStoreError(
+          remaining
+            ? `Mỗi lựa chọn bó hoa đặt tối đa ${MAX_QUANTITY_PER_PRODUCT} bó; bạn chỉ thêm được ${remaining} nữa.`
+            : `Mỗi lựa chọn bó hoa đặt tối đa ${MAX_QUANTITY_PER_PRODUCT} bó. Cần số lượng lớn hơn, hãy liên hệ cửa hàng.`,
+          "quantity-limit"
+        );
       }
       const lineId = matching[0]?.id || (selection?.productId ? `line_${root.crypto.randomUUID()}` : product.id);
       const nextCart = cart.filter((item) => !matching.includes(item));
@@ -174,8 +183,8 @@
       return nextWishlist;
     }
 
-    return { readCart, readWishlist, addToCart, toggleWishlist, removeFromWishlist };
+    return { readCart, readWishlist, addToCart, toggleWishlist, removeFromWishlist, MAX_QUANTITY_PER_PRODUCT };
   }
 
-  return { createShoppingStore, ShoppingStoreError };
+  return { createShoppingStore, ShoppingStoreError, MAX_QUANTITY_PER_PRODUCT };
 });

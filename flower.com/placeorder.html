@@ -2,21 +2,21 @@
 <html lang="vi">
 <head>
   <meta charset="UTF-8">
-    <script src="./safe-storage.js?v=1"></script>
+    <script src="./safe-storage.js?v=2"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex, nofollow">
   <meta name="description" content="Xem xác nhận và hướng dẫn thanh toán đơn hàng Flowerflow.">
   <link rel="icon" type="image/svg+xml" href="./favicon.svg">
   <title>Xác nhận đơn hàng</title>
   <link rel="stylesheet" href="./store-header.css?v=2">
-  <link rel="stylesheet" href="./cart.css?v=2">
+  <link rel="stylesheet" href="./cart.css?v=5">
   <link rel="stylesheet" href="./accessibility.css?v=1">
   <link rel="stylesheet" href="./store-footer.css?v=3">
 <link rel="stylesheet" href="./contact-tools.css?v=2">
 </head>
 
 <body>
-  <script src="./store-header.js?v=4"></script>
+  <script src="./store-header.js?v=5"></script>
 
   <main class="nav">
     <div id="product-container"></div>
@@ -39,7 +39,7 @@
   <script src="./bouquet-options.js?v=1"></script>
   <script src="./currency.js?v=11"></script>
   <script src="./product-names.js?v=2"></script>
-  <script src="./order-store.js?v=15"></script>
+  <script src="./order-store.js?v=16"></script>
   <script>
     let CartContainer = document.getElementById("product-container");
     let pendingSubmission = FlowerSafeStorage.readJson("flowerPendingOrder", { fallback: null });
@@ -122,7 +122,6 @@
         giftWrap: checkoutData.giftWrap || "none",
         orderNote: String(checkoutData.orderNote || "").trim(),
         paymentMethod: checkoutData.paymentMethod,
-        paymentReference: checkoutData.paymentReference || "",
         promotionId: checkoutData.promotionId || "",
         idempotencyKey: checkoutData.idempotencyKey,
         items: Cart.map((item) => ({ id: item.id, productId: item.productId, size: item.size, color: item.color, cardMessage: item.cardMessage, personalNote: item.personalNote, quantity: Math.max(1, Number(item.quantity) || 1) }))
@@ -138,13 +137,22 @@
       } catch (error) {
         console.error("Không thể lưu đơn hàng tập trung:", error);
         orderSubmissionInProgress = false;
-        paymentButton.disabled = false;
-        if (["insufficient-stock", "product-unavailable", "price-changed", "invalid-checkout", "invalid-promotion", "note-too-long"].includes(error.code)) {
+        if (["insufficient-stock", "product-unavailable", "price-changed", "invalid-checkout", "invalid-promotion", "note-too-long", "quantity-limit"].includes(error.code)) {
+          // The shop refused this request for good: forget it (so it is not resent as "pending"),
+          // keep the button locked and show the new prices or stock instead.
           if (FlowerSafeStorage.remove("flowerPendingOrder")) pendingSubmission = null;
           serverQuote = null;
           paymentButton.disabled = true;
           document.getElementById("retry-quote").hidden = false;
+          paymentNote.textContent = checkoutData.paymentMethod === "qr"
+            ? `Đơn chưa được tạo. ĐỪNG chuyển khoản: ${error.message}`
+            : `Đơn chưa được tạo: ${error.message}`;
+          alert(`Đơn chưa được tạo.\n\n${error.message}`);
+          void verifyOrderBeforeConfirmation({ keepNote: true });
+          return;
         }
+        // Network or server trouble: the same request can be sent again without a duplicate order.
+        paymentButton.disabled = false;
         paymentNote.textContent = error.message || "Mất kết nối khi gửi đơn. Bấm xác nhận để thử lại cùng yêu cầu; giỏ hàng vẫn được giữ.";
         return;
       }
@@ -161,7 +169,7 @@
       window.location.href = `./tracking.html?id=${encodeURIComponent(orderId)}`;
     }
 
-    async function verifyOrderBeforeConfirmation() {
+    async function verifyOrderBeforeConfirmation({ keepNote = false } = {}) {
       document.getElementById("retry-quote").hidden = true;
       if (pendingSubmission?.order?.idempotencyKey === checkoutData?.idempotencyKey && pendingSubmission?.order) {
         serverQuote = { totals: pendingSubmission.totals };
@@ -194,7 +202,16 @@
           (key) => Number(previousQuote[key]) !== Number(serverQuote.totals[key])
         );
         if (amountChanged || (!previousQuote && checkoutData?.paymentMethod === "qr")) {
-          paymentNote.textContent = "Giá hoặc tồn kho đã thay đổi từ lúc tạo mã QR. Hãy quay lại trang thanh toán để kiểm tra số tiền mới trước khi xác nhận.";
+          const newTotal = formatVnd(serverQuote.totals.total);
+          if (!keepNote) {
+            paymentNote.textContent = checkoutData?.paymentMethod === "qr"
+              ? `Giá hoặc ưu đãi đã thay đổi từ lúc tạo mã QR (tổng mới ${newTotal}). ĐỪNG chuyển khoản theo mã cũ; hãy quay lại trang thanh toán để lấy mã QR mới.`
+              : `Giá hoặc ưu đãi đã thay đổi (tổng mới ${newTotal}). Hãy quay lại trang thanh toán để kiểm tra trước khi đặt hàng.`;
+          }
+          paymentButton.disabled = true;
+          return;
+        }
+        if (keepNote) {
           paymentButton.disabled = true;
           return;
         }
@@ -206,7 +223,12 @@
       } catch (error) {
         console.error("Không xác minh được giá và tồn kho:", error);
         document.getElementById("retry-quote").hidden = false;
-        paymentNote.textContent = error.message || "Không thể xác minh giá và tồn kho. Vui lòng quay lại thanh toán.";
+        if (!keepNote) {
+          const reason = error.message || "Không thể xác minh giá và tồn kho.";
+          paymentNote.textContent = checkoutData?.paymentMethod === "qr"
+            ? `ĐỪNG chuyển khoản: ${reason} Hãy quay lại trang thanh toán.`
+            : `${reason} Hãy quay lại trang thanh toán.`;
+        }
         paymentButton.disabled = true;
       }
     }

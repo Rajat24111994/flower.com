@@ -184,6 +184,9 @@ async function verifyStoredSession() {
     try {
         FlowerSafeStorage.remove("loggedUser");
         FlowerSafeStorage.remove("loggedAdmin");
+        // Put this account's cart away for when it signs in again (F48).
+        FlowerSafeStorage.syncShoppingOwner?.();
+        updateShoppingHeaderCounts();
     } catch (error) {
         console.error("Không thể xóa phiên đăng nhập đã hết hạn:", error);
     }
