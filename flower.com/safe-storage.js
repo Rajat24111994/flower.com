@@ -152,4 +152,76 @@
   }
 
   root.FlowerSafeStorage = { readJson, readText, writeJson, writeText, remove };
+
+  // Each account keeps its own cart and wishlist on a shared browser (F48). The active lists stay
+  // in "cart"/"wish"; when the signed-in account changes, the old account's lists are put away
+  // under flowerCart_<uid>/flowerWish_<uid> and the new account's come back, merged with whatever
+  // was picked before signing in. Nothing is deleted: a customer who leaves can buy later.
+  const OWNER_KEY = "flowerShoppingOwner";
+  const isList = (value) => Array.isArray(value);
+
+  function readList(key) {
+    const value = readJson(key, { fallback: [], validate: isList });
+    return isList(value) ? value : [];
+  }
+
+  function mergeCarts(saved, current) {
+    const merged = saved.map((item) => ({ ...item }));
+    current.forEach((item) => {
+      const existing = merged.find((entry) => String(entry.id) === String(item.id));
+      if (existing) existing.quantity = Math.max(1, Number(existing.quantity) || 1) + Math.max(1, Number(item.quantity) || 1);
+      else merged.push({ ...item });
+    });
+    return merged;
+  }
+
+  function mergeWishlists(saved, current) {
+    const ids = new Set(saved.map((item) => String(item.id)));
+    return [...saved, ...current.filter((item) => !ids.has(String(item.id)))];
+  }
+
+  function putAway(uid) {
+    const cart = readList("cart");
+    const wish = readList("wish");
+    if (cart.length) writeJson(`flowerCart_${uid}`, cart); else remove(`flowerCart_${uid}`);
+    if (wish.length) writeJson(`flowerWish_${uid}`, wish); else remove(`flowerWish_${uid}`);
+    ["cart", "wish", "flowerCheckout", "flowerSelectedPromotion", "flowerPaymentReference"].forEach((key) => remove(key));
+  }
+
+  function bringBack(uid) {
+    const cart = mergeCarts(readList(`flowerCart_${uid}`), readList("cart"));
+    const wish = mergeWishlists(readList(`flowerWish_${uid}`), readList("wish"));
+    if (cart.length) writeJson("cart", cart);
+    if (wish.length) writeJson("wish", wish);
+    remove(`flowerCart_${uid}`);
+    remove(`flowerWish_${uid}`);
+  }
+
+  function syncShoppingOwner() {
+    let account = null;
+    try {
+      account = JSON.parse(root.localStorage.getItem("loggedUser") || "null");
+    } catch {
+      account = null;
+    }
+    const uid = String(account?.uid || "");
+    let owner;
+    try {
+      owner = root.localStorage.getItem(OWNER_KEY);
+    } catch {
+      return;
+    }
+    // First run after this feature shipped: the current lists belong to whoever is signed in.
+    if (owner === null) {
+      writeText(OWNER_KEY, uid);
+      return;
+    }
+    if (owner === uid) return;
+    if (owner) putAway(owner);
+    if (uid) bringBack(uid);
+    writeText(OWNER_KEY, uid);
+  }
+
+  syncShoppingOwner();
+  root.FlowerSafeStorage.syncShoppingOwner = syncShoppingOwner;
 })(typeof globalThis !== "undefined" ? globalThis : this);
