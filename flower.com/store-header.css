@@ -342,7 +342,7 @@ a {
   }
 }
 
-@media (max-width: 640px) {
+@media (max-width: 800px) {
   .announcement {
     min-height: 32px;
     font-size: 0.64rem;
@@ -443,6 +443,20 @@ a {
   .primary-nav a::after {
     content: none;
   }
+}
+
+@media (max-width: 800px) {
+  .announcement { flex-wrap: wrap; gap: 4px 12px; padding: 8px 12px; font-size: 12px; line-height: 1.5; text-align: center; }
+  .header-main { min-width: 0; }
+  .menu-toggle { width: 48px; height: 48px; }
+  .header-actions { gap: 4px; }
+  .header-action { flex: 1; min-width: 0; min-height: 48px; padding: 6px 0; font-size: 13px; }
+  .header-action > span:last-child, .header-action h5 { font-size: 12px; }
+  .search-form { min-width: 0; height: 48px; }
+  .search-form input { min-width: 0; width: 100%; font-size: 16px; }
+  .search-form button { min-height: 44px; flex-shrink: 0; font-size: 14px; }
+  .primary-nav a { min-height: 48px; padding: 12px 8px; font-size: 16px; }
+  input, textarea, select { scroll-margin-block: 24px 90px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

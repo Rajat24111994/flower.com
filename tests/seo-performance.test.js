@@ -6,7 +6,6 @@ const siteRoot = path.join(__dirname, "..", "flower.com");
 const siteUrl = "https://flower-com-six.vercel.app";
 const htmlFiles = fs.readdirSync(siteRoot).filter((file) => file.endsWith(".html"));
 const publicPages = new Set(["index.html", "product.html"]);
-// Store information and policy pages: public and listed in the sitemap, without social cards.
 const informationPages = new Set(["about.html", "contact.html", "delivery.html", "returns.html", "privacy.html", "terms.html", "ordering.html", "faq.html"]);
 const productIds = require("../flower.com/flower.json").flower.map((product) => String(product.id));
 const titles = new Set();
@@ -32,7 +31,7 @@ for (const file of htmlFiles) {
     assert.match(html, /name="twitter:card"/i, `${file} must have Twitter card metadata`);
   } else if (informationPages.has(file)) {
     assert.match(html, /rel="canonical"/i, `${file} must have a canonical URL`);
-    assert.doesNotMatch(html, /name="robots"\s+content="noindex/i, `${file} must stay indexable`);
+    assert.doesNotMatch(html, /name="robots"\s+content="noindex/i, `${file} should remain public`);
   } else {
     assert.match(html, /name="robots"\s+content="noindex, nofollow"/i, `${file} must not be indexed`);
   }
@@ -92,9 +91,7 @@ const sitemapProductIds = sitemapUrls
   .filter((url) => url.includes("/product.html?id="))
   .map((url) => new URL(url).searchParams.get("id"));
 assert.equal(sitemapUrls.length, productIds.length + 2 + informationPages.size);
-for (const page of informationPages) {
-  assert.ok(sitemapUrls.includes(`${siteUrl}/${page}`), `sitemap must list ${page}`);
-}
+for (const file of informationPages) assert.ok(sitemapUrls.includes(`${siteUrl}/${file}`), `${file} must appear in the sitemap`);
 assert.deepEqual(new Set(sitemapProductIds), new Set(productIds));
 assert.equal(new Set(sitemapUrls).size, sitemapUrls.length);
 

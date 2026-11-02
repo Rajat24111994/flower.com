@@ -105,6 +105,9 @@ test("tra cứu công khai chỉ hiện thông tin chuyển khoản cho đơn QR
     const waiting = publicTrackingOrder("abc", { status: "Chờ xác nhận", paymentMethod: "qr", paymentVerified: false, total: 500, paymentReference: "FFABC" });
     assert.equal(waiting.total, 500);
     assert.equal(waiting.paymentReference, "FFABC");
+    const preparing = publicTrackingOrder("abc", { status: "Đang chuẩn bị", paymentMethod: "qr", paymentVerified: false, total: 500, customerName: "Riêng tư" });
+    assert.equal(preparing.total, 500);
+    assert.equal(preparing.customerName, undefined);
     const paid = publicTrackingOrder("abc", { status: "Chờ xác nhận", paymentMethod: "qr", paymentVerified: true, total: 500 });
     assert.equal(paid.total, undefined);
 });

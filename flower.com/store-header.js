@@ -81,6 +81,16 @@
   primaryNav.addEventListener("click", (event) => {
     if (event.target.closest("a")) setMenuOpen(false);
   });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && menuToggle.getAttribute("aria-expanded") === "true") {
+      setMenuOpen(false);
+      menuToggle.focus();
+    }
+  });
+  document.addEventListener("pointerdown", (event) => {
+    if (!primaryNav.contains(event.target) && !menuToggle.contains(event.target)) setMenuOpen(false);
+  });
+  window.matchMedia("(max-width: 800px)").addEventListener("change", () => setMenuOpen(false));
 })();
 
 function getCurrentAccount() {

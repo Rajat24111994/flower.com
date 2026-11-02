@@ -795,3 +795,19 @@ h1,
     display: none;
 }
 .tracking-product-options { grid-column: 1 / -1; overflow-wrap: anywhere; white-space: pre-wrap; color: #65564e; }
+.order-progress { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; list-style: none; padding: 0; margin: 20px 0 0; }
+.order-progress-step { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; min-width: 0; padding-top: 14px; border-top: 3px solid #e6e2df; color: #6d6870; overflow-wrap: anywhere; }
+.order-progress-number { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; background: #eeeae6; }
+.order-progress-step.is-complete { border-color: #477356; color: #365c43; }
+.order-progress-step.is-current { border-color: #8c415e; color: #743e59; }
+.order-progress-step.is-current .order-progress-number { background: #743e59; color: white; }
+.order-progress-step.is-stopped { border-color: #a35c4b; }
+.order-progress-step time { font-size: 12px; line-height: 1.5; }
+.order-status-badge.is-preparing { background: #fff1d5; color: #75501d; }
+#order-cancelled-note { color: #8d3e40; line-height: 1.6; }
+@media (max-width: 600px) {
+  .order-progress { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+  .order-progress-step { display: grid; grid-template-columns: 36px minmax(0, 1fr); column-gap: 12px; padding: 0 0 0 12px; border-top: 0; border-left: 3px solid #e6e2df; }
+  .order-progress-number { grid-row: span 3; }
+  .order-progress-step strong, .order-progress-step small, .order-progress-step time { grid-column: 2; }
+}
