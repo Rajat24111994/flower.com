@@ -46,6 +46,9 @@ test("sản phẩm: ai cũng xem được, chỉ admin sửa được", async ()
     await assertFails(updateDoc(doc(alice(), "products/1"), { quantity: 999 }));
     await assertFails(updateDoc(doc(revokedAdmin(), "products/1"), { quantity: 1 }));
     await assertSucceeds(updateDoc(doc(admin(), "products/1"), { quantity: 7 }));
+    await assertFails(updateDoc(doc(guest(), "products/1"), { status: "hidden" }));
+    await assertSucceeds(updateDoc(doc(admin(), "products/1"), { status: "hidden" }));
+    await assertFails(updateDoc(doc(admin(), "products/1"), { status: "deleted" }));
 });
 
 test("sản phẩm: tồn kho phải là số nguyên không âm", async () => {

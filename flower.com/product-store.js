@@ -43,6 +43,7 @@
             quantity: Number(product.quantity ?? product.stock ?? 10),
             image: product.image || "",
             images: Array.isArray(product.images) ? product.images.filter((image) => typeof image === "string" && image) : [],
+            status: product.status === "hidden" ? "hidden" : "active",
             category: String(product.category || "").trim(),
             categoryKey: String(product.categoryKey || "").trim(),
             sameDayDelivery: product.sameDayDelivery === true,
@@ -152,10 +153,25 @@
     }
 
     // The public server API avoids downloading the Firestore client just to read the catalog.
-    async function readProductsFromApi() {
+    async function readProductsFromApi(manage = false) {
         try {
-            const response = await fetch("/api/products", { headers: { Accept: "application/json" }, cache: "no-store" });
-            if (!response.ok) return null;
+            const headers = { Accept: "application/json" };
+            if (manage) {
+                const firebase = await getFirebaseApi();
+                if (!firebase) return null;
+                await firebase.auth.authStateReady();
+                const user = firebase.auth.currentUser;
+                if (!user || (await user.getIdTokenResult()).claims.admin !== true) return null;
+                headers.Authorization = `Bearer ${await user.getIdToken()}`;
+            }
+            const response = await fetch(`/api/products${manage ? "?manage=1" : ""}`, {
+                headers,
+                cache: "no-store"
+            });
+            if (!response.ok) {
+                console.warn("Máy chủ từ chối tải danh sách sản phẩm:", response.status);
+                return null;
+            }
             const result = await response.json();
             return Array.isArray(result.products) ? result.products.map((product) => normalizeProduct(product)) : null;
         } catch (error) {
@@ -165,11 +181,14 @@
     }
 
     async function readRemoteProducts() {
-        const apiProducts = await readProductsFromApi();
-        if (apiProducts?.length) {
-            firestoreReachable = false;
-            scheduleProductSubscription();
-            return apiProducts;
+        const isAdminPage = window.location.pathname.endsWith("/admin.html");
+        if (!isAdminPage) {
+            const apiProducts = await readProductsFromApi();
+            if (apiProducts !== null) {
+                firestoreReachable = false;
+                scheduleProductSubscription();
+                return apiProducts;
+            }
         }
 
         const firebase = await getFirebaseApi();
@@ -185,8 +204,14 @@
                 console.warn("Không đọc được sản phẩm trên Firestore:", error);
             }
         }
+        const apiProducts = await readProductsFromApi(isAdminPage);
+        if (apiProducts !== null) {
+            firestoreReachable = false;
+            scheduleProductSubscription();
+            return apiProducts;
+        }
         firestoreReachable = false;
-        return apiProducts ?? readProductsFromApi();
+        return null;
     }
 
     function normalizeCategories(categories) {
@@ -329,7 +354,13 @@
             return true;
         } catch (error) {
             console.warn("Không ghi được sản phẩm lên Firestore:", error);
-            return false;
+            if (error.code === "permission-denied") {
+                throw new Error("Tài khoản không có quyền quản lý sản phẩm. Chỉ Admin hoặc Owner được phép lưu.");
+            }
+            if (["unavailable", "network-request-failed", "deadline-exceeded", "cancelled"].includes(error.code)) {
+                throw new Error("Mất kết nối Firestore nên thay đổi chưa được lưu. Hãy kiểm tra mạng rồi thử lại.");
+            }
+            throw new Error("Firestore không lưu được thay đổi sản phẩm. Hãy thử lại sau.");
         }
     }
 
@@ -401,7 +432,7 @@
         const normalized = deduplicateProducts(products);
         const saved = await writeRemoteProducts(normalized, readProducts());
         if (!saved) {
-            throw new Error("Could not synchronize the product catalog with Firestore.");
+            throw new Error("Không kết nối được Firestore để lưu sản phẩm. Thay đổi chưa được lưu.");
         }
         return cacheProducts(normalized);
     }

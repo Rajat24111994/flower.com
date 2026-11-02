@@ -40,6 +40,7 @@ assert.deepStrictEqual(
     quantity: 10,
     image: 'main.jpg',
     images: ['detail-1.jpg'],
+    status: 'active',
     category: 'Hoa hồng',
     categoryKey: 'flowers',
     sameDayDelivery: true,
@@ -47,6 +48,7 @@ assert.deepStrictEqual(
     description: '',
   }
 );
+assert.strictEqual(normalizeProduct({ id: 11, title: 'Hoa ẩn', quantity: 3, status: 'hidden' }).status, 'hidden');
 
 const partialRemote = [
   { id: 1, title: 'Hoa hồng cập nhật', price: 260000, quantity: 2, image: 'rose.jpg', description: 'Hoa hồng đỏ' },
