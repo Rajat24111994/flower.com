@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <script src="./safe-storage.js?v=2"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="description" content="Khu vực quản lý chủ cửa hàng Flowerflow.">
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg">
+    <title>Quản lý chủ cửa hàng</title>
+    <link rel="stylesheet" href="./admin.css?v=5">
+    <link rel="stylesheet" href="./accessibility.css?v=1">
+</head>
+<body>
+    <nav>
+        <img src="./images/flowerflow-logo.png" alt="Flowerflow" width="180" height="100">
+        <div>
+            <span class="owner-role-badge">Đang đăng nhập với quyền Owner</span>
+            <a href="./admin.html">Quản lý cửa hàng</a>
+            <button id="owner-logout" class="danger-btn" type="button">Đăng xuất</button>
+        </div>
+    </nav>
+    <main>
+        <section class="panel">
+            <div class="users-heading">
+                <div>
+                    <h2>Quản lý quyền admin</h2>
+                    <p class="users-description">Bạn vẫn giữ quyền Owner khi mở trang quản trị cửa hàng. Tại đây, Owner có thể cấp hoặc gỡ quyền admin nhưng không thể tạo Owner mới.</p>
+                </div>
+                <button class="primary-btn" id="refresh-users" type="button">Tải lại</button>
+            </div>
+            <div class="table-wrap">
+                <table class="users-table owner-users-table">
+                    <thead>
+                        <tr>
+                            <th>Tên</th>
+                            <th>Email</th>
+                            <th>UID</th>
+                            <th>Vai trò</th>
+                            <th>Trạng thái</th>
+                            <th>Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody id="owner-users"></tbody>
+                </table>
+            </div>
+            <p class="users-status" id="owner-status" role="status" aria-live="polite">Đang xác thực Owner...</p>
+            <button class="secondary-btn" id="load-more-users" type="button" hidden>Tải thêm</button>
+        </section>
+    </main>
+    <script type="module" src="./owner.js?v=1"></script>
+</body>
+</html>

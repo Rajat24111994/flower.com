@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+
+# Environment variables and Vercel local config
+.env*
+.vercel/
+
+# Firebase service-account credentials
+serviceAccountKey.json
+*.service-account.json
+*-firebase-adminsdk-*.json
+
+# Firestore backups: never commit them, even encrypted (customer data)
+backups/
+*.json.enc
+
+# Test coverage reports
+coverage/
+test-results/
+playwright-report/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Editor and OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
