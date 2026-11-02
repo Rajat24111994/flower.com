@@ -794,3 +794,4 @@ h1,
 .order-details dl div[hidden] {
     display: none;
 }
+.tracking-product-options { grid-column: 1 / -1; overflow-wrap: anywhere; white-space: pre-wrap; color: #65564e; }

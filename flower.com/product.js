@@ -488,11 +488,12 @@ function renderProductDetail(product) {
   const images = getProductImages(product)
   const thumbnails = document.getElementById("detail-thumbnails")
   const stock = Math.max(0, Number(product.quantity) || 0)
+  const sameProduct = previousImage !== "";
   let quantityInCart = 0
   try {
     cart = FlowerShoppingStore.readCart()
     quantityInCart = cart
-      .filter((item) => String(item.id) === String(product.id))
+      .filter((item) => String(item.productId ?? item.id) === String(product.id))
       .reduce((sum, item) => sum + Number(item.quantity ?? 1), 0)
   } catch (error) {
     showShoppingError(error)
@@ -505,15 +506,17 @@ function renderProductDetail(product) {
   document.getElementById("detail-name").textContent = productName
   document.getElementById("detail-category").textContent = getProductCategory(product)
   document.getElementById("detail-price").textContent = formatVnd(product.price)
-  document.getElementById("detail-stock").textContent = stock > 0 ? `Còn hàng · ${stock} sản phẩm` : "Hiện đã hết hàng"
+  document.getElementById("detail-stock").textContent = stock > 0 ? `Còn hàng · ${stock} bó · Có thể thêm ${Math.max(0, stock - quantityInCart)} bó` : "Hiện đã hết hàng"
   document.getElementById("detail-stock").classList.toggle("out-of-stock", stock === 0)
+  initializeBouquetOptions(product, sameProduct)
   document.getElementById("detail-description").textContent = getVietnameseProductDescription(product.description) || "Sản phẩm hoa tươi được tuyển chọn và sắp xếp chỉn chu để gửi trao những lời yêu thương."
 
   detailQuantity.min = "1"
-  detailQuantity.max = String(Math.max(0, stock - quantityInCart))
+  detailQuantity.max = String(Math.min(50, Math.max(0, stock - quantityInCart)))
   detailQuantity.value = stock > 0 ? "1" : "0"
   detailQuantity.disabled = stock === 0 || quantityInCart >= stock
   detailQuantityError.textContent = ""
+  detailQuantity.setCustomValidity("")
   thumbnails.replaceChildren()
   mainImage.hidden = images.length === 0
   mainImage.alt = productName
@@ -523,6 +526,8 @@ function renderProductDetail(product) {
   }
   mainImage.parentElement.classList.toggle("image-unavailable", images.length === 0)
   mainImage.src = images[selectedImageIndex] || ""
+  mainImage.parentElement.classList.remove("is-closeup")
+  document.getElementById("detail-gallery-caption").textContent = "Ảnh toàn cảnh sản phẩm"
 
   images.forEach((imageUrl, index) => {
     const thumbnail = document.createElement("button")
@@ -537,6 +542,8 @@ function renderProductDetail(product) {
     image.addEventListener("error", () => thumbnail.remove(), { once: true })
     thumbnail.append(image)
     thumbnail.addEventListener("click", () => {
+      mainImage.parentElement.classList.remove("is-closeup")
+      document.getElementById("detail-gallery-caption").textContent = `Ảnh sản phẩm ${index + 1}`
       mainImage.src = imageUrl
       mainImage.hidden = false
       mainImage.parentElement.classList.remove("image-unavailable")
@@ -548,12 +555,85 @@ function renderProductDetail(product) {
     })
     thumbnails.append(thumbnail)
   })
+  if (images.length) {
+    const closeup = document.createElement("button")
+    closeup.type = "button"
+    closeup.className = "gallery-thumbnail gallery-closeup"
+    closeup.setAttribute("aria-label", "Xem cận cảnh từ ảnh gốc")
+    closeup.setAttribute("aria-pressed", "false")
+    const preview = document.createElement("img")
+    preview.src = images[0]
+    preview.alt = "Cận cảnh"
+    closeup.append(preview)
+    closeup.addEventListener("click", () => {
+      mainImage.src = images[0]
+      mainImage.hidden = false
+      mainImage.parentElement.classList.remove("image-unavailable")
+      mainImage.parentElement.classList.add("is-closeup")
+      document.getElementById("detail-gallery-caption").textContent = "Cận cảnh phóng to từ ảnh gốc"
+      thumbnails.querySelectorAll("button").forEach((button) => {
+        button.classList.toggle("is-active", button === closeup)
+        button.setAttribute("aria-pressed", String(button === closeup))
+      })
+    })
+    thumbnails.append(closeup)
+  }
 
   const outOfStock = stock === 0
   document.getElementById("detail-add-to-cart").disabled = outOfStock || quantityInCart >= stock
   document.getElementById("detail-buy-now").disabled = outOfStock || quantityInCart >= stock
   updateWishlistButton(document.getElementById("detail-wishlist"), product)
   document.title = `${productName} | Flowerflow`
+}
+
+function configuredBouquet() {
+  const size = document.getElementById("detail-size").value || "standard"
+  return { ...selectedProduct, productId: String(selectedProduct.id), size,
+    color: document.getElementById("detail-color").value || "original",
+    cardMessage: document.getElementById("detail-card").value.trim(),
+    personalNote: document.getElementById("detail-note").value.trim(),
+    price: FlowerBouquetOptions.price(selectedProduct.price, size) }
+}
+
+function updateBouquetPrice() {
+  if (!selectedProduct) return
+  const choice = configuredBouquet()
+  document.getElementById("detail-price").textContent = formatVnd(choice.price) + " / bó"
+  const quantity = Number(detailQuantity.value)
+  document.getElementById("detail-selection-total").textContent = Number.isInteger(quantity) && quantity > 0
+    ? "Tổng lựa chọn: " + formatVnd(choice.price * quantity) : "Nhập số lượng bó hợp lệ."
+  document.getElementById("detail-text-count").textContent = "Thiệp " + document.getElementById("detail-card").value.length + "/300 · Ghi chú " + document.getElementById("detail-note").value.length + "/500 ký tự"
+}
+
+function initializeBouquetOptions(product, sameProduct) {
+  if (!sameProduct) {
+    for (const [id, options] of [["detail-size", FlowerBouquetOptions.sizes], ["detail-color", FlowerBouquetOptions.colors]]) {
+      const select = document.getElementById(id)
+      select.replaceChildren(...options.map((option) => new Option(id === "detail-size"
+        ? `${option.label} · ${formatVnd(FlowerBouquetOptions.price(product.price, option.id))}` : option.label, option.id)))
+    }
+    document.getElementById("detail-card").value = ""
+    document.getElementById("detail-note").value = ""
+  }
+  const meanings = {
+    rose: "Hoa hồng gợi tình yêu và sự trân trọng dành cho người nhận.",
+    orchid: "Hoa lan gửi lời chúc thanh lịch, may mắn và thịnh vượng.",
+    lily: "Hoa ly gợi sự thanh cao và lời chúc hạnh phúc.",
+    lavender: "Oải hương gợi sự bình yên và tình cảm thủy chung.",
+    gerber: "Hoa đồng tiền gửi lời chúc vui vẻ và thành công.",
+    tulip: "Tulip gợi tình cảm chân thành và những khởi đầu mới.",
+    hydrangea: "Cẩm tú cầu gửi lời cảm ơn và sự thấu hiểu.",
+    peony: "Mẫu đơn gợi sự viên mãn và lời chúc sung túc.",
+    carnation: "Cẩm chướng thể hiện lòng biết ơn và tình yêu thương.",
+    sunflower: "Hướng dương gửi năng lượng tích cực và niềm tin vào ngày mai.",
+    babyBreath: "Hoa bi gợi sự dịu dàng và tình cảm bền lâu.",
+    iris: "Diên vĩ gợi hy vọng và niềm tin."
+  }
+  document.getElementById("detail-meaning").textContent = product.meaning || getFlowerTypes(product).filter((type) => meanings[type]).map((type) => meanings[type]).join(" ") || "Bó hoa phối nhiều loài gửi lời chúc tươi vui, sự quan tâm và gắn kết."
+}
+
+for (const id of ["detail-size", "detail-color", "detail-card", "detail-note"]) {
+  document.getElementById(id).addEventListener("input", updateBouquetPrice)
 }
 
 function showQuantityError(text) {
@@ -565,6 +645,10 @@ function getRequestedQuantity() {
   const quantity = Number(detailQuantity.value)
   if (!Number.isInteger(quantity) || quantity < 1) {
     showQuantityError("Số lượng phải là số nguyên lớn hơn 0.")
+    return null
+  }
+  if (quantity > Number(detailQuantity.max)) {
+    showQuantityError(`Chỉ có thể thêm tối đa ${detailQuantity.max} bó với tồn kho hiện tại.`)
     return null
   }
   showQuantityError("")
@@ -597,13 +681,14 @@ function navigateToProductDetail() {
 detailQuantity.addEventListener("input", () => {
   detailQuantity.setCustomValidity("")
   detailQuantityError.textContent = ""
+  updateBouquetPrice()
 })
 
 document.getElementById("detail-add-to-cart").addEventListener("click", () => {
   if (!selectedProduct) return
   const quantity = getRequestedQuantity()
   if (quantity === null) return
-  if (addProductToCart(selectedProduct, quantity)) renderProductDetail(selectedProduct)
+  if (addProductToCart(configuredBouquet(), quantity)) renderProductDetail(selectedProduct)
 })
 
 document.getElementById("detail-wishlist").addEventListener("click", () => {
@@ -614,7 +699,7 @@ document.getElementById("detail-buy-now").addEventListener("click", () => {
   if (!selectedProduct) return
   const quantity = getRequestedQuantity()
   if (quantity === null) return
-  if (addProductToCart(selectedProduct, quantity)) window.location.assign("./checkout.html")
+  if (addProductToCart(configuredBouquet(), quantity)) window.location.assign("./checkout.html")
 })
 
 function normalizeSearchText(value) {

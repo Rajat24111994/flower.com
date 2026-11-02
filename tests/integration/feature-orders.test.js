@@ -94,6 +94,29 @@ test("thiếu hàng: báo rõ sản phẩm nào còn bao nhiêu", async () => {
     assert.deepEqual(quote.body.items.map(({ id, available }) => ({ id, available })), [{ id: "6", available: 1 }]);
 });
 
+test("các cấu hình cùng sản phẩm: giá server, lưu thiệp riêng, trừ và hoàn kho gộp", async () => {
+    const items = [
+        { id: "line-a", productId: "1", size: "large", color: "pink", cardMessage: "Tặng mẹ", personalNote: "Giấy kraft", quantity: 2 },
+        { id: "line-b", productId: "1", size: "premium", color: "white", cardMessage: "Cảm ơn", personalNote: "", quantity: 1 }
+    ];
+    const result = await h.placeOrder({ items, paymentMethod: "qr" });
+    assert.equal(result.status, 201, JSON.stringify(result.body));
+    const orderRef = h.db().doc(`orders/${result.body.order.id}`);
+    const order = (await orderRef.get()).data();
+    assert.equal(order.items[0].cardMessage, "Tặng mẹ");
+    assert.equal(order.items[1].size, "premium");
+    assert.equal(order.items[0].personalNote, "Giấy kraft");
+    assert.equal(order.items[0].price, Math.round((await h.db().doc("products/1").get()).data().price * 1.3));
+    assert.equal(await h.stockOf("1"), 7);
+    await orderRef.update({ reservationExpiresAt: Timestamp.fromMillis(Date.now() - 1000) });
+    await h.callApi("orders", { method: "GET", query: { action: "expire" }, headers: { authorization: "Bearer test-cron-secret" } });
+    assert.equal(await h.stockOf("1"), 10);
+    await h.db().doc("products/1").update({ quantity: 2 });
+    const shortage = await h.callApi("orders", { body: { action: "quote", items } });
+    assert.equal(shortage.status, 409);
+    assert.equal(shortage.body.items.length, 2);
+});
+
 test("ghi chú quá 500 ký tự bị từ chối, không bị cắt", async () => {
     const result = await h.placeOrder({ overrides: { orderNote: "a".repeat(501) } });
     assert.equal(result.status, 400);

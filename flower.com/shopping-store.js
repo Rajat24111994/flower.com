@@ -3,6 +3,7 @@
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   if (root) root.FlowerShoppingStore = api.createShoppingStore(() => root.localStorage);
 })(typeof globalThis !== "undefined" ? globalThis : this, function createShoppingStoreModule(root) {
+  const bouquet = root.FlowerBouquetOptions || (typeof require === "function" ? require("./bouquet-options.js") : null);
   class ShoppingStoreError extends Error {
     constructor(message, code, cause) {
       super(message);
@@ -103,7 +104,9 @@
     }
 
     function addToCart(product, requestedQuantity = 1) {
-      const productId = getProductId(product);
+      const productId = String(product.productId ?? getProductId(product));
+      const selection = bouquet?.normalize(product);
+      if (selection === null) throw new ShoppingStoreError("Lựa chọn bó hoa không hợp lệ.", "invalid-options");
       const quantity = Number(requestedQuantity);
       const stock = Number(product.quantity);
       const price = Number(product.price);
@@ -122,7 +125,7 @@
 
       const cart = readCart();
       const existingQuantity = cart
-        .filter((item) => String(item.id) === productId)
+        .filter((item) => String(item.productId ?? item.id) === productId)
         .reduce((sum, item) => sum + Number(item.quantity ?? 1), 0);
       if (existingQuantity + quantity > stock) {
         const remaining = Math.max(0, stock - existingQuantity);
@@ -134,12 +137,21 @@
         );
       }
 
-      const nextCart = cart.filter((item) => String(item.id) !== productId);
+      const matching = cart.filter((item) => String(item.productId ?? item.id) === productId
+        && JSON.stringify(bouquet?.normalize(item) || {}) === JSON.stringify(selection || {}));
+      const lineQuantity = matching.reduce((sum, item) => sum + Number(item.quantity ?? 1), 0);
+      if (lineQuantity + quantity > 50) {
+        throw new ShoppingStoreError("Mỗi cấu hình bó hoa đặt tối đa 50 bó.", "invalid-quantity");
+      }
+      const lineId = matching[0]?.id || (selection?.productId ? `line_${root.crypto.randomUUID()}` : product.id);
+      const nextCart = cart.filter((item) => !matching.includes(item));
       nextCart.push({
         ...product,
+        ...selection,
+        id: lineId,
         price,
         stockQuantity: stock,
-        quantity: existingQuantity + quantity
+        quantity: lineQuantity + quantity
       });
       writeList("cart", nextCart);
       return nextCart;

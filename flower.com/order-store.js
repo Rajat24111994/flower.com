@@ -64,7 +64,7 @@
   function aggregateOrderItems(items) {
     const quantities = new Map();
     (Array.isArray(items) ? items : []).forEach((item) => {
-      const id = String(item?.id ?? "");
+      const id = String(item?.productId ?? item?.id ?? "");
       const quantity = Math.max(1, Number(item?.quantity) || 1);
       quantities.set(id, (quantities.get(id) || 0) + quantity);
     });
@@ -105,7 +105,7 @@
         promotionId: order.promotionId || "",
         expectedTotals,
         items: (Array.isArray(order.items) ? order.items : []).map((item) => ({
-          id: item.id,
+          id: item.id, productId: item.productId, size: item.size, color: item.color, cardMessage: item.cardMessage, personalNote: item.personalNote,
           quantity: item.quantity
         }))
       })
@@ -129,7 +129,7 @@
       headers: { "Content-Type": "application/json", Accept: "application/json" },
       body: JSON.stringify({
         action: "quote",
-        items: (Array.isArray(items) ? items : []).map((item) => ({ id: item.id, quantity: item.quantity })),
+        items: (Array.isArray(items) ? items : []).map((item) => ({ id: item.id, productId: item.productId, size: item.size, color: item.color, cardMessage: item.cardMessage, personalNote: item.personalNote, quantity: item.quantity })),
         promotionId: promotionId || ""
       })
     });

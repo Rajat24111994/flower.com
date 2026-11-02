@@ -9,6 +9,7 @@ function review(storage, store) {
   const element = () => ({ textContent: "", disabled: false, hidden: false,
     append() {}, addEventListener() {} });
   const context = vm.createContext({
+    FlowerBouquetOptions: require("../flower.com/bouquet-options.js"),
     document: {
       getElementById(id) { if (!elements.has(id)) elements.set(id, element()); return elements.get(id); },
       querySelector() { return this.getElementById("confirm"); },

@@ -26,15 +26,16 @@
     <div class="placeorder">
       <button type="button">Xác nhận đặt hàng</button>
       <p id="payment-confirmation-note" role="status"></p>
-      <button type="button" id="retry-quote" hidden>Thử lại kiểm tra giá và tồn kho</button>
+      <div><button type="button" id="retry-quote" hidden>Thử lại kiểm tra giá và tồn kho</button></div>
       <a href="./checkout.html">Sửa thông tin hoặc giỏ hàng</a>
     </div>
   </main>
 
   <script src="./store-footer.js?v=2"></script>
-  <script src="./currency.js?v=10"></script>
+  <script src="./bouquet-options.js?v=1"></script>
+  <script src="./currency.js?v=11"></script>
   <script src="./product-names.js?v=2"></script>
-  <script src="./order-store.js?v=14"></script>
+  <script src="./order-store.js?v=15"></script>
   <script>
     let CartContainer = document.getElementById("product-container");
     let pendingSubmission = FlowerSafeStorage.readJson("flowerPendingOrder", { fallback: null });
@@ -120,7 +121,7 @@
         paymentReference: checkoutData.paymentReference || "",
         promotionId: checkoutData.promotionId || "",
         idempotencyKey: checkoutData.idempotencyKey,
-        items: Cart.map((item) => ({ id: item.id, quantity: Math.max(1, Number(item.quantity) || 1) }))
+        items: Cart.map((item) => ({ id: item.id, productId: item.productId, size: item.size, color: item.color, cardMessage: item.cardMessage, personalNote: item.personalNote, quantity: Math.max(1, Number(item.quantity) || 1) }))
       };
 
       let orderId;
@@ -172,7 +173,7 @@
       }
       try {
         serverQuote = await window.FlowerOrderStore.quote(
-          Cart.map((item) => ({ id: item.id, quantity: Math.max(1, Number(item.quantity) || 1) })),
+          Cart.map((item) => ({ id: item.id, productId: item.productId, size: item.size, color: item.color, cardMessage: item.cardMessage, personalNote: item.personalNote, quantity: Math.max(1, Number(item.quantity) || 1) })),
           checkoutData?.promotionId || ""
         );
         serverQuote.items.forEach((quotedItem) => {
@@ -222,7 +223,7 @@
 
         image.src = product.image;
         const productQuantity = Math.max(1, Number(product.quantity) || 1);
-        details.textContent = getVietnameseProductName(product.title);
+        details.textContent = getVietnameseProductName(product.title) + (FlowerBouquetOptions.summary(product) ? " · " + FlowerBouquetOptions.summary(product) : "");
         price.textContent = formatVnd(Number(product.price) * productQuantity);
         quantity.textContent = `${productQuantity} sản phẩm`;
 
