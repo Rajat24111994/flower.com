@@ -227,7 +227,19 @@ function renderDashboard() {
    `;
 }
 
-function renderRevenueTab() {
+function renderRevenueTab(dateRange = {}) {
+   const now = new Date();
+   const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+   const dateToInputValue = (date) => {
+       const year = date.getFullYear();
+       const month = String(date.getMonth() + 1).padStart(2, "0");
+       const day = String(date.getDate()).padStart(2, "0");
+       return `${year}-${month}-${day}`;
+   };
+   const defaultStartDate = dateToInputValue(currentMonthStart);
+   const defaultEndDate = dateToInputValue(now);
+   const startDate = dateRange.startDate || defaultStartDate;
+   const endDate = dateRange.endDate || defaultEndDate;
    const products = getProducts();
    const orders = getOrders();
    const totalCurrentStock = products.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
@@ -235,14 +247,37 @@ function renderRevenueTab() {
        const sold = (order.items || []).reduce((orderSum, item) => orderSum + Number(item.quantity || 0), 0);
        return sum + sold;
    }, 0);
-   const totalRevenue = orders.reduce((sum, order) => sum + Number(order.total || 0), 0);
-   const avgRevenuePerOrder = orders.length ? totalRevenue / orders.length : 0;
+   const start = new Date(`${startDate}T00:00:00`);
+   const end = new Date(`${endDate}T00:00:00`);
+   end.setDate(end.getDate() + 1);
+   const revenueOrders = orders.filter((order) => {
+       const orderDate = new Date(order.createdAt).getTime();
+       return normalizeOrderStatus(order.status) !== "Đã hủy"
+           && Number.isFinite(orderDate)
+           && orderDate >= start.getTime()
+           && orderDate < end.getTime();
+   });
+   const totalRevenue = revenueOrders.reduce((sum, order) => sum + Number(order.total || 0), 0);
+   const avgRevenuePerOrder = revenueOrders.length ? totalRevenue / revenueOrders.length : 0;
    const hoaDaThem = totalCurrentStock + totalSoldUnits;
    const stockHealth = Math.round((totalCurrentStock / Math.max(hoaDaThem, 1)) * 100);
 
    main.innerHTML = `
        <section class="panel">
            <h2>Doanh thu & kho hàng</h2>
+           <form id="revenue-filter" class="revenue-filter">
+               <label>
+                   <span>Từ ngày</span>
+                   <input id="revenue-start-date" type="date" value="${startDate}" required>
+               </label>
+               <label>
+                   <span>Đến ngày</span>
+                   <input id="revenue-end-date" type="date" value="${endDate}" required>
+               </label>
+               <button class="primary-btn" type="submit">Áp dụng</button>
+               <button id="reset-revenue-filter" class="secondary-btn" type="button">Đặt lại</button>
+               <p id="revenue-filter-error" class="form-error" aria-live="polite"></p>
+           </form>
            <div class="summary revenue-summary">
                <div class="summary-card revenue-card">
                    <h3>Số hoa đã thêm</h3>
@@ -257,7 +292,7 @@ function renderRevenueTab() {
                <div class="summary-card revenue-card">
                    <h3>Tổng doanh thu</h3>
                    <div class="value">${moneyFormat(totalRevenue)}</div>
-                   <small>Từ tất cả đơn hàng</small>
+                   <small>Từ đơn hàng không bị hủy trong khoảng đã chọn</small>
                </div>
                <div class="summary-card revenue-card">
                    <h3>Doanh thu / đơn</h3>
@@ -277,6 +312,18 @@ function renderRevenueTab() {
            </div>
        </section>
    `;
+
+   document.getElementById("revenue-filter").addEventListener("submit", (event) => {
+       event.preventDefault();
+       const selectedStartDate = document.getElementById("revenue-start-date").value;
+       const selectedEndDate = document.getElementById("revenue-end-date").value;
+       if (selectedStartDate > selectedEndDate) {
+           document.getElementById("revenue-filter-error").textContent = "Ngày bắt đầu không được sau ngày kết thúc.";
+           return;
+       }
+       renderRevenueTab({ startDate: selectedStartDate, endDate: selectedEndDate });
+   });
+   document.getElementById("reset-revenue-filter").addEventListener("click", () => renderRevenueTab());
 }
 
 function renderProductTab() {

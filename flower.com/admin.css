@@ -150,6 +150,41 @@ main {
     background: linear-gradient(180deg, #fffcf5 0%, #fffaf3 100%);
 }
 
+.revenue-filter {
+    display: flex;
+    align-items: flex-end;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.revenue-filter label {
+    display: grid;
+    gap: 6px;
+    color: var(--gray-700);
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.revenue-filter input {
+    min-height: 40px;
+    padding: 8px 10px;
+    border: 1px solid var(--gray-200);
+    border-radius: 10px;
+    background: #fff;
+    font: inherit;
+}
+
+.revenue-filter button {
+    min-height: 40px;
+}
+
+.revenue-filter .form-error {
+    flex-basis: 100%;
+    color: var(--red-700);
+    font-size: 13px;
+}
+
 .panel h2 {
     font-size: 24px;
     margin-bottom: 18px;
