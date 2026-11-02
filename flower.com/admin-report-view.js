@@ -31,6 +31,7 @@ export function mountReport({ container, orders, products, filters, onFilter }) 
       <label data-custom ${filters.period !== "custom" ? "hidden" : ""}>Đến ngày<input type="date" name="end" value="${e(filters.end)}"></label>
       <label>Tồn thấp (≤ số bó)<input type="number" min="0" step="1" name="lowStock" required value="${e(filters.lowStock)}"></label>
       <button class="submit-btn" type="submit">Áp dụng bộ lọc</button>
+      <button class="secondary-btn" id="report-reset" type="button">Đặt lại</button>
     </form><p id="report-feedback" role="status" aria-live="polite"></p>
     <p class="report-method">Đơn hàng theo ngày đặt; doanh thu chỉ tính đơn hoàn thành và đã thanh toán, theo ngày trả tiền (dự phòng ngày giao/ngày đặt). Tồn kho là số hiện tại, không lọc theo ngày.</p>
     ${report.undatedOrders ? `<p class="report-warning">${report.undatedOrders} đơn thiếu ngày đặt; không được tính trong bộ lọc theo ngày.</p>` : ""}
@@ -51,6 +52,9 @@ export function mountReport({ container, orders, products, filters, onFilter }) 
     event.preventDefault();
     const next = Object.fromEntries(new FormData(form));
     try { buildReport(orders, products, next); onFilter(next); } catch (error) { feedback.textContent = error.message; }
+  });
+  container.querySelector("#report-reset").addEventListener("click", () => {
+    onFilter({ period: "month", month: dateKey(new Date()).slice(0, 7), start: "", end: "", lowStock: 5 });
   });
   container.querySelector("#report-export").addEventListener("click", () => {
     try {
