@@ -20,6 +20,10 @@ let editingProductId = null;
 let productSearchTerm = "";
 let productFilterCategory = "";
 let productFilterStatus = "";
+let productFilterMinPrice = "";
+let productFilterMaxPrice = "";
+let productPriceSort = "";
+let isSavingProductForm = false;
 let ordersCache = [];
 let orderStoreError = null;
 let stopOrderSubscription = null;
@@ -299,12 +303,18 @@ function renderProductTab() {
    const filteredProducts = products.filter((item) =>
        `${item.title} ${item.description || ""} ${item.category || ""}`.toLocaleLowerCase("vi").includes(searchTerm)
        && (!productFilterCategory || item.category === productFilterCategory)
+       && (productFilterMinPrice === "" || Number(item.price) >= productFilterMinPrice)
+       && (productFilterMaxPrice === "" || Number(item.price) <= productFilterMaxPrice)
        && (!productFilterStatus
            || (productFilterStatus === "hidden" && item.status === "hidden")
            || (productFilterStatus === "out-of-stock" && item.status !== "hidden" && Number(item.quantity) <= 0)
            || (productFilterStatus === "low-stock" && item.status !== "hidden" && Number(item.quantity) > 0 && Number(item.quantity) <= 5)
            || (productFilterStatus === "active" && item.status !== "hidden" && Number(item.quantity) > 0))
    );
+   if (productPriceSort) {
+       const direction = productPriceSort === "price-desc" ? -1 : 1;
+       filteredProducts.sort((left, right) => (Number(left.price) - Number(right.price)) * direction);
+   }
    const lowStockProducts = products.filter((item) =>
        item.status !== "hidden" && Number(item.quantity) > 0 && Number(item.quantity) <= 5
    );
@@ -333,9 +343,25 @@ function renderProductTab() {
                            <option value="low-stock" ${productFilterStatus === "low-stock" ? "selected" : ""}>Sắp hết hàng (≤ 5)</option>
                        </select>
                    </label>
+                   <label class="product-filter-field" for="product-filter-min-price"><span>Giá từ (VND)</span>
+                       <input id="product-filter-min-price" name="minPrice" type="number" min="0" step="1" inputmode="numeric" value="${escapeHtml(productFilterMinPrice)}">
+                   </label>
+                   <label class="product-filter-field" for="product-filter-max-price"><span>Giá đến (VND)</span>
+                       <input id="product-filter-max-price" name="maxPrice" type="number" min="0" step="1" inputmode="numeric" value="${escapeHtml(productFilterMaxPrice)}">
+                   </label>
+                   <label class="product-filter-field" for="product-filter-price-sort"><span>Sắp xếp theo giá</span>
+                       <select id="product-filter-price-sort" name="priceSort">
+                           <option value="" ${productPriceSort === "" ? "selected" : ""}>Mặc định</option>
+                           <option value="price-asc" ${productPriceSort === "price-asc" ? "selected" : ""}>Giá tăng dần</option>
+                           <option value="price-desc" ${productPriceSort === "price-desc" ? "selected" : ""}>Giá giảm dần</option>
+                       </select>
+                   </label>
                    <button type="submit" class="secondary-btn">Lọc sản phẩm</button>
-                   ${productSearchTerm || productFilterCategory || productFilterStatus ? '<button type="button" class="clear-search" data-action="clear-search">Xóa bộ lọc</button>' : ""}
+                   ${productSearchTerm || productFilterCategory || productFilterStatus || productFilterMinPrice !== "" || productFilterMaxPrice !== "" || productPriceSort
+                       ? '<button type="button" class="clear-search" data-action="clear-search">Xóa bộ lọc</button>' : ""}
                </form>
+               <p id="product-search-message" class="product-search-message" role="alert" aria-live="assertive"></p>
+               ${renderSharedProductImageNotice(products)}
                ${lowStockProducts.length ? `<p class="product-stock-alert" role="status"><strong>Cảnh báo tồn kho:</strong> ${lowStockProducts.length} sản phẩm đang bán chỉ còn từ 1–5 bó. Hãy chuẩn bị nhập thêm hoa.</p>` : ""}
                <div class="product-table-wrap">
                <table class="product-table">
@@ -355,12 +381,20 @@ function renderProductTab() {
                            const quantity = Number(item.quantity) || 0;
                            const status = item.status === "hidden" ? "hidden" : quantity === 0 ? "out-of-stock" : "active";
                            const statusLabel = status === "hidden" ? "Tạm ẩn" : status === "out-of-stock" ? "Hết hàng" : "Đang bán";
+                           const imageUrl = getSafeImageUrl(item.image);
+                           const imageSource = String(item.image || "").trim();
+                           const productTitle = getVietnameseProductName(item.title);
+                           const imageMessage = imageUrl
+                               ? ""
+                               : imageSource
+                                   ? `Đường dẫn ảnh không hợp lệ cho ${escapeHtml(productTitle)}: ${escapeHtml(imageSource)}`
+                                   : `Chưa có ảnh: ${escapeHtml(productTitle)} (mã ${escapeHtml(item.id)})`;
                            return `
                                <tr>
                                    <td>
                                        <div class="product-image-thumb">
-                                           <img class="product-admin-image" src="${escapeHtml(getSafeImageUrl(item.image) || "./images/flowerflow-logo.png")}" alt="${escapeHtml(getVietnameseProductName(item.title))}" width="64" height="64" loading="lazy" decoding="async">
-                                           <span class="product-image-thumb-error" hidden>Ảnh lỗi</span>
+                                           <img class="product-admin-image" src="${escapeHtml(imageUrl || "")}" data-product-id="${escapeHtml(item.id)}" data-image-url="${escapeHtml(imageSource)}" alt="${escapeHtml(productTitle)}" width="64" height="64" loading="lazy" decoding="async" ${imageUrl ? "" : "hidden"}>
+                                           <span class="product-image-thumb-error" ${imageUrl ? "hidden" : ""}>${imageMessage}</span>
                                        </div>
                                    </td>
                                    <td>
@@ -442,6 +476,10 @@ function renderProductTab() {
        </section>
    `;
    const form = document.getElementById("add-product-form");
+   const searchForm = document.getElementById("product-search-form");
+   searchForm.addEventListener("input", () => {
+       document.getElementById("product-search-message").textContent = "";
+   });
    form.addEventListener("input", (event) => {
        event.target.setCustomValidity("");
        event.target.setAttribute("aria-invalid", "false");
@@ -450,11 +488,41 @@ function renderProductTab() {
    });
    renderProductImagePreviews();
    main.querySelectorAll(".product-admin-image").forEach((image) => {
+       if (image.hidden) return;
        image.addEventListener("error", () => {
            image.hidden = true;
+           const productName = image.alt || "Sản phẩm";
+           const imageUrl = image.dataset.imageUrl || "chưa có đường dẫn";
+           image.nextElementSibling.textContent = `Không tải được ảnh cho ${productName} (mã ${image.dataset.productId || "không rõ"}): ${imageUrl}`;
            image.nextElementSibling.hidden = false;
        }, { once: true });
    });
+}
+
+function renderSharedProductImageNotice(products) {
+   const imageGroups = new Map();
+   products.forEach((product) => {
+       const image = String(product.image || "").trim();
+       if (!image) return;
+       if (!imageGroups.has(image)) imageGroups.set(image, []);
+       imageGroups.get(image).push(product);
+   });
+   const sharedGroups = [...imageGroups.entries()].filter(([, items]) => items.length > 1);
+   if (!sharedGroups.length) return "";
+   const sharedProductCount = sharedGroups.reduce((count, [, items]) => count + items.length, 0);
+   return `
+       <details class="product-image-audit">
+           <summary>Kiểm tra ảnh dùng chung: ${sharedProductCount} sản phẩm · ${sharedGroups.length} đường dẫn ảnh</summary>
+           <p>Catalog đang gán cùng một ảnh đại diện cho nhiều sản phẩm. Ảnh được giữ nguyên; hãy bổ sung ảnh gốc riêng nếu đây không phải chủ ý.</p>
+           <ul>
+               ${sharedGroups.map(([image, items]) => `
+                   <li><code>${escapeHtml(image)}</code>
+                       <ul>${items.map((item) => `<li>${escapeHtml(getVietnameseProductName(item.title))} (mã ${escapeHtml(item.id)})</li>`).join("")}</ul>
+                   </li>
+               `).join("")}
+           </ul>
+       </details>
+   `;
 }
 
 function renderProductImagePreviews() {
@@ -1358,6 +1426,7 @@ async function saveProductQuantity(id, value) {
 
 async function addNewProduct(event) {
    event.preventDefault();
+   if (isSavingProductForm) return;
    const form = document.getElementById("add-product-form");
    const read = (id) => document.getElementById(id).value;
    const { product: inputProduct, errors } = window.FlowerProductAdminValidation.validateProductInput({
@@ -1421,18 +1490,35 @@ async function addNewProduct(event) {
        return;
    }
    const isEditing = editingProductId !== null;
+   if (isEditing && !products.some((item) => String(item.id) === String(editingProductId))) {
+       alert("Sản phẩm đã bị xóa ở nơi khác. Hãy tải lại danh sách.");
+       return;
+   }
    // Keep the live stock if the admin did not touch the quantity: orders may have changed it
    // since the form was opened.
    const quantityInput = document.getElementById("product-quantity");
    if (isEditing && quantityInput.value === quantityInput.dataset.shownValue) delete productData.quantity;
    const nextProducts = isEditing
        ? products.map((item) => String(item.id) === String(editingProductId) ? { ...item, ...productData } : item)
-       : [...products, { id: Date.now(), ...productData }];
+       : [...products, { id: crypto.randomUUID(), ...productData }];
 
-    if (!await saveAdminProducts(nextProducts)) return;
-   editingProductId = null;
-   alert(isEditing ? "Cập nhật sản phẩm thành công!" : "Thêm sản phẩm thành công!");
-   renderProductTab();
+   const submitButton = form.querySelector('button[type="submit"]');
+   const originalButtonText = submitButton.textContent;
+   isSavingProductForm = true;
+   submitButton.disabled = true;
+   submitButton.textContent = "Đang lưu...";
+   try {
+       if (!await saveAdminProducts(nextProducts)) return;
+       editingProductId = null;
+       alert(isEditing ? "Cập nhật sản phẩm thành công!" : "Thêm sản phẩm thành công!");
+       renderProductTab();
+   } finally {
+       isSavingProductForm = false;
+       if (form.isConnected) {
+           submitButton.disabled = false;
+           submitButton.textContent = originalButtonText;
+       }
+   }
 }
 
 async function deleteProduct(id) {
@@ -1941,6 +2027,9 @@ main.addEventListener("click", (event) => {
        productSearchTerm = "";
        productFilterCategory = "";
        productFilterStatus = "";
+       productFilterMinPrice = "";
+       productFilterMaxPrice = "";
+       productPriceSort = "";
        renderProductTab();
        return;
    }
@@ -2031,9 +2120,28 @@ main.addEventListener("submit", (event) => {
    if (event.target && event.target.id === "product-search-form") {
        event.preventDefault();
        const formData = new FormData(event.target);
+       const minPriceText = String(formData.get("minPrice") || "").trim();
+       const maxPriceText = String(formData.get("maxPrice") || "").trim();
+       const minPrice = minPriceText === "" ? "" : Number(minPriceText);
+       const maxPrice = maxPriceText === "" ? "" : Number(maxPriceText);
+       const priceMessage = document.getElementById("product-search-message");
+       if (event.target.elements.minPrice.validity.badInput || event.target.elements.maxPrice.validity.badInput
+           || (minPrice !== "" && (!Number.isSafeInteger(minPrice) || minPrice < 0))
+           || (maxPrice !== "" && (!Number.isSafeInteger(maxPrice) || maxPrice < 0))) {
+           priceMessage.textContent = "Khoảng giá phải là số nguyên VND không âm.";
+           return;
+       }
+       if (minPrice !== "" && maxPrice !== "" && minPrice > maxPrice) {
+           priceMessage.textContent = "Giá từ không được lớn hơn giá đến.";
+           event.target.elements.minPrice.focus();
+           return;
+       }
        productSearchTerm = String(formData.get("search") || "");
        productFilterCategory = String(formData.get("category") || "");
        productFilterStatus = String(formData.get("status") || "");
+       productFilterMinPrice = minPrice;
+       productFilterMaxPrice = maxPrice;
+       productPriceSort = String(formData.get("priceSort") || "");
        renderProductTab();
    }
 
@@ -2258,6 +2366,7 @@ function rerenderKeepingEdits(render) {
 
 function refreshProductTabKeepingEdits() {
    rerenderKeepingEdits(renderProductTab);
+   renderProductImagePreviews();
 }
 
 window.addEventListener("storage", (event) => {
