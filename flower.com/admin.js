@@ -1,3 +1,5 @@
+import { mountReport } from "./admin-report-view.js?v=1";
+import { dateKey as reportDateKey } from "./admin-analytics.js?v=1";
 import { firebaseConfig } from "./firebase-config.js";
 import { ORDER_STATUSES, normalizeOrderStatus, orderStatusLabel } from "./order-status.js?v=2";
 
@@ -30,11 +32,7 @@ let deliveryZonesLoading = false;
 let deliveryZonesLoadError = "";
 let messagesCache = [];
 let stopMessageSubscription = null;
-let revenueDateFilter = "month";
-const initialRevenueDate = new Date();
-let revenueMonth = `${initialRevenueDate.getFullYear()}-${String(initialRevenueDate.getMonth() + 1).padStart(2, "0")}`;
-let revenueDateStart = "";
-let revenueDateEnd = "";
+let reportFilters = { period: "month", month: reportDateKey(new Date()).slice(0, 7), start: "", end: "", lowStock: 5 };
 
 const STORAGE_KEYS = {
    categories: "flowerCategories",
@@ -70,31 +68,6 @@ function isOrderDelivered(order) {
 
 function getRevenueOrders(orders) {
    return orders.filter((order) => isOrderDelivered(order) && isOrderPaid(order));
-}
-
-function localDateKey(value) {
-   const date = new Date(value);
-   if (Number.isNaN(date.getTime())) return "";
-   const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
-   return localDate.toISOString().slice(0, 10);
-}
-
-function getSelectedRevenueOrders(orders) {
-   const paidOrders = getRevenueOrders(orders);
-   const now = new Date();
-   const today = localDateKey(now);
-
-   return paidOrders.filter((order) => {
-       const dateKey = localDateKey(order.paidAt || order.deliveredAt || order.createdAt);
-       if (!dateKey) return false;
-       if (revenueDateFilter === "today") return dateKey === today;
-       if (revenueDateFilter === "month") return dateKey.slice(0, 7) === revenueMonth;
-       if (revenueDateFilter === "custom") {
-           return (!revenueDateStart || dateKey >= revenueDateStart)
-               && (!revenueDateEnd || dateKey <= revenueDateEnd);
-       }
-       return true;
-   });
 }
 
 async function ensureStorage() {
@@ -249,143 +222,29 @@ function renderDashboard() {
            </div>
        </section>
    `;
+   const reportHost = document.createElement("div");
+   main.querySelector(".dashboard").append(reportHost);
+   mountCurrentReport(reportHost, renderDashboard);
+}
+
+function mountCurrentReport(container, rerender) {
+   if (orderStoreError || FlowerInventory.areProductsLoaded?.() === false) {
+       const notice = document.createElement("p");
+       notice.className = "empty-state";
+       notice.setAttribute("role", "status");
+       notice.textContent = "Chưa tải đủ dữ liệu đơn hàng và sản phẩm. Hãy kiểm tra kết nối rồi thử lại.";
+       container.replaceChildren(notice);
+       return;
+   }
+   mountReport({ container, orders: getOrders(), products: getProducts(), filters: reportFilters,
+       onFilter: (filters) => { reportFilters = filters; rerender(); } });
 }
 
 function renderRevenueTab() {
-   if (orderStoreError) {
-       main.innerHTML = `<section class="panel"><h2>Doanh thu</h2><p class="empty-state">Không thể tải số liệu từ Firestore. Kiểm tra cấu hình và kết nối rồi tải lại trang.</p></section>`;
-       return;
-   }
-   const products = getProducts();
-   const orders = getOrders();
-   const revenueOrders = getSelectedRevenueOrders(orders);
-   const deliveredOrders = orders.filter(isOrderDelivered);
-   const totalCurrentStock = products.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
-   const totalSoldUnits = revenueOrders.reduce((sum, order) => {
-       const sold = (order.items || []).reduce((orderSum, item) => orderSum + Number(item.quantity || 0), 0);
-       return sum + sold;
-   }, 0);
-   const totalDeliveredUnits = deliveredOrders.reduce((sum, order) => {
-       const delivered = (order.items || []).reduce((orderSum, item) => orderSum + Number(item.quantity || 0), 0);
-       return sum + delivered;
-   }, 0);
-   const totalRevenue = revenueOrders.reduce((sum, order) => sum + Number(order.total || 0), 0);
-   const placedOrderValue = orders.reduce((sum, order) => sum + Number(order.total || 0), 0);
-   const avgRevenuePerOrder = revenueOrders.length ? totalRevenue / revenueOrders.length : 0;
-   const hoaDaThem = totalCurrentStock + totalDeliveredUnits;
-   const stockHealth = Math.round((totalCurrentStock / Math.max(hoaDaThem, 1)) * 100);
-
-   main.innerHTML = `
-       <section class="panel">
-           <h2>Doanh thu & kho hàng</h2>
-           <form class="revenue-filters" id="revenue-filter-form">
-               <label for="revenue-period">Khoảng thời gian</label>
-               <select id="revenue-period" name="period">
-                   <option value="today" ${revenueDateFilter === "today" ? "selected" : ""}>Hôm nay</option>
-                   <option value="month" ${revenueDateFilter === "month" ? "selected" : ""}>Theo tháng</option>
-                   <option value="all" ${revenueDateFilter === "all" ? "selected" : ""}>Toàn thời gian</option>
-                   <option value="custom" ${revenueDateFilter === "custom" ? "selected" : ""}>Tùy chọn ngày</option>
-               </select>
-               <div class="revenue-month-picker" id="revenue-month-picker" ${revenueDateFilter !== "month" ? "hidden" : ""}>
-                   <button class="secondary-btn" type="button" data-month-shift="-1" aria-label="Xem tháng trước">‹ Tháng trước</button>
-                   <label for="revenue-month">Tháng báo cáo</label>
-                   <input id="revenue-month" type="month" value="${escapeHtml(revenueMonth)}">
-                   <button class="secondary-btn" type="button" data-month-shift="1" aria-label="Xem tháng sau">Tháng sau ›</button>
-                   <button class="secondary-btn" type="button" id="revenue-current-month">Tháng hiện tại</button>
-               </div>
-               <div class="revenue-custom-dates" id="revenue-custom-dates" ${revenueDateFilter !== "custom" ? "hidden" : ""}>
-                   <label for="revenue-date-start">Từ ngày</label>
-                   <input id="revenue-date-start" name="start" type="date" value="${escapeHtml(revenueDateStart)}">
-                   <label for="revenue-date-end">Đến ngày</label>
-                   <input id="revenue-date-end" name="end" type="date" value="${escapeHtml(revenueDateEnd)}">
-                   <button class="primary-btn" type="submit">Áp dụng</button>
-               </div>
-           </form>
-           <div class="summary revenue-summary">
-               <div class="summary-card revenue-card">
-                   <h3>Số hoa đã thêm</h3>
-                   <div class="value">${hoaDaThem}</div>
-                   <small>Tổng lượng hoa nhập/đưa vào kho</small>
-               </div>
-               <div class="summary-card revenue-card">
-                   <h3>Số hoa đã bán</h3>
-                   <div class="value">${totalSoldUnits}</div>
-                   <small>Số lượng trong đơn đã giao và thanh toán trong khoảng đã chọn</small>
-               </div>
-               <div class="summary-card revenue-card">
-                   <h3>Doanh thu thực nhận</h3>
-                   <div class="value">${moneyFormat(totalRevenue)}</div>
-                   <small>${revenueOrders.length} đơn đã giao và thanh toán trong khoảng đã chọn</small>
-               </div>
-               <div class="summary-card revenue-card">
-                   <h3>Doanh thu / đơn</h3>
-                   <div class="value">${moneyFormat(avgRevenuePerOrder)}</div>
-                   <small>Trung bình trên đơn đã giao và thanh toán</small>
-               </div>
-               <div class="summary-card revenue-card">
-                   <h3>Giá trị đơn đặt</h3>
-                   <div class="value">${moneyFormat(placedOrderValue)}</div>
-                   <small>Tất cả đơn hàng, không lọc trạng thái</small>
-               </div>
-               <div class="summary-card revenue-card">
-                   <h3>Hoa hiện có</h3>
-                   <div class="value">${totalCurrentStock}</div>
-                   <small>Tồn kho hiện tại</small>
-               </div>
-               <div class="summary-card revenue-card">
-                   <h3>Chỉ số kho</h3>
-                   <div class="value">${stockHealth}%</div>
-                   <small>Mức độ hàng tồn kho ổn định</small>
-               </div>
-           </div>
-       </section>
-   `;
-
-   const periodSelect = document.getElementById("revenue-period");
-   const monthPicker = document.getElementById("revenue-month-picker");
-   const customDates = document.getElementById("revenue-custom-dates");
-   periodSelect.addEventListener("change", () => {
-       revenueDateFilter = periodSelect.value;
-       monthPicker.hidden = revenueDateFilter !== "month";
-       if (revenueDateFilter === "custom") {
-           customDates.hidden = false;
-           return;
-       }
-       customDates.hidden = true;
-       renderRevenueTab();
-   });
-   document.getElementById("revenue-month").addEventListener("change", (event) => {
-       if (!event.target.value) return;
-       revenueMonth = event.target.value;
-       revenueDateFilter = "month";
-       renderRevenueTab();
-   });
-   document.querySelectorAll("[data-month-shift]").forEach((button) => {
-       button.addEventListener("click", () => {
-           const [year, month] = revenueMonth.split("-").map(Number);
-           const shiftedMonth = new Date(year, month - 1 + Number(button.dataset.monthShift), 1);
-           revenueMonth = `${shiftedMonth.getFullYear()}-${String(shiftedMonth.getMonth() + 1).padStart(2, "0")}`;
-           revenueDateFilter = "month";
-           renderRevenueTab();
-       });
-   });
-   document.getElementById("revenue-current-month").addEventListener("click", () => {
-       const now = new Date();
-       revenueMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-       revenueDateFilter = "month";
-       renderRevenueTab();
-   });
-   document.getElementById("revenue-filter-form").addEventListener("submit", (event) => {
-       event.preventDefault();
-       revenueDateStart = document.getElementById("revenue-date-start").value;
-       revenueDateEnd = document.getElementById("revenue-date-end").value;
-       if (revenueDateStart && revenueDateEnd && revenueDateStart > revenueDateEnd) {
-           alert("Ngày bắt đầu phải trước hoặc bằng ngày kết thúc.");
-           return;
-       }
-       revenueDateFilter = "custom";
-       renderRevenueTab();
-   });
+   main.replaceChildren();
+   const host = document.createElement("div");
+   main.append(host);
+   mountCurrentReport(host, renderRevenueTab);
 }
 
 // Shown when products of the original catalog (flower.json) are missing from the shop.
@@ -1125,6 +984,7 @@ function refreshOrdersView() {
    const heading = main.querySelector(".panel h2")?.textContent;
    if (heading === "Quản lý đơn hàng") rerenderKeepingEdits(renderOrdersTab);
    else if (heading === "Phản hồi từ khách hàng") rerenderKeepingEdits(renderMessagesTab);
+   else if (main.querySelector(".dashboard")) renderDashboard();
    else if (heading === "Doanh thu & kho hàng") renderRevenueTab();
    else if (main.querySelector(".dashboard") || !heading) renderDashboard();
 }
@@ -1694,6 +1554,13 @@ async function loadFirebaseUsers(pageToken) {
 }
 
 function bindAdminEvents(authApi) {
+const dashboardPage = document.getElementById("dashboard_page");
+if (dashboardPage) {
+   dashboardPage.addEventListener("click", renderDashboard);
+   dashboardPage.addEventListener("keydown", (event) => {
+       if (event.key === "Enter" || event.key === " ") { event.preventDefault(); renderDashboard(); }
+   });
+}
 if (productPage) {
    productPage.addEventListener("click", renderProductTab);
 }
@@ -2180,6 +2047,10 @@ window.addEventListener("flowerinventorychange", () => {
     const activeHeading = main.querySelector(".panel h2");
     if (activeHeading?.textContent === "Quản lý kho hoa") {
          refreshProductTabKeepingEdits();
+    } else if (main.querySelector(".dashboard")) {
+         renderDashboard();
+    } else if (activeHeading?.textContent === "Doanh thu & kho hàng") {
+         renderRevenueTab();
     }
 });
 
