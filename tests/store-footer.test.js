@@ -24,7 +24,8 @@ const informationPages = [
   "privacy.html",
   "terms.html",
   "ordering.html",
-  "faq.html"
+  "faq.html",
+  "payment.html"
 ];
 
 for (const page of pages) {

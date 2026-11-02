@@ -40,6 +40,7 @@
         <a href="./privacy.html">Quyền riêng tư</a>
         <a href="./terms.html">Điều khoản</a>
         <a href="./ordering.html">Đặt hàng & thanh toán</a>
+        <a href="./payment.html">Phương thức thanh toán</a>
         <a href="./faq.html">Câu hỏi thường gặp</a>
       </nav>
     </div>
@@ -84,6 +85,7 @@
         <a href="./privacy.html">Quyền riêng tư</a>
         <a href="./terms.html">Điều khoản</a>
         <a href="./ordering.html">Đặt hàng & thanh toán</a>
+        <a href="./payment.html">Phương thức thanh toán</a>
         <a href="./faq.html">Câu hỏi thường gặp</a>
       </nav>
     </div>
