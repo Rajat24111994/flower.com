@@ -97,18 +97,33 @@ test("customer can browse, add a flower, sign in, and place an order", async ({ 
   await page.screenshot({ path: testInfo.outputPath("screenshots/03-signed-in.png"), fullPage: true });
 
   await page.goto("/checkout.html");
+  // The page loads delivery zones and promotions first; filling the form before that is done
+  // would be undone when the province list is drawn.
+  await expect(page.locator('#checkout-form[data-ready="true"]')).toHaveCount(1, { timeout: 15000 });
   await expect(page.locator("#checkout-message")).toContainText("đã được xác minh", { timeout: 15000 });
   await page.locator('[name="customerName"]').fill("Khách hàng kiểm thử");
   await page.locator('[name="phone"]').fill("0912345678");
   await page.locator('[name="address"]').fill("1 Đường Hoa, Quận 1, TP. Hồ Chí Minh");
   await page.locator('[name="deliveryProvince"]').selectOption("Test Province");
+  // Picking the district asks the shop for a new quote with that zone; ordering before it is
+  // back is refused on purpose ("Hãy chọn lại khu vực..."), so wait for it.
+  const zoneQuote = page.waitForResponse((response) => response.url().includes("/api/orders")
+    && response.request().postDataJSON()?.action === "quote"
+    && response.request().postDataJSON()?.deliveryZoneId === "fixture-zone");
   await page.locator('[name="deliveryDistrict"]').selectOption("fixture-zone");
+  await zoneQuote;
+  await expect(page.getByRole("button", { name: "Đặt hàng" })).toBeEnabled();
   const deliveryDate = new Date(Date.now() + 3 * 86400000).toISOString().slice(0, 10);
   await page.locator('[name="deliveryDate"]').fill(deliveryDate);
   await page.locator('[name="deliveryTime"]').selectOption({ label: "08:00–11:00" });
   await page.locator('[name="paymentMethod"][value="cod"]').check();
   await page.screenshot({ path: testInfo.outputPath("screenshots/04-checkout.png"), fullPage: true });
-  await page.getByRole("button", { name: "Đặt hàng" }).click();
+  // On a phone the fixed "Chat Facebook / Zalo" bar covers the bottom of the screen: bring the
+  // button to the middle first, as a customer scrolling to it would. The page scrolls smoothly,
+  // so jump there at once: clicking while it is still moving would miss the button.
+  const orderButton = page.getByRole("button", { name: "Đặt hàng" });
+  await orderButton.evaluate((button) => button.scrollIntoView({ block: "center", behavior: "instant" }));
+  await orderButton.click();
   await expect(page).toHaveURL(/placeorder\.html/);
   await expect(page.locator(".placeorder > button")).toBeEnabled({ timeout: 15000 });
   await page.screenshot({ path: testInfo.outputPath("screenshots/05-order-review.png"), fullPage: true });
