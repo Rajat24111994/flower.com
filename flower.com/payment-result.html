@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="description" content="Kết quả thanh toán VNPay cho đơn hàng Flowerflow.">
+  <link rel="icon" type="image/svg+xml" href="./favicon.svg">
+  <title>Kết quả thanh toán | Flowerflow</title>
+  <link rel="stylesheet" href="./store-header.css?v=3">
+  <link rel="stylesheet" href="./payment-result.css?v=1">
+  <link rel="stylesheet" href="./accessibility.css?v=1">
+  <link rel="stylesheet" href="./store-footer.css?v=3">
+</head>
+<body>
+  <script src="./store-header.js?v=6"></script>
+  <main class="payment-result-page">
+    <section class="payment-result-card" aria-labelledby="payment-result-title">
+      <p class="payment-result-eyebrow">FLOWERFLOW · VNPay</p>
+      <h1 id="payment-result-title">Đang kiểm tra thanh toán</h1>
+      <p id="payment-result-message" role="status" aria-live="polite">Đang chờ máy chủ xác nhận giao dịch từ VNPay.</p>
+      <p id="payment-result-order" hidden></p>
+      <button id="payment-retry" type="button" hidden>Thanh toán lại</button>
+      <a href="./index.html">Quay lại cửa hàng</a>
+    </section>
+  </main>
+  <script src="./store-footer.js?v=4"></script>
+  <script src="./payment-result.js?v=1"></script>
+</body>
+</html>

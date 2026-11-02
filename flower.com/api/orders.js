@@ -7,6 +7,7 @@ const { toVndPrice } = require("../product-store.js");
 
 const MAX_QUANTITY_PER_PRODUCT = 50;
 const QR_RESERVATION_MS = 30 * 60 * 1000;
+const VNPAY_RESERVATION_MS = 15 * 60 * 1000;
 const COD_RESERVATION_MS = 24 * 60 * 60 * 1000;
 const ORDER_LOOKUP_WINDOW_MS = 10 * 60 * 1000;
 const ORDER_LOOKUP_MAX_ATTEMPTS = 20;
@@ -101,6 +102,10 @@ async function expireOneReservation(db, orderRef, now) {
             || (order.paymentMethod === "qr" && order.paymentVerified === true)) return false;
 
         const items = aggregateItems(order.items);
+        const paymentAttemptRef = order.paymentMethod === "vnpay" && order.vnpTxnRef
+            ? db.collection("paymentTransactions").doc(String(order.vnpTxnRef))
+            : null;
+        const paymentAttempt = paymentAttemptRef ? await transaction.get(paymentAttemptRef) : null;
         const shouldRestoreStock = order.status !== "Đã giao";
         const productRefs = shouldRestoreStock
             ? items.map((item) => db.collection("products").doc(item.id))
@@ -111,6 +116,11 @@ async function expireOneReservation(db, orderRef, now) {
         const expiredAt = new Date(now.toMillis()).toISOString();
         const status = shouldRestoreStock ? "Đã hủy" : order.status;
         const location = shouldRestoreStock ? "Đơn hàng hết thời hạn giữ sản phẩm" : order.currentLocation || "";
+        const paymentExpiryChanges = order.paymentMethod === "qr" && order.paymentVerified !== true
+            ? { paymentStatus: "Hết hạn chờ thanh toán" }
+            : order.paymentMethod === "vnpay" && order.paymentVerified !== true
+                ? { paymentStatus: "that_bai", vnpResponseCode: "expired" }
+                : {};
         productSnapshots.forEach((snapshot, index) => {
             if (!snapshot.exists) return;
             const currentQuantity = Number(snapshot.data().quantity) || 0;
@@ -123,9 +133,7 @@ async function expireOneReservation(db, orderRef, now) {
             inventoryReserved: false,
             inventoryState: shouldRestoreStock ? "released" : "sold",
             reservationExpiredAt: Timestamp.fromMillis(now.toMillis()),
-            ...(order.paymentMethod === "qr" && order.paymentVerified !== true
-                ? { paymentStatus: "Hết hạn chờ thanh toán" }
-                : {}),
+            ...paymentExpiryChanges,
             trackingUpdatedAt: Timestamp.fromMillis(now.toMillis()),
             trackingHistory: [...(Array.isArray(order.trackingHistory) ? order.trackingHistory : []), {
                 status,
@@ -134,6 +142,12 @@ async function expireOneReservation(db, orderRef, now) {
                 updatedAt: expiredAt
             }]
         });
+        if (paymentAttempt?.exists && paymentAttempt.data().status === "pending") {
+            transaction.update(paymentAttemptRef, {
+                status: "expired",
+                processedAt: Timestamp.fromMillis(now.toMillis())
+            });
+        }
         return true;
     });
 }
@@ -192,6 +206,9 @@ function publicTrackingOrder(id, data) {
             total: Number(data.total) || 0,
             paymentReference: data.paymentReference || "",
             reservationExpiresAt: serializeTimestamp(data.reservationExpiresAt)
+        } : data.paymentMethod === "vnpay" ? {
+            paymentMethod: "vnpay",
+            paymentStatus: data.paymentStatus || "chua_thanh_toan"
         } : {}),
         privacyLimited: true
     };
@@ -267,7 +284,7 @@ function validateCheckout(body = {}) {
         || !/^[A-Za-z0-9_-]{1,80}$/.test(deliveryZoneId)
         || greetingCard.length > 300
         || !["none", "pastel", "classic"].includes(giftWrap)
-        || !["qr", "cod"].includes(paymentMethod)
+        || !["qr", "cod", "vnpay"].includes(paymentMethod)
         || !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(idempotencyKey)
         || promotionId.length > 100
         || !expectedTotals
@@ -616,7 +633,9 @@ async function createOrder(req, res) {
                 shippingFee,
                 total,
                 paymentMethod: checkout.paymentMethod,
-                paymentStatus: checkout.paymentMethod === "qr" ? "Chờ xác minh thanh toán" : "Thanh toán khi nhận hàng",
+                paymentStatus: checkout.paymentMethod === "qr"
+                    ? "Chờ xác minh thanh toán"
+                    : checkout.paymentMethod === "vnpay" ? "chua_thanh_toan" : "Thanh toán khi nhận hàng",
                 paymentReference,
                 paidAt: "",
                 paymentVerified: false,
@@ -626,7 +645,8 @@ async function createOrder(req, res) {
                 inventoryReserved: true,
                 inventoryState: "reserved",
                 reservationExpiresAt: Timestamp.fromMillis(now.getTime() + (
-                    checkout.paymentMethod === "qr" ? QR_RESERVATION_MS : COD_RESERVATION_MS
+                    checkout.paymentMethod === "qr" ? QR_RESERVATION_MS
+                        : checkout.paymentMethod === "vnpay" ? VNPAY_RESERVATION_MS : COD_RESERVATION_MS
                 ))
             };
 
@@ -825,6 +845,9 @@ module.exports.internals = {
     paymentReferenceFor,
     publicTrackingOrder,
     reviewIdForOrder,
+    expireReservations,
+    aggregateItems,
     MAX_ORDER_NOTE_LENGTH,
-    MAX_QUANTITY_PER_PRODUCT
+    MAX_QUANTITY_PER_PRODUCT,
+    VNPAY_RESERVATION_MS
 };

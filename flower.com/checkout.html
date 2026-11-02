@@ -10,7 +10,7 @@
   <link rel="icon" type="image/svg+xml" href="./favicon.svg">
   <title>Thanh toán</title>
   <link rel="stylesheet" href="./store-header.css?v=3">
-  <link rel="stylesheet" href="./checkout.css?v=5">
+  <link rel="stylesheet" href="./checkout.css?v=6">
   <link rel="stylesheet" href="./accessibility.css?v=1">
   <link rel="stylesheet" href="./store-footer.css?v=3">
 <link rel="stylesheet" href="./contact-tools.css?v=3">
@@ -139,17 +139,15 @@
               <span><strong>Thanh toán khi nhận hàng</strong><small>Thanh toán trực tiếp khi nhận hoa</small></span>
             </label>
             <label class="payment-option">
-              <input type="radio" name="paymentMethod" value="qr" checked>
-              <span class="payment-option-icon" aria-hidden="true">▦</span>
-              <span><strong>Quét mã QR Vietcombank</strong><small>Chuyển khoản nhanh qua ứng dụng ngân hàng</small></span>
+              <input type="radio" name="paymentMethod" value="vnpay" checked>
+              <span class="payment-option-icon" aria-hidden="true">↗</span>
+              <span><strong>Thanh toán online qua VNPay</strong><small>Chuyển đến cổng thanh toán bảo mật của VNPay</small></span>
             </label>
           </div>
-          <div id="payment-qr-panel" class="payment-qr-panel" hidden>
-            <p>Quét mã bằng ứng dụng ngân hàng. Nội dung chuyển khoản gồm mã đơn tạm thời.</p>
-            <img id="payment-qr-image" alt="Mã QR chuyển khoản Vietcombank" width="220" height="220">
-            <p id="payment-qr-amount" class="payment-qr-amount"></p>
-            <p class="payment-qr-note">Mã QR chỉ hướng dẫn chuyển khoản. Đơn hàng chờ cửa hàng đối chiếu giao dịch; thao tác gửi đơn không xác nhận đã nhận tiền.</p>
-            <p class="payment-qr-note"><strong>Hàng được giữ 30 phút sau khi gửi đơn.</strong> Quá hạn mà cửa hàng chưa nhận được tiền, đơn sẽ tự hủy. Bạn có thể xem lại mã QR và nội dung chuyển khoản ở trang Theo dõi đơn hàng.</p>
+          <div id="payment-online-panel" class="payment-online-panel" hidden>
+            <p>Đơn sẽ được tạo với tổng tiền do máy chủ xác nhận, sau đó bạn được chuyển đến VNPay để thanh toán.</p>
+            <p class="payment-online-note">Đơn chưa được coi là đã thanh toán khi bạn quay lại trang này. Cửa hàng chỉ xác nhận tiền sau khi nhận IPN hợp lệ từ VNPay.</p>
+            <p class="payment-online-note"><strong>Hàng được giữ trong 15 phút.</strong> Nếu thanh toán chưa hoàn tất đúng hạn, đơn sẽ tự hủy và tồn kho được hoàn lại.</p>
           </div>
         </section>
       </div>
@@ -193,7 +191,7 @@
   <script src="./store-footer.js?v=4"></script>
   <script src="./bouquet-options.js?v=1"></script>
   <script src="./currency.js?v=11"></script>
-  <script src="./order-store.js?v=17"></script>
+  <script src="./order-store.js?v=18"></script>
   <script src="./product-names.js?v=2"></script>
   <script>
   const CartContainer = document.getElementById("product-container");
@@ -253,9 +251,7 @@
   const MAX_QUANTITY_PER_PRODUCT = 50;
   let serverQuote = null;
   let quoteRequestId = 0;
-  const paymentQrPanel = document.getElementById("payment-qr-panel");
-  const paymentQrImage = document.getElementById("payment-qr-image");
-  const paymentQrAmount = document.getElementById("payment-qr-amount");
+  const paymentOnlinePanel = document.getElementById("payment-online-panel");
   function createOrderRequestId() {
     if (!window.crypto?.getRandomValues) {
       throw new Error("Trình duyệt không hỗ trợ tạo mã đặt hàng an toàn. Hãy dùng HTTPS hoặc localhost.");
@@ -356,26 +352,12 @@
     void refreshServerQuote();
   });
 
-  function updatePaymentQr() {
-    const isQrPayment = checkoutForm.querySelector('input[name="paymentMethod"]:checked')?.value === "qr";
-    paymentQrPanel.hidden = !isQrPayment;
-    if (!isQrPayment) return;
-    if (!serverQuote || !serverQuote.deliveryZone?.id) {
-      paymentQrImage.removeAttribute("src");
-      paymentQrAmount.textContent = "Chọn khu vực giao hàng để kiểm tra tổng tiền trước khi chuyển khoản.";
-      return;
-    }
-    const total = serverQuote.totals.total;
-    const imageUrl = new URL(`https://img.vietqr.io/image/VCB-1063118243-compact2.png`);
-    imageUrl.searchParams.set("amount", String(total));
-    imageUrl.searchParams.set("addInfo", paymentReference);
-    imageUrl.searchParams.set("accountName", "DO BA THAI");
-    paymentQrImage.src = imageUrl.toString();
-    paymentQrAmount.textContent = `Số tiền: ${formatVnd(total)} · Nội dung: ${paymentReference}`;
+  function updatePaymentOnlinePanel() {
+    paymentOnlinePanel.hidden = checkoutForm.querySelector('input[name="paymentMethod"]:checked')?.value !== "vnpay";
   }
 
   checkoutForm.querySelectorAll('input[name="paymentMethod"]').forEach((input) => {
-    input.addEventListener("change", updatePaymentQr);
+    input.addEventListener("change", updatePaymentOnlinePanel);
   });
 
   function hasOverstockItem() {
@@ -551,7 +533,7 @@
       checkoutMessage.textContent = "";
     }
     renderCartSummary(Cart);
-    updatePaymentQr();
+    updatePaymentOnlinePanel();
     const cartTotal = document.getElementById("cartTotal");
     if (cartTotal) cartTotal.textContent = Cart.length;
     if (refreshQuote) void refreshServerQuote();
@@ -562,7 +544,7 @@
     document.getElementById("retry-quote").hidden = true;
     const requestId = ++quoteRequestId;
     serverQuote = null;
-    updatePaymentQr();
+    updatePaymentOnlinePanel();
     const submitButton = checkoutForm.querySelector(".checkout-submit");
     submitButton.disabled = true;
     if (!Cart.length) {
@@ -613,7 +595,7 @@
       });
       checkoutMessage.textContent = "Giá, ưu đãi và tồn kho đã được xác minh từ cửa hàng.";
       submitButton.disabled = !selectedDeliveryZoneId || !deliveryZonesLoaded || !deliveryZonesConfigured;
-      updatePaymentQr();
+      updatePaymentOnlinePanel();
     } catch (error) {
       if (requestId !== quoteRequestId) return;
       document.getElementById("retry-quote").hidden = false;
@@ -628,7 +610,7 @@
       }
       checkoutMessage.textContent = error.message || "Không thể xác minh giá và tồn kho. Vui lòng thử lại.";
       renderCartSummary(Cart);
-      updatePaymentQr();
+      updatePaymentOnlinePanel();
     }
   }
 

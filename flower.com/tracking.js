@@ -254,9 +254,16 @@ function renderOrder(order) {
     document.getElementById("result-shipping-fee").textContent = formatVnd(order.shippingFee);
     document.getElementById("result-total").textContent = formatOrderTotal(order);
     document.getElementById("result-order-note").textContent = order.orderNote || "";
+    const vnpayPaymentLabels = {
+        chua_thanh_toan: "Chưa thanh toán",
+        da_thanh_toan: "Đã thanh toán",
+        that_bai: "Thanh toán thất bại"
+    };
     document.getElementById("result-payment-status").textContent = order.paymentMethod === "qr"
         ? (["Hết hạn chờ thanh toán", "Đã thanh toán"].includes(order.paymentStatus) ? order.paymentStatus : "Chờ cửa hàng xác minh")
-        : order.paymentStatus || "Thanh toán khi nhận hàng";
+        : order.paymentMethod === "vnpay"
+            ? vnpayPaymentLabels[order.paymentStatus] || "Đang chờ VNPay xác nhận"
+            : order.paymentStatus || "Thanh toán khi nhận hàng";
     // The note and the shop's reply are only present for the signed-in owner of the order.
     const note = String(order.orderNote || "").trim();
     const reply = String(order.orderNoteReply || "").trim();

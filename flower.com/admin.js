@@ -53,13 +53,21 @@ function isOrderPaid(order) {
    // confirmed it with "Xác nhận đã nhận tiền" (Security Rules: admin-only write).
    if (order.paymentMethod === "qr") return order.paymentVerified === true;
    const status = String(order.paymentStatus || "").trim().toLocaleLowerCase("vi");
-   return ["đã thanh toán", "paid"].includes(status);
+   return ["đã thanh toán", "paid", "da_thanh_toan"].includes(status);
 }
 
 function getPaymentDisplayStatus(order) {
    if (order.paymentMethod === "qr") {
        if (order.paymentVerified === true) return "Đã thanh toán (đã đối soát)";
        return order.paymentStatus === "Hết hạn chờ thanh toán" ? order.paymentStatus : "Chờ cửa hàng xác minh";
+   }
+   if (order.paymentMethod === "vnpay") {
+       if (order.latePayment === true) return "Thanh toán muộn – cần kiểm tra";
+       return ({
+           chua_thanh_toan: "Chưa thanh toán VNPay",
+           da_thanh_toan: "Đã thanh toán VNPay",
+           that_bai: "Thanh toán VNPay thất bại"
+       })[order.paymentStatus] || "Chưa xác nhận VNPay";
    }
    return order.paymentStatus || (order.paymentMethod === "cod" ? "Thanh toán khi nhận hàng" : "Chưa xác nhận");
 }
