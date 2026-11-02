@@ -241,10 +241,16 @@ function validateCheckout(body = {}) {
         paymentMethod,
         promotionId,
         idempotencyKey,
-        paymentReference: String(body.paymentReference || "").replace(/[^A-Za-z0-9_-]/g, "").slice(0, 50),
         expectedTotals,
         items: normalizedItems
     };
+}
+
+// Transfer content the shop matches bank statements against. Computed here from the request's
+// unique idempotency key (the same formula checkout.html uses for the QR it shows), never taken
+// from the browser, so nobody can reuse another order's content.
+function paymentReferenceFor(idempotencyKey) {
+    return `FF${String(idempotencyKey).replaceAll("-", "").slice(0, 12).toUpperCase()}`;
 }
 
 function validateQuote(body = {}) {
@@ -398,6 +404,7 @@ async function createOrder(req, res) {
                 const previousData = previousOrder.data();
                 return {
                     id: previousOrder.id,
+                    paymentReference: previousData.paymentReference,
                     subtotal: previousData.subtotal,
                     savings: previousData.savings,
                     total: previousData.total
@@ -442,7 +449,7 @@ async function createOrder(req, res) {
                 throw error;
             }
             const orderRef = db.collection("orders").doc();
-            const paymentReference = checkout.paymentReference || `FF${orderRef.id.slice(-12).toUpperCase()}`;
+            const paymentReference = paymentReferenceFor(checkout.idempotencyKey);
             const items = products.map((item) => ({
                 id: item.id,
                 title: String(item.data.title || "Sản phẩm").slice(0, 120),
@@ -499,7 +506,7 @@ async function createOrder(req, res) {
             return { ...orderData, id: orderRef.id, createdAt: now.toISOString() };
         });
 
-        return res.status(201).json({ order: { id: order.id }, totals: {
+        return res.status(201).json({ order: { id: order.id, paymentReference: order.paymentReference }, totals: {
             subtotal: order.subtotal,
             savings: order.savings,
             total: order.total
@@ -668,6 +675,7 @@ module.exports.internals = {
     priceCart,
     validateCheckout,
     validateQuote,
+    paymentReferenceFor,
     publicTrackingOrder,
     reviewIdForOrder,
     MAX_ORDER_NOTE_LENGTH

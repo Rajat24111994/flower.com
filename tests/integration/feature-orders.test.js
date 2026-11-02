@@ -119,3 +119,13 @@ test("tra cứu bằng mã đơn và số điện thoại", async () => {
     const wrongPhone = await h.callApi("orders", { body: { action: "lookup", id, phone: "0999999999" } });
     assert.equal(wrongPhone.status, 404);
 });
+
+test("không đặt được nội dung chuyển khoản trùng với đơn của người khác (F42)", async () => {
+    const first = await h.placeOrder({ paymentMethod: "qr" });
+    const firstReference = (await h.db().doc(`orders/${first.body.order.id}`).get()).data().paymentReference;
+    const copy = await h.placeOrder({ paymentMethod: "qr", overrides: { paymentReference: firstReference } });
+    assert.equal(copy.status, 201);
+    const copyReference = (await h.db().doc(`orders/${copy.body.order.id}`).get()).data().paymentReference;
+    assert.notEqual(copyReference, firstReference);
+    assert.equal(copy.body.order.paymentReference, copyReference);
+});

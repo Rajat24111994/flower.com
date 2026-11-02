@@ -32,7 +32,7 @@
   <script src="./store-footer.js?v=2"></script>
   <script src="./currency.js?v=10"></script>
   <script src="./product-names.js?v=2"></script>
-  <script src="./order-store.js?v=14"></script>
+  <script src="./order-store.js?v=15"></script>
   <script>
     let CartContainer = document.getElementById("product-container");
     let Cart = FlowerSafeStorage.readJson("cart", {
@@ -111,7 +111,6 @@
         giftWrap: checkoutData.giftWrap || "none",
         orderNote: String(checkoutData.orderNote || "").trim(),
         paymentMethod: checkoutData.paymentMethod,
-        paymentReference: checkoutData.paymentReference || "",
         promotionId: checkoutData.promotionId || "",
         idempotencyKey: checkoutData.idempotencyKey,
         items: Cart.map((item) => ({ id: item.id, quantity: Math.max(1, Number(item.quantity) || 1) }))
