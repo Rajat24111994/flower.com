@@ -1,5 +1,5 @@
 import { firebaseConfig } from "./firebase-config.js";
-import { ORDER_STATUSES, normalizeOrderStatus } from "./order-status.js";
+import { ORDER_STATUSES, normalizeOrderStatus, orderStatusLabel } from "./order-status.js?v=2";
 
 let productPage = document.getElementById("product_page");
 let categoriesPage = document.getElementById("categories_page");
@@ -932,7 +932,7 @@ function renderOrderCard(order, showCompletionAction = true) {
                        <span>💰 ${moneyFormat(order.total)}</span>
                    </div>
                </div>
-               <span class="status-badge">${escapeHtml(normalizeOrderStatus(order.status))}</span>
+               <span class="status-badge">${escapeHtml(orderStatusLabel(order.status))}</span>
            </div>
 
            <div class="info-grid two-col">
@@ -1033,7 +1033,7 @@ function renderOrderCard(order, showCompletionAction = true) {
                    <div class="status-row">
                        <select class="status-select" data-order-id="${escapeHtml(order.id)}">
                            ${ORDER_STATUSES.map((status) => `
-                               <option value="${status}" ${status === normalizeOrderStatus(order.status) ? "selected" : ""}>${status}</option>
+                               <option value="${status}" ${status === normalizeOrderStatus(order.status) ? "selected" : ""}>${orderStatusLabel(status)}</option>
                            `).join("")}
                        </select>
                        <button class="status-save" data-order-id="${escapeHtml(order.id)}">Cập nhật trạng thái</button>
@@ -1097,9 +1097,10 @@ function renderOrdersTab() {
    }
    const statusPriority = {
        "Chờ xác nhận": 0,
-       "Đang giao": 1,
-       "Đã giao": 2,
-       "Đã hủy": 3
+       "Đang chuẩn bị": 1,
+       "Đang giao": 2,
+       "Đã giao": 3,
+       "Đã hủy": 4
    };
    const sortedOrders = getOrders().sort((first, second) => {
        const priorityDifference = (statusPriority[normalizeOrderStatus(first.status)] ?? 1)

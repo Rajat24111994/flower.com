@@ -3,21 +3,21 @@
 
 <head>
   <meta charset="UTF-8">
-  <script src="./safe-storage.js?v=1"></script>
+  <script src="./safe-storage.js?v=2"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex, nofollow">
   <meta name="description" content="Nhập thông tin nhận hoa và xác nhận thanh toán đơn hàng Flowerflow.">
   <link rel="icon" type="image/svg+xml" href="./favicon.svg">
   <title>Thanh toán</title>
-  <link rel="stylesheet" href="./store-header.css?v=2">
-  <link rel="stylesheet" href="./checkout.css?v=4">
+  <link rel="stylesheet" href="./store-header.css?v=3">
+  <link rel="stylesheet" href="./checkout.css?v=5">
   <link rel="stylesheet" href="./accessibility.css?v=1">
   <link rel="stylesheet" href="./store-footer.css?v=3">
-<link rel="stylesheet" href="./contact-tools.css?v=2">
+<link rel="stylesheet" href="./contact-tools.css?v=3">
 </head>
 
 <body>
-  <script src="./store-header.js?v=4"></script>
+  <script src="./store-header.js?v=6"></script>
 
   <main class="checkout-page">
     <header class="checkout-heading">
@@ -47,15 +47,15 @@
           <div class="checkout-fields">
             <label class="checkout-field">
               <span>Họ và tên</span>
-              <input type="text" name="customerName" autocomplete="name" placeholder="Nguyễn Thị Hoa" required>
+              <input type="text" name="customerName" autocomplete="name" maxlength="100" placeholder="Nguyễn Thị Hoa" required>
             </label>
             <label class="checkout-field">
               <span>Số điện thoại</span>
-              <input type="tel" name="phone" inputmode="tel" autocomplete="tel" pattern="\+?[0-9]{8,15}" placeholder="0912345678" required>
+              <input type="tel" name="phone" inputmode="tel" autocomplete="tel" maxlength="20" placeholder="0912 345 678" required>
             </label>
             <label class="checkout-field checkout-field-wide">
               <span>Số nhà, tên đường, phường / xã</span>
-              <textarea name="address" autocomplete="street-address" rows="3" placeholder="Số nhà, tên đường, phường / xã" required></textarea>
+              <textarea name="address" autocomplete="street-address" rows="3" maxlength="500" placeholder="Số nhà, tên đường, phường / xã" required></textarea>
             </label>
             <fieldset class="checkout-field checkout-field-wide checkout-recipient">
               <legend>Thông tin người nhận</legend>
@@ -249,6 +249,8 @@
     validate: (value) => Array.isArray(value)
       && value.every((item) => item && typeof item === "object" && !Array.isArray(item) && item.id !== undefined)
   });
+  // Same limit as the order API (api/orders.js MAX_QUANTITY_PER_PRODUCT).
+  const MAX_QUANTITY_PER_PRODUCT = 50;
   let serverQuote = null;
   let quoteRequestId = 0;
   const paymentQrPanel = document.getElementById("payment-qr-panel");
@@ -490,7 +492,7 @@
       increase.className = "quantity-button";
       increase.textContent = "+";
       increase.setAttribute("aria-label", `Tăng số lượng ${name.textContent}`);
-      increase.disabled = hasStockLimit && requestedStock >= stock;
+      increase.disabled = itemQuantity >= MAX_QUANTITY_PER_PRODUCT || (hasStockLimit && requestedStock >= stock);
       lineTotal.className = "checkout-item-total";
       lineTotal.textContent = formatVnd(Number(product.price) * itemQuantity);
       remove.type = "button";
@@ -503,6 +505,10 @@
           : item));
       });
       increase.addEventListener("click", () => {
+        if (itemQuantity >= MAX_QUANTITY_PER_PRODUCT) {
+          checkoutMessage.textContent = `Mỗi lựa chọn bó hoa đặt tối đa ${MAX_QUANTITY_PER_PRODUCT} bó.`;
+          return;
+        }
         if (hasStockLimit && requestedStock >= stock) {
           checkoutMessage.textContent = `Chỉ còn ${stock} sản phẩm trong kho.`;
           return;
@@ -652,6 +658,41 @@
     DisplayProduct();
   }
 
+  // Checks what the server will check, but next to the field and in Vietnamese, so the customer
+  // does not learn about a too-long name or an all-spaces address only on the next page.
+  const PHONE_ALLOWED = /^\+?[0-9 .-]+$/;
+  function phoneError(value, required) {
+    const text = value.trim();
+    if (!text) return required ? "Vui lòng nhập số điện thoại." : "";
+    const digits = text.replace(/\D/g, "");
+    if (!PHONE_ALLOWED.test(text) || digits.length < 8 || digits.length > 15) {
+      return "Số điện thoại gồm 8–15 chữ số, có thể có dấu cách hoặc dấu chấm (ví dụ 0912 345 678).";
+    }
+    return "";
+  }
+
+  function validateCheckoutFields() {
+    const field = (name) => checkoutForm.elements[name];
+    const checks = [
+      [field("customerName"), field("customerName").value.trim() ? "" : "Vui lòng nhập họ và tên."],
+      [field("phone"), phoneError(field("phone").value, true)],
+      [field("address"), field("address").value.trim() ? "" : "Vui lòng nhập địa chỉ giao hàng."],
+      [field("recipientPhone"), phoneError(field("recipientPhone").value, false)]
+    ];
+    checks.forEach(([input, message]) => input.setCustomValidity(message));
+    const firstInvalid = checks.find(([, message]) => message);
+    if (firstInvalid) {
+      firstInvalid[0].reportValidity();
+      checkoutMessage.textContent = firstInvalid[1];
+      return false;
+    }
+    return true;
+  }
+
+  ["customerName", "phone", "address", "recipientPhone"].forEach((name) => {
+    checkoutForm.elements[name].addEventListener("input", (event) => event.target.setCustomValidity(""));
+  });
+
   checkoutForm.addEventListener("submit", (event) => {
     event.preventDefault();
     updateDeliveryAvailability();
@@ -682,6 +723,8 @@
       deliveryTimeInput.focus();
       return;
     }
+
+    if (!validateCheckoutFields()) return;
 
     const formData = new FormData(event.currentTarget);
     const checkout = {

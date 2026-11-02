@@ -2,20 +2,20 @@
 <html lang="vi">
   <head>
     <meta charset="UTF-8" />
-    <script src="./safe-storage.js?v=1"></script>
+    <script src="./safe-storage.js?v=2"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="robots" content="noindex, nofollow">
     <meta name="description" content="Kiểm tra hoa đã chọn và tổng tiền trong giỏ hàng Flowerflow.">
     <link rel="icon" type="image/svg+xml" href="./favicon.svg">
     <title>Giỏ hàng</title>
-    <link rel="stylesheet" href="./store-header.css?v=2" />
-    <link rel="stylesheet" href="./cart.css?v=4" />
+    <link rel="stylesheet" href="./store-header.css?v=3" />
+    <link rel="stylesheet" href="./cart.css?v=6" />
     <link rel="stylesheet" href="./accessibility.css?v=1" />
     <link rel="stylesheet" href="./store-footer.css?v=3" />
-  <link rel="stylesheet" href="./contact-tools.css?v=2">
+  <link rel="stylesheet" href="./contact-tools.css?v=3">
   </head>
   <body>
-    <script src="./store-header.js?v=4"></script>
+    <script src="./store-header.js?v=6"></script>
 
     <main class="nav">
       <div id="product-container"></div>
@@ -55,6 +55,8 @@
     <script src="./currency.js?v=11"></script>
     <script src="./product-names.js?v=2"></script>
     <script>
+      // Same limit as the order API (api/orders.js MAX_QUANTITY_PER_PRODUCT).
+      const MAX_QUANTITY_PER_PRODUCT = 50;
       let CartContainer = document.getElementById("product-container");
       const cartActionMessage = document.getElementById("cart-action-message");
       let Cart = FlowerSafeStorage.readJson("cart", {
@@ -82,35 +84,77 @@
         document.querySelector(".nav").classList.toggle("is-empty", Cart.length === 0);
 
         CartContainer.innerHTML = "";
+        if (!Cart.length) {
+          const empty = document.createElement("div");
+          const icon = document.createElement("span");
+          const heading = document.createElement("h2");
+          const text = document.createElement("p");
+          const link = document.createElement("a");
+          empty.className = "cart-empty";
+          icon.className = "cart-empty-icon";
+          icon.setAttribute("aria-hidden", "true");
+          icon.textContent = "✿";
+          heading.textContent = "Giỏ hàng đang trống";
+          text.textContent = "Chọn một bó hoa bạn thích rồi quay lại đây để thanh toán.";
+          link.href = "./product.html";
+          link.textContent = "Chọn hoa ngay";
+          empty.append(icon, heading, text, link);
+          CartContainer.append(empty);
+        }
 
         Cart.forEach((product) => {
-          let image = document.createElement("img");
-          let details = document.createElement("p");
-          let price = document.createElement("h3");
-          let Remove = document.createElement("button");
-          let Increase = document.createElement("button");
-          let Decrease = document.createElement("button");
-          let card = document.createElement("div");
-          let quantity = document.createElement("span");
-          let stockNote = document.createElement("p");
+          const image = document.createElement("img");
+          const info = document.createElement("div");
+          const details = document.createElement("h3");
+          const price = document.createElement("p");
+          const actions = document.createElement("div");
+          const Remove = document.createElement("button");
+          const Increase = document.createElement("button");
+          const Decrease = document.createElement("button");
+          const card = document.createElement("article");
+          const quantity = document.createElement("span");
+          const stockNote = document.createElement("p");
+          const productName = getVietnameseProductName(product.title);
 
+          card.className = "cart-item";
+          info.className = "cart-item-details";
+          details.className = "cart-item-name";
+          price.className = "cart-item-price";
+          stockNote.className = "cart-stock-note";
+          actions.className = "cart-item-actions";
+          Remove.className = "cart-remove";
           image.src = product.image;
-          details.textContent = getVietnameseProductName(product.title) + (FlowerBouquetOptions.summary(product) ? " · " + FlowerBouquetOptions.summary(product) : "");
+          const bouquetSummary = FlowerBouquetOptions.summary(product);
+          image.alt = productName;
+          details.textContent = productName;
+          const customization = document.createElement("p");
+          customization.className = "cart-item-options";
+          customization.textContent = bouquetSummary;
           price.textContent = formatVnd(product.price);
+          [Decrease, Increase, Remove].forEach((button) => { button.type = "button"; });
           Remove.textContent = "Xóa";
           Increase.textContent = "+";
-          Decrease.textContent = "-";
+          Decrease.textContent = "−";
+          Decrease.setAttribute("aria-label", `Giảm số lượng ${productName}`);
+          Increase.setAttribute("aria-label", `Tăng số lượng ${productName}`);
+          Remove.setAttribute("aria-label", `Xóa ${productName} khỏi giỏ hàng`);
+          quantity.setAttribute("aria-live", "polite");
           const productQuantity = Math.max(1, Number(product.quantity) || 1);
+          Decrease.disabled = productQuantity <= 1;
           const stockQuantity = Number(product.stockQuantity);
           const hasStockLimit = Number.isFinite(stockQuantity) && stockQuantity >= 0;
           const requestedStock = FlowerBouquetOptions.demand(Cart, product.productId ?? product.id);
           quantity.textContent = productQuantity;
-          Increase.disabled = hasStockLimit && requestedStock >= stockQuantity;
-          stockNote.textContent = hasStockLimit
-            ? requestedStock > stockQuantity
-              ? `Số lượng trong giỏ vượt tồn kho (${stockQuantity}).`
-              : `Tồn kho: ${stockQuantity}`
-            : "";
+          // Stock is shared by every line of the same flower; the 50 limit is per line (as on the server).
+          const atOrderLimit = productQuantity >= MAX_QUANTITY_PER_PRODUCT;
+          Increase.disabled = atOrderLimit || (hasStockLimit && requestedStock >= stockQuantity);
+          stockNote.textContent = productQuantity > MAX_QUANTITY_PER_PRODUCT
+            ? `Mỗi lựa chọn bó hoa đặt tối đa ${MAX_QUANTITY_PER_PRODUCT} bó.`
+            : hasStockLimit
+              ? requestedStock > stockQuantity
+                ? `Số lượng trong giỏ vượt tồn kho (${stockQuantity}).`
+                : `Tồn kho: ${stockQuantity}${atOrderLimit ? ` · tối đa ${MAX_QUANTITY_PER_PRODUCT} mỗi lựa chọn` : ""}`
+              : "";
 
           Decrease.addEventListener("click", () => {
             if (productQuantity > 1) {
@@ -120,7 +164,7 @@
             }
           });
           Increase.addEventListener("click", () => {
-            if (hasStockLimit && requestedStock >= stockQuantity) return;
+            if (atOrderLimit || (hasStockLimit && requestedStock >= stockQuantity)) return;
             saveCart(Cart.map((item) => item.id === product.id
               ? { ...item, quantity: productQuantity + 1 }
               : item));
@@ -132,16 +176,9 @@
               cartActionMessage.hidden = false;
             }
           });
-          card.append(
-            image,
-            price,
-            details,
-            stockNote,
-            Increase,
-            quantity,
-            Decrease,
-            Remove
-          );
+          actions.append(Decrease, quantity, Increase, Remove);
+          info.append(details, customization, price, stockNote, actions);
+          card.append(image, info);
           CartContainer.append(card);
         });
 

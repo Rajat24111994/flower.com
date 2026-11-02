@@ -198,7 +198,8 @@ function publicTrackingOrder(id, data) {
 }
 
 function awaitsQrTransfer(data) {
-    return data.paymentMethod === "qr" && data.paymentVerified !== true && (data.status || "Chờ xác nhận") === "Chờ xác nhận";
+    return data.paymentMethod === "qr" && data.paymentVerified !== true
+        && ["Chờ xác nhận", "Đang chuẩn bị"].includes(data.status || "Chờ xác nhận");
 }
 
 async function checkOrderLookupLimit(db, req) {
@@ -308,10 +309,16 @@ function validateCheckout(body = {}) {
         paymentMethod,
         promotionId,
         idempotencyKey,
-        paymentReference: String(body.paymentReference || "").replace(/[^A-Za-z0-9_-]/g, "").slice(0, 50),
         expectedTotals,
         items: normalizedItems
     };
+}
+
+// Transfer content the shop matches bank statements against. Computed here from the request's
+// unique idempotency key (the same formula checkout.html uses for the QR it shows), never taken
+// from the browser, so nobody can reuse another order's content.
+function paymentReferenceFor(idempotencyKey) {
+    return `FF${String(idempotencyKey).replaceAll("-", "").slice(0, 12).toUpperCase()}`;
 }
 
 function validateQuote(body = {}) {
@@ -369,7 +376,15 @@ function priceCart(items, promotion) {
     return { subtotal, savings, tax: 0, total: subtotal - savings };
 }
 
+// A clear answer for the one limit customers can actually hit, instead of "invalid list".
+function quantityLimitError(res, body) {
+    const tooMany = Array.isArray(body?.items) && body.items.some((item) => Number(item?.quantity) > MAX_QUANTITY_PER_PRODUCT);
+    if (!tooMany) return null;
+    return sendError(res, 400, "quantity-limit", `Mỗi lựa chọn bó hoa đặt tối đa ${MAX_QUANTITY_PER_PRODUCT} bó. Hãy giảm số lượng, hoặc liên hệ cửa hàng nếu cần số lượng lớn.`);
+}
+
 async function quoteOrder(req, res) {
+    if (quantityLimitError(res, req.body)) return;
     const quote = validateQuote(req.body);
     if (!quote) return sendError(res, 400, "invalid-checkout", "Danh sách sản phẩm không hợp lệ.");
     try {
@@ -454,6 +469,7 @@ async function createOrder(req, res) {
     if (String(req.body?.orderNote || "").trim().length > MAX_ORDER_NOTE_LENGTH) {
         return sendError(res, 400, "note-too-long", `Ghi chú tối đa ${MAX_ORDER_NOTE_LENGTH} ký tự. Hãy rút gọn ghi chú rồi đặt lại.`);
     }
+    if (quantityLimitError(res, req.body)) return;
     const checkout = validateCheckout(req.body);
     if (!checkout) {
         return sendError(res, 400, "invalid-checkout", "Thông tin đặt hàng hoặc danh sách sản phẩm không hợp lệ.");
@@ -491,6 +507,7 @@ async function createOrder(req, res) {
                 const previousData = previousOrder.data();
                 return {
                     id: previousOrder.id,
+                    paymentReference: previousData.paymentReference,
                     subtotal: previousData.subtotal,
                     savings: previousData.savings,
                     shippingFee: Number(previousData.shippingFee) || 0,
@@ -524,8 +541,19 @@ async function createOrder(req, res) {
                 const data = snapshot.data();
                 const price = bouquet.price(toVndPrice(data.price), item.size);
                 const stock = Number(data.quantity);
-                if (!Number.isFinite(price) || price <= 0 || !Number.isInteger(stock) || stock < bouquet.demand(checkout.items, item.productId ?? item.id)) {
-                    const error = new Error("Sản phẩm không đủ tồn kho hoặc có giá chưa hợp lệ.");
+                const title = String(data.title || "Một sản phẩm");
+                if (!Number.isFinite(price) || price <= 0) {
+                    const error = new Error(`“${title}” hiện chưa có giá bán. Hãy bỏ sản phẩm này khỏi giỏ.`);
+                    error.code = "product-unavailable";
+                    throw error;
+                }
+                // One product can sit on several cart lines (different bouquet options): check the total.
+                const demand = bouquet.demand(checkout.items, item.productId ?? item.id);
+                if (!Number.isInteger(stock) || stock < demand) {
+                    const available = Number.isInteger(stock) ? Math.max(0, stock) : 0;
+                    const error = new Error(available
+                        ? `“${title}” vừa có người mua, chỉ còn ${available} sản phẩm. Hãy giảm số lượng rồi đặt lại.`
+                        : `“${title}” vừa hết hàng. Hãy bỏ sản phẩm này khỏi giỏ.`);
                     error.code = "insufficient-stock";
                     throw error;
                 }
@@ -543,12 +571,12 @@ async function createOrder(req, res) {
                 || checkout.expectedTotals.tax !== 0
                 || checkout.expectedTotals.shippingFee !== shippingFee
                 || checkout.expectedTotals.total !== total) {
-                const error = new Error("Giá hoặc tồn kho vừa thay đổi. Hãy tải lại báo giá trước khi xác nhận.");
+                const error = new Error("Giá hoặc ưu đãi vừa thay đổi. Hãy quay lại trang thanh toán để xem tổng tiền mới.");
                 error.code = "price-changed";
                 throw error;
             }
             const orderRef = db.collection("orders").doc();
-            const paymentReference = checkout.paymentReference || `FF${orderRef.id.slice(-12).toUpperCase()}`;
+            const paymentReference = paymentReferenceFor(checkout.idempotencyKey);
             const items = products.map((item) => ({
                 id: item.id,
                 ...bouquet.normalize(item),
@@ -619,7 +647,7 @@ async function createOrder(req, res) {
             return { ...orderData, id: orderRef.id, createdAt: now.toISOString() };
         });
 
-        return res.status(201).json({ order: { id: order.id }, totals: {
+        return res.status(201).json({ order: { id: order.id, paymentReference: order.paymentReference }, totals: {
             subtotal: order.subtotal,
             savings: order.savings,
             shippingFee: order.shippingFee,
@@ -794,7 +822,9 @@ module.exports.internals = {
     getEnabledDeliveryZones,
     resolveDeliveryZone,
     DELIVERY_TIME_WINDOWS,
+    paymentReferenceFor,
     publicTrackingOrder,
     reviewIdForOrder,
-    MAX_ORDER_NOTE_LENGTH
+    MAX_ORDER_NOTE_LENGTH,
+    MAX_QUANTITY_PER_PRODUCT
 };

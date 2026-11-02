@@ -39,12 +39,11 @@ test("normalizePhone() chỉ giữ chữ số", () => {
 });
 
 test("validateCheckout() nhận đơn hợp lệ và chuẩn hóa dữ liệu", () => {
-    const result = validateCheckout(checkout({ paymentReference: "FF<script>12" }));
+    const result = validateCheckout(checkout());
     assert.ok(result);
     assert.equal(result.recipientName, "Nguyễn Văn A");
     assert.equal(result.recipientPhone, "0908 123 456");
     assert.equal(result.giftWrap, "none");
-    assert.equal(result.paymentReference, "FFscript12");
     assert.deepEqual(result.items, [{ id: "1", quantity: 2 }]);
 });
 
@@ -158,6 +157,9 @@ test("tra cứu công khai chỉ hiện thông tin chuyển khoản cho đơn QR
     const waiting = publicTrackingOrder("abc", { status: "Chờ xác nhận", paymentMethod: "qr", paymentVerified: false, total: 500, paymentReference: "FFABC" });
     assert.equal(waiting.total, 500);
     assert.equal(waiting.paymentReference, "FFABC");
+    const preparing = publicTrackingOrder("abc", { status: "Đang chuẩn bị", paymentMethod: "qr", paymentVerified: false, total: 500, customerName: "Riêng tư" });
+    assert.equal(preparing.total, 500);
+    assert.equal(preparing.customerName, undefined);
     const paid = publicTrackingOrder("abc", { status: "Chờ xác nhận", paymentMethod: "qr", paymentVerified: true, total: 500 });
     assert.equal(paid.total, undefined);
 });
@@ -167,4 +169,11 @@ test("mỗi đơn có đúng một mã đánh giá và không lộ mã đơn", (
     assert.notEqual(reviewIdForOrder("abc"), reviewIdForOrder("abd"));
     assert.equal(reviewIdForOrder("abc").length, 40);
     assert.ok(!reviewIdForOrder("abc").includes("abc"));
+});
+
+test("nội dung chuyển khoản do máy chủ tính từ mã yêu cầu, không nhận từ trình duyệt (F42)", () => {
+    const { paymentReferenceFor } = internals;
+    assert.equal(paymentReferenceFor("1b4e28ba-2fa1-4d3b-a3f5-ef19b5a7633b"), "FF1B4E28BA2FA1");
+    const result = validateCheckout(checkout({ paymentReference: "FFTRUNGDONKHAC" }));
+    assert.equal(result.paymentReference, undefined);
 });

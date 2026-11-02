@@ -28,6 +28,7 @@ Làm lần lượt từ trên xuống cho mỗi lần phát hành. Mục nào kh
   cd flower.com && npm run setup-firestore
   ```
 - [ ] Biến môi trường trên Vercel còn đủ: `FIREBASE_SERVICE_ACCOUNT_JSON`, `CRON_SECRET`.
+- [ ] Lần chạy gần nhất của workflow **Sao lưu Firestore** xanh (có bản sao lưu trước khi phát hành).
 
 ## 4. Smoke test ngay sau khi deploy
 

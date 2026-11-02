@@ -38,6 +38,7 @@ for (const file of htmlFiles) {
 
   if (publicPages.has(file)) {
     assert.match(html, /rel="canonical"/i, `${file} must have a canonical URL`);
+    assert.doesNotMatch(html, /name="robots"\s+content="noindex/i, `${file} should remain public`);
   } else {
     assert.match(html, /name="robots"\s+content="noindex, nofollow"/i, `${file} must not be indexed`);
   }

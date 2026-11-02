@@ -81,6 +81,16 @@
   primaryNav.addEventListener("click", (event) => {
     if (event.target.closest("a")) setMenuOpen(false);
   });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && menuToggle.getAttribute("aria-expanded") === "true") {
+      setMenuOpen(false);
+      menuToggle.focus();
+    }
+  });
+  document.addEventListener("pointerdown", (event) => {
+    if (!primaryNav.contains(event.target) && !menuToggle.contains(event.target)) setMenuOpen(false);
+  });
+  window.matchMedia("(max-width: 800px)").addEventListener("change", () => setMenuOpen(false));
 })();
 
 function getCurrentAccount() {
@@ -165,13 +175,15 @@ async function verifyStoredSession() {
     if (!getCurrentAccount()) return;
     let auth;
     try {
-        const [{ firebaseConfig }, appSdk, authSdk] = await Promise.all([
+        const [configModule, appSdk, authSdk] = await Promise.all([
             import("./firebase-config.js"),
             import("https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js"),
             import("https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js")
         ]);
-        const app = appSdk.getApps().length ? appSdk.getApp() : appSdk.initializeApp(firebaseConfig);
+        const app = appSdk.getApps().length ? appSdk.getApp() : appSdk.initializeApp(configModule.firebaseConfig);
         auth = authSdk.getAuth(app);
+        // Same Auth as the rest of the page: in browser tests that is the Auth Emulator.
+        configModule.connectFirebaseEmulators?.(app, auth, null, authSdk);
         await auth.authStateReady();
     } catch (error) {
         console.warn("Chưa kiểm tra được phiên đăng nhập:", error);
@@ -184,6 +196,9 @@ async function verifyStoredSession() {
     try {
         FlowerSafeStorage.remove("loggedUser");
         FlowerSafeStorage.remove("loggedAdmin");
+        // Put this account's cart away for when it signs in again (F48).
+        FlowerSafeStorage.syncShoppingOwner?.();
+        updateShoppingHeaderCounts();
     } catch (error) {
         console.error("Không thể xóa phiên đăng nhập đã hết hạn:", error);
     }

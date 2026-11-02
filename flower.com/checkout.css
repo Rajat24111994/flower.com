@@ -990,3 +990,24 @@ body {
     }
 }
 .bouquet-line-summary { overflow-wrap: anywhere; white-space: pre-wrap; line-height: 1.6; }
+@media (max-width: 800px) {
+  .checkout-field input, .checkout-field textarea, .checkout-field select, #promotion-select { min-width: 0; max-width: 100%; min-height: 48px; font-size: 16px; }
+  .checkout-field select { width: 100%; padding: 11px 12px; border: 1px solid #dfe4dd; border-radius: 8px; background: #fff; color: #273a32; }
+  .checkout-field { font-size: 14px; }
+  .checkout-field small, .checkout-section-heading p { font-size: 13px; line-height: 1.6; }
+  .checkout-quantity { flex-wrap: wrap; gap: 8px; }
+  .checkout-quantity .quantity-button { width: 44px; height: 44px; }
+  .checkout-remove, #retry-quote { min-height: 44px; padding: 10px; font-size: 14px; }
+  .checkout-items { max-height: none; overflow: visible; }
+  .checkout-item-details, .payment-option > span { min-width: 0; overflow-wrap: anywhere; }
+  .payment-option { min-height: 64px; gap: 10px; padding: 14px 10px; }
+  .payment-option strong { font-size: 15px; }
+  .payment-option small { font-size: 13px; line-height: 1.5; }
+  .payment-qr-panel img { max-width: 100%; height: auto; }
+  .payment-qr-amount, .checkout-message, .checkout-totals dd { overflow-wrap: anywhere; }
+  .checkout-progress { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .checkout-progress-step { flex-direction: column; font-size: 12px; text-align: center; }
+  .checkout-progress-line { display: none; }
+  .checkout-item { align-items: start; }
+  .continue-shopping { display: flex; justify-content: center; align-items: center; min-height: 44px; font-size: 14px; }
+}

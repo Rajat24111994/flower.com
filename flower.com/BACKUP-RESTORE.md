@@ -1,64 +1,69 @@
 # Sao lưu và phục hồi dữ liệu FlowerFlow
 
-## Phạm vi
+## Cách sao lưu (miễn phí, không cần gói Blaze)
 
-Ứng dụng đang dùng Firestore database `(default)` của project `web-ban-hoa-9fe0b` cho dữ liệu nghiệp vụ như đơn hàng, sản phẩm, đánh giá, tin nhắn, danh mục và ưu đãi. Firestore Scheduled Backups tạo bản sao nhất quán của database theo lịch và tự xóa bản sao khi hết thời hạn lưu. Cấu hình đề xuất của dự án là sao lưu hằng ngày, giữ tối đa 14 tuần.
+Sao lưu tự động có sẵn của Firestore (Scheduled Backups) cần gói trả phí Blaze. Dự án dùng cách miễn phí:
 
-Backup Firestore không thay thế bản sao lưu Firebase Authentication, Firebase Storage hoặc mã nguồn. Những thành phần đó cần quy trình riêng nếu dự án bắt đầu lưu dữ liệu quan trọng ở đó.
+- **Tự động mỗi ngày** bằng GitHub Actions (workflow **Sao lưu Firestore**, 01:23 giờ Việt Nam):
+  1. xuất toàn bộ Firestore ra file;
+  2. mã hóa file bằng AES-256-GCM với mật khẩu riêng của cửa hàng;
+  3. lưu file trên GitHub (artifact), **giữ 30 ngày**.
+- **Bằng tay** trên máy quản lý: `npm run backup` lưu một bản mã hóa vào thư mục `flower.com/backups/`.
 
-## Bật lịch sao lưu
+Bản sao lưu gồm mọi collection: sản phẩm, đơn hàng, đánh giá, lời nhắn, danh mục, ưu đãi, `adminRoles`, `orderRequests`… Chỉ bỏ `orderLookupLimits` (bộ đếm chống dò mã đơn, không cần khôi phục).
 
-Máy quản lý cần cài Google Cloud CLI, đăng nhập bằng tài khoản có quyền quản lý backup Firestore trong project, và chọn đúng project. Từ thư mục này, chạy PowerShell:
+Không sao lưu được: tài khoản Firebase Authentication (email, mật khẩu) và mã nguồn (mã nguồn đã nằm trên GitHub).
+
+> Repository đang **công khai**, nên file sao lưu **luôn được mã hóa**. Không có mật khẩu thì không ai đọc được, kể cả người tải được file. Ngược lại, **mất mật khẩu thì không mở được bản sao lưu**: hãy cất mật khẩu ở chỗ an toàn ngoài máy tính (ví dụ trình quản lý mật khẩu). Không commit file sao lưu vào Git (`.gitignore` đã chặn).
+
+## Bật sao lưu tự động (làm một lần)
+
+Chủ repository vào GitHub → **Settings → Secrets and variables → Actions → New repository secret**, thêm 2 secret:
+
+| Tên | Giá trị |
+| --- | --- |
+| `FIREBASE_SERVICE_ACCOUNT_JSON` | Nội dung JSON của service account, giống biến cùng tên trên Vercel |
+| `BACKUP_PASSPHRASE` | Mật khẩu mã hóa bản sao lưu, ít nhất 12 ký tự, tự đặt và cất kỹ |
+
+Sau đó vào tab **Actions → Sao lưu Firestore → Run workflow** để chạy thử. Chỉ coi sao lưu là đã bật khi lần chạy đó **xanh** và cuối trang có file `firestore-backup-…`. Thiếu secret thì workflow báo đỏ và ghi rõ còn thiếu secret nào.
+
+## Sao lưu bằng tay trên máy
+
+Trong thư mục `flower.com`, đăng nhập Google Cloud một lần (`gcloud auth application-default login`), rồi chạy trên PowerShell:
 
 ```powershell
-gcloud auth login
-./scripts/setup-firestore-backup.ps1
+$env:BACKUP_PASSPHRASE = "mật-khẩu-sao-lưu"
+npm run backup
 ```
 
-Script chỉ tạo lịch hằng ngày với thời hạn lưu 14 tuần nếu database chưa có lịch nào. Nếu đã có lịch, script không thay đổi cấu hình hiện tại; hãy kiểm tra lịch trước khi chỉnh để tránh xóa hoặc tạo lịch trùng:
-
-```powershell
-gcloud firestore backups schedules list --database="(default)" --project="web-ban-hoa-9fe0b"
-```
-
-Xác minh sau khi bật:
-
-```powershell
-gcloud firestore backups schedules list --database="(default)" --project="web-ban-hoa-9fe0b"
-gcloud firestore backups list --project="web-ban-hoa-9fe0b"
-```
-
-Backup đầu tiên chỉ xuất hiện sau khi lịch đã được tạo và chu kỳ sao lưu chạy. Chỉ coi tính năng đã hoạt động khi thấy lịch đúng và có backup ở trạng thái hoàn tất. Chi phí lưu trữ backup được tính theo mức sử dụng Google Cloud.
-
-## Quyền truy cập
-
-Giới hạn quyền xem, phục hồi và xóa backup cho tài khoản vận hành được ủy quyền. Không lưu service account key, token hay thông tin đăng nhập trong Git, Vercel hoặc tài liệu này. Kiểm tra danh sách backup định kỳ và cảnh báo nếu không có backup mới trong thời hạn dự kiến.
+File mới nằm trong `flower.com/backups/`.
 
 ## Phục hồi khi có sự cố
 
-1. Ghi nhận thời điểm sự cố và tạm dừng các thao tác quản trị có thể ghi đè dữ liệu.
-2. Liệt kê backup, chọn bản gần nhất trước thời điểm dữ liệu hỏng:
+1. Ghi lại thời điểm sự cố và tạm dừng các thao tác quản trị có thể ghi đè dữ liệu.
+2. Lấy bản sao lưu gần nhất **trước** thời điểm dữ liệu hỏng: trên GitHub vào **Actions → Sao lưu Firestore**, mở lần chạy phù hợp, tải file `firestore-backup-…` về rồi giải nén. Hoặc dùng file trong `flower.com/backups/`.
+3. Xem trước nội dung (lệnh này **chưa ghi gì** vào Firestore):
 
    ```powershell
-   gcloud firestore backups list --project="web-ban-hoa-9fe0b"
+   $env:BACKUP_PASSPHRASE = "mật-khẩu-sao-lưu"
+   npm run restore -- "đường-dẫn\flowerflow-....json.enc"
    ```
 
-3. Phục hồi trước vào một database mới để kiểm tra, thay `LOCATION` và `BACKUP_ID` theo tên backup vừa chọn:
+   Lệnh in ra thời điểm sao lưu và số bản ghi của từng collection. Kiểm tra cho đúng.
+4. Khôi phục thật:
 
    ```powershell
-   gcloud firestore databases restore `
-     --source-backup="projects/web-ban-hoa-9fe0b/locations/LOCATION/backups/BACKUP_ID" `
-     --destination-database="flower-recovery-check" `
-     --project="web-ban-hoa-9fe0b"
+   npm run restore -- "đường-dẫn\flowerflow-....json.enc" --dong-y
    ```
 
-4. Sau khi thao tác hoàn tất, kiểm tra dữ liệu và số lượng bản ghi quan trọng (đơn hàng, sản phẩm, đánh giá, tin nhắn, danh mục, ưu đãi) bằng quyền truy cập quản trị phù hợp; ghi lại backup được dùng, thời gian phục hồi và kết quả.
-5. Ứng dụng hiện kết nối database `(default)` cố định. Database phục hồi riêng chỉ phục vụ kiểm tra; không tự động chuyển traffic của ứng dụng sang database đó. Khôi phục production cần người vận hành có quyền Cloud Firestore lên kế hoạch cutover và downtime. Không xóa database production trước khi đã xác nhận backup và phương án phục hồi.
+   - Mọi bản ghi trong file được ghi lại: tạo mới nếu mất, ghi đè nếu đã có.
+   - Bản ghi phát sinh **sau** lúc sao lưu (không có trong file) được **giữ nguyên**, không bị xóa.
+5. Mở trang admin, bấm Ctrl + F5, kiểm tra đơn hàng, sản phẩm, đánh giá. Ghi lại bản sao lưu đã dùng và kết quả.
 
 ## Diễn tập phục hồi
 
-Mỗi quý, người vận hành nên phục hồi một backup gần đây vào database kiểm tra, xác nhận các dữ liệu nghiệp vụ có thể đọc được, rồi ghi kết quả và dọn database kiểm tra theo quy trình của project. Không thực hiện diễn tập trên database production.
+Mỗi quý, chạy bước 3 với một bản sao lưu gần đây để chắc chắn mật khẩu còn đúng và file mở được. Muốn diễn tập cả bước 4 thì làm trên Firebase Emulator, **không** làm trên dữ liệu thật. Test tự động `tests/integration/backup.test.js` cũng diễn tập toàn bộ vòng sao lưu → mất dữ liệu → khôi phục trên emulator mỗi lần CI chạy.
 
-## Trạng thái trong repository
+## Tùy chọn khi có gói Blaze
 
-Repository cung cấp script để tạo lịch và quy trình kiểm tra/phục hồi. Việc commit code không tự bật backup trên Google Cloud. Sau khi chạy script, xác minh lịch và backup trong Cloud Console hoặc bằng các lệnh ở trên; cho đến lúc xác minh, không coi backup của project đã được bật.
+Nếu sau này bật gói trả phí Blaze, có thể bật thêm Firestore Scheduled Backups bằng `./scripts/setup-firestore-backup.ps1`. Bản sao lưu loại này lưu trên Google Cloud và khôi phục bằng `gcloud firestore databases restore`. Cách miễn phí ở trên vẫn dùng được song song.
