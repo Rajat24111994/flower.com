@@ -329,11 +329,12 @@
 }
 
 .nav.is-empty #product-container {
-  display: none;
+  display: block;
 }
 
+/* An empty cart shows the "giỏ hàng trống" message only: no 0 ₫ summary, no checkout button. */
 .nav.is-empty .checkout {
-  grid-column: 1;
+  display: none;
 }
 
 @media (max-width: 800px) {

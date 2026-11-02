@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Giỏ hàng</title>
     <link rel="stylesheet" href="./store-header.css?v=2" />
-    <link rel="stylesheet" href="./cart.css?v=3" />
+    <link rel="stylesheet" href="./cart.css?v=4" />
     <link rel="stylesheet" href="./store-footer.css?v=2" />
   <link rel="stylesheet" href="./contact-tools.css?v=2">
   </head>
@@ -78,6 +78,23 @@
         document.querySelector(".nav").classList.toggle("is-empty", Cart.length === 0);
 
         CartContainer.innerHTML = "";
+        if (!Cart.length) {
+          const empty = document.createElement("div");
+          const icon = document.createElement("span");
+          const heading = document.createElement("h2");
+          const text = document.createElement("p");
+          const link = document.createElement("a");
+          empty.className = "cart-empty";
+          icon.className = "cart-empty-icon";
+          icon.setAttribute("aria-hidden", "true");
+          icon.textContent = "✿";
+          heading.textContent = "Giỏ hàng đang trống";
+          text.textContent = "Chọn một bó hoa bạn thích rồi quay lại đây để thanh toán.";
+          link.href = "./product.html";
+          link.textContent = "Chọn hoa ngay";
+          empty.append(icon, heading, text, link);
+          CartContainer.append(empty);
+        }
 
         Cart.forEach((product) => {
           let image = document.createElement("img");
