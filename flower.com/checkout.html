@@ -43,15 +43,15 @@
           <div class="checkout-fields">
             <label class="checkout-field">
               <span>Họ và tên</span>
-              <input type="text" name="customerName" autocomplete="name" placeholder="Nguyễn Thị Hoa" required>
+              <input type="text" name="customerName" autocomplete="name" maxlength="100" placeholder="Nguyễn Thị Hoa" required>
             </label>
             <label class="checkout-field">
               <span>Số điện thoại</span>
-              <input type="tel" name="phone" inputmode="tel" autocomplete="tel" pattern="\+?[0-9]{8,15}" placeholder="0912345678" required>
+              <input type="tel" name="phone" inputmode="tel" autocomplete="tel" maxlength="20" placeholder="0912 345 678" required>
             </label>
             <label class="checkout-field checkout-field-wide">
               <span>Địa chỉ</span>
-              <textarea name="address" autocomplete="street-address" rows="3" placeholder="Số nhà, tên đường, phường/xã, quận/huyện, tỉnh/thành phố" required></textarea>
+              <textarea name="address" autocomplete="street-address" rows="3" maxlength="500" placeholder="Số nhà, tên đường, phường/xã, quận/huyện, tỉnh/thành phố" required></textarea>
             </label>
             <label class="checkout-field">
               <span>Tên người nhận <small>(để trống nếu là người đặt)</small></span>
@@ -59,7 +59,7 @@
             </label>
             <label class="checkout-field">
               <span>Số điện thoại người nhận</span>
-              <input type="tel" name="recipientPhone" inputmode="tel" pattern="\+?[0-9]{8,15}" placeholder="Để trống nếu dùng số người đặt">
+              <input type="tel" name="recipientPhone" inputmode="tel" maxlength="20" placeholder="Để trống nếu dùng số người đặt">
             </label>
             <label class="checkout-field">
               <span>Ngày giao mong muốn</span>
@@ -475,6 +475,41 @@
     DisplayProduct();
   }
 
+  // Checks what the server will check, but next to the field and in Vietnamese, so the customer
+  // does not learn about a too-long name or an all-spaces address only on the next page.
+  const PHONE_ALLOWED = /^\+?[0-9 .-]+$/;
+  function phoneError(value, required) {
+    const text = value.trim();
+    if (!text) return required ? "Vui lòng nhập số điện thoại." : "";
+    const digits = text.replace(/\D/g, "");
+    if (!PHONE_ALLOWED.test(text) || digits.length < 8 || digits.length > 15) {
+      return "Số điện thoại gồm 8–15 chữ số, có thể có dấu cách hoặc dấu chấm (ví dụ 0912 345 678).";
+    }
+    return "";
+  }
+
+  function validateCheckoutFields() {
+    const field = (name) => checkoutForm.elements[name];
+    const checks = [
+      [field("customerName"), field("customerName").value.trim() ? "" : "Vui lòng nhập họ và tên."],
+      [field("phone"), phoneError(field("phone").value, true)],
+      [field("address"), field("address").value.trim() ? "" : "Vui lòng nhập địa chỉ giao hàng."],
+      [field("recipientPhone"), phoneError(field("recipientPhone").value, false)]
+    ];
+    checks.forEach(([input, message]) => input.setCustomValidity(message));
+    const firstInvalid = checks.find(([, message]) => message);
+    if (firstInvalid) {
+      firstInvalid[0].reportValidity();
+      checkoutMessage.textContent = firstInvalid[1];
+      return false;
+    }
+    return true;
+  }
+
+  ["customerName", "phone", "address", "recipientPhone"].forEach((name) => {
+    checkoutForm.elements[name].addEventListener("input", (event) => event.target.setCustomValidity(""));
+  });
+
   checkoutForm.addEventListener("submit", (event) => {
     event.preventDefault();
     if (!Cart.length) {
@@ -489,6 +524,8 @@
       checkoutMessage.textContent = "Chờ xác minh giá và tồn kho từ cửa hàng trước khi đặt hàng.";
       return;
     }
+
+    if (!validateCheckoutFields()) return;
 
     const formData = new FormData(event.currentTarget);
     const checkout = {
