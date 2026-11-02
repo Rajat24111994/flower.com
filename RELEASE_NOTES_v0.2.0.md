@@ -12,6 +12,7 @@ Ngày phát hành: chưa phát hành
 - Giá lưu và hiển thị bằng số nguyên VND, làm tròn tới 1.000 ₫; tổng giỏ đúng bằng tổng từng dòng (#40).
 - Đánh giá chỉ dành cho chủ đơn đã giao, mỗi đơn một lần; phản hồi của cửa hàng hiện cho khách.
 - Phân quyền Owner/Admin bằng custom claims và `adminRoles` (thu hồi quyền có hiệu lực ngay).
+- Sao lưu Firestore miễn phí mỗi ngày bằng GitHub Actions (mã hóa AES-256, giữ 30 ngày) và lệnh `npm run backup` / `npm run restore` (xem `flower.com/BACKUP-RESTORE.md`).
 
 ## Đã sửa
 
@@ -28,6 +29,7 @@ Ngày phát hành: chưa phát hành
 
 - Chạy `npm run setup-firestore` để cập nhật Security Rules, index, `adminRoles` và đổi giá sản phẩm cũ từ USD sang VND.
 - Đặt biến môi trường `CRON_SECRET` trên Vercel cho cron dọn đơn hết hạn.
+- Thêm secret `FIREBASE_SERVICE_ACCOUNT_JSON` và `BACKUP_PASSPHRASE` trên GitHub để bật sao lưu tự động.
 
 ## Hạn chế đã biết
 
