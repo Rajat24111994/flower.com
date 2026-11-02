@@ -1,4 +1,5 @@
 const bouquet = require("../bouquet-options.js");
+const { validateReviewPhotos } = require("../lib/review-images");
 const { createHash, createHmac } = require("node:crypto");
 const { FieldValue, Timestamp } = require("firebase-admin/firestore");
 const { getAdminAuth, getAdminFirestore, sendError } = require("../lib/firebase-admin");
@@ -718,6 +719,24 @@ function reviewIdForOrder(orderId) {
     return createHash("sha256").update(`review:${orderId}`).digest("hex").slice(0, 40);
 }
 
+async function getOwnReview(req, res) {
+    const orderId = String(req.body?.orderId || "").trim();
+    if (!orderId || orderId.length > 128 || orderId.includes("/")) return sendError(res, 400, "invalid-argument", "Mã đơn không hợp lệ.");
+    try {
+        const user = await optionalAuthenticatedUser(req);
+        if (!user) return sendError(res, 401, "unauthenticated", "Đăng nhập để xem đánh giá của bạn.");
+        const db = getAdminFirestore();
+        const order = await db.collection("orders").doc(orderId).get();
+        if (!order.exists || order.data().uid !== user.uid) return sendError(res, 404, "order-not-found", "Không tìm thấy đơn trong tài khoản.");
+        const review = await db.collection("reviews").doc(reviewIdForOrder(orderId)).get();
+        return res.status(200).json({ review: review.exists ? { ...review.data(), id: review.id,
+            createdAt: serializeTimestamp(review.data().createdAt), orderId } : null });
+    } catch (error) {
+        if (String(error.code || "").startsWith("auth/")) return sendError(res, 401, "unauthenticated", "Phiên đăng nhập hết hạn.");
+        return sendError(res, 503, "review-unavailable", "Chưa tải được đánh giá. Hãy thử lại.");
+    }
+}
+
 // Only the signed-in owner of a delivered order may review it. Products and the shown name come
 // from the order, never from the browser.
 async function submitReview(req, res) {
@@ -726,6 +745,8 @@ async function submitReview(req, res) {
     const orderId = String(req.body?.orderId || "").trim();
     const rating = Number(req.body?.rating);
     const comment = String(req.body?.comment || "").trim();
+    const photos = validateReviewPhotos(req.body?.photos);
+    if (!photos) return sendError(res, 400, "invalid-photos", "Tối đa 3 ảnh JPEG đã tối ưu, mỗi ảnh không quá 120 KB và 1600px.");
     if (!orderId || orderId.length > 128 || orderId.includes("/")
         || !Number.isInteger(rating) || rating < 1 || rating > 5
         || !comment || comment.length > 1000) {
@@ -770,6 +791,10 @@ async function submitReview(req, res) {
             }
             const name = String(order.customerName || "").trim().slice(0, 80);
             const data = {
+                authorUid: user.uid,
+                verifiedPurchase: true,
+                moderationStatus: "pending",
+                photoIds: photos.map((_, index) => `${reviewRef.id}_${index}`),
                 productIds,
                 productName: items.map((item) => String(item?.title || "")).filter(Boolean).join(", ").slice(0, 500) || "Sản phẩm hoa",
                 // Customers cannot post under the shop's name.
@@ -779,6 +804,9 @@ async function submitReview(req, res) {
                 createdAt: FieldValue.serverTimestamp()
             };
             transaction.create(reviewRef, data);
+            photos.forEach((bytes, index) => transaction.create(db.collection("reviewImages").doc(`${reviewRef.id}_${index}`), {
+                reviewId: reviewRef.id, bytes, createdAt: FieldValue.serverTimestamp()
+            }));
             return data;
         });
         return res.status(201).json({ review: { ...review, id: reviewRef.id, createdAt: new Date().toISOString() } });
@@ -798,6 +826,7 @@ module.exports = async function handler(req, res) {
         if (req.body?.action === "quote") return quoteOrder(req, res);
         if (req.body?.action === "lookup") return lookupOrder(req, res);
         if (req.body?.action === "review") return submitReview(req, res);
+        if (req.body?.action === "review-get") return getOwnReview(req, res);
         return createOrder(req, res);
     }
     if (req.method !== "GET") {

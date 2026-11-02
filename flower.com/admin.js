@@ -23,6 +23,7 @@ let orderStoreError = null;
 let stopOrderSubscription = null;
 let stopPromotionSubscription = null;
 let reviewsCache = [];
+let reviewModerationFilter = "pending";
 let stopReviewSubscription = null;
 let categoriesCache = [];
 let stopCategorySubscription = null;
@@ -734,6 +735,7 @@ async function saveAdminProducts(products) {
 }
 
 function renderCompletionAction(type, record) {
+   if (type === "reviews") return "";
    const attributes = `data-record-type="${escapeHtml(type)}" data-record-id="${escapeHtml(record.id)}"`;
    const deleteButton = `<button class="delete-record" ${attributes} type="button">Xóa</button>`;
    if (record.completedAt) {
@@ -1030,6 +1032,17 @@ function renderReviewCard(review, showCompletionAction = true) {
 
            <div class="section-label">Nội dung đánh giá</div>
            <div class="detail-block quote-box">${escapeHtml(review.comment || "Không có nhận xét")}</div>
+           <p class="review-original-note">${review.verifiedPurchase === true ? "Khách đã mua hàng" : "Đánh giá cũ"} · Nội dung gốc chỉ đọc. Quản trị không được sửa sao, nhận xét hoặc ảnh.</p>
+           <p><strong>Kiểm duyệt:</strong> ${escapeHtml(({ pending: "Chờ duyệt", approved: "Đã duyệt", hidden: "Đã ẩn" })[review.moderationStatus || "pending"] || "Chờ duyệt")}</p>
+           <div class="review-admin-photos" data-review-gallery="${escapeHtml(review.id)}"></div>
+           ${review.photoIds?.length ? `<button type="button" class="secondary-btn" data-review-photos="${escapeHtml(review.id)}">Xem ${review.photoIds.length} ảnh khách gửi</button>` : ""}
+           <label class="field-label">Lý do kiểm duyệt (không bắt buộc)
+               <input class="review-moderation-reason" data-review-reason="${escapeHtml(review.id)}" maxlength="500" value="${escapeHtml(review.moderationReason || "")}">
+           </label>
+           <div class="review-moderation-actions">
+               <button type="button" class="submit-btn" data-review-moderation="approved" data-review-id="${escapeHtml(review.id)}">Duyệt hiển thị</button>
+               <button type="button" class="secondary-btn" data-review-moderation="hidden" data-review-id="${escapeHtml(review.id)}">Ẩn đánh giá</button>
+           </div>
 
            <div class="reply-box">
                <label class="field-label">Phản hồi của bạn</label>
@@ -1054,6 +1067,7 @@ function renderReviewSummary(review) {
            <div class="completed-order-info">
                <strong>${escapeHtml(review.customerName)} · ${escapeHtml(getVietnameseProductName(review.productName))}</strong>
                <span class="rating-value">${"★".repeat(Number(review.rating || 0))}${"☆".repeat(5 - Number(review.rating || 0))}</span>
+               <span>${escapeHtml(({ pending: "Chờ duyệt", approved: "Đã duyệt", hidden: "Đã ẩn" })[review.moderationStatus || "pending"] || "Chờ duyệt")}</span>
                <span class="record-summary-preview"><b>Đánh giá:</b> ${escapeHtml(review.comment || "Không có nhận xét")}</span>
                <span><b>Thời gian:</b> ${new Date(review.createdAt).toLocaleString("vi-VN")}</span>
            </div>
@@ -1069,17 +1083,41 @@ function renderReviewSummary(review) {
 
 function renderReviewsTab() {
    const reviews = getReviews();
-   const activeReviews = reviews.filter((review) => !review.completedAt);
-   const completedReviews = reviews.filter((review) => review.completedAt);
+   const visible = reviews.filter((review) => reviewModerationFilter === "all" || (review.moderationStatus || "pending") === reviewModerationFilter);
    main.innerHTML = `
        <section class="panel">
            <h2>Đánh giá khách hàng</h2>
+           <label for="review-moderation-filter">Lọc kiểm duyệt</label>
+           <select id="review-moderation-filter">
+               ${[["pending", "Chờ duyệt"], ["approved", "Đã duyệt"], ["hidden", "Đã ẩn"], ["all", "Tất cả"]].map(([value, label]) => `<option value="${value}" ${reviewModerationFilter === value ? "selected" : ""}>${label}</option>`).join("")}
+           </select>
+           <p>Chỉ đánh giá đã duyệt xuất hiện trên sản phẩm. Trả lời của cửa hàng tách riêng với nội dung khách.</p>
            <div class="list-stack">
-               ${activeReviews.length ? activeReviews.map(renderActiveReviewSummary).join("") : '<div class="empty-state">Không có đánh giá nào cần xử lý.</div>'}
+               ${visible.length ? visible.map(renderActiveReviewSummary).join("") : '<div class="empty-state">Không có đánh giá phù hợp.</div>'}
            </div>
-           ${renderCompletedSection(completedReviews, renderCompletedReviewSummary, "đánh giá")}
        </section>
    `;
+   document.getElementById("review-moderation-filter").addEventListener("change", (event) => {
+       reviewModerationFilter = event.target.value;
+       renderReviewsTab();
+   });
+}
+
+async function moderateReview(id, status) {
+   const reason = [...main.querySelectorAll("[data-review-reason]")].find((input) => input.dataset.reviewReason === id)?.value.trim() || "";
+   try { await window.FlowerReviewStore.update(id, { moderationStatus: status, moderationReason: reason }); }
+   catch (error) { alert(error.message || "Chưa lưu được kiểm duyệt. Hãy thử lại."); }
+}
+async function loadReviewPhotos(id) {
+   const review = getReviews().find((item) => item.id === id);
+   const gallery = [...main.querySelectorAll("[data-review-gallery]")].find((element) => element.dataset.reviewGallery === id);
+   if (!review || !gallery) return;
+   try {
+       const urls = await window.FlowerReviewStore.loadPhotos(review);
+       gallery.replaceChildren(...urls.map((url, index) => {
+           const image = document.createElement("img"); image.src = url; image.alt = `Ảnh khách gửi ${index + 1}`; return image;
+       }));
+   } catch (error) { gallery.textContent = error.message || "Chưa tải được ảnh."; }
 }
 
 function renderMessageCard(message, showCompletionAction = true) {
@@ -1373,7 +1411,7 @@ async function deleteAdminRecord(type, id) {
        ? "Bạn có chắc muốn xóa đơn hàng này không? Nếu đơn còn đang giữ hàng, số lượng sẽ được trả lại kho. Không thể hoàn tác."
        : type === "messages"
            ? "Ẩn lời nhắn này khỏi danh sách phản hồi? Ghi chú gốc vẫn được giữ trong đơn hàng."
-           : `Bạn có chắc muốn xóa ${record.label} này không? Không thể hoàn tác.`;
+           : "Ẩn đánh giá khỏi sản phẩm? Nội dung gốc vẫn được lưu, không bị sửa hoặc xóa.";
    if (!window.confirm(warning)) return;
 
    if (type === "orders") {
@@ -1642,6 +1680,10 @@ if (currentUserRole === "owner") {
 }
 
 main.addEventListener("click", (event) => {
+   const moderation = event.target.closest("[data-review-moderation]");
+   if (moderation) { void moderateReview(moderation.dataset.reviewId, moderation.dataset.reviewModeration); return; }
+   const reviewPhotos = event.target.closest("[data-review-photos]");
+   if (reviewPhotos) { void loadReviewPhotos(reviewPhotos.dataset.reviewPhotos); return; }
    const reloadDeliveryZones = event.target.closest("[data-delivery-zone-reload]");
    if (reloadDeliveryZones) {
        deliveryZonesLoadError = "";

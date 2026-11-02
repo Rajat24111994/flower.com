@@ -24,8 +24,26 @@ service cloud.firestore {
     // Customers review through /api/orders (action "review"), which checks that the order is
     // theirs and delivered and allows one review per order.
     match /reviews/{reviewId} {
-      allow get, list: if true;
-      allow create, update, delete: if isAdmin();
+      allow get, list: if resource.data.get('moderationStatus', 'pending') == 'approved'
+        || isAdmin()
+        || (request.auth != null && resource.data.get('authorUid', '') == request.auth.uid);
+      allow create, delete: if false;
+      allow update: if isAdmin()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'reply', 'completedAt', 'moderationStatus', 'moderationReason', 'moderatedAt', 'moderatedBy'
+        ])
+        && request.resource.data.get('reply', '') is string
+        && request.resource.data.get('reply', '').size() <= 1000
+        && request.resource.data.get('moderationReason', '') is string
+        && request.resource.data.get('moderationReason', '').size() <= 500
+        && request.resource.data.get('moderationStatus', 'pending') in ['pending', 'approved', 'hidden']
+        && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['moderationStatus'])
+          || (request.resource.data.moderatedBy == request.auth.uid && request.resource.data.moderatedAt == request.time));
+    }
+
+    // Image bytes are immutable; the API checks the parent review's current visibility.
+    match /reviewImages/{photoId} {
+      allow read, write: if false;
     }
 
     match /messages/{messageId} {

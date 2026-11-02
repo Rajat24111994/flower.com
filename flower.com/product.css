@@ -1422,3 +1422,6 @@ select{
   .product-breadcrumb { flex-wrap: wrap; }
   .product-breadcrumb > span { min-width: 0; overflow-wrap: anywhere; }
 }
+.review-photos { display: flex; flex-wrap: wrap; gap: 12px; margin: 12px 0; }
+.review-photos img { width: 120px; height: 120px; object-fit: cover; border-radius: 10px; }
+.review-verified { color: #365c43; font-size: 13px; font-weight: 700; }

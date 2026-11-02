@@ -40,6 +40,7 @@ const handlers = {
     orders: require(path.join(ROOT, "api/orders.js")),
     payments: require(path.join(ROOT, "api/payments.js")),
     vnpayIpn: require(path.join(ROOT, "api/vnpay-ipn.js")),
+    reviewImages: require(path.join(ROOT, "api/review-images.js")),
     deliveryZones: require(path.join(ROOT, "api/delivery-zones.js")),
     products: require(path.join(ROOT, "api/products.js")),
     adminUsers: require(path.join(ROOT, "api/admin/users.js")),
@@ -54,7 +55,7 @@ async function callApi(name, { method = "POST", body, query = {}, token, headers
         getHeader(key) { return response.headers[key.toLowerCase()]; },
         status(code) { response.statusCode = code; return res; },
         json(data) { response.body = JSON.parse(JSON.stringify(data)); return res; },
-        end() { return res; }
+        end(data) { if (data !== undefined) response.body = data; return res; }
     };
     const req = {
         method,

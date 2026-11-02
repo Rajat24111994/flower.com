@@ -1,4 +1,40 @@
 import { normalizeOrderStatus, orderStatusLabel, getOrderProgress } from "./order-status.js?v=2";
+import { validateFiles, preparePhotos } from "./review-images.js?v=1";
+
+let reviewSubmissionInProgress = false;
+let reviewPreviewUrls = [];
+const reviewPhotosInput = document.getElementById("review-photos");
+function clearReviewPhotos(clearInput = true) {
+    reviewPreviewUrls.forEach((url) => URL.revokeObjectURL(url));
+    reviewPreviewUrls = [];
+    if (clearInput) reviewPhotosInput.value = "";
+    reviewPhotosInput.setCustomValidity("");
+    document.getElementById("review-photo-preview").replaceChildren();
+    document.getElementById("review-clear-photos").hidden = true;
+}
+reviewPhotosInput.addEventListener("change", () => {
+    const files = [...reviewPhotosInput.files];
+    clearReviewPhotos(false);
+    try {
+        validateFiles(files);
+        files.forEach((file, index) => {
+            const image = document.createElement("img");
+            image.src = URL.createObjectURL(file); reviewPreviewUrls.push(image.src);
+            image.alt = `Ảnh đã chọn ${index + 1}`;
+            document.getElementById("review-photo-preview").append(image);
+        });
+        document.getElementById("review-clear-photos").hidden = files.length === 0;
+        document.getElementById("review-feedback").textContent = "";
+    } catch (error) {
+        reviewPhotosInput.setCustomValidity(error.message);
+        document.getElementById("review-feedback").textContent = error.message;
+        document.getElementById("review-clear-photos").hidden = false;
+    }
+});
+document.getElementById("review-clear-photos").addEventListener("click", () => {
+    clearReviewPhotos(); document.getElementById("review-feedback").textContent = "";
+});
+window.addEventListener("pagehide", clearReviewPhotos);
 
 const searchForm = document.getElementById("tracking-search");
 const orderIdInput = document.getElementById("tracking-order-id");
@@ -185,6 +221,7 @@ function setSelectedRating(rating) {
 }
 
 function renderReviewPanel(order) {
+    if (reviewSubmissionInProgress) return;
     const canReview = order.privacyLimited !== true && normalizeOrderStatus(order.status) === "Đã giao";
     reviewPanel.hidden = !canReview;
     if (!canReview) return;
@@ -200,6 +237,8 @@ function renderReviewPanel(order) {
 
     setSelectedRating(0);
     reviewForm.reset();
+    clearReviewPhotos();
+    document.getElementById("existing-review-photos").replaceChildren();
     reviewForm.hidden = false;
     reviewFeedback.textContent = "";
 
@@ -214,6 +253,7 @@ function renderReviewPanel(order) {
 
 function showExistingReview(existingReview) {
     if (existingReview) {
+        const expectedOrderId = currentOrder?.id;
         reviewForm.hidden = true;
         const rating = Math.min(5, Math.max(0, Number(existingReview.rating) || 0));
         const stars = "★".repeat(rating);
@@ -221,7 +261,15 @@ function showExistingReview(existingReview) {
         const replyText = existingReview.reply
             ? ` Phản hồi từ Flowerflow: ${existingReview.reply}`
             : "";
-        reviewFeedback.textContent = `${reviewText}${replyText}`;
+        const moderation = { pending: "Đang chờ kiểm duyệt", approved: "Đã hiển thị công khai", hidden: "Đã ẩn bởi kiểm duyệt" };
+        reviewFeedback.textContent = `${reviewText} · ${moderation[existingReview.moderationStatus] || "Đang chờ kiểm duyệt"}${existingReview.moderationReason ? ` · Lý do: ${existingReview.moderationReason}` : ""}${replyText}`;
+        if (existingReview.photoIds?.length) {
+            window.FlowerReviewStore.loadPhotos(existingReview).then((urls) => {
+                if (String(currentOrder?.id) !== String(expectedOrderId)) return;
+                const images = urls.map((url, index) => { const image = document.createElement("img"); image.src = url; image.alt = `Ảnh đánh giá ${index + 1}`; return image; });
+                document.getElementById("existing-review-photos").replaceChildren(...images);
+            }).catch(() => { /* The text review remains visible if a photo cannot be loaded. */ });
+        }
     }
 }
 
@@ -469,6 +517,7 @@ ratingStars.forEach((star) => {
 
 reviewForm.addEventListener("submit", async (event) => {
     event.preventDefault();
+    if (reviewSubmissionInProgress) return;
     const comment = reviewComment.value.trim();
 
     if (!currentOrder || currentOrder.privacyLimited === true || normalizeOrderStatus(currentOrder.status) !== "Đã giao") {
@@ -510,25 +559,39 @@ reviewForm.addEventListener("submit", async (event) => {
     };
 
     const submitButton = reviewForm.querySelector(".review-submit");
+    reviewSubmissionInProgress = true;
+    const selectedFiles = [...reviewPhotosInput.files];
+    reviewForm.querySelectorAll("input, textarea, button").forEach((input) => { input.disabled = true; });
     submitButton.disabled = true;
     reviewFeedback.textContent = "Đang gửi đánh giá...";
     let reviewId;
     try {
+        review.photos = await preparePhotos(selectedFiles);
         reviewId = await window.FlowerReviewStore.submit(review);
     } catch (error) {
         console.error("Không thể lưu đánh giá:", error);
         reviewFeedback.textContent = error.message || "Chưa thể gửi đánh giá. Hãy thử lại sau.";
         submitButton.disabled = false;
+        reviewSubmissionInProgress = false;
+        reviewForm.querySelectorAll("input, textarea, button").forEach((input) => { input.disabled = false; });
+        if (error.code === "already-reviewed") {
+            try { showExistingReview(await window.FlowerReviewStore.getForOrder(review.orderId)); } catch {}
+        }
         return;
     }
-    const savedReview = { ...review, id: reviewId, createdAt: new Date().toISOString(), reply: "" };
+    const { photos, ...metadata } = review;
+    const savedReview = { ...metadata, id: reviewId, moderationStatus: "pending", verifiedPurchase: true,
+        photoIds: photos.map((_, index) => `${reviewId}_${index}`), createdAt: new Date().toISOString(), reply: "" };
     reviews.push(savedReview);
     try {
         window.FlowerSafeStorage.writeJson("flowerReviews", reviews);
     } catch (error) {
         console.warn("Đánh giá đã được đồng bộ công khai nhưng không lưu được bản xem trên thiết bị này:", error);
     }
-    renderReviewPanel(currentOrder);
+    reviewSubmissionInProgress = false;
+    reviewForm.querySelectorAll("input, textarea, button").forEach((input) => { input.disabled = false; });
+    submitButton.disabled = false;
+    if (currentOrder) renderReviewPanel(currentOrder);
 });
 
 searchForm.addEventListener("submit", (event) => {

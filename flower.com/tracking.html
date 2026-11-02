@@ -13,7 +13,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="./store-header.css?v=3">
-    <link rel="stylesheet" href="./tracking.css?v=8">
+    <link rel="stylesheet" href="./tracking.css?v=9">
     <link rel="stylesheet" href="./accessibility.css?v=1">
     <link rel="stylesheet" href="./store-footer.css?v=3">
 <link rel="stylesheet" href="./contact-tools.css?v=3">
@@ -133,18 +133,25 @@
                     </fieldset>
                     <label class="review-comment-label" for="review-comment">Nhận xét của bạn</label>
                     <textarea id="review-comment" name="comment" maxlength="1000" placeholder="Chia sẻ cảm nhận về đơn hàng..." required></textarea>
+                    <label class="review-comment-label" for="review-photos">Ảnh sau khi nhận hoa (không bắt buộc)</label>
+                    <input id="review-photos" type="file" accept="image/jpeg,image/png,image/webp" multiple aria-describedby="review-photo-help">
+                    <p id="review-photo-help">Tối đa 3 ảnh JPG, PNG hoặc WebP, mỗi ảnh gốc không quá 5 MB. Ảnh được thu nhỏ và bỏ metadata trước khi gửi.</p>
+                    <div id="review-photo-preview" class="review-photos"></div>
+                    <button id="review-clear-photos" type="button" hidden>Bỏ các ảnh đã chọn</button>
+                    <p>Đánh giá và ảnh chỉ hiển thị trên sản phẩm sau khi được duyệt. Cửa hàng có thể trả lời hoặc ẩn, không được sửa nội dung của bạn.</p>
                     <button class="review-submit" type="submit">Gửi đánh giá</button>
                 </form>
+                <div id="existing-review-photos" class="review-photos"></div>
                 <p class="review-feedback" id="review-feedback" role="status" aria-live="polite"></p>
             </section>
         </section>
     </main>
 
-    <script src="./review-store.js?v=5"></script>
+    <script src="./review-store.js?v=6"></script>
     <script src="./product-names.js?v=2"></script>
     <script src="./order-store.js?v=18"></script>
     <script src="./bouquet-options.js?v=1"></script>
-    <script type="module" src="./tracking.js?v=18"></script>
+    <script type="module" src="./tracking.js?v=19"></script>
     <script src="./store-footer.js?v=4"></script>
 <script src="./contact-tools.js?v=1"></script>
 </body>

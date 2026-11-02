@@ -1323,3 +1323,9 @@ main { min-width: 0; max-width: 100%; }
   .report-metrics { grid-template-columns: minmax(0, 1fr); }
   .report-heading button, .report-filters button { width: 100%; }
 }
+.review-original-note { padding: 12px; background: #f6f4ef; color: #65564e; line-height: 1.6; }
+.review-moderation-actions { display: flex; flex-wrap: wrap; gap: 12px; margin: 16px 0; }
+.review-moderation-actions button { min-height: 44px; }
+.review-admin-photos { display: flex; flex-wrap: wrap; gap: 12px; margin: 12px 0; }
+.review-admin-photos img { width: 140px; height: 140px; object-fit: contain; border: 1px solid #eee; border-radius: 8px; }
+.review-moderation-reason, #review-moderation-filter { padding: 12px; border: 1px solid #d6c7bd; border-radius: 8px; max-width: 100%; font: inherit; min-height: 44px; }
