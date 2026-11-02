@@ -30,11 +30,11 @@ come from the persisted server-calculated order.
 
 ## Reservation expiry
 
-VNPay orders reserve stock for 15 minutes. The Vercel cron in `../flower.com/vercel.json` runs every
-minute to release expired reservations; order quote/create APIs also clean up expired reservations
-when traffic is present. Vercel Hobby supports only daily cron schedules, so this minute-level
-schedule requires a Pro or Enterprise project. If the project is on Hobby, upgrade the plan before
-deploying this cron configuration or choose a separate scheduler.
+VNPay orders reserve stock for 15 minutes. Expired reservations are released by the order
+quote/create APIs every time a customer checks a price or places an order, so stock comes back as
+soon as there is traffic. The Vercel cron in `../flower.com/vercel.json` is only a daily safety net
+(`7 19 * * *` UTC, 02:07 Vietnam time), because Vercel Hobby allows daily cron jobs only: a
+minute-level schedule makes every deployment fail. On a Pro plan the schedule can be tightened.
 
 ## Payment states
 
