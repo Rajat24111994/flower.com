@@ -15,16 +15,31 @@ function serializeProduct(doc) {
     return product;
 }
 
-async function listProducts(res, db) {
+async function listProducts(req, res, db) {
+    const manage = req.query?.manage === "1";
+    if (manage) {
+        const decodedToken = await verifyRequest(req, res, getAdminAuth());
+        if (!decodedToken) return;
+        const role = await db.collection("adminRoles").doc(decodedToken.uid).get();
+        if (decodedToken.admin !== true || !role.exists) {
+            return sendError(res, 403, "permission-denied", "Chỉ Admin hoặc Owner đang được cấp quyền mới xem được toàn bộ sản phẩm.");
+        }
+        const snapshot = await db.collection("products").get();
+        res.setHeader("Cache-Control", "private, no-store");
+        return res.status(200).json({ products: snapshot.docs.map(serializeProduct) });
+    }
+
     const snapshot = await db.collection("products").get();
     res.setHeader("Cache-Control", "public, max-age=0, s-maxage=15, stale-while-revalidate=60");
-    return res.status(200).json({ products: snapshot.docs.map(serializeProduct) });
+    const products = snapshot.docs.map(serializeProduct).filter((product) => product.status !== "hidden");
+    return res.status(200).json({ products });
 }
 
 async function restoreCatalog(req, res, db) {
     const decodedToken = await verifyRequest(req, res, getAdminAuth());
     if (!decodedToken) return;
-    if (decodedToken.admin !== true) {
+    const role = await db.collection("adminRoles").doc(decodedToken.uid).get();
+    if (decodedToken.admin !== true || !role.exists) {
         return sendError(res, 403, "permission-denied", "Chỉ quản trị viên mới được khôi phục sản phẩm.");
     }
 
@@ -56,7 +71,7 @@ module.exports = async function handler(req, res) {
     }
 
     try {
-        if (req.method === "GET") return await listProducts(res, db);
+        if (req.method === "GET") return await listProducts(req, res, db);
         res.setHeader("Cache-Control", "no-store");
         if (req.body?.action === "restore-catalog") return await restoreCatalog(req, res, db);
         return sendError(res, 400, "invalid-argument", "Thao tác không được hỗ trợ.");

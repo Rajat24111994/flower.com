@@ -423,6 +423,15 @@ async function quoteOrder(req, res) {
             const data = snapshot.exists ? snapshot.data() : {};
             const price = bouquet.price(toVndPrice(data.price), item.size);
             const stock = Number(data.quantity);
+            if (data.status === "hidden") {
+                shortages.push({
+                    id: item.id,
+                    title: String(data.title || "").slice(0, 120),
+                    available: 0,
+                    hidden: true
+                });
+                return { ...item, data, price, stock };
+            }
             if (!snapshot.exists || !Number.isFinite(price) || price <= 0 || !Number.isInteger(stock) || stock < bouquet.demand(quote.items, item.productId ?? item.id)) {
                 shortages.push({
                     id: item.id,
@@ -432,6 +441,14 @@ async function quoteOrder(req, res) {
             }
             return { ...item, data, price, stock };
         });
+        const unavailable = shortages.filter((item) => item.hidden);
+        if (unavailable.length) {
+            const names = unavailable.map((item) => `“${item.title || "Sản phẩm"}”`).join(", ");
+            return res.status(409).json({
+                code: "product-unavailable",
+                error: `${names} hiện đang tạm ẩn và không thể đặt hàng. Hãy chọn sản phẩm khác.`
+            });
+        }
         if (shortages.length) {
             const message = shortages.map((item) => item.available
                 ? `“${item.title || "Một sản phẩm"}” chỉ còn ${item.available} sản phẩm`
@@ -557,6 +574,11 @@ async function createOrder(req, res) {
                     throw error;
                 }
                 const data = snapshot.data();
+                if (data.status === "hidden") {
+                    const error = new Error(`“${String(data.title || "Sản phẩm").slice(0, 120)}” hiện đang tạm ẩn và không thể đặt hàng.`);
+                    error.code = "product-unavailable";
+                    throw error;
+                }
                 const price = bouquet.price(toVndPrice(data.price), item.size);
                 const stock = Number(data.quantity);
                 const title = String(data.title || "Một sản phẩm");

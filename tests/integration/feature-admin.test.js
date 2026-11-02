@@ -45,6 +45,23 @@ test("khôi phục sản phẩm mẫu bị thiếu, giữ nguyên sản phẩm �
     assert.equal((await h.db().doc("products/1").get()).data().title, "Đã sửa");
     const list = await h.callApi("products", { method: "GET" });
     assert.equal(list.body.products.length, h.catalog.length);
+    await h.db().doc(`adminRoles/${admin.uid}`).delete();
+    assert.equal((await h.callApi("products", { token: admin.token, body: { action: "restore-catalog" } })).status, 403);
+});
+
+test("sản phẩm tạm ẩn chỉ hiện trong API quản trị đã xác thực", async () => {
+    const admin = await h.createUser("admin");
+    const customer = await h.createUser();
+    await h.db().doc("products/1").set({ ...h.catalog[0], quantity: 4, status: "hidden" });
+
+    const publicList = await h.callApi("products", { method: "GET" });
+    assert.equal(publicList.status, 200);
+    assert.equal(publicList.body.products.some((product) => String(product.id) === "1"), false);
+    const adminList = await h.callApi("products", { method: "GET", query: { manage: "1" }, token: admin.token });
+    assert.equal(adminList.status, 200);
+    assert.equal(adminList.body.products.find((product) => String(product.id) === "1").status, "hidden");
+    assert.equal((await h.callApi("products", { method: "GET", query: { manage: "1" } })).status, 401);
+    assert.equal((await h.callApi("products", { method: "GET", query: { manage: "1" }, token: customer.token })).status, 403);
 });
 
 test("quản trị viên chạy được dọn đơn hết hạn", async () => {

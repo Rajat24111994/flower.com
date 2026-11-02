@@ -946,7 +946,7 @@ searchInput.addEventListener("input", searchCatalog)
 
 window.addEventListener("storage", (event) => {
   if (event.key === "flowerInventory") {
-    products = FlowerInventory.readProducts()
+    products = FlowerInventory.readProducts().filter((product) => product.status !== "hidden")
     populateFlowerCategoryFilter()
     renderProducts()
     navigateToProductDetail()
@@ -969,7 +969,7 @@ window.addEventListener("storage", (event) => {
 })
 
 window.addEventListener("flowerinventorychange", (event) => {
-  products = event.detail || FlowerInventory.readProducts()
+  products = (event.detail || FlowerInventory.readProducts()).filter((product) => product.status !== "hidden")
   populateFlowerCategoryFilter()
   renderProducts()
   navigateToProductDetail()
@@ -987,7 +987,7 @@ async function fetchAndRenderProducts() {
     setRelatedFlowersStatus("Đang tìm những bó hoa phù hợp...", "loading")
   }
   try {
-    products = await FlowerInventory.initialize()
+    products = (await FlowerInventory.initialize()).filter((product) => product.status !== "hidden")
     if (!products.length) throw new Error("Kho sản phẩm hiện chưa có dữ liệu hoặc dịch vụ danh mục đang không khả dụng.")
     populateFlowerCategoryFilter()
     renderProducts()
