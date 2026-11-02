@@ -124,6 +124,18 @@
       } catch (error) {
         console.error("Không thể lưu đơn hàng tập trung:", error);
         orderSubmissionInProgress = false;
+        if (["price-changed", "insufficient-stock", "product-unavailable", "invalid-promotion"].includes(error.code)) {
+          // The cart no longer matches the shop: do not let the same request be sent again
+          // (it would fail the same way). Show the new prices or stock instead.
+          serverQuote = null;
+          paymentButton.disabled = true;
+          paymentNote.textContent = checkoutData.paymentMethod === "qr"
+            ? `Đơn chưa được tạo. ĐỪNG chuyển khoản: ${error.message}`
+            : `Đơn chưa được tạo: ${error.message}`;
+          alert(`Đơn chưa được tạo.\n\n${error.message}`);
+          void verifyOrderBeforeConfirmation({ keepNote: true });
+          return;
+        }
         paymentButton.disabled = false;
         alert(error.message || "Chưa thể xác nhận giá và tồn kho. Hãy quay lại trang thanh toán rồi thử lại.");
         return;
@@ -141,7 +153,7 @@
       window.location.href = `./tracking.html?id=${encodeURIComponent(orderId)}`;
     }
 
-    async function verifyOrderBeforeConfirmation() {
+    async function verifyOrderBeforeConfirmation({ keepNote = false } = {}) {
       if (!Cart.length) {
         paymentNote.textContent = "Giỏ hàng đang trống.";
         return;
@@ -165,7 +177,16 @@
           (key) => Number(previousQuote[key]) !== Number(serverQuote.totals[key])
         );
         if (amountChanged || (!previousQuote && checkoutData?.paymentMethod === "qr")) {
-          paymentNote.textContent = "Giá hoặc tồn kho đã thay đổi từ lúc tạo mã QR. Hãy quay lại trang thanh toán để kiểm tra số tiền mới trước khi xác nhận.";
+          const newTotal = formatVnd(serverQuote.totals.total);
+          if (!keepNote) {
+            paymentNote.textContent = checkoutData?.paymentMethod === "qr"
+              ? `Giá hoặc ưu đãi đã thay đổi từ lúc tạo mã QR (tổng mới ${newTotal}). ĐỪNG chuyển khoản theo mã cũ; hãy quay lại trang thanh toán để lấy mã QR mới.`
+              : `Giá hoặc ưu đãi đã thay đổi (tổng mới ${newTotal}). Hãy quay lại trang thanh toán để kiểm tra trước khi đặt hàng.`;
+          }
+          paymentButton.disabled = true;
+          return;
+        }
+        if (keepNote) {
           paymentButton.disabled = true;
           return;
         }
@@ -176,7 +197,12 @@
         paymentButton.disabled = false;
       } catch (error) {
         console.error("Không xác minh được giá và tồn kho:", error);
-        paymentNote.textContent = error.message || "Không thể xác minh giá và tồn kho. Vui lòng quay lại thanh toán.";
+        if (!keepNote) {
+          const reason = error.message || "Không thể xác minh giá và tồn kho.";
+          paymentNote.textContent = checkoutData?.paymentMethod === "qr"
+            ? `ĐỪNG chuyển khoản: ${reason} Hãy quay lại trang thanh toán.`
+            : `${reason} Hãy quay lại trang thanh toán.`;
+        }
         paymentButton.disabled = true;
       }
     }

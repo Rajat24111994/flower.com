@@ -426,8 +426,17 @@ async function createOrder(req, res) {
                 const data = snapshot.data();
                 const price = toVndPrice(data.price);
                 const stock = Number(data.quantity);
-                if (!Number.isFinite(price) || price <= 0 || !Number.isInteger(stock) || stock < item.quantity) {
-                    const error = new Error("Sản phẩm không đủ tồn kho hoặc có giá chưa hợp lệ.");
+                const title = String(data.title || "Một sản phẩm");
+                if (!Number.isFinite(price) || price <= 0) {
+                    const error = new Error(`“${title}” hiện chưa có giá bán. Hãy bỏ sản phẩm này khỏi giỏ.`);
+                    error.code = "product-unavailable";
+                    throw error;
+                }
+                if (!Number.isInteger(stock) || stock < item.quantity) {
+                    const available = Number.isInteger(stock) ? Math.max(0, stock) : 0;
+                    const error = new Error(available
+                        ? `“${title}” vừa có người mua, chỉ còn ${available} sản phẩm. Hãy giảm số lượng rồi đặt lại.`
+                        : `“${title}” vừa hết hàng. Hãy bỏ sản phẩm này khỏi giỏ.`);
                     error.code = "insufficient-stock";
                     throw error;
                 }
@@ -444,7 +453,7 @@ async function createOrder(req, res) {
                 || checkout.expectedTotals.savings !== savings
                 || checkout.expectedTotals.tax !== 0
                 || checkout.expectedTotals.total !== total) {
-                const error = new Error("Giá hoặc tồn kho vừa thay đổi. Hãy tải lại báo giá trước khi xác nhận.");
+                const error = new Error("Giá hoặc ưu đãi vừa thay đổi. Hãy quay lại trang thanh toán để xem tổng tiền mới.");
                 error.code = "price-changed";
                 throw error;
             }
