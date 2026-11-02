@@ -26,12 +26,22 @@
       <a href="./tracking.html">Theo dõi đơn hàng</a>
       <a href="./account.html">Tài khoản của tôi</a>
       <a href="./login.html">Đăng nhập</a>
-      <a href="mailto:hello@flowerflow.vn">Liên hệ với chúng tôi</a>
+      <a href="./contact.html">Liên hệ với chúng tôi</a>
     </nav>
     <div class="store-footer-help">
       <h2>Cần giúp chọn hoa?</h2>
       <p>Chúng tôi sẵn lòng tư vấn để bạn chọn được món quà phù hợp.</p>
       <a class="store-footer-email" href="mailto:hello@flowerflow.vn">Nhắn Flowerflow <span aria-hidden="true">→</span></a>
+      <nav class="store-footer-info" aria-label="Thông tin cửa hàng">
+        <h2>Thông tin</h2>
+        <a href="./about.html">Về Flowerflow</a>
+        <a href="./delivery.html">Giao hàng</a>
+        <a href="./returns.html">Đổi trả & hoàn tiền</a>
+        <a href="./privacy.html">Quyền riêng tư</a>
+        <a href="./terms.html">Điều khoản</a>
+        <a href="./ordering.html">Đặt hàng & thanh toán</a>
+        <a href="./faq.html">Câu hỏi thường gặp</a>
+      </nav>
     </div>
   </div>
   <div class="store-footer-bottom">
@@ -60,12 +70,22 @@
       <a href="./tracking.html">Theo dõi đơn hàng</a>
       <a href="./account.html">Tài khoản của tôi</a>
       <a href="./login.html">Đăng nhập</a>
-      <a href="mailto:hello@flowerflow.vn">Liên hệ với chúng tôi</a>
+      <a href="./contact.html">Liên hệ với chúng tôi</a>
     </nav>
     <div class="store-footer-help">
       <h2>Cần giúp chọn hoa?</h2>
       <p>Chúng tôi sẵn lòng cùng bạn tìm món quà phù hợp cho người thương.</p>
       <a class="store-footer-email" href="mailto:hello@flowerflow.vn">Nhắn Flowerflow <span aria-hidden="true">→</span></a>
+      <nav class="store-footer-info" aria-label="Thông tin cửa hàng">
+        <h2>Thông tin</h2>
+        <a href="./about.html">Về Flowerflow</a>
+        <a href="./delivery.html">Giao hàng</a>
+        <a href="./returns.html">Đổi trả & hoàn tiền</a>
+        <a href="./privacy.html">Quyền riêng tư</a>
+        <a href="./terms.html">Điều khoản</a>
+        <a href="./ordering.html">Đặt hàng & thanh toán</a>
+        <a href="./faq.html">Câu hỏi thường gặp</a>
+      </nav>
     </div>
   </div>
   <div class="store-footer-bottom">

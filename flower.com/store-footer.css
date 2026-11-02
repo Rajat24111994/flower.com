@@ -58,7 +58,8 @@
 }
 
 .store-footer-column,
-.store-footer-help {
+.store-footer-help,
+.store-footer-info {
   display: flex;
   flex-direction: column;
   align-items: start;
@@ -79,11 +80,35 @@
   font-size: 0.77rem;
 }
 
+.store-footer-info {
+  gap: 9px;
+  margin-top: 12px;
+}
+
+.store-footer-info h2 {
+  margin: 0 0 2px;
+  color: #fff;
+  font-family: "Playfair Display", "Segoe UI", Arial, serif;
+  font-size: 0.94rem;
+  font-weight: 600;
+}
+
+.store-footer-info a {
+  color: #d2c5ca;
+  font-size: 0.77rem;
+}
+
 .store-footer-column a:hover,
+.store-footer-info a:hover,
 .store-footer-bottom a:hover {
   color: #fff;
   text-decoration: underline;
   text-underline-offset: 3px;
+}
+
+.store-footer a:focus-visible {
+  outline: 2px solid #f0c7d6;
+  outline-offset: 3px;
 }
 
 .store-footer-brand p,
@@ -132,6 +157,10 @@
 }
 
 .store-footer--checkout .store-footer-column {
+  gap: 9px;
+}
+
+.store-footer--checkout .store-footer-info {
   gap: 9px;
 }
 
