@@ -10,7 +10,7 @@
   <link rel="icon" type="image/svg+xml" href="./favicon.svg">
   <title>Thanh toán</title>
   <link rel="stylesheet" href="./store-header.css?v=2">
-  <link rel="stylesheet" href="./checkout.css?v=3">
+  <link rel="stylesheet" href="./checkout.css?v=4">
   <link rel="stylesheet" href="./accessibility.css?v=1">
   <link rel="stylesheet" href="./store-footer.css?v=3">
 <link rel="stylesheet" href="./contact-tools.css?v=2">
@@ -39,8 +39,8 @@
           <div class="checkout-section-heading">
             <span class="checkout-step">01</span>
             <div>
-              <h2 id="customer-heading">Thông tin nhận hàng</h2>
-              <p>Thông tin liên hệ và địa chỉ giao hoa</p>
+              <h2 id="customer-heading">Người gửi & người nhận</h2>
+              <p>Thông tin liên hệ, địa chỉ và lịch giao hoa</p>
             </div>
           </div>
 
@@ -54,32 +54,60 @@
               <input type="tel" name="phone" inputmode="tel" autocomplete="tel" pattern="\+?[0-9]{8,15}" placeholder="0912345678" required>
             </label>
             <label class="checkout-field checkout-field-wide">
-              <span>Địa chỉ</span>
-              <textarea name="address" autocomplete="street-address" rows="3" placeholder="Số nhà, tên đường, phường/xã, quận/huyện, tỉnh/thành phố" required></textarea>
+              <span>Số nhà, tên đường, phường / xã</span>
+              <textarea name="address" autocomplete="street-address" rows="3" placeholder="Số nhà, tên đường, phường / xã" required></textarea>
+            </label>
+            <fieldset class="checkout-field checkout-field-wide checkout-recipient">
+              <legend>Thông tin người nhận</legend>
+              <label class="checkout-checkbox">
+                <input type="checkbox" name="customerIsRecipient" id="customer-is-recipient">
+                <span>Tôi là người nhận</span>
+              </label>
+              <div id="recipient-fields" class="checkout-fields checkout-recipient-fields">
+                <label class="checkout-field">
+                  <span>Tên người nhận</span>
+                  <input type="text" name="recipientName" autocomplete="off" maxlength="120" placeholder="Tên người nhận hoa">
+                </label>
+                <label class="checkout-field">
+                  <span>Số điện thoại người nhận</span>
+                  <input type="tel" name="recipientPhone" inputmode="tel" pattern="\+?[0-9]{8,15}" placeholder="Số điện thoại người nhận">
+                </label>
+              </div>
+            </fieldset>
+            <label class="checkout-field">
+              <span>Tỉnh / thành phố giao hàng</span>
+              <select name="deliveryProvince" id="delivery-province" required>
+                <option value="">Đang tải khu vực…</option>
+              </select>
             </label>
             <label class="checkout-field">
-              <span>Tên người nhận <small>(để trống nếu là người đặt)</small></span>
-              <input type="text" name="recipientName" autocomplete="off" maxlength="120" placeholder="Tên người nhận hoa">
+              <span>Quận / huyện giao hàng</span>
+              <select name="deliveryDistrict" id="delivery-district" required disabled>
+                <option value="">Chọn tỉnh / thành phố trước</option>
+              </select>
             </label>
-            <label class="checkout-field">
-              <span>Số điện thoại người nhận</span>
-              <input type="tel" name="recipientPhone" inputmode="tel" pattern="\+?[0-9]{8,15}" placeholder="Để trống nếu dùng số người đặt">
-            </label>
+            <p id="delivery-zone-message" class="checkout-field-wide checkout-zone-message" role="status" aria-live="polite"></p>
             <label class="checkout-field">
               <span>Ngày giao mong muốn</span>
               <input type="date" name="deliveryDate" id="delivery-date" required>
             </label>
-            <label class="checkout-field">
+            <label class="checkout-field" for="delivery-time">
               <span>Khung giờ giao</span>
-              <select name="deliveryTime" required>
+              <select name="deliveryTime" id="delivery-time" required>
                 <option value="">Chọn khung giờ</option>
-                <option>08:00–12:00</option><option>12:00–16:00</option><option>16:00–20:00</option>
+                <option>08:00–11:00</option><option>11:00–14:00</option><option>14:00–17:00</option><option>17:00–20:00</option>
               </select>
             </label>
-            <label class="checkout-field checkout-field-wide">
-              <span>Lời chúc trên thiệp <small>(không bắt buộc)</small></span>
-              <textarea name="greetingCard" rows="2" maxlength="300" placeholder="Nhập lời chúc ngắn gửi kèm bó hoa"></textarea>
-            </label>
+            <p id="delivery-schedule-message" class="checkout-field-wide checkout-schedule-message" role="status" aria-live="polite">Đơn giao trong ngày cần được đặt trước 15:00 (giờ Việt Nam).</p>
+            <div class="checkout-field checkout-field-wide">
+              <label for="greeting-card">Lời chúc trên thiệp <small>(không bắt buộc)</small></label>
+              <textarea name="greetingCard" id="greeting-card" rows="2" maxlength="300" aria-describedby="greeting-card-counter" placeholder="Nhập lời chúc ngắn gửi kèm bó hoa"></textarea>
+              <small class="checkout-note-counter" id="greeting-card-counter" aria-live="polite">0/300 ký tự</small>
+              <label class="checkout-checkbox">
+                <input type="checkbox" name="anonymousGreetingCard" id="anonymous-greeting-card">
+                <span>Ẩn tên người gửi trên thiệp</span>
+              </label>
+            </div>
             <label class="checkout-field checkout-field-wide">
               <span>Gói quà / ruy băng <small>(không bắt buộc)</small></span>
               <select name="giftWrap">
@@ -150,7 +178,7 @@
           <dl class="checkout-totals">
             <div><dt>Giá gốc</dt><dd id="originalprice">0 ₫</dd></div>
             <div><dt>Tiền giảm</dt><dd id="savings">0 ₫</dd></div>
-            <div><dt>Phí giao hàng</dt><dd id="deliveryCharge">Miễn phí</dd></div>
+            <div><dt>Phí giao hàng</dt><dd id="deliveryCharge">Chọn khu vực</dd></div>
             <div class="checkout-grand-total"><dt>Tổng tiền</dt><dd id="total">0 ₫</dd></div>
           </dl>
 
@@ -165,7 +193,7 @@
   <script src="./store-footer.js?v=4"></script>
   <script src="./bouquet-options.js?v=1"></script>
   <script src="./currency.js?v=11"></script>
-  <script src="./order-store.js?v=15"></script>
+  <script src="./order-store.js?v=17"></script>
   <script src="./product-names.js?v=2"></script>
   <script>
   const CartContainer = document.getElementById("product-container");
@@ -173,11 +201,47 @@
   const checkoutMessage = document.getElementById("checkout-message");
   const orderNoteInput = checkoutForm.querySelector('textarea[name="orderNote"]');
   const orderNoteCounter = document.getElementById("order-note-counter");
+  const greetingCardInput = document.getElementById("greeting-card");
+  const greetingCardCounter = document.getElementById("greeting-card-counter");
+  const selfRecipientInput = document.getElementById("customer-is-recipient");
+  const recipientFields = document.getElementById("recipient-fields");
+  const recipientNameInput = checkoutForm.querySelector('input[name="recipientName"]');
+  const recipientPhoneInput = checkoutForm.querySelector('input[name="recipientPhone"]');
+  const deliveryProvinceInput = document.getElementById("delivery-province");
+  const deliveryDistrictInput = document.getElementById("delivery-district");
+  const deliveryZoneMessage = document.getElementById("delivery-zone-message");
+  const deliveryScheduleMessage = document.getElementById("delivery-schedule-message");
+  const deliveryTimeInput = document.getElementById("delivery-time");
+  let deliveryZones = [];
+  let selectedDeliveryZoneId = "";
+  let deliveryZonesConfigured = false;
+  let deliveryZonesLoaded = false;
   function updateOrderNoteCounter() {
     const length = orderNoteInput.value.length;
     orderNoteCounter.textContent = length >= 500 ? "500/500 ký tự · Đã đạt giới hạn" : `${length}/500 ký tự`;
   }
   orderNoteInput.addEventListener("input", updateOrderNoteCounter);
+  greetingCardInput.addEventListener("input", () => {
+    greetingCardCounter.textContent = `${greetingCardInput.value.length}/300 ký tự`;
+  });
+  function syncRecipientFields() {
+    const isSelfRecipient = selfRecipientInput.checked;
+    recipientFields.hidden = isSelfRecipient;
+    recipientNameInput.required = false;
+    recipientPhoneInput.required = false;
+    if (isSelfRecipient) {
+      recipientNameInput.value = checkoutForm.elements.customerName.value;
+      recipientPhoneInput.value = checkoutForm.elements.phone.value;
+    }
+  }
+  selfRecipientInput.addEventListener("change", syncRecipientFields);
+  syncRecipientFields();
+  checkoutForm.elements.customerName.addEventListener("input", () => {
+    if (selfRecipientInput.checked) recipientNameInput.value = checkoutForm.elements.customerName.value;
+  });
+  checkoutForm.elements.phone.addEventListener("input", () => {
+    if (selfRecipientInput.checked) recipientPhoneInput.value = checkoutForm.elements.phone.value;
+  });
   const promotionSelect = document.getElementById("promotion-select");
   const promotionMessage = document.getElementById("promotion-message");
   let Cart = FlowerSafeStorage.readJson("cart", {
@@ -207,16 +271,96 @@
   const orderRequestId = createOrderRequestId();
   const paymentReference = `FF${orderRequestId.replaceAll("-", "").slice(0, 12).toUpperCase()}`;
   const deliveryDateInput = document.getElementById("delivery-date");
-  const today = new Date();
-  deliveryDateInput.min = new Date(today.getTime() - today.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+  const vnClock = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Ho_Chi_Minh",
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", hourCycle: "h23"
+  });
+  function getVietnamTime() {
+    const values = Object.fromEntries(vnClock.formatToParts(new Date()).map((part) => [part.type, part.value]));
+    return {
+      date: `${values.year}-${values.month}-${values.day}`,
+      hour: Number(values.hour),
+      minute: Number(values.minute)
+    };
+  }
+  function addDateDays(value, days) {
+    const date = new Date(`${value}T00:00:00Z`);
+    date.setUTCDate(date.getUTCDate() + days);
+    return date.toISOString().slice(0, 10);
+  }
+  function updateDeliveryAvailability() {
+    const now = getVietnamTime();
+    const minimumDate = now.hour >= 15 ? addDateDays(now.date, 1) : now.date;
+    deliveryDateInput.min = minimumDate;
+    if (!deliveryDateInput.value || deliveryDateInput.value < minimumDate) {
+      deliveryDateInput.value = minimumDate;
+    }
+    let remaining = 0;
+    [...deliveryTimeInput.options].slice(1).forEach((option) => {
+      const startHour = Number(option.value.slice(0, 2));
+      const hasStarted = deliveryDateInput.value === now.date && startHour <= now.hour;
+      option.hidden = hasStarted;
+      option.disabled = hasStarted;
+      if (!hasStarted) remaining += 1;
+    });
+    if (deliveryTimeInput.selectedOptions[0]?.disabled) deliveryTimeInput.value = "";
+    deliveryScheduleMessage.textContent = now.hour >= 15 && deliveryDateInput.value === minimumDate
+      ? "Đã qua 15:00 tại Việt Nam; ngày giao trong ngày không còn khả dụng."
+      : deliveryDateInput.value === now.date
+        ? "Đơn giao trong ngày cần được đặt trước 15:00 (giờ Việt Nam). Khung giờ đã bắt đầu sẽ không thể chọn."
+        : "Ngày giao phải từ hôm nay trở đi. Đơn giao trong ngày cần được đặt trước 15:00 (giờ Việt Nam).";
+    return remaining;
+  }
+  deliveryDateInput.addEventListener("change", updateDeliveryAvailability);
+  updateDeliveryAvailability();
+  window.setInterval(updateDeliveryAvailability, 60000);
+
+  function renderProvinceOptions() {
+    const provinces = [...new Set(deliveryZones.map((zone) => zone.province))]
+      .sort((left, right) => left.localeCompare(right, "vi"));
+    deliveryProvinceInput.replaceChildren(new Option(
+      provinces.length ? "Chọn tỉnh / thành phố" : "Chưa có khu vực giao hàng",
+      ""
+    ));
+    provinces.forEach((province) => deliveryProvinceInput.add(new Option(province, province)));
+    deliveryProvinceInput.disabled = provinces.length === 0;
+    deliveryDistrictInput.replaceChildren(new Option("Chọn tỉnh / thành phố trước", ""));
+    deliveryDistrictInput.disabled = true;
+    selectedDeliveryZoneId = "";
+
+    if (!deliveryZonesLoaded) {
+      deliveryZoneMessage.textContent = "Đang tải khu vực giao hàng…";
+    } else if (!deliveryZonesConfigured) {
+      deliveryZoneMessage.textContent = "Cửa hàng chưa cấu hình khu vực giao hàng. Vui lòng liên hệ cửa hàng; quản trị viên cần thêm tỉnh/thành, quận/huyện và phí trong mục “Giao hàng” trước khi nhận đơn.";
+    } else {
+      deliveryZoneMessage.textContent = "Chọn khu vực đã được cửa hàng cấu hình. Phí giao hàng sẽ được xác nhận từ hệ thống.";
+    }
+  }
+  deliveryProvinceInput.addEventListener("change", () => {
+    const districts = deliveryZones.filter((zone) => zone.province === deliveryProvinceInput.value);
+    deliveryDistrictInput.replaceChildren(new Option(
+      districts.length ? "Chọn quận / huyện" : "Chọn tỉnh / thành phố trước",
+      ""
+    ));
+    districts.sort((left, right) => left.district.localeCompare(right.district, "vi"))
+      .forEach((zone) => deliveryDistrictInput.add(new Option(zone.district, zone.id)));
+    deliveryDistrictInput.disabled = districts.length === 0;
+    selectedDeliveryZoneId = "";
+    void refreshServerQuote();
+  });
+  deliveryDistrictInput.addEventListener("change", () => {
+    selectedDeliveryZoneId = deliveryDistrictInput.value;
+    void refreshServerQuote();
+  });
 
   function updatePaymentQr() {
     const isQrPayment = checkoutForm.querySelector('input[name="paymentMethod"]:checked')?.value === "qr";
     paymentQrPanel.hidden = !isQrPayment;
     if (!isQrPayment) return;
-    if (!serverQuote) {
+    if (!serverQuote || !serverQuote.deliveryZone?.id) {
       paymentQrImage.removeAttribute("src");
-      paymentQrAmount.textContent = "Đang xác minh giá và tồn kho từ cửa hàng...";
+      paymentQrAmount.textContent = "Chọn khu vực giao hàng để kiểm tra tổng tiền trước khi chuyển khoản.";
       return;
     }
     const total = serverQuote.totals.total;
@@ -424,7 +568,8 @@
     try {
       const quote = await window.FlowerOrderStore.quote(
         Cart.map((item) => ({ id: item.id, productId: item.productId, size: item.size, color: item.color, cardMessage: item.cardMessage, personalNote: item.personalNote, quantity: Math.max(1, Number(item.quantity) || 1) })),
-        promotionSelect.value
+        promotionSelect.value,
+        selectedDeliveryZoneId
       );
       if (requestId !== quoteRequestId) return;
       serverQuote = quote;
@@ -441,7 +586,9 @@
       const totals = quote.totals;
       document.getElementById("originalprice").textContent = formatVnd(totals.subtotal);
       document.getElementById("savings").textContent = formatVnd(totals.savings);
-      document.getElementById("deliveryCharge").textContent = "Miễn phí";
+      document.getElementById("deliveryCharge").textContent = quote.deliveryZone
+        ? formatVnd(totals.shippingFee || 0)
+        : "Chọn khu vực";
       document.getElementById("total").textContent = formatVnd(totals.total);
       Cart.forEach((item, index) => {
         const card = CartContainer.children[index];
@@ -459,7 +606,7 @@
         if (stockMessage && Number.isInteger(item.stockQuantity)) stockMessage.textContent = `Tồn kho: ${item.stockQuantity}`;
       });
       checkoutMessage.textContent = "Giá, ưu đãi và tồn kho đã được xác minh từ cửa hàng.";
-      submitButton.disabled = false;
+      submitButton.disabled = !selectedDeliveryZoneId || !deliveryZonesLoaded || !deliveryZonesConfigured;
       updatePaymentQr();
     } catch (error) {
       if (requestId !== quoteRequestId) return;
@@ -481,6 +628,20 @@
 
   async function initializeCheckout() {
     try {
+      const result = await window.FlowerOrderStore.getDeliveryZones();
+      deliveryZones = Array.isArray(result.zones) ? result.zones.filter((zone) => zone?.enabled === true) : [];
+      deliveryZonesConfigured = result.configured === true && deliveryZones.length > 0;
+      deliveryZonesLoaded = true;
+      renderProvinceOptions();
+    } catch (error) {
+      deliveryZones = [];
+      deliveryZonesConfigured = false;
+      deliveryZonesLoaded = true;
+      renderProvinceOptions();
+      deliveryZoneMessage.textContent = error.message || "Chưa thể tải khu vực giao hàng. Vui lòng thử lại sau.";
+      console.error("Không thể tải khu vực giao hàng:", error);
+    }
+    try {
       const promotions = await window.FlowerOrderStore.getPromotions();
       setTrustedPromotions(promotions);
     } catch (error) {
@@ -493,6 +654,7 @@
 
   checkoutForm.addEventListener("submit", (event) => {
     event.preventDefault();
+    updateDeliveryAvailability();
     if (!Cart.length) {
       checkoutMessage.textContent = "Giỏ hàng đang trống. Hãy chọn hoa trước khi đặt hàng.";
       return;
@@ -503,6 +665,21 @@
     }
     if (!serverQuote) {
       checkoutMessage.textContent = "Chờ xác minh giá và tồn kho từ cửa hàng trước khi đặt hàng.";
+      return;
+    }
+    if (!deliveryZonesLoaded || !deliveryZonesConfigured || !selectedDeliveryZoneId) {
+      checkoutMessage.textContent = "Chọn khu vực giao hàng đã được cửa hàng cấu hình trước khi đặt hàng.";
+      deliveryProvinceInput.focus();
+      return;
+    }
+    if (deliveryDistrictInput.selectedOptions[0]?.disabled
+      || serverQuote.deliveryZone?.id !== selectedDeliveryZoneId) {
+      checkoutMessage.textContent = "Hãy chọn lại khu vực để xác nhận phí giao hàng từ cửa hàng.";
+      return;
+    }
+    if (!deliveryTimeInput.value || deliveryTimeInput.selectedOptions[0]?.disabled) {
+      checkoutMessage.textContent = "Khung giờ giao đã bắt đầu hoặc không còn khả dụng. Hãy chọn lại.";
+      deliveryTimeInput.focus();
       return;
     }
 
@@ -518,9 +695,14 @@
       quotedTotals: serverQuote.totals,
       recipientName: String(formData.get("recipientName") || "").trim(),
       recipientPhone: String(formData.get("recipientPhone") || "").trim(),
+      customerIsRecipient: formData.get("customerIsRecipient") === "on",
       deliveryDate: String(formData.get("deliveryDate") || ""),
       deliveryTime: String(formData.get("deliveryTime") || ""),
+      deliveryZoneId: selectedDeliveryZoneId,
+      deliveryProvince: deliveryProvinceInput.value,
+      deliveryDistrict: deliveryDistrictInput.selectedOptions[0]?.textContent || "",
       greetingCard: String(formData.get("greetingCard") || "").trim(),
+      anonymousGreetingCard: formData.get("anonymousGreetingCard") === "on",
       giftWrap: String(formData.get("giftWrap") || "none"),
       orderNote: String(formData.get("orderNote") || "").trim()
     };

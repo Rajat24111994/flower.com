@@ -64,6 +64,21 @@
     background-color: #fc2779;
   }
 
+.placeorder > button:disabled {
+  color: #f5f2f1;
+  background-color: #766b70;
+  cursor: not-allowed;
+}
+
+.order-review-empty {
+  padding: 14px 16px;
+  border: 1px solid #e8dfd9;
+  border-radius: 12px;
+  color: #625a5d;
+  background: #fbf8f3;
+  line-height: 1.6;
+}
+
 @media (max-width: 1100px) {
   .nav {
     display: grid;
@@ -345,6 +360,15 @@
   grid-column: 1;
 }
 
+.nav.order-review-page.is-empty {
+  grid-template-columns: minmax(0, 720px);
+}
+
+.nav.order-review-page.is-empty .order-review,
+.nav.order-review-page.is-empty .placeorder {
+  grid-column: 1;
+}
+
 @media (max-width: 800px) {
   .nav {
     grid-template-columns: minmax(0, 1fr);
@@ -362,6 +386,10 @@
   }
 
   .nav.is-empty {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .nav.order-review-page.is-empty {
     grid-template-columns: minmax(0, 1fr);
   }
 }

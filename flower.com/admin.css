@@ -83,8 +83,11 @@ nav #owner_page {
     background: rgba(255, 255, 255, 0.22);
 }
 
-nav p:hover {
+nav p:hover,
+nav p:focus-visible {
     background: rgba(255, 255, 255, 0.18);
+    outline: 2px solid rgba(255, 255, 255, 0.9);
+    outline-offset: 2px;
 }
 
 nav .danger-btn {
@@ -759,6 +762,76 @@ main {
     font-weight: 700;
 }
 
+.delivery-zone-form,
+.delivery-zone-row {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: end;
+    gap: 14px;
+}
+
+.delivery-zone-form {
+    max-width: 900px;
+    padding-top: 8px;
+}
+
+.delivery-zone-row {
+    padding: 16px;
+    border: 1px solid #f5d9e6;
+    border-radius: 12px;
+    background: #fffdfd;
+}
+
+.delivery-zone-form label:not(.delivery-zone-enabled),
+.delivery-zone-row label:not(.delivery-zone-enabled) {
+    display: grid;
+    gap: 7px;
+}
+
+.delivery-zone-form input:not([type="checkbox"]),
+.delivery-zone-row input:not([type="checkbox"]) {
+    width: 100%;
+    min-width: 0;
+    padding: 10px 12px;
+    border: 1px solid var(--gray-200);
+    border-radius: 9px;
+    background: #fff;
+    color: var(--gray-700);
+    font: inherit;
+}
+
+.delivery-zone-enabled {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 42px;
+    color: var(--gray-700);
+    font-size: 13px;
+}
+
+.delivery-zone-enabled input {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--rose-600);
+}
+
+.delivery-zone-list {
+    display: grid;
+    gap: 10px;
+}
+
+.delivery-zone-admin-message {
+    min-height: 20px;
+    margin: -4px 0 12px;
+    color: var(--rose-700);
+    font-size: 13px;
+}
+
+.delivery-zone-row .product-row-actions {
+    grid-column: 1 / -1;
+    justify-content: flex-end;
+}
+
 .product-form textarea {
     min-height: 120px;
     resize: vertical;
@@ -1087,6 +1160,15 @@ main {
 }
 
 @media (max-width: 600px) {
+    .delivery-zone-form,
+    .delivery-zone-row {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .delivery-zone-row .product-row-actions {
+        justify-content: stretch;
+    }
+
     main {
         padding: 16px;
     }

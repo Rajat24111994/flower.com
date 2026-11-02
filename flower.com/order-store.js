@@ -18,6 +18,34 @@
     }
   }
 
+  async function deliveryZonesRequest(options = {}) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 20000);
+    try {
+      const response = await fetch(options.manage ? "/api/delivery-zones?manage=1" : "/api/delivery-zones", {
+        method: options.method || "GET",
+        headers: options.headers || { Accept: "application/json" },
+        body: options.body,
+        signal: controller.signal
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        const error = new Error(result.error || "Không thể tải cấu hình khu vực giao hàng.");
+        error.code = result.code || "delivery-zone-service-unavailable";
+        throw error;
+      }
+      return result;
+    } catch (cause) {
+      if (cause.code) throw cause;
+      const error = new Error("Không kết nối được với cấu hình khu vực giao hàng. Vui lòng thử lại.");
+      error.code = "delivery-zone-network-error";
+      error.cause = cause;
+      throw error;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
   async function getFirebase() {
     if (!firebasePromise) {
       firebasePromise = (async () => {
@@ -94,9 +122,12 @@
         address: order.address,
         recipientName: order.recipientName || order.customerName,
         recipientPhone: order.recipientPhone || order.phone,
+        customerIsRecipient: order.customerIsRecipient === true,
         deliveryDate: order.deliveryDate || "",
         deliveryTime: order.deliveryTime || "",
+        deliveryZoneId: order.deliveryZoneId || "",
         greetingCard: order.greetingCard || "",
+        anonymousGreetingCard: order.anonymousGreetingCard === true,
         giftWrap: order.giftWrap || "none",
         orderNote: order.orderNote || "",
         paymentMethod: order.paymentMethod,
@@ -123,14 +154,15 @@
     return result.order.id;
   }
 
-  async function quote(items, promotionId = "") {
+  async function quote(items, promotionId = "", deliveryZoneId = "") {
     const { response, result } = await orderRequest({
       method: "POST",
       headers: { "Content-Type": "application/json", Accept: "application/json" },
       body: JSON.stringify({
         action: "quote",
         items: (Array.isArray(items) ? items : []).map((item) => ({ id: item.id, productId: item.productId, size: item.size, color: item.color, cardMessage: item.cardMessage, personalNote: item.personalNote, quantity: item.quantity })),
-        promotionId: promotionId || ""
+        promotionId: promotionId || "",
+        deliveryZoneId: deliveryZoneId || ""
       })
     });
     if (!response.ok) {
@@ -140,6 +172,48 @@
       throw error;
     }
     return result;
+  }
+
+  async function getDeliveryZones(manage = false) {
+    const options = { manage };
+    if (manage) {
+      const { auth } = await getFirebase();
+      await auth.authStateReady();
+      if (!auth.currentUser || (await auth.currentUser.getIdTokenResult()).claims.admin !== true) {
+        throw new Error("Chỉ quản trị viên mới được quản lý khu vực giao hàng.");
+      }
+      options.headers = {
+        Accept: "application/json",
+        Authorization: `Bearer ${await auth.currentUser.getIdToken()}`
+      };
+    }
+    return deliveryZonesRequest(options);
+  }
+
+  async function updateDeliveryZone(action, payload) {
+    const { auth } = await getFirebase();
+    await auth.authStateReady();
+    if (!auth.currentUser || (await auth.currentUser.getIdTokenResult()).claims.admin !== true) {
+      throw new Error("Chỉ quản trị viên mới được thay đổi khu vực giao hàng.");
+    }
+    return deliveryZonesRequest({
+      method: "POST",
+      manage: true,
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        Authorization: `Bearer ${await auth.currentUser.getIdToken()}`
+      },
+      body: JSON.stringify({ action, ...payload })
+    });
+  }
+
+  async function saveDeliveryZone(zone) {
+    return updateDeliveryZone("upsert", { zone });
+  }
+
+  async function deleteDeliveryZone(id) {
+    return updateDeliveryZone("delete", { id });
   }
 
   async function getPromotions() {
@@ -464,6 +538,9 @@
     create,
     quote,
     getPromotions,
+    getDeliveryZones,
+    saveDeliveryZone,
+    deleteDeliveryZone,
     savePromotions,
     initializePromotions,
     updatePromotions,

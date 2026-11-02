@@ -129,7 +129,8 @@ body {
 }
 
 .checkout-field input,
-.checkout-field textarea {
+.checkout-field textarea,
+.checkout-field select {
     width: 100%;
     min-height: 44px;
     margin: 0;
@@ -143,13 +144,91 @@ body {
     transition: border-color .16s ease, box-shadow .16s ease;
 }
 
+.checkout-field select {
+    font: 400 14px "DM Sans", "Segoe UI", sans-serif;
+}
+
+.checkout-field input:focus,
+.checkout-field textarea:focus,
+.checkout-field select:focus {
+    border-color: #a84e68;
+    box-shadow: 0 0 0 3px rgba(168, 78, 104, .12);
+}
+
+.checkout-recipient {
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+
+.checkout-recipient legend {
+    margin-bottom: 10px;
+    color: #52645a;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.checkout-recipient-fields {
+    margin-top: 12px;
+}
+
+.checkout-recipient-fields[hidden] {
+    display: none;
+}
+
+.checkout-checkbox {
+    display: flex;
+    align-items: flex-start;
+    gap: 9px;
+    color: #52645a;
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1.5;
+    cursor: pointer;
+}
+
+.checkout-checkbox input {
+    width: 18px;
+    min-height: 18px;
+    height: 18px;
+    flex: 0 0 18px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    accent-color: #a84e68;
+}
+
+.checkout-field > label:not(.checkout-checkbox) {
+    color: #52645a;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.checkout-zone-message,
+.checkout-schedule-message {
+    margin: -4px 0 0;
+    color: #6b7770;
+    font-size: 12px;
+    font-weight: 400;
+    line-height: 1.55;
+}
+
+.checkout-zone-message:not(:empty) {
+    padding: 10px 12px;
+    border-left: 3px solid #a84e68;
+    background: #fff7f9;
+}
+
 .checkout-field textarea {
     min-height: 88px;
     resize: vertical;
 }
 
 .checkout-field input:focus,
-.checkout-field textarea:focus {
+.checkout-field textarea:focus,
+.checkout-field select:focus {
     border-color: #a84e68;
     box-shadow: 0 0 0 3px rgba(168, 78, 104, .12);
 }

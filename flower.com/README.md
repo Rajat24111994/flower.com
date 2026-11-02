@@ -44,14 +44,14 @@ flowchart LR
 | Danh mục và chi tiết | `product.html`, `product.js`, `product-categories.js`, `product-names.js`, `related-products.js` | Tìm kiếm, lọc, sắp xếp; trang chi tiết, thư viện ảnh, gợi ý sản phẩm liên quan |
 | Đánh giá | `review-store.js` | Đọc đánh giá công khai và gửi đánh giá mới (yêu cầu đăng nhập) lên Firestore |
 | Giỏ hàng và yêu thích | `shopping-store.js`, `cart.html`, `wish.html`, `wish.js` | Dùng chung khóa `cart`/`wish`, gộp dòng trùng, kiểm tra tồn kho |
-| Thanh toán | `checkout.html`, `placeorder.html` | Thông tin giao hàng, áp dụng ưu đãi, mã QR chuyển khoản, tạo đơn |
-| Theo dõi đơn | `tracking.html`, `tracking.js`, `order-status.js` | Tra cứu theo mã đơn và số điện thoại; liệt kê đơn của tài khoản đang đăng nhập |
+| Thanh toán | `checkout.html`, `placeorder.html` | Người gửi/người nhận, lịch giao giờ Việt Nam, khu vực và phí giao do máy chủ báo giá, ưu đãi, QR, tạo đơn |
+| Theo dõi đơn | `tracking.html`, `tracking.js`, `order-status.js` | Tra cứu công khai giới hạn thông tin; đơn tài khoản hiển thị chi tiết người gửi/nhận và phí |
 | Tài khoản | `login.*`, `account.*`, `forgot-password.*` | Đăng ký, đăng nhập, khôi phục mật khẩu, hồ sơ |
 | Tiền tệ | `currency.js` | Định dạng giá VND; mọi giá lưu là số nguyên VND (ví dụ `450000`) |
 | Liên hệ | `contact-tools.js/.css` | Thanh liên hệ Facebook và Zalo (ẩn trên trang quản trị) |
-| Quản trị | `admin.html`, `admin.js`, `admin.css` | Sản phẩm, danh mục, ưu đãi, đơn hàng, xác minh thanh toán QR, doanh thu, đánh giá, lời nhắn, người dùng. Dữ liệu khách gửi được escape trước khi hiển thị để chống XSS |
+| Quản trị | `admin.html`, `admin.js`, `admin.css` | Sản phẩm, danh mục, ưu đãi, cấu hình khu vực/phí giao, đơn hàng, xác minh QR, doanh thu, đánh giá, lời nhắn, người dùng |
 | Owner | `owner.html`, `owner.js` | Cấp hoặc gỡ quyền admin |
-| API | `api/admin/users.js`, `api/owner/users.js`, `api/orders.js`, `lib/firebase-admin.js` | Xác minh quyền quản trị và tra cứu đơn khách bằng mã đơn cùng số điện thoại |
+| API | `api/admin/users.js`, `api/owner/users.js`, `api/delivery-zones.js`, `api/orders.js`, `lib/firebase-admin.js` | Quản lý khu vực bằng quyền admin, báo giá/tạo đơn authoritative, tra cứu đơn khách bằng mã và số điện thoại |
 
 ## Dữ liệu
 
@@ -70,6 +70,7 @@ flowchart LR
 | Phản hồi cũ trên trình duyệt | Firestore `messages` (chuyển khi quản trị đăng nhập) | ✅ |
 | Phân loại | Firestore `metadata/storeCategories` (bản cache ở `localStorage.flowerCategories`) | ✅ |
 | Ưu đãi | Firestore `metadata/activePromotions` (bản cache ở `localStorage`) | ✅ |
+| Khu vực và phí giao | Firestore `metadata/deliveryZones`, cập nhật qua `/api/delivery-zones` | ✅ |
 | Phiên đăng nhập | `localStorage.loggedUser` | ❌ |
 
 Trang quản trị không còn tự điền dữ liệu demo cho đánh giá và lời nhắn; cả hai đều đọc từ Firestore.
@@ -97,6 +98,8 @@ Phản hồi cũ trong `localStorage.flowerMessages` được chuyển sang Fire
 Admin có thể chuyển đơn sang bất kỳ trạng thái nào. Các tên trạng thái cũ (ví dụ "Đã vận chuyển", "Giao hàng thất bại") được tự động chuyển sang tên mới tương ứng.
 
 Đơn mới được gửi tới `/api/orders`. Backend chỉ nhận mã sản phẩm, số lượng và thông tin giao hàng; tự đọc giá, tồn kho, ưu đãi từ Firestore, tính lại tổng tiền và dành tồn kho trong cùng một transaction trước khi ghi đơn. Hệ thống giữ hàng 30 phút với QR chưa xác minh và 24 giờ với COD; đơn hết hạn hoặc bị hủy sẽ được hoàn kho bằng transaction. QR đã xác minh giữ hàng đến khi hoàn tất hoặc hủy đơn. Đơn đã giao chốt phần tồn kho đã bán, không hoàn kho khi dọn đơn. Việc dọn chạy khi báo giá/đặt hàng, lúc quản trị mở dashboard và theo lịch Vercel. Khách đã đăng nhập chỉ đọc được đơn có UID của mình; khách chưa đăng nhập tra cứu qua API bằng mã đơn và số điện thoại. Chỉ tài khoản có claim `admin: true` được xem danh sách, cập nhật hoặc xóa đơn. Dữ liệu đơn cũ trong `localStorage.flowerOrders` không tự động chuyển lên Firestore.
+
+Khu vực giao hàng được quản trị viên cấu hình thủ công trong mục **Giao hàng**; không có danh sách địa bàn hoặc mức phí mẫu. Mỗi khu vực gồm tỉnh/thành, quận/huyện, trạng thái phục vụ và phí VND (mặc định khi thêm là 0 ₫). Khách chỉ chọn được khu vực đang bật. Nếu chưa có khu vực bật, checkout giải thích cấu hình cần thiết và không cho gửi đơn. `/api/orders` đọc khu vực/fee từ Firestore để báo giá và kiểm tra lại trong transaction khi tạo đơn; số phí từ trình duyệt không được tin cậy. Lịch dùng múi giờ `Asia/Ho_Chi_Minh`, nhận giao trong ngày trước 15:00, với các khung 08:00–11:00, 11:00–14:00, 14:00–17:00 và 17:00–20:00.
 
 Đơn QR ở trạng thái chờ xác minh cho đến khi admin đối chiếu sao kê và bấm “Xác nhận đã nhận tiền”. Thao tác này đặt `paymentVerified: true`, `paymentStatus: "Đã thanh toán"` và `paidAt`; chỉ admin được ghi các trường này (Security Rules). Đơn đã xác minh không bị dọn khi hết thời gian giữ hàng và được tính vào doanh thu sau khi giao. Dự án chưa tích hợp API/webhook ngân hàng nên chưa có đối soát tự động.
 

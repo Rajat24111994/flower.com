@@ -60,3 +60,9 @@ When upgrading an existing deployment, keep this order so current admins keep ac
 The admin page and Vercel admin API require the Firebase ID token's `admin: true` custom claim. Owner accounts have both `role: "owner"` and `admin: true`; the separate Owner API requires `role: "owner"` and verifies token revocation. The Owner page can grant or remove admin access, and each role change revokes the target user's refresh tokens. It does not allow creating Owners or changing the signed-in Owner's role. Admin account listing is paginated in batches of 100.
 
 Do not share one Owner login among a group. Bootstrap one trusted Owner, then let that Owner grant `admin` to each teammate's individual Firebase account.
+
+## Configure delivery areas and fees
+
+After deploying the current site, sign in at `/admin.html` with an Owner or Admin account and open **Giao hàng**. Add only province/city and district names that the shop has confirmed it serves; this project intentionally does not seed an unverified area list or rate table. Each entry starts with a fee of **0 ₫** and can be edited, paused, or removed. Fees are whole VND amounts.
+
+There are no delivery areas preconfigured. Until at least one enabled area is added, checkout explains that setup is incomplete and customers cannot submit orders. The storefront lists only enabled areas. The `/api/delivery-zones` endpoint exposes those configured names and fees to checkout, while changes require a Firebase ID token with the `admin: true` claim. `/api/orders` independently reads the zone and fee from Firestore for quotes and verifies them again when creating an order; a browser-supplied fee is never authoritative. No additional Vercel environment variable is required beyond the Firebase Admin configuration above.

@@ -28,6 +28,9 @@ test("đặt đơn COD: lưu đơn, trừ kho, trạng thái chờ xác nhận",
     assert.equal(order.paymentMethod, "cod");
     assert.equal(order.inventoryState, "reserved");
     assert.equal(order.total, result.quote.body.totals.total);
+    assert.equal(order.shippingFee, 0);
+    assert.equal(order.deliveryProvince, "Test Province");
+    assert.equal(order.deliveryDistrict, "Test District");
     assert.equal(order.uid, "");
     assert.equal(await h.stockOf("1"), 7);
 });
@@ -36,7 +39,7 @@ test("gửi lại cùng một yêu cầu đặt hàng không tạo đơn thứ h
     const quote = await h.callApi("orders", { body: { action: "quote", items: [{ id: "2", quantity: 1 }] } });
     const body = {
         customerName: "Khách", phone: "0908123456", address: "1 Lê Lợi", deliveryDate: h.deliveryDate(),
-        deliveryTime: "12:00–16:00", paymentMethod: "cod", idempotencyKey: randomUUID(),
+        deliveryTime: "11:00–14:00", deliveryZoneId: "test-zone", paymentMethod: "cod", idempotencyKey: randomUUID(),
         expectedTotals: quote.body.totals, items: [{ id: "2", quantity: 1 }]
     };
     const first = await h.callApi("orders", { body });
@@ -48,7 +51,7 @@ test("gửi lại cùng một yêu cầu đặt hàng không tạo đơn thứ h
 });
 
 test("giá thay đổi sau khi báo giá thì không đặt được đơn", async () => {
-    const result = await h.placeOrder({ overrides: { expectedTotals: { subtotal: 1, savings: 0, tax: 0, total: 1 } } });
+    const result = await h.placeOrder({ overrides: { expectedTotals: { subtotal: 1, savings: 0, tax: 0, shippingFee: 0, total: 1 } } });
     assert.equal(result.status, 409);
     assert.equal(result.body.code, "price-changed");
     assert.equal(await h.stockOf("1"), 10);
@@ -58,7 +61,7 @@ test("hai yêu cầu đồng thời cùng mã chỉ lưu một đơn; đổi n�
     const quote = await h.callApi("orders", { body: { action: "quote", items: [{ id: "2", quantity: 1 }] } });
     const body = {
         customerName: "Khách", phone: "0908123456", address: "1 Lê Lợi", deliveryDate: h.deliveryDate(),
-        deliveryTime: "12:00–16:00", paymentMethod: "cod", idempotencyKey: randomUUID(),
+        deliveryTime: "11:00–14:00", deliveryZoneId: "test-zone", paymentMethod: "cod", idempotencyKey: randomUUID(),
         expectedTotals: quote.body.totals, items: [{ id: "2", quantity: 1 }]
     };
     const results = await Promise.all([h.callApi("orders", { body }), h.callApi("orders", { body })]);
@@ -76,7 +79,7 @@ test("hai khách tranh sản phẩm cuối cùng: chỉ một đơn giữ đư�
     const quote = await h.callApi("orders", { body: { action: "quote", items: [{ id: "2", quantity: 1 }] } });
     const body = {
         customerName: "Khách", phone: "0908123456", address: "1 Lê Lợi", deliveryDate: h.deliveryDate(),
-        deliveryTime: "12:00–16:00", paymentMethod: "cod", expectedTotals: quote.body.totals,
+        deliveryTime: "11:00–14:00", deliveryZoneId: "test-zone", paymentMethod: "cod", expectedTotals: quote.body.totals,
         items: [{ id: "2", quantity: 1 }]
     };
     const results = await Promise.all([1, 2].map(() => h.callApi("orders", { body: { ...body, idempotencyKey: randomUUID() } })));

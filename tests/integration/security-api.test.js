@@ -55,6 +55,6 @@ test("khách không tự đặt giá hay số lượng bất thường", async (
     for (const items of [[{ id: "1", quantity: -5 }], [{ id: "1", quantity: 1000 }], [{ id: "../adminRoles/x", quantity: 1 }]]) {
         assert.equal((await h.callApi("orders", { body: { action: "quote", items } })).status, 400, JSON.stringify(items));
     }
-    const cheap = await h.placeOrder({ overrides: { expectedTotals: { subtotal: 0, savings: 0, tax: 0, total: 0 } } });
+    const cheap = await h.placeOrder({ overrides: { expectedTotals: { subtotal: 0, savings: 0, tax: 0, shippingFee: 0, total: 0 } } });
     assert.equal(cheap.status, 409);
 });

@@ -5,7 +5,19 @@ const path = require("node:path");
 const siteRoot = path.join(__dirname, "..", "flower.com");
 const siteUrl = "https://flower-com-six.vercel.app";
 const htmlFiles = fs.readdirSync(siteRoot).filter((file) => file.endsWith(".html"));
-const publicPages = new Set(["index.html", "product.html"]);
+const publicPages = new Set([
+  "index.html",
+  "product.html",
+  "about.html",
+  "contact.html",
+  "delivery.html",
+  "returns.html",
+  "privacy.html",
+  "terms.html",
+  "ordering.html",
+  "faq.html"
+]);
+const socialMetadataPages = new Set(["index.html", "product.html"]);
 const productIds = require("../flower.com/flower.json").flower.map((product) => String(product.id));
 const titles = new Set();
 const descriptions = new Set();
@@ -26,10 +38,13 @@ for (const file of htmlFiles) {
 
   if (publicPages.has(file)) {
     assert.match(html, /rel="canonical"/i, `${file} must have a canonical URL`);
-    assert.match(html, /property="og:title"/i, `${file} must have Open Graph metadata`);
-    assert.match(html, /name="twitter:card"/i, `${file} must have Twitter card metadata`);
   } else {
     assert.match(html, /name="robots"\s+content="noindex, nofollow"/i, `${file} must not be indexed`);
+  }
+
+  if (socialMetadataPages.has(file)) {
+    assert.match(html, /property="og:title"/i, `${file} must have Open Graph metadata`);
+    assert.match(html, /name="twitter:card"/i, `${file} must have Twitter card metadata`);
   }
 
   for (const imageTag of html.matchAll(/<img\b[^>]*>/gi)) {
@@ -86,9 +101,13 @@ const sitemapUrls = [...sitemap.matchAll(/<loc>(.*?)<\/loc>/g)].map((match) => m
 const sitemapProductIds = sitemapUrls
   .filter((url) => url.includes("/product.html?id="))
   .map((url) => new URL(url).searchParams.get("id"));
-assert.equal(sitemapUrls.length, productIds.length + 2);
+assert.equal(sitemapUrls.length, productIds.length + publicPages.size);
 assert.deepEqual(new Set(sitemapProductIds), new Set(productIds));
 assert.equal(new Set(sitemapUrls).size, sitemapUrls.length);
+assert.deepEqual(
+  new Set(sitemapUrls.filter((url) => !url.includes("/product.html?id="))),
+  new Set([...publicPages].map((file) => file === "index.html" ? `${siteUrl}/` : `${siteUrl}/${file}`))
+);
 
 const vercelConfig = JSON.parse(fs.readFileSync(path.join(siteRoot, "vercel.json"), "utf8"));
 const headerRules = vercelConfig.headers;

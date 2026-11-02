@@ -4,6 +4,7 @@ import { ORDER_STATUSES, normalizeOrderStatus } from "./order-status.js";
 let productPage = document.getElementById("product_page");
 let categoriesPage = document.getElementById("categories_page");
 let offersPage = document.getElementById("offers_page");
+let deliveryPage = document.getElementById("delivery_page");
 let ordersPage = document.getElementById("orders_page");
 let reviewsPage = document.getElementById("reviews_page");
 let messagesPage = document.getElementById("messages_page");
@@ -23,6 +24,10 @@ let reviewsCache = [];
 let stopReviewSubscription = null;
 let categoriesCache = [];
 let stopCategorySubscription = null;
+let deliveryZonesCache = [];
+let deliveryZonesLoaded = false;
+let deliveryZonesLoading = false;
+let deliveryZonesLoadError = "";
 let messagesCache = [];
 let stopMessageSubscription = null;
 let revenueDateFilter = "month";
@@ -595,6 +600,132 @@ function renderOffersTab() {
    `;
 }
 
+function renderDeliveryZonesTab() {
+   main.innerHTML = `
+       <section class="panel-wrap delivery-zones-page">
+           <div class="panel">
+               <h2>Cấu hình khu vực giao hàng</h2>
+               <p class="category-help">Chỉ thêm tỉnh/thành và quận/huyện mà cửa hàng xác nhận phục vụ. Phí được nhập theo VND; mặc định là 0 ₫ cho đến khi bạn chủ động cấu hình mức phí. Khu vực được lưu trên máy chủ và là nguồn tính phí khi báo giá, đặt đơn.</p>
+               <p class="delivery-zone-admin-message" id="delivery-zone-admin-message" role="status" aria-live="polite">${deliveryZonesLoadError ? escapeHtml(deliveryZonesLoadError) : deliveryZonesLoaded ? "" : "Đang tải cấu hình…"}</p>
+               <form id="add-delivery-zone-form" class="delivery-zone-form">
+                   <label><span class="field-label">Tỉnh / thành phố</span><input name="province" type="text" maxlength="120" autocomplete="address-level1" placeholder="Tên tỉnh / thành đã xác nhận" required></label>
+                   <label><span class="field-label">Quận / huyện</span><input name="district" type="text" maxlength="120" autocomplete="address-level2" placeholder="Tên quận / huyện đã xác nhận" required></label>
+                   <label><span class="field-label">Phí giao hàng (₫)</span><input name="fee" type="number" min="0" max="1000000000" step="1" value="0" required></label>
+                   <label class="delivery-zone-enabled"><input name="enabled" type="checkbox" checked><span>Cho phép đặt giao hàng</span></label>
+                   <button class="submit-btn" type="submit">Thêm khu vực</button>
+               </form>
+           </div>
+           <div class="panel">
+               <h2>Khu vực đã khai báo</h2>
+               ${deliveryZonesLoaded && !deliveryZonesLoadError ? `
+                   <div class="delivery-zone-list">
+                       ${deliveryZonesCache.map((zone) => `
+                           <form class="delivery-zone-row" data-delivery-zone-row="${escapeHtml(zone.id)}">
+                               <label><span class="field-label">Tỉnh / thành phố</span><input name="province" type="text" maxlength="120" value="${escapeHtml(zone.province)}" required></label>
+                               <label><span class="field-label">Quận / huyện</span><input name="district" type="text" maxlength="120" value="${escapeHtml(zone.district)}" required></label>
+                               <label><span class="field-label">Phí giao hàng (₫)</span><input name="fee" type="number" min="0" max="1000000000" step="1" value="${Number(zone.fee)}" required></label>
+                               <label class="delivery-zone-enabled"><input name="enabled" type="checkbox" ${zone.enabled ? "checked" : ""}><span>${zone.enabled ? "Đang mở" : "Đang tạm dừng"}</span></label>
+                               <div class="product-row-actions">
+                                   <button class="secondary-btn" data-delivery-zone-save="${escapeHtml(zone.id)}" type="button">Lưu thay đổi</button>
+                                   <button class="delete-product" data-delivery-zone-delete="${escapeHtml(zone.id)}" type="button">Xóa</button>
+                               </div>
+                           </form>
+                       `).join("") || '<div class="empty-state">Chưa có khu vực nào. Thêm khu vực cửa hàng xác nhận phục vụ để khách có thể đặt hàng.</div>'}
+                   </div>
+               ` : `<div class="empty-state">${deliveryZonesLoadError ? escapeHtml(deliveryZonesLoadError) : "Đang tải cấu hình…"}</div>${deliveryZonesLoadError ? '<button class="secondary-btn" data-delivery-zone-reload type="button">Thử tải lại</button>' : ""}`}
+           </div>
+       </section>
+   `;
+   if (!deliveryZonesLoaded && !deliveryZonesLoading && !deliveryZonesLoadError) void loadDeliveryZones();
+}
+
+async function loadDeliveryZones() {
+   deliveryZonesLoading = true;
+   deliveryZonesLoadError = "";
+   try {
+       const result = await window.FlowerOrderStore.getDeliveryZones(true);
+       deliveryZonesCache = Array.isArray(result.zones) ? result.zones : [];
+       deliveryZonesLoaded = true;
+   } catch (error) {
+       console.error("Không thể tải cấu hình khu vực giao hàng:", error);
+       deliveryZonesLoadError = error.message || "Không thể tải cấu hình khu vực giao hàng.";
+       deliveryZonesLoaded = false;
+   } finally {
+       deliveryZonesLoading = false;
+       if (main.querySelector(".delivery-zones-page")) renderDeliveryZonesTab();
+   }
+}
+
+function createDeliveryZoneId() {
+   return window.crypto?.randomUUID
+       ? window.crypto.randomUUID()
+       : `zone-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+async function addDeliveryZone(event) {
+   event.preventDefault();
+   const data = new FormData(event.currentTarget);
+   const zone = {
+       id: createDeliveryZoneId(),
+       province: String(data.get("province") || "").trim(),
+       district: String(data.get("district") || "").trim(),
+       fee: Number(data.get("fee")),
+       enabled: data.get("enabled") === "on"
+   };
+   if (!zone.province || !zone.district || !Number.isSafeInteger(zone.fee) || zone.fee < 0) return;
+   try {
+       const result = await window.FlowerOrderStore.saveDeliveryZone(zone);
+       deliveryZonesCache = result.zones;
+       deliveryZonesLoaded = true;
+       deliveryZonesLoadError = "";
+       renderDeliveryZonesTab();
+   } catch (error) {
+       console.error("Không thể thêm khu vực giao hàng:", error);
+       const status = document.getElementById("delivery-zone-admin-message");
+       if (status) status.textContent = error.message || "Chưa thể lưu khu vực. Kiểm tra dữ liệu rồi thử lại.";
+   }
+}
+
+async function saveDeliveryZoneRow(id) {
+   const form = [...main.querySelectorAll("[data-delivery-zone-row]")]
+       .find((item) => item.dataset.deliveryZoneRow === id);
+   if (!form) return;
+   const data = new FormData(form);
+   const zone = {
+       id,
+       province: String(data.get("province") || "").trim(),
+       district: String(data.get("district") || "").trim(),
+       fee: Number(data.get("fee")),
+       enabled: data.get("enabled") === "on"
+   };
+   if (!zone.province || !zone.district || !Number.isSafeInteger(zone.fee) || zone.fee < 0) {
+       document.getElementById("delivery-zone-admin-message").textContent = "Nhập tỉnh/thành, quận/huyện và phí giao hàng là số nguyên không âm.";
+       return;
+   }
+   try {
+       const result = await window.FlowerOrderStore.saveDeliveryZone(zone);
+       deliveryZonesCache = result.zones;
+       deliveryZonesLoaded = true;
+       renderDeliveryZonesTab();
+   } catch (error) {
+       console.error("Không thể cập nhật khu vực giao hàng:", error);
+       document.getElementById("delivery-zone-admin-message").textContent = error.message || "Chưa thể lưu thay đổi khu vực.";
+   }
+}
+
+async function removeDeliveryZone(id) {
+   const zone = deliveryZonesCache.find((item) => item.id === id);
+   if (!zone || !window.confirm(`Xóa khu vực ${zone.district}, ${zone.province}?`)) return;
+   try {
+       const result = await window.FlowerOrderStore.deleteDeliveryZone(id);
+       deliveryZonesCache = result.zones;
+       renderDeliveryZonesTab();
+   } catch (error) {
+       console.error("Không thể xóa khu vực giao hàng:", error);
+       document.getElementById("delivery-zone-admin-message").textContent = error.message || "Chưa thể xóa khu vực.";
+   }
+}
+
 async function addOffer(event) {
    event.preventDefault();
    const form = event.target;
@@ -814,6 +945,30 @@ function renderOrderCard(order, showCompletionAction = true) {
                    <span class="field-value">${escapeHtml(order.phone)}</span>
                </div>
                <div class="field">
+                   <span class="field-label">Người nhận</span>
+                   <span class="field-value">${escapeHtml(order.recipientName || order.customerName)}</span>
+               </div>
+               <div class="field">
+                   <span class="field-label">Điện thoại người nhận</span>
+                   <span class="field-value">${escapeHtml(order.recipientPhone || order.phone)}</span>
+               </div>
+               <div class="field">
+                   <span class="field-label">Ngày và giờ giao</span>
+                   <span class="field-value">${escapeHtml(order.deliveryDate || "Chưa chọn")} · ${escapeHtml(order.deliveryTime || "Chưa chọn")}</span>
+               </div>
+               <div class="field">
+                   <span class="field-label">Khu vực giao hàng</span>
+                   <span class="field-value">${escapeHtml([order.deliveryDistrict, order.deliveryProvince].filter(Boolean).join(", ") || "Chưa cập nhật")}</span>
+               </div>
+               <div class="field">
+                   <span class="field-label">Phí giao hàng</span>
+                   <span class="field-value">${moneyFormat(order.shippingFee || 0)}</span>
+               </div>
+               <div class="field">
+                   <span class="field-label">Ẩn tên trên thiệp</span>
+                   <span class="field-value">${order.anonymousGreetingCard === true ? "Có" : "Không"}</span>
+               </div>
+               <div class="field">
                    <span class="field-label">Thanh toán</span>
                    <span class="field-value">${escapeHtml(getPaymentDisplayStatus(order))}</span>
                </div>
@@ -822,6 +977,11 @@ function renderOrderCard(order, showCompletionAction = true) {
                    <span class="field-value">${escapeHtml(order.address || "Chưa cập nhật")}</span>
                </div>
            </div>
+
+           ${String(order.greetingCard || "").trim() ? `
+               <div class="section-label">Lời chúc trên thiệp</div>
+               <div class="detail-block quote-box">${escapeHtml(order.greetingCard)}</div>
+           ` : ""}
 
            ${String(order.orderNote || "").trim() ? `
                <div class="section-label">Lời nhắn của khách</div>
@@ -1545,6 +1705,16 @@ if (offersPage) {
    offersPage.addEventListener("click", renderOffersTab);
 }
 
+if (deliveryPage) {
+   deliveryPage.addEventListener("click", renderDeliveryZonesTab);
+   deliveryPage.addEventListener("keydown", (event) => {
+       if (event.key === "Enter" || event.key === " ") {
+           event.preventDefault();
+           renderDeliveryZonesTab();
+       }
+   });
+}
+
 if (ordersPage) {
    ordersPage.addEventListener("click", renderOrdersTab);
 }
@@ -1596,6 +1766,26 @@ if (currentUserRole === "owner") {
 }
 
 main.addEventListener("click", (event) => {
+   const reloadDeliveryZones = event.target.closest("[data-delivery-zone-reload]");
+   if (reloadDeliveryZones) {
+       deliveryZonesLoadError = "";
+       void loadDeliveryZones();
+       renderDeliveryZonesTab();
+       return;
+   }
+
+   const saveDeliveryZoneButton = event.target.closest("[data-delivery-zone-save]");
+   if (saveDeliveryZoneButton) {
+       void saveDeliveryZoneRow(saveDeliveryZoneButton.dataset.deliveryZoneSave);
+       return;
+   }
+
+   const deleteDeliveryZoneButton = event.target.closest("[data-delivery-zone-delete]");
+   if (deleteDeliveryZoneButton) {
+       void removeDeliveryZone(deleteDeliveryZoneButton.dataset.deliveryZoneDelete);
+       return;
+   }
+
    const selectAllOfferProducts = event.target.closest("[data-offer-select-all]");
    if (selectAllOfferProducts) {
        const productCheckboxes = [...main.querySelectorAll('#add-offer-form input[name="productIds"]')];
@@ -1737,6 +1927,10 @@ main.addEventListener("click", (event) => {
 });
 
 main.addEventListener("submit", (event) => {
+   if (event.target && event.target.id === "add-delivery-zone-form") {
+       void addDeliveryZone(event);
+   }
+
    if (event.target && event.target.id === "product-search-form") {
        event.preventDefault();
        productSearchTerm = new FormData(event.target).get("search") || "";

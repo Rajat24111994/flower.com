@@ -7,7 +7,7 @@ const path = require("node:path");
 function review(storage, store) {
   const elements = new Map();
   const element = () => ({ textContent: "", disabled: false, hidden: false,
-    append() {}, addEventListener() {} });
+    classList: { toggle() {} }, append() {}, addEventListener() {} });
   const context = vm.createContext({
     FlowerBouquetOptions: require("../flower.com/bouquet-options.js"),
     document: {
@@ -29,11 +29,12 @@ function review(storage, store) {
   vm.runInContext(html.match(/<script>\s*([\s\S]*?)<\/script>/)[1], context);
   return { context, elements };
 }
-const totals = { subtotal: 250000, savings: 0, tax: 0, total: 250000 };
+const totals = { subtotal: 250000, savings: 0, tax: 0, shippingFee: 0, total: 250000 };
 function storage() {
   return { cart: [{ id: "1", quantity: 1, price: 10 }], flowerCheckout: {
     customerName: "Khách", phone: "0908123456", address: "1 Lê Lợi",
-    deliveryDate: "2099-01-01", deliveryTime: "08:00–12:00", paymentMethod: "cod",
+    deliveryDate: "2099-01-01", deliveryTime: "08:00–11:00",
+    deliveryZoneId: "zone-one", paymentMethod: "cod",
     idempotencyKey: "1b4e28ba-2fa1-4d3b-a3f5-ef19b5a7633b", quotedTotals: totals
   } };
 }
@@ -43,7 +44,7 @@ test("mất phản hồi sau khi lưu: tải lại gửi đúng yêu cầu, khô
   const data = storage();
   const attempts = [];
   const store = {
-    quote: async () => ({ items: [], totals }),
+    quote: async () => ({ items: [], totals, deliveryZone: { id: "zone-one" } }),
     create: async (order, expectedTotals) => {
       attempts.push(JSON.stringify({ order, expectedTotals }));
       if (attempts.length === 1) throw new Error("connection lost");
@@ -59,6 +60,7 @@ test("mất phản hồi sau khi lưu: tải lại gửi đúng yêu cầu, khô
   const second = review(data, store);
   await flush();
   assert.equal(second.elements.get("confirm").disabled, false);
+  assert.match(second.elements.get("order-review-totals").textContent, /0 · Tổng thanh toán: 250000/);
   await vm.runInContext("saveOrderToAdmin()", second.context);
   assert.equal(attempts[1], attempts[0]);
   assert.equal(second.context.window.location.href, "./tracking.html?id=saved-order");
@@ -70,7 +72,7 @@ test("lỗi mạng báo giá có thể thử lại; hết hàng khi xác nhận 
   const data = storage();
   let offline = true;
   const page = review(data, {
-    quote: async () => { if (offline) throw new Error("offline"); return { items: [], totals }; },
+    quote: async () => { if (offline) throw new Error("offline"); return { items: [], totals, deliveryZone: { id: "zone-one" } }; },
     create: async () => { const error = new Error("Hết hàng"); error.code = "insufficient-stock"; throw error; }
   });
   await flush();
@@ -89,7 +91,7 @@ test("bấm xác nhận liên tiếp chỉ gửi một yêu cầu", async () => 
   let finish;
   let calls = 0;
   const page = review(storage(), {
-    quote: async () => ({ items: [], totals }),
+    quote: async () => ({ items: [], totals, deliveryZone: { id: "zone-one" } }),
     create: async () => { calls++; return new Promise((resolve) => { finish = resolve; }); }
   });
   await flush();
@@ -99,6 +101,15 @@ test("bấm xác nhận liên tiếp chỉ gửi một yêu cầu", async () => 
   assert.equal(page.elements.get("confirm").disabled, true);
   finish("one-order");
   await submission;
+});
+
+test("trang xác nhận hướng dẫn quay lại checkout khi chưa có đơn hàng", () => {
+  const page = review({ cart: [] }, {
+    quote: async () => { throw new Error("no checkout data"); },
+    create: async () => "unexpected-order"
+  });
+  assert.equal(page.elements.get("order-review-empty").hidden, false);
+  assert.equal(page.elements.get("confirm").disabled, true);
 });
 
 test("API báo giá lỗi mạng và quá thời gian trả lỗi có thể thử lại", async () => {

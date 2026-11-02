@@ -18,7 +18,10 @@ test("personalized bouquet keeps its price, color and message through cart and r
     body: "window.FlowerReviewStore = { subscribe: (_id, callback) => { callback([]); return () => {}; } };" }));
   await page.route("**/order-store.js*", (route) => route.fulfill({ contentType: "text/javascript",
     body: readFileSync(path.join(__dirname, "../order-store.js"), "utf8")
-      + "\nwindow.FlowerOrderStore.getPromotions = async () => [];" }));
+      + `\nwindow.FlowerOrderStore.getPromotions = async () => [];
+        window.FlowerOrderStore.getDeliveryZones = async () => ({ configured: true, zones: [
+          { id: "fixture-zone", province: "Test Province", district: "Test District", fee: 0, enabled: true }
+        ] });` }));
   await page.route("**/api/products", (route) => route.fulfill({ json: { products: catalog } }));
   const quoteRequests = [];
   await page.route("**/api/orders", (route) => {
@@ -30,7 +33,11 @@ test("personalized bouquet keeps its price, color and message through cart and r
         price: Math.round(product.price * ({ standard: 1, large: 1.3, premium: 1.6 }[item.size || "standard"])) };
     });
     const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-    return route.fulfill({ json: { items, totals: { subtotal: total, savings: 0, tax: 0, total } } });
+    return route.fulfill({ json: {
+      items,
+      totals: { subtotal: total, savings: 0, tax: 0, shippingFee: 0, total },
+      deliveryZone: { id: body.deliveryZoneId || "fixture-zone", province: "Test Province", district: "Test District", fee: 0 }
+    } });
   });
 
   await page.goto("/product.html?id=1");
@@ -53,16 +60,28 @@ test("personalized bouquet keeps its price, color and message through cart and r
   await expect(page.locator("#product-container")).toContainText("Hồng pastel");
   await expect(page.locator("#product-container")).toContainText("Chúc mừng sinh nhật mẹ!");
   await page.goto("/checkout.html");
-  await expect(page.locator(".checkout-submit")).toBeEnabled();
+  await expect(page.locator(".checkout-submit")).toBeDisabled();
   await page.locator('[name="customerName"]').fill("Khách thử nghiệm");
   await page.locator('[name="phone"]').fill("0908123456");
   await page.locator('[name="address"]').fill("1 Lê Lợi");
+  await page.locator("#customer-is-recipient").check();
+  await expect(page.locator("#recipient-fields")).toBeHidden();
+  await expect(page.locator('[name="recipientName"]')).toHaveValue("Khách thử nghiệm");
+  await page.locator("#greeting-card").fill("Chúc mừng bạn!");
+  await expect(page.locator("#greeting-card-counter")).toHaveText("14/300 ký tự");
+  await page.locator("#anonymous-greeting-card").check();
+  await page.locator('[name="deliveryProvince"]').selectOption("Test Province");
+  await page.locator('[name="deliveryDistrict"]').selectOption("fixture-zone");
+  await expect(page.locator(".checkout-submit")).toBeEnabled();
   await page.locator('[name="deliveryDate"]').fill(new Date(Date.now() + 86400000 * 3).toISOString().slice(0, 10));
-  await page.locator('[name="deliveryTime"]').selectOption("08:00–12:00");
+  await page.locator('[name="deliveryTime"]').selectOption("08:00–11:00");
   await page.locator('[name="paymentMethod"][value="cod"]').check();
   await page.locator(".checkout-submit").click();
   await expect(page.locator(".placeorder > button").first()).toBeEnabled();
   await expect(page.locator("#product-container")).toContainText("Gói giấy kraft");
+  await expect(page.locator("#order-review-details")).toContainText("Người đặt (tôi là người nhận)");
+  await expect(page.locator("#order-review-details")).toContainText("Ẩn tên người gửi trên thiệp");
+  await expect(page.locator("#order-review-details")).toContainText("Test District, Test Province");
   await expect(page.locator("#order-review-totals")).toContainText(new Intl.NumberFormat("vi-VN").format(expected));
   expect(quoteRequests.at(-1).items[0]).toMatchObject({ productId: "1", size: "large", color: "pink",
     cardMessage: "Chúc mừng sinh nhật mẹ!", personalNote: "Gói giấy kraft", quantity: 2 });

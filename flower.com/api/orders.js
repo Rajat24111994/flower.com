@@ -10,9 +10,68 @@ const QR_RESERVATION_MS = 30 * 60 * 1000;
 const COD_RESERVATION_MS = 24 * 60 * 60 * 1000;
 const ORDER_LOOKUP_WINDOW_MS = 10 * 60 * 1000;
 const ORDER_LOOKUP_MAX_ATTEMPTS = 20;
+const DELIVERY_TIME_WINDOWS = ["08:00–11:00", "11:00–14:00", "14:00–17:00", "17:00–20:00"];
+const DELIVERY_TIME_ZONE = "Asia/Ho_Chi_Minh";
 
 function normalizePhone(value) {
     return String(value || "").replace(/\D/g, "");
+}
+
+function getVietnameseDateTime(now = new Date()) {
+    const parts = new Intl.DateTimeFormat("en-CA", {
+        timeZone: DELIVERY_TIME_ZONE,
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        hourCycle: "h23"
+    }).formatToParts(now);
+    const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+    return {
+        date: `${values.year}-${values.month}-${values.day}`,
+        hour: Number(values.hour),
+        minute: Number(values.minute)
+    };
+}
+
+function deliveryScheduleError(deliveryDate, deliveryTime, now = new Date()) {
+    const dateTimestamp = Date.parse(`${deliveryDate}T00:00:00Z`);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(deliveryDate)
+        || !Number.isFinite(dateTimestamp)
+        || new Date(dateTimestamp).toISOString().slice(0, 10) !== deliveryDate) {
+        return "Ngày giao không hợp lệ.";
+    }
+    if (!DELIVERY_TIME_WINDOWS.includes(deliveryTime)) return "Vui lòng chọn khung giờ giao hợp lệ.";
+    const localNow = getVietnameseDateTime(now);
+    if (deliveryDate < localNow.date) return "Ngày giao không thể ở quá khứ.";
+    if (deliveryDate !== localNow.date) return "";
+    if (localNow.hour >= 15) return "Đã qua 15:00 tại Việt Nam. Vui lòng chọn ngày giao khác.";
+    const startHour = Number(deliveryTime.slice(0, 2));
+    if (startHour <= localNow.hour) {
+        return "Khung giờ giao đã bắt đầu. Vui lòng chọn khung giờ sau hoặc ngày khác.";
+    }
+    return "";
+}
+
+function getEnabledDeliveryZones(data) {
+    return (Array.isArray(data?.zones) ? data.zones : [])
+        .filter((zone) => zone && zone.enabled === true
+            && typeof zone.id === "string"
+            && typeof zone.province === "string"
+            && typeof zone.district === "string"
+            && Number.isSafeInteger(zone.fee) && zone.fee >= 0);
+}
+
+function resolveDeliveryZone(data, zoneId) {
+    if (!zoneId) return { zone: null, shippingFee: 0 };
+    const zone = getEnabledDeliveryZones(data).find((item) => item.id === zoneId);
+    if (!zone) {
+        const error = new Error("Khu vực giao hàng không còn khả dụng. Hãy chọn lại khu vực.");
+        error.code = "delivery-zone-unavailable";
+        throw error;
+    }
+    return { zone, shippingFee: zone.fee };
 }
 
 function aggregateItems(items) {
@@ -179,11 +238,14 @@ function validateCheckout(body = {}) {
     const customerName = String(body.customerName || "").trim();
     const phone = String(body.phone || "").trim();
     const address = String(body.address || "").trim();
-    const recipientName = String(body.recipientName || customerName).trim();
-    const recipientPhone = String(body.recipientPhone || phone).trim();
+    const customerIsRecipient = body.customerIsRecipient === true;
+    const recipientName = customerIsRecipient ? customerName : String(body.recipientName || customerName).trim();
+    const recipientPhone = customerIsRecipient ? phone : String(body.recipientPhone || phone).trim();
     const deliveryDate = String(body.deliveryDate || "").trim();
     const deliveryTime = String(body.deliveryTime || "").trim();
     const greetingCard = String(body.greetingCard || "").trim();
+    const anonymousGreetingCard = body.anonymousGreetingCard === true;
+    const deliveryZoneId = String(body.deliveryZoneId || "").trim();
     const giftWrap = String(body.giftWrap || "none");
     const paymentMethod = String(body.paymentMethod || "");
     const promotionId = String(body.promotionId || "").trim();
@@ -191,7 +253,6 @@ function validateCheckout(body = {}) {
     const items = body.items;
     const expectedTotals = body.expectedTotals;
     const deliveryDateTimestamp = Date.parse(`${deliveryDate}T00:00:00Z`);
-    const todayUtc = new Date().toISOString().slice(0, 10);
 
     if (!customerName || customerName.length > 100
         || !address || address.length > 500
@@ -201,15 +262,15 @@ function validateCheckout(body = {}) {
         || !/^\d{4}-\d{2}-\d{2}$/.test(deliveryDate)
         || !Number.isFinite(deliveryDateTimestamp)
         || new Date(deliveryDateTimestamp).toISOString().slice(0, 10) !== deliveryDate
-        || deliveryDate < todayUtc
-        || !["08:00–12:00", "12:00–16:00", "16:00–20:00"].includes(deliveryTime)
+        || !DELIVERY_TIME_WINDOWS.includes(deliveryTime)
+        || !/^[A-Za-z0-9_-]{1,80}$/.test(deliveryZoneId)
         || greetingCard.length > 300
         || !["none", "pastel", "classic"].includes(giftWrap)
         || !["qr", "cod"].includes(paymentMethod)
         || !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(idempotencyKey)
         || promotionId.length > 100
         || !expectedTotals
-        || !["subtotal", "savings", "tax", "total"].every((key) => (
+        || !["subtotal", "savings", "tax", "shippingFee", "total"].every((key) => (
             Number.isSafeInteger(expectedTotals[key]) && expectedTotals[key] >= 0
         ))
         || !Array.isArray(items) || items.length < 1 || items.length > 50) {
@@ -237,9 +298,12 @@ function validateCheckout(body = {}) {
         address,
         recipientName,
         recipientPhone,
+        customerIsRecipient,
         deliveryDate,
         deliveryTime,
         greetingCard,
+        anonymousGreetingCard,
+        deliveryZoneId,
         giftWrap,
         paymentMethod,
         promotionId,
@@ -252,7 +316,10 @@ function validateCheckout(body = {}) {
 
 function validateQuote(body = {}) {
     const promotionId = String(body.promotionId || "").trim();
-    if (promotionId.length > 100 || !Array.isArray(body.items) || body.items.length < 1 || body.items.length > 50) return null;
+    const deliveryZoneId = String(body.deliveryZoneId || "").trim();
+    if (promotionId.length > 100
+        || (deliveryZoneId && !/^[A-Za-z0-9_-]{1,80}$/.test(deliveryZoneId))
+        || !Array.isArray(body.items) || body.items.length < 1 || body.items.length > 50) return null;
     const seenIds = new Set();
     const items = [];
     for (const item of body.items) {
@@ -265,7 +332,7 @@ function validateQuote(body = {}) {
         if (!options) return null;
         items.push({ id, quantity, ...options });
     }
-    return { items, promotionId };
+    return { items, promotionId, deliveryZoneId };
 }
 
 // The active promotion a checkout asked for, or null when it asked for none. Throws
@@ -309,10 +376,12 @@ async function quoteOrder(req, res) {
         const db = getAdminFirestore();
         await releaseExpiredReservations(db);
         const productRefs = quote.items.map((item) => db.collection("products").doc(item.productId ?? item.id));
-        const [products, promotionsSnapshot] = await Promise.all([
+        const [products, promotionsSnapshot, deliverySnapshot] = await Promise.all([
             db.getAll(...productRefs),
-            db.collection("metadata").doc("activePromotions").get()
+            db.collection("metadata").doc("activePromotions").get(),
+            db.collection("metadata").doc("deliveryZones").get()
         ]);
+        const { zone, shippingFee } = resolveDeliveryZone(deliverySnapshot.data(), quote.deliveryZoneId);
         // Report every product that cannot be sold in the asked quantity, with what is left, so the
         // checkout can tell the customer exactly what to change.
         const shortages = [];
@@ -342,8 +411,16 @@ async function quoteOrder(req, res) {
         }
         const promotions = Array.isArray(promotionsSnapshot.data()?.items) ? promotionsSnapshot.data().items : [];
         const { subtotal, savings } = priceCart(cart, findPromotion(promotions, quote.promotionId));
+        const totals = { subtotal, savings, tax: 0, shippingFee, total: subtotal - savings + shippingFee };
         return res.status(200).json({
-            totals: { subtotal, savings, tax: 0, total: subtotal - savings },
+            totals,
+            deliveryZone: zone ? {
+                id: zone.id,
+                province: zone.province,
+                district: zone.district,
+                fee: zone.fee
+            } : null,
+            deliveryZonesConfigured: getEnabledDeliveryZones(deliverySnapshot.data()).length > 0,
             items: cart.map((item) => ({
                 id: item.id,
                 ...bouquet.normalize(item),
@@ -355,7 +432,7 @@ async function quoteOrder(req, res) {
             }))
         });
     } catch (error) {
-        if (["invalid-promotion", "insufficient-stock", "product-unavailable"].includes(error.code)) {
+        if (["invalid-promotion", "insufficient-stock", "product-unavailable", "delivery-zone-unavailable"].includes(error.code)) {
             return sendError(res, 409, error.code, error.message);
         }
         console.error("Order quote failed:", error.code || error.message);
@@ -389,6 +466,7 @@ async function createOrder(req, res) {
         const idempotencyRef = db.collection("orderRequests").doc(checkout.idempotencyKey);
         const productRefs = checkout.items.map((item) => db.collection("products").doc(item.productId ?? item.id));
         const promotionsRef = db.collection("metadata").doc("activePromotions");
+        const deliveryZonesRef = db.collection("metadata").doc("deliveryZones");
         const now = new Date();
         const requestHash = createHash("sha256").update(JSON.stringify({
             ...checkout, orderNote: String(req.body.orderNote || "").trim(), uid: user?.uid || ""
@@ -415,14 +493,26 @@ async function createOrder(req, res) {
                     id: previousOrder.id,
                     subtotal: previousData.subtotal,
                     savings: previousData.savings,
+                    shippingFee: Number(previousData.shippingFee) || 0,
                     total: previousData.total
                 };
             }
+            const scheduleError = deliveryScheduleError(checkout.deliveryDate, checkout.deliveryTime);
+            if (scheduleError) {
+                const error = new Error(scheduleError);
+                error.code = "invalid-delivery-schedule";
+                throw error;
+            }
 
-            const [productSnapshots, promotionSnapshot] = await Promise.all([
+            const [productSnapshots, promotionSnapshot, deliveryZonesSnapshot] = await Promise.all([
                 transaction.getAll(...productRefs),
-                transaction.get(promotionsRef)
+                transaction.get(promotionsRef),
+                transaction.get(deliveryZonesRef)
             ]);
+            const { zone: deliveryZone, shippingFee } = resolveDeliveryZone(
+                deliveryZonesSnapshot.data(),
+                checkout.deliveryZoneId
+            );
 
             const products = checkout.items.map((item, index) => {
                 const snapshot = productSnapshots[index];
@@ -447,10 +537,11 @@ async function createOrder(req, res) {
                 : [];
             const promotion = findPromotion(promotions, checkout.promotionId);
             const { subtotal, savings } = priceCart(products, promotion);
-            const total = subtotal - savings;
+            const total = subtotal - savings + shippingFee;
             if (checkout.expectedTotals.subtotal !== subtotal
                 || checkout.expectedTotals.savings !== savings
                 || checkout.expectedTotals.tax !== 0
+                || checkout.expectedTotals.shippingFee !== shippingFee
                 || checkout.expectedTotals.total !== total) {
                 const error = new Error("Giá hoặc tồn kho vừa thay đổi. Hãy tải lại báo giá trước khi xác nhận.");
                 error.code = "price-changed";
@@ -477,9 +568,14 @@ async function createOrder(req, res) {
                 address: checkout.address,
                 recipientName: checkout.recipientName,
                 recipientPhone: checkout.recipientPhone,
+                customerIsRecipient: checkout.customerIsRecipient,
                 deliveryDate: checkout.deliveryDate,
                 deliveryTime: checkout.deliveryTime,
+                deliveryZoneId: deliveryZone.id,
+                deliveryProvince: deliveryZone.province,
+                deliveryDistrict: deliveryZone.district,
                 greetingCard: checkout.greetingCard,
+                anonymousGreetingCard: checkout.anonymousGreetingCard,
                 giftWrap: checkout.giftWrap,
                 createdAt: FieldValue.serverTimestamp(),
                 status: initialStatus,
@@ -489,6 +585,7 @@ async function createOrder(req, res) {
                 subtotal,
                 savings,
                 tax: 0,
+                shippingFee,
                 total,
                 paymentMethod: checkout.paymentMethod,
                 paymentStatus: checkout.paymentMethod === "qr" ? "Chờ xác minh thanh toán" : "Thanh toán khi nhận hàng",
@@ -525,14 +622,15 @@ async function createOrder(req, res) {
         return res.status(201).json({ order: { id: order.id }, totals: {
             subtotal: order.subtotal,
             savings: order.savings,
+            shippingFee: order.shippingFee,
             total: order.total
         } });
     } catch (error) {
         if (String(error.code || "").startsWith("auth/")) {
             return sendError(res, 401, "unauthenticated", "Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại rồi đặt hàng.");
         }
-        if (["invalid-checkout", "invalid-promotion", "insufficient-stock", "product-unavailable", "price-changed", "idempotency-conflict"].includes(error.code)) {
-            const status = error.code === "invalid-checkout" ? 400 : 409;
+        if (["invalid-checkout", "invalid-delivery-schedule", "invalid-promotion", "insufficient-stock", "product-unavailable", "price-changed", "idempotency-conflict", "delivery-zone-unavailable"].includes(error.code)) {
+            const status = ["invalid-checkout", "invalid-delivery-schedule"].includes(error.code) ? 400 : 409;
             return sendError(res, status, error.code, error.message);
         }
         console.error("Order creation failed:", error.code || error.message);
@@ -691,6 +789,11 @@ module.exports.internals = {
     priceCart,
     validateCheckout,
     validateQuote,
+    deliveryScheduleError,
+    getVietnameseDateTime,
+    getEnabledDeliveryZones,
+    resolveDeliveryZone,
+    DELIVERY_TIME_WINDOWS,
     publicTrackingOrder,
     reviewIdForOrder,
     MAX_ORDER_NOTE_LENGTH

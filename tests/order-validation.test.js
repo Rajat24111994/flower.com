@@ -3,10 +3,18 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const { internals } = require("../flower.com/api/orders.js");
 
-const { validateCheckout, validateQuote, normalizePhone, aggregateItems, publicTrackingOrder, reviewIdForOrder } = internals;
+const {
+    validateCheckout, validateQuote, normalizePhone, aggregateItems, publicTrackingOrder,
+    reviewIdForOrder, deliveryScheduleError, resolveDeliveryZone
+} = internals;
 
 function tomorrow() {
-    return new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    return new Intl.DateTimeFormat("en-CA", {
+        timeZone: "Asia/Ho_Chi_Minh",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit"
+    }).format(new Date(Date.now() + 48 * 60 * 60 * 1000));
 }
 
 function checkout(overrides = {}) {
@@ -15,10 +23,11 @@ function checkout(overrides = {}) {
         phone: "0908 123 456",
         address: "147 Lê Lợi, Quận 1",
         deliveryDate: tomorrow(),
-        deliveryTime: "08:00–12:00",
+        deliveryTime: "08:00–11:00",
+        deliveryZoneId: "zone-one",
         paymentMethod: "cod",
         idempotencyKey: "1b4e28ba-2fa1-4d3b-a3f5-ef19b5a7633b",
-        expectedTotals: { subtotal: 100, savings: 0, tax: 0, total: 100 },
+        expectedTotals: { subtotal: 100, savings: 0, tax: 0, shippingFee: 0, total: 100 },
         items: [{ id: "1", quantity: 2 }],
         ...overrides
     };
@@ -48,14 +57,49 @@ test("validateCheckout() từ chối thông tin khách thiếu hoặc sai", () =
         { recipientPhone: "12" },
         { paymentMethod: "card" },
         { idempotencyKey: "not-a-uuid" },
-        { deliveryDate: "2020-01-01" },
         { deliveryDate: "2026-02-30" },
         { deliveryTime: "23:00" },
+        { deliveryZoneId: "" },
         { giftWrap: "gold" },
         { greetingCard: "x".repeat(301) }
     ]) {
         assert.equal(validateCheckout(checkout(overrides)), null, JSON.stringify(overrides));
     }
+});
+
+test("lịch giao dùng giờ Việt Nam, chặn quá khứ, khung đã bắt đầu và sau cutoff 15:00", () => {
+    assert.equal(deliveryScheduleError("2030-01-01", "14:00–17:00", new Date("2030-01-01T04:59:00Z")), "");
+    assert.match(deliveryScheduleError("2030-01-01", "11:00–14:00", new Date("2030-01-01T04:59:00Z")), /đã bắt đầu/);
+    assert.match(deliveryScheduleError("2030-01-01", "17:00–20:00", new Date("2030-01-01T08:00:00Z")), /15:00/);
+    assert.match(deliveryScheduleError("2030-01-01", "08:00–11:00", new Date("2030-01-02T00:00:00Z")), /quá khứ/);
+    assert.equal(deliveryScheduleError("2030-01-02", "08:00–11:00", new Date("2030-01-01T08:00:00Z")), "");
+    assert.match(deliveryScheduleError("2020-01-01", "08:00–11:00"), /quá khứ/);
+});
+
+test("validateCheckout() bảo toàn người đặt khi là người nhận và tùy chọn ẩn tên thiệp", () => {
+    const result = validateCheckout(checkout({
+        customerIsRecipient: true,
+        recipientName: "Tên khác",
+        recipientPhone: "0900000000",
+        anonymousGreetingCard: true
+    }));
+    assert.equal(result.customerIsRecipient, true);
+    assert.equal(result.recipientName, "Nguyễn Văn A");
+    assert.equal(result.recipientPhone, "0908 123 456");
+    assert.equal(result.anonymousGreetingCard, true);
+});
+
+test("phí giao hàng chỉ lấy từ khu vực đang bật trên máy chủ", () => {
+    const config = { zones: [
+        { id: "zone-one", province: "Tỉnh A", district: "Quận A", fee: 0, enabled: true },
+        { id: "zone-two", province: "Tỉnh B", district: "Quận B", fee: 45000, enabled: false }
+    ] };
+    assert.deepEqual(resolveDeliveryZone(config, "zone-one"), {
+        zone: config.zones[0],
+        shippingFee: 0
+    });
+    assert.throws(() => resolveDeliveryZone(config, "zone-two"), { code: "delivery-zone-unavailable" });
+    assert.deepEqual(resolveDeliveryZone(config, ""), { zone: null, shippingFee: 0 });
 });
 
 test("validateCheckout() từ chối danh sách sản phẩm và tổng tiền sai", () => {
@@ -76,7 +120,11 @@ test("validateCheckout() từ chối danh sách sản phẩm và tổng tiền s
 });
 
 test("validateQuote() kiểm tra sản phẩm giống như khi đặt hàng", () => {
-    assert.deepEqual(validateQuote({ items: [{ id: 6, quantity: "3" }] }), { items: [{ id: "6", quantity: 3 }], promotionId: "" });
+    assert.deepEqual(validateQuote({ items: [{ id: 6, quantity: "3" }] }), {
+        items: [{ id: "6", quantity: 3 }],
+        promotionId: "",
+        deliveryZoneId: ""
+    });
     assert.equal(validateQuote({ items: [{ id: "6", quantity: -1 }] }), null);
     assert.equal(validateQuote({}), null);
 });
@@ -99,7 +147,11 @@ test("tra cứu công khai không lộ tên, số điện thoại, địa chỉ"
         trackingHistory: [{ status: "Đang giao", location: "Kho", updatedAt: "2026-10-26T00:00:00Z" }]
     });
     assert.equal(order.privacyLimited, true);
-    for (const key of ["customerName", "phone", "address", "total", "items"]) assert.equal(order[key], undefined, key);
+    for (const key of [
+        "customerName", "phone", "address", "total", "items", "recipientName",
+        "recipientPhone", "greetingCard", "deliveryProvince", "deliveryDistrict",
+        "shippingFee", "customerIsRecipient", "anonymousGreetingCard"
+    ]) assert.equal(order[key], undefined, key);
 });
 
 test("tra cứu công khai chỉ hiện thông tin chuyển khoản cho đơn QR đang chờ tiền", () => {

@@ -9,7 +9,7 @@
   <link rel="icon" type="image/svg+xml" href="./favicon.svg">
   <title>Xác nhận đơn hàng</title>
   <link rel="stylesheet" href="./store-header.css?v=2">
-  <link rel="stylesheet" href="./cart.css?v=2">
+  <link rel="stylesheet" href="./cart.css?v=3">
   <link rel="stylesheet" href="./accessibility.css?v=1">
   <link rel="stylesheet" href="./store-footer.css?v=3">
 <link rel="stylesheet" href="./contact-tools.css?v=2">
@@ -18,11 +18,12 @@
 <body>
   <script src="./store-header.js?v=4"></script>
 
-  <main class="nav">
+  <main class="nav order-review-page">
     <div id="product-container"></div>
 
     <section class="order-review" aria-labelledby="order-review-title">
       <h1 id="order-review-title">Kiểm tra thông tin giao hoa</h1>
+      <p class="order-review-empty" id="order-review-empty" hidden>Chưa có thông tin đơn hàng để xác nhận. Hãy quay lại trang thanh toán để nhập thông tin giao hàng và kiểm tra đơn của bạn.</p>
       <dl id="order-review-details"></dl>
       <div id="order-review-totals"></div>
     </section>
@@ -39,7 +40,7 @@
   <script src="./bouquet-options.js?v=1"></script>
   <script src="./currency.js?v=11"></script>
   <script src="./product-names.js?v=2"></script>
-  <script src="./order-store.js?v=15"></script>
+  <script src="./order-store.js?v=17"></script>
   <script>
     let CartContainer = document.getElementById("product-container");
     let pendingSubmission = FlowerSafeStorage.readJson("flowerPendingOrder", { fallback: null });
@@ -53,10 +54,12 @@
       fallback: null,
       validate: (value) => value !== null && typeof value === "object" && !Array.isArray(value)
     });
+    document.querySelector(".nav").classList.toggle("is-empty", !checkoutData);
     const paymentButton = document.querySelector(".placeorder > button");
     const paymentNote = document.getElementById("payment-confirmation-note");
     const reviewDetails = document.getElementById("order-review-details");
     const reviewTotals = document.getElementById("order-review-totals");
+    document.getElementById("order-review-empty").hidden = Boolean(checkoutData);
     let serverQuote = null;
     document.getElementById("retry-quote").addEventListener("click", verifyOrderBeforeConfirmation);
     let orderSubmissionInProgress = false;
@@ -64,11 +67,14 @@
     if (checkoutData) {
       const fields = [
         ["Người đặt", checkoutData.customerName], ["Điện thoại", checkoutData.phone],
-        ["Địa chỉ giao", checkoutData.address], ["Người nhận", checkoutData.recipientName || checkoutData.customerName],
+        ["Địa chỉ giao", checkoutData.address],
+        ["Người nhận", checkoutData.customerIsRecipient ? "Người đặt (tôi là người nhận)" : checkoutData.recipientName || checkoutData.customerName],
         ["Thanh toán", checkoutData.paymentMethod === "qr" ? "Chuyển khoản QR" : "Thanh toán khi nhận hàng"],
         ["Điện thoại người nhận", checkoutData.recipientPhone || checkoutData.phone],
+        ["Khu vực giao hàng", [checkoutData.deliveryDistrict, checkoutData.deliveryProvince].filter(Boolean).join(", ")],
         ["Ngày giao", checkoutData.deliveryDate], ["Khung giờ", checkoutData.deliveryTime],
         ["Thiệp chúc mừng", checkoutData.greetingCard || "Không có"],
+        ["Ẩn tên người gửi trên thiệp", checkoutData.anonymousGreetingCard ? "Có" : "Không"],
         ["Gói quà", checkoutData.giftWrap === "pastel" ? "Pastel, ruy băng kem" : checkoutData.giftWrap === "classic" ? "Kraft, ruy băng đỏ" : "Không yêu cầu"],
         ["Ghi chú giao hàng", checkoutData.orderNote || "Không có"]
       ];
@@ -81,6 +87,9 @@
         row.append(term, description);
         reviewDetails.append(row);
       });
+      const quotedTotals = pendingSubmission?.totals || checkoutData.quotedTotals || {};
+      const shippingFee = Number(quotedTotals.shippingFee) || 0;
+      reviewTotals.textContent = `Phí giao hàng: ${formatVnd(shippingFee)} · Tổng dự kiến: ${formatVnd(quotedTotals.total || 0)} · Sẽ xác minh lại trước khi gửi đơn.`;
     }
     if (checkoutData?.paymentMethod === "qr") {
       paymentButton.textContent = "Gửi đơn hàng chờ xác minh";
@@ -99,7 +108,7 @@
         window.location.assign("./checkout.html");
         return;
       }
-      if (!checkoutData.deliveryDate || !checkoutData.deliveryTime) {
+      if (!checkoutData.deliveryDate || !checkoutData.deliveryTime || !checkoutData.deliveryZoneId) {
         alert("Vui lòng quay lại chọn ngày và khung giờ giao hoa.");
         window.location.assign("./checkout.html");
         return;
@@ -116,9 +125,14 @@
         address,
         recipientName: checkoutData.recipientName || customerName,
         recipientPhone: checkoutData.recipientPhone || phone,
+        customerIsRecipient: checkoutData.customerIsRecipient === true,
         deliveryDate: checkoutData.deliveryDate,
         deliveryTime: checkoutData.deliveryTime,
+        deliveryZoneId: checkoutData.deliveryZoneId,
+        deliveryProvince: checkoutData.deliveryProvince || "",
+        deliveryDistrict: checkoutData.deliveryDistrict || "",
         greetingCard: checkoutData.greetingCard || "",
+        anonymousGreetingCard: checkoutData.anonymousGreetingCard === true,
         giftWrap: checkoutData.giftWrap || "none",
         orderNote: String(checkoutData.orderNote || "").trim(),
         paymentMethod: checkoutData.paymentMethod,
@@ -139,7 +153,7 @@
         console.error("Không thể lưu đơn hàng tập trung:", error);
         orderSubmissionInProgress = false;
         paymentButton.disabled = false;
-        if (["insufficient-stock", "product-unavailable", "price-changed", "invalid-checkout", "invalid-promotion", "note-too-long"].includes(error.code)) {
+        if (["insufficient-stock", "product-unavailable", "price-changed", "invalid-checkout", "invalid-delivery-schedule", "delivery-zone-unavailable", "invalid-promotion", "note-too-long"].includes(error.code)) {
           if (FlowerSafeStorage.remove("flowerPendingOrder")) pendingSubmission = null;
           serverQuote = null;
           paymentButton.disabled = true;
@@ -164,8 +178,11 @@
     async function verifyOrderBeforeConfirmation() {
       document.getElementById("retry-quote").hidden = true;
       if (pendingSubmission?.order?.idempotencyKey === checkoutData?.idempotencyKey && pendingSubmission?.order) {
-        serverQuote = { totals: pendingSubmission.totals };
-        reviewTotals.textContent = `Tổng thanh toán: ${formatVnd(pendingSubmission.totals.total)}`;
+        serverQuote = {
+          totals: pendingSubmission.totals,
+          deliveryZone: { id: pendingSubmission.order.deliveryZoneId }
+        };
+        reviewTotals.textContent = `Phí giao hàng: ${formatVnd(pendingSubmission.totals.shippingFee || 0)} · Tổng thanh toán: ${formatVnd(pendingSubmission.totals.total)}`;
         paymentNote.textContent = "Lần gửi trước chưa nhận được kết quả. Bấm xác nhận để thử lại cùng yêu cầu, không tạo thêm đơn.";
         paymentButton.disabled = false;
         return;
@@ -178,7 +195,8 @@
       try {
         serverQuote = await window.FlowerOrderStore.quote(
           Cart.map((item) => ({ id: item.id, productId: item.productId, size: item.size, color: item.color, cardMessage: item.cardMessage, personalNote: item.personalNote, quantity: Math.max(1, Number(item.quantity) || 1) })),
-          checkoutData?.promotionId || ""
+          checkoutData?.promotionId || "",
+          checkoutData?.deliveryZoneId || ""
         );
         serverQuote.items.forEach((quotedItem) => {
           const cartItem = Cart.find((item) => String(item.id) === String(quotedItem.id));
@@ -187,10 +205,10 @@
           cartItem.image = quotedItem.image;
           cartItem.price = quotedItem.price;
         });
-        reviewTotals.textContent = `Tiền hàng ${formatVnd(serverQuote.totals.subtotal)} · Giảm ${formatVnd(serverQuote.totals.savings)} · Giao hàng miễn phí · Tổng thanh toán ${formatVnd(serverQuote.totals.total)}`;
+        reviewTotals.textContent = `Tiền hàng ${formatVnd(serverQuote.totals.subtotal)} · Giảm ${formatVnd(serverQuote.totals.savings)} · Phí giao hàng ${formatVnd(serverQuote.totals.shippingFee || 0)} · Tổng thanh toán ${formatVnd(serverQuote.totals.total)}`;
         DisplayProduct();
         const previousQuote = checkoutData?.quotedTotals;
-        const amountChanged = previousQuote && ["subtotal", "savings", "tax", "total"].some(
+        const amountChanged = previousQuote && ["subtotal", "savings", "tax", "shippingFee", "total"].some(
           (key) => Number(previousQuote[key]) !== Number(serverQuote.totals[key])
         );
         if (amountChanged || (!previousQuote && checkoutData?.paymentMethod === "qr")) {

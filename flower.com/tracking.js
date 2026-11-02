@@ -222,13 +222,21 @@ function renderOrder(order) {
     document.querySelector(".order-details").hidden = order.privacyLimited === true;
     document.querySelector(".tracking-details").classList.toggle("is-privacy-limited", order.privacyLimited === true);
     document.getElementById("tracking-privacy-note").hidden = order.privacyLimited !== true;
+    document.getElementById("result-sender").textContent = order.customerName || "Chưa cập nhật";
+    document.getElementById("result-sender-phone").textContent = maskPhone(order.phone);
     document.getElementById("result-customer").textContent = order.recipientName || order.customerName || "Chưa cập nhật";
+    document.getElementById("result-self-recipient").textContent = order.customerIsRecipient === true ? "Có" : "Không";
     document.getElementById("result-phone").textContent = maskPhone(order.recipientPhone || order.phone);
     document.getElementById("result-address").textContent = order.address || "Chưa cập nhật";
+    document.getElementById("result-delivery-zone").textContent = [order.deliveryDistrict, order.deliveryProvince].filter(Boolean).join(", ") || "Chưa cập nhật";
     document.getElementById("result-delivery-date").textContent = formatDate(order.deliveryDate, false);
     document.getElementById("result-delivery-time").textContent = order.deliveryTime || "";
     document.getElementById("result-greeting-card").textContent = order.greetingCard || "";
+    document.getElementById("result-anonymous-greeting").textContent = order.anonymousGreetingCard === true ? "Có" : "Không";
     document.getElementById("result-gift-wrap").textContent = order.giftWrap || "";
+    const formatVnd = (amount) => new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(Number(amount) || 0);
+    document.getElementById("result-shipping-fee").textContent = formatVnd(order.shippingFee);
+    document.getElementById("result-total").textContent = formatOrderTotal(order);
     document.getElementById("result-order-note").textContent = order.orderNote || "";
     document.getElementById("result-payment-status").textContent = order.paymentMethod === "qr"
         ? (["Hết hạn chờ thanh toán", "Đã thanh toán"].includes(order.paymentStatus) ? order.paymentStatus : "Chờ cửa hàng xác minh")

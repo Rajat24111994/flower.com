@@ -34,6 +34,7 @@ const catalog = JSON.parse(fs.readFileSync(path.join(ROOT, "flower.json"), "utf8
 
 const handlers = {
     orders: require(path.join(ROOT, "api/orders.js")),
+    deliveryZones: require(path.join(ROOT, "api/delivery-zones.js")),
     products: require(path.join(ROOT, "api/products.js")),
     adminUsers: require(path.join(ROOT, "api/admin/users.js")),
     ownerUsers: require(path.join(ROOT, "api/owner/users.js"))
@@ -67,6 +68,9 @@ async function callApi(name, { method = "POST", body, query = {}, token, headers
 async function resetEmulators() {
     await fetch(`http://${FIRESTORE_HOST}/emulator/v1/projects/${PROJECT_ID}/databases/(default)/documents`, { method: "DELETE" });
     await fetch(`http://${AUTH_HOST}/emulator/v1/projects/${PROJECT_ID}/accounts`, { method: "DELETE" });
+    await getAdminFirestore().doc("metadata/deliveryZones").set({
+        zones: [{ id: "test-zone", province: "Test Province", district: "Test District", fee: 0, enabled: true }]
+    });
 }
 
 async function seedProducts(quantities = {}) {
@@ -115,7 +119,7 @@ function deliveryDate() {
 
 // Quotes then places an order the way checkout.html does. Returns { status, body, quote }.
 async function placeOrder({ items = [{ id: "1", quantity: 1 }], paymentMethod = "cod", promotionId = "", token, overrides = {} } = {}) {
-    const quote = await callApi("orders", { body: { action: "quote", items, promotionId } });
+    const quote = await callApi("orders", { body: { action: "quote", items, promotionId, deliveryZoneId: "test-zone" } });
     if (quote.status !== 200) return { ...quote, quote };
     const result = await callApi("orders", {
         token,
@@ -124,7 +128,8 @@ async function placeOrder({ items = [{ id: "1", quantity: 1 }], paymentMethod = 
             phone: "0908123456",
             address: "147 Lê Lợi, Quận 1",
             deliveryDate: deliveryDate(),
-            deliveryTime: "08:00–12:00",
+            deliveryTime: "08:00–11:00",
+            deliveryZoneId: "test-zone",
             paymentMethod,
             promotionId,
             idempotencyKey: randomUUID(),
