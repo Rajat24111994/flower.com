@@ -58,13 +58,6 @@
     gap:8px;
     min-width:0;
 }
-.boxcontainer img{
-    margin: auto;
-    width:8%;
-    height:150px;
-    transition: .05;
-    border: 1px solid rgb(0, 0, 0);
-}
 #container img:hover{
     transform: scale(1.1);
 }
@@ -104,7 +97,6 @@ h1{
     text-align: center;
 }
 
-
 select{
     padding: 2px;
 }
@@ -120,8 +112,6 @@ select{
     min-height:36px;
 }
 
-
-
 #sidebar{
     /* border: 2px solid; */
     width: 20%;
@@ -136,11 +126,6 @@ select{
     /* background-color: aqua; */
     background-image: url("./images/flower-04.webp");
 }
-.canvaimage{
-    width: 210px;
-    height: 250px;
-    zoom: 50px;
-}
 
 @media only screen and (max-width: 1000px) {
     #container{
@@ -154,15 +139,6 @@ select{
         row-gap: 30px;
         /* border: 3px solid; */
     }
-    .boxcontainer img{
-        margin: auto;
-        width:7%;
-        height:150px;
-        display: flex;
-        flex: wrap;
-        transition: .05;
-        border: 1px solid rgb(0, 0, 0);
-    }
     #sidebar{
         width: 20%;
         /* border: 2px solid; */
@@ -172,15 +148,11 @@ select{
         /* background-color: aqua; */
         background-image: url("./images/flower-04.webp");
     }
-    .canvaimage{
-       display: none;
-    }
    
     #sidebar select{
         width: 80%;
     }
 }
-
 
 @media only screen and (max-width: 600px) {
     #container{
@@ -194,13 +166,6 @@ select{
         row-gap: 30px;
         /* border: 3px solid; */
     }
-    .boxcontainer img{
-        margin: auto;
-        width:5%;
-        height:150px;
-        transition: .05;
-        border: 1px solid rgb(0, 0, 0);
-    }
     #sidebar{
         width: 20%;
         /* border: 2px solid; */
@@ -211,10 +176,6 @@ select{
         /* background-color: aqua; */
         background-image: url("./images/flower-04.webp");
     }
-
-.canvaimage{
-   display: none;
-}
 
 #sidebar select{
     width: 80%;

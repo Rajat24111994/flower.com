@@ -850,10 +850,6 @@ function getFlowerTypes(product) {
   return types.length === 1 ? types : [...types, "mixed"]
 }
 
-function productHasFlowerType(product, type) {
-  return getFlowerTypes(product).includes(type)
-}
-
 function getCatalogResults() {
   const minInput = document.getElementById("price-min")
   const maxInput = document.getElementById("price-max")

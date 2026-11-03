@@ -1262,10 +1262,6 @@ function renderReviewCard(review, showCompletionAction = true) {
    `;
 }
 
-function renderCompletedReviewSummary(review) {
-   return renderReviewSummary(review);
-}
-
 function renderActiveReviewSummary(review) {
    return renderReviewSummary(review);
 }

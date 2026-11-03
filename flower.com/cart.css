@@ -422,58 +422,6 @@
   }
 }
 
-.cart-page {
-  width: min(1200px, calc(100% - 48px));
-  margin: 0 auto;
-  padding: 42px 0 64px;
-}
-
-.cart-heading {
-  margin-bottom: 26px;
-}
-
-.cart-heading .cart-eyebrow {
-  margin: 0 0 8px;
-  color: #9b536d;
-  font-size: .72rem;
-  font-weight: 700;
-  letter-spacing: .12em;
-}
-
-.cart-heading h1 {
-  margin: 0;
-  color: #593044;
-  font-family: "Playfair Display", Georgia, serif;
-  font-size: clamp(1.8rem, 3vw, 2.4rem);
-}
-
-.cart-heading > p:last-child {
-  margin: 8px 0 0;
-  color: #766f71;
-}
-
-#headder > .cart-page > .nav {
-  display: grid;
-  width: 100%;
-  grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
-  align-items: start;
-  gap: 28px;
-  margin: 0;
-  padding: 0;
-}
-
-#headder > .cart-page > .nav > .checkout {
-  width: auto;
-  min-width: 0;
-  margin: 0;
-  padding: 24px;
-}
-
-#headder > .cart-page > .nav > #product-container {
-  margin: 0;
-  padding: 0;
-}
-
 .cart-item {
   display: grid;
   grid-template-columns: 150px minmax(0, 1fr);
@@ -623,26 +571,7 @@
   background: #593044;
 }
 
-@media (max-width: 1100px) {
-  .cart-page {
-    width: calc(100% - 48px);
-  }
-
-  #headder > .cart-page > .nav {
-    grid-template-columns: minmax(0, 1fr) minmax(260px, 320px);
-  }
-}
-
 @media (max-width: 800px) {
-  .cart-page {
-    width: calc(100% - 32px);
-    padding: 30px 0 44px;
-  }
-
-  #headder > .cart-page > .nav {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 18px;
-  }
 
   .cart-item {
     grid-template-columns: 110px minmax(0, 1fr);
@@ -660,14 +589,6 @@
 }
 
 @media (max-width: 480px) {
-  .cart-page {
-    width: calc(100% - 24px);
-    padding-top: 24px;
-  }
-
-  .cart-heading {
-    margin-bottom: 18px;
-  }
 
   .cart-item {
     grid-template-columns: 82px minmax(0, 1fr);
@@ -722,7 +643,6 @@
 #order-review-totals { padding-top: 14px; border-top: 1px solid #e9e8df; font-weight: 700; line-height: 1.7; }
 .order-review-vat { margin: 4px 0 0; color: #6b6b63; font-size: 0.9rem; }
 @media (max-width: 560px) { .order-review dl { grid-template-columns: minmax(0, 1fr); } }
-#headder > .cart-page > .nav > #product-container { grid-template-columns: minmax(0, 1fr); }
 .nav > #product-container { grid-template-columns: minmax(0, 1fr); }
 #product-container > .cart-item { text-align: left; }
 #product-container > .cart-item { align-items: start; }

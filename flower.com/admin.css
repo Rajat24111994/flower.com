@@ -146,77 +146,6 @@ main {
     line-height: 1.5;
 }
 
-.revenue-summary {
-    grid-template-columns: repeat(3, minmax(180px, 1fr));
-}
-
-.revenue-card {
-    border-left: 6px solid #f59e0b;
-    background: linear-gradient(180deg, #fffcf5 0%, #fffaf3 100%);
-}
-
-.revenue-filters {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 10px;
-    margin: 0 0 20px;
-    color: var(--gray-700);
-    font-size: 14px;
-    font-weight: 700;
-}
-
-.revenue-filters select,
-.revenue-custom-dates input,
-.revenue-month-picker input {
-    min-height: 40px;
-    padding: 8px 10px;
-    border: 1px solid var(--gray-200);
-    border-radius: 9px;
-    background: #fff;
-    color: var(--gray-700);
-    font: inherit;
-}
-
-.revenue-month-picker {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 8px;
-}
-
-.revenue-month-picker[hidden] {
-    display: none;
-}
-
-.revenue-month-picker label {
-    font-size: 13px;
-}
-
-.revenue-custom-dates {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 8px;
-}
-
-.revenue-custom-dates[hidden] {
-    display: none;
-}
-
-.revenue-custom-dates label {
-    font-size: 13px;
-}
-
-@media (max-width: 600px) {
-    .revenue-filters,
-    .revenue-month-picker,
-    .revenue-custom-dates {
-        align-items: stretch;
-        flex-direction: column;
-    }
-}
-
 .panel h2 {
     font-size: 24px;
     margin-bottom: 18px;
@@ -228,7 +157,6 @@ main {
     gap: 14px;
 }
 
-.list-item,
 .order-item,
 .review-item,
 .message-item {
@@ -314,7 +242,6 @@ main {
     color: #4338ca;
 }
 
-.list-item strong,
 .review-item strong,
 .message-item strong,
 .order-item strong {
@@ -703,13 +630,6 @@ main {
     border-radius: 10px;
     font-size: 14px;
     background: #fff;
-}
-
-.product-form .field-error {
-    margin: -4px 0 8px;
-    color: #b42318;
-    font-size: 13px;
-    font-weight: 600;
 }
 
 .status-select {
