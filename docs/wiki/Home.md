@@ -23,8 +23,8 @@ FlowerFlow giúp khách hàng **tìm, chọn và đặt hoa trong vài phút**, 
 | --- | --- | --- |
 | Tìm và lọc hoa theo loài, dịp, màu, giá | Xác nhận và cập nhật trạng thái đơn | Toàn quyền nhân viên quản lý |
 | Tùy chọn bó hoa, thiệp, gói quà | Quản lý sản phẩm, tồn kho, danh mục | Cấp và thu hồi quyền quản lý |
-| Thanh toán COD, QR hoặc VNPay | Duyệt đánh giá, trả lời lời nhắn | Xuất báo cáo doanh thu ra Excel |
-| Theo dõi đơn, đánh giá kèm ảnh | Xác minh thanh toán QR, xem báo cáo doanh thu | |
+| Thanh toán COD hoặc VNPay | Duyệt đánh giá, trả lời lời nhắn | Xuất báo cáo doanh thu ra Excel |
+| Theo dõi đơn, đánh giá kèm ảnh | Theo dõi thanh toán, xem báo cáo doanh thu | |
 
 ## 🎯 Mục tiêu chính
 
@@ -45,7 +45,7 @@ FlowerFlow giúp khách hàng **tìm, chọn và đặt hoa trong vài phút**, 
 
 ![Vòng đời đơn hàng](https://raw.githubusercontent.com/Longg5048/flower.com/main/docs/wiki/vong-doi-don.png)
 
-> ⏱️ **Thời gian giữ hàng khi chưa thanh toán:** QR 30 phút · VNPay 15 phút · COD 24 giờ. Quá hạn, hàng tự trả lại kho.
+> ⏱️ **Thời gian giữ hàng khi chưa thanh toán:** VNPay 15 phút · COD 24 giờ. Quá hạn, hàng tự trả lại kho.
 
 ## 🧭 Phạm vi
 
