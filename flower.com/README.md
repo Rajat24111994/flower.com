@@ -44,7 +44,8 @@ flowchart LR
 | Header và footer | `store-header.js/.css`, `store-footer.js/.css` | Chèn header (tìm kiếm, tài khoản, yêu thích, đơn hàng, giỏ hàng, menu mobile) và footer cho các trang cửa hàng |
 | Trang chủ | `index.html`, `homepage.css` | Giới thiệu, danh mục nổi bật, điều hướng |
 | Catalog | `product-store.js`, `flower.json` | Đồng bộ catalog do cửa hàng quản lý với Firestore, cache vào `localStorage`, lắng nghe thay đổi theo thời gian thực; không tự nạp sản phẩm mẫu |
-| Tự phối bó | `custom-bouquet.html`, `custom-bouquet.js` | Chọn hoa nguyên liệu và số cành; giá chỉ hợp lệ trong ngày chủ shop cập nhật |
+| Tự phối bó | `custom-bouquet.html`, `custom-bouquet.js` | Chọn loại hoa, số lượng, màu mong muốn, vai trò hoa chính/phụ, bố cục và kiểu gói; xem dự toán, lưu bản nháp hoặc gửi yêu cầu tư vấn |
+| Yêu cầu thiết kế riêng | `design-request.html`, `api/design-requests.js` | Lưu yêu cầu vào Firestore, theo dõi lịch sử, nhận báo giá cửa hàng và chấp nhận/từ chối bằng mã truy cập riêng |
 | Danh mục và chi tiết | `product.html`, `product.js`, `product-categories.js`, `related-products.js` | Tìm kiếm, lọc, sắp xếp; trang chi tiết, thư viện ảnh, gợi ý sản phẩm liên quan |
 | Đánh giá | `review-store.js` | Đọc đánh giá công khai và gửi đánh giá mới (yêu cầu đăng nhập) lên Firestore |
 | Giỏ hàng và yêu thích | `shopping-store.js`, `shopping-sync.js`, `cart.html`, `wish.html` | Lưu ngoại tuyến, đồng bộ Firestore theo UID khi đăng nhập; giá/tồn kho vẫn do API đặt hàng xác minh |
@@ -53,9 +54,9 @@ flowchart LR
 | Tài khoản | `login.*`, `account.*`, `forgot-password.*` | Đăng ký, đăng nhập, khôi phục mật khẩu, hồ sơ |
 | Tiền tệ | `currency.js` | Định dạng giá VND; mọi giá lưu là số nguyên VND (ví dụ `450000`) |
 | Liên hệ | `contact-tools.js/.css` | Thanh liên hệ Facebook và Zalo (ẩn trên trang quản trị) |
-| Quản trị | `admin.html`, `admin.js`, `admin.css` | Sản phẩm, danh mục, ưu đãi, cấu hình khu vực/phí giao, đơn hàng, xác minh QR và xem audit đối soát, doanh thu, đánh giá, lời nhắn, người dùng |
+| Quản trị | `admin.html`, `admin.js`, `admin.css` | Sản phẩm, danh mục, ưu đãi, cấu hình khu vực/phí giao và bậc phí gói bó hoa, xử lý yêu cầu thiết kế/báo giá, đơn hàng, xác minh QR và xem audit đối soát, doanh thu, đánh giá, lời nhắn, người dùng |
 | Owner | `owner.html`, `owner.js` | Cấp hoặc gỡ quyền admin |
-| API | `api/admin/users.js`, `api/owner/users.js`, `api/delivery-zones.js`, `api/orders.js`, `lib/firebase-admin.js` | Quản lý khu vực bằng quyền admin, báo giá/tạo đơn authoritative, tra cứu đơn khách và đối soát thanh toán qua API có xác thực |
+| API | `api/admin/users.js`, `api/owner/users.js`, `api/delivery-zones.js`, `api/bouquet-wrapping.js`, `api/design-requests.js`, `api/orders.js`, `lib/firebase-admin.js` | Quản lý khu vực/phí bó, yêu cầu thiết kế và báo giá bằng quyền admin; báo giá/tạo đơn authoritative, tra cứu đơn khách và đối soát thanh toán qua API có xác thực |
 
 ## Dữ liệu
 
@@ -76,6 +77,8 @@ flowchart LR
 | Phân loại | Firestore `metadata/storeCategories` (bản cache ở `localStorage.flowerCategories`) | ✅ |
 | Ưu đãi | Firestore `metadata/activePromotions` (bản cache ở `localStorage`) | ✅ |
 | Khu vực và phí giao | Firestore `metadata/deliveryZones`, cập nhật qua `/api/delivery-zones` | ✅ |
+| Bậc phí bó hoa | Firestore `metadata/bouquetWrapping`, chủ cửa hàng cấu hình qua `/api/bouquet-wrapping` | ✅ |
+| Yêu cầu thiết kế riêng | Firestore `designRequests`; mã truy cập khách được lưu dạng hash | ✅ |
 | Ảnh sản phẩm tải lên | Firestore `productImages`, tải lên và xem qua `/api/product-images` (chỉ admin được tải lên; ảnh được thu nhỏ còn ≤ 120 KB ngay trên trình duyệt) | ✅ |
 | Phiên đăng nhập | `localStorage.loggedUser` | ❌ |
 
@@ -87,9 +90,13 @@ Phản hồi cũ trong `localStorage.flowerMessages` được chuyển sang Fire
 
 `flower.json` hiện rỗng; website không tự thêm lại sản phẩm đã xóa. Chủ cửa hàng tạo dữ liệu trong **Quản trị → Sản phẩm**:
 
-- **Hoa nguyên liệu**: `saleType: "flower"`, giá VND/cành, tồn kho tính theo cành và ngày cập nhật theo múi giờ Việt Nam. Hoa nguyên liệu chỉ tham gia tạo bó theo yêu cầu; backend từ chối báo giá nếu giá chưa được cập nhật trong ngày.
+- **Hoa nguyên liệu**: `saleType: "flower"`, giá VND/cành, tồn kho tính theo cành và ngày cập nhật theo múi giờ Việt Nam. Khách chọn số cành của từng loại để tạo một bó tùy chỉnh; backend từ chối báo giá nếu giá chưa được cập nhật trong ngày.
 - **Bó làm sẵn**: `saleType: "ready_made"` (mặc định cho dữ liệu cũ), bán đúng giá niêm yết, không nhân giá theo cỡ.
-- Khi khách phối bó, API đọc giá và tồn kho hiện hành từ Firestore, tính lại tổng tiền, giữ tồn kho trong transaction và ghi `orderType`, đơn vị, giá/ngày giá vào ảnh chụp từng dòng trong đơn `orders`. Đổi giá ngày sau không thay đổi đơn cũ.
+- Trong **Quản trị → Giao hàng**, chủ cửa hàng cấu hình các bậc phí gói theo tổng số cành; các mốc phải tăng dần và bậc cuối bao phủ đến 50 cành. Chưa có cấu hình hợp lệ thì khách chưa thể đặt bó tùy chỉnh.
+- API đọc giá, tồn kho và bậc phí hiện hành từ Firestore, tính phí một lần cho mỗi bó, giữ tồn kho trong transaction và lưu số cành, phí gói, nhóm bó, đơn vị, giá/ngày giá vào đơn `orders`. Tổng thanh toán gồm tiền hoa sau giảm giá, phí gói bó và phí giao hàng; đổi giá hoặc bậc phí sau này không thay đổi đơn cũ.
+- Khách có thể gửi yêu cầu thiết kế kèm màu mong muốn, bố cục, sở thích, ngân sách, ghi chú và ảnh tham khảo; cửa hàng xem tồn kho lúc gửi, cập nhật trạng thái và gửi báo giá để khách chấp nhận hoặc từ chối.
+- Tồn kho hiện được quản lý theo loại hoa, chưa tách theo từng màu/biến thể. Phí theo bậc chỉ bao gồm phí gói cơ bản; phụ kiện, lá và chi phí phát sinh được xác nhận trong báo giá cuối. Chưa hỗ trợ nhận tại cửa hàng.
+- Chấp nhận báo giá hiện chuyển yêu cầu sang “Đang thực hiện”; chưa tạo đơn thanh toán thông thường, giữ tồn kho hoặc kích hoạt quy trình thanh toán. Cửa hàng cần theo dõi yêu cầu trong **Quản trị → Yêu cầu thiết kế**.
 
 Firestore vẫn là nguồn dữ liệu chính; `product-store.js` đồng bộ với Firestore, giữ cache `localStorage` khi ngoại tuyến và lắng nghe cập nhật theo thời gian thực. Xóa sản phẩm mẫu khỏi repo không xóa dữ liệu đang có trong Firestore.
 

@@ -9,6 +9,7 @@ let categoriesPage = document.getElementById("categories_page");
 let offersPage = document.getElementById("offers_page");
 let deliveryPage = document.getElementById("delivery_page");
 let ordersPage = document.getElementById("orders_page");
+let designRequestsPage = document.getElementById("design_requests_page");
 let reviewsPage = document.getElementById("reviews_page");
 let messagesPage = document.getElementById("messages_page");
 let revenuePage = document.getElementById("revenue_page");
@@ -38,6 +39,14 @@ let deliveryZonesCache = [];
 let deliveryZonesLoaded = false;
 let deliveryZonesLoading = false;
 let deliveryZonesLoadError = "";
+let bouquetWrappingTiers = [];
+let bouquetWrappingLoaded = false;
+let bouquetWrappingLoading = false;
+let bouquetWrappingLoadError = "";
+let designRequestsCache = [];
+let designRequestsLoading = false;
+let designRequestsLoaded = false;
+let designRequestsLoadError = "";
 let messagesCache = [];
 let stopMessageSubscription = null;
 let reportFilters = { period: "month", month: reportDateKey(new Date()).slice(0, 7), start: "", end: "", lowStock: 5 };
@@ -732,9 +741,32 @@ function renderDeliveryZonesTab() {
                    </div>
                ` : `<div class="empty-state">${deliveryZonesLoadError ? escapeHtml(deliveryZonesLoadError) : "Đang tải cấu hình…"}</div>${deliveryZonesLoadError ? '<button class="secondary-btn" data-delivery-zone-reload type="button">Thử tải lại</button>' : ""}`}
            </div>
+           <div class="panel">
+               <h2>Phí gói bó hoa tùy chỉnh</h2>
+               <p class="category-help">Nhập các mốc số cành tăng dần và phí theo VND. Mốc cuối bắt buộc là 50 cành; phí được tính một lần cho mỗi bó, dựa trên tổng số cành của bó.</p>
+               <p class="delivery-zone-admin-message" id="bouquet-wrapping-admin-message" role="status" aria-live="polite">${escapeHtml(bouquetWrappingLoadError || (bouquetWrappingLoaded && !bouquetWrappingTiers.length ? "Chưa cấu hình phí; khách chưa thể đặt bó tùy chỉnh." : bouquetWrappingLoaded ? "" : "Đang tải cấu hình…"))}</p>
+               ${bouquetWrappingLoaded && !bouquetWrappingLoadError ? `
+                   <form id="bouquet-wrapping-form" class="delivery-zone-form">
+                       <div id="bouquet-wrapping-tiers">
+                           ${(bouquetWrappingTiers.length ? bouquetWrappingTiers : [{ maxStems: "", fee: "" }]).map((tier, index) => `
+                               <div class="delivery-zone-row" data-wrapping-tier>
+                                   <label><span class="field-label">Tối đa số cành</span><input name="maxStems" type="number" min="1" max="50" step="1" value="${escapeHtml(tier.maxStems)}" required></label>
+                                   <label><span class="field-label">Phí gói (₫)</span><input name="fee" type="number" min="0" max="1000000000" step="1" value="${escapeHtml(tier.fee)}" required></label>
+                                   <button class="delete-product" data-wrapping-tier-remove type="button" ${index === 0 ? "disabled" : ""}>Xóa bậc</button>
+                               </div>
+                           `).join("")}
+                       </div>
+                       <div class="product-row-actions">
+                           <button class="secondary-btn" data-wrapping-tier-add type="button">Thêm bậc</button>
+                           <button class="submit-btn" type="submit">Lưu phí bó hoa</button>
+                       </div>
+                   </form>
+               ` : `<div class="empty-state">${escapeHtml(bouquetWrappingLoadError || "Đang tải cấu hình…")}</div>${bouquetWrappingLoadError ? '<button class="secondary-btn" data-wrapping-reload type="button">Thử tải lại</button>' : ""}`}
+           </div>
        </section>
    `;
    if (!deliveryZonesLoaded && !deliveryZonesLoading && !deliveryZonesLoadError) void loadDeliveryZones();
+   if (!bouquetWrappingLoaded && !bouquetWrappingLoading && !bouquetWrappingLoadError) void loadBouquetWrapping();
 }
 
 async function loadDeliveryZones() {
@@ -751,6 +783,133 @@ async function loadDeliveryZones() {
    } finally {
        deliveryZonesLoading = false;
        if (main.querySelector(".delivery-zones-page")) renderDeliveryZonesTab();
+   }
+}
+
+async function loadBouquetWrapping() {
+   bouquetWrappingLoading = true;
+   bouquetWrappingLoadError = "";
+   try {
+       const result = await window.FlowerOrderStore.getBouquetWrapping(true);
+       bouquetWrappingTiers = Array.isArray(result.tiers) ? result.tiers : [];
+       bouquetWrappingLoaded = true;
+   } catch (error) {
+       console.error("Không thể tải cấu hình phí bó hoa:", error);
+       bouquetWrappingLoadError = error.message || "Không thể tải cấu hình phí bó hoa.";
+       bouquetWrappingLoaded = false;
+   } finally {
+       bouquetWrappingLoading = false;
+       if (main.querySelector(".delivery-zones-page")) renderDeliveryZonesTab();
+   }
+}
+
+function renderDesignRequestsTab() {
+   const statuses = ["Chờ tư vấn", "Chờ báo giá", "Chờ khách xác nhận", "Đang thực hiện", "Hoàn thành", "Đã hủy"];
+   main.innerHTML = `
+       <section class="panel-wrap design-requests-page">
+           <div class="panel">
+               <h2>Yêu cầu thiết kế riêng</h2>
+               <p class="category-help">Khách nhận mã truy cập riêng để theo dõi. Kiểm tra nguyên liệu trước khi gửi báo giá; khách chỉ có thể chấp nhận hoặc từ chối khi trạng thái là “Chờ khách xác nhận”.</p>
+               ${designRequestsLoadError ? `<p class="delivery-zone-admin-message" role="status">${escapeHtml(designRequestsLoadError)}</p><button class="secondary-btn" data-design-requests-reload type="button">Thử tải lại</button>` : ""}
+               ${designRequestsLoading && !designRequestsLoaded ? '<p>Đang tải yêu cầu thiết kế…</p>' : ""}
+               ${designRequestsLoaded && !designRequestsLoadError ? designRequestsCache.map((request) => `
+                   <article class="design-request-admin-card">
+                       <header>
+                           <div><h3>Yêu cầu #${escapeHtml(request.id)} · ${escapeHtml(request.customerName)}</h3><p>${escapeHtml(request.phone)} · ${escapeHtml(request.createdAt ? new Date(request.createdAt).toLocaleString("vi-VN") : "")}</p></div>
+                           <strong>${escapeHtml(request.status)}</strong>
+                       </header>
+                       <div class="design-request-admin-details">
+                           <p><b>Giao:</b> ${escapeHtml(request.address)} · ${escapeHtml(request.deliveryDistrict || "")}, ${escapeHtml(request.deliveryProvince || "")} · ${escapeHtml(request.deliveryDate)} · ${escapeHtml(request.deliveryTime)}</p>
+                           <p><b>Hoa:</b> ${(request.stems || []).map((item) => `${escapeHtml(item.title)} × ${Number(item.quantity) || 0} (${escapeHtml(item.color)} · ${item.role === "main" ? "hoa chính" : "hoa phụ"} · tồn lúc gửi ${Number(item.stock) || 0})`).join(", ") || "Khách chọn thiết kế bất ngờ theo ngân sách"}</p>
+                           <p><b>Thiết kế:</b> ${escapeHtml([request.design?.arrangement, request.design?.size, request.design?.wrapStyle, request.design?.paperMaterial, request.design?.paperColor, request.design?.bowStyle, request.design?.bowColor, request.design?.theme, request.design?.style, request.design?.palette].filter(Boolean).join(" · "))}</p>
+                           <p><b>Phụ kiện:</b> ${escapeHtml((request.design?.addons || []).join(", ") || "Không yêu cầu")} · <b>Ngân sách:</b> ${request.design?.budget ? moneyFormat(request.design.budget) : "Không giới hạn"}</p>
+                           <p><b>Dự toán:</b> ${moneyFormat(request.estimatedTotal || 0)} · <b>Ghi chú:</b> ${escapeHtml(request.specialRequest || "Không có")}</p>
+                           ${request.design?.excludedFlowers?.length ? `<p><b>Không dùng:</b> ${escapeHtml(request.design.excludedFlowers.join(", "))}</p>` : ""}
+                           ${request.design?.dislikedFlowers?.length ? `<p><b>Không thích:</b> ${escapeHtml(request.design.dislikedFlowers.join(", "))}</p>` : ""}
+                           ${request.deliveryNote ? `<p><b>Lời nhắn giao hàng:</b> ${escapeHtml(request.deliveryNote)}</p>` : ""}
+                           ${request.referenceImage ? `<img class="design-request-reference-image" src="${escapeHtml(request.referenceImage)}" alt="Ảnh mẫu yêu cầu">` : ""}
+                       </div>
+                       <div class="design-request-admin-fields">
+                           <label>Trạng thái<select data-design-status="${escapeHtml(request.id)}">${statuses.map((status) => `<option ${status === request.status ? "selected" : ""}>${status}</option>`).join("")}</select></label>
+                           <label>Báo giá cuối (₫)<input data-design-total="${escapeHtml(request.id)}" type="number" min="0" max="1000000000" step="1" value="${Number(request.quotedTotal) || ""}"></label>
+                           <label>Ghi chú / đề xuất thay hoa<textarea data-design-quote-note="${escapeHtml(request.id)}" maxlength="1000" rows="2">${escapeHtml(request.quoteNote || "")}</textarea></label>
+                           <button class="secondary-btn" data-design-request-save="${escapeHtml(request.id)}" type="button">Lưu và gửi cập nhật</button>
+                       </div>
+                   </article>
+               `).join("") : ""}
+               ${designRequestsLoaded && !designRequestsLoadError && !designRequestsCache.length ? '<p class="empty-state">Chưa có yêu cầu thiết kế nào.</p>' : ""}
+           </div>
+       </section>
+   `;
+   if (!designRequestsLoaded && !designRequestsLoading && !designRequestsLoadError) void loadDesignRequests();
+}
+
+async function loadDesignRequests() {
+   designRequestsLoading = true;
+   designRequestsLoadError = "";
+   try {
+       const result = await window.FlowerOrderStore.getDesignRequests();
+       designRequestsCache = Array.isArray(result.requests) ? result.requests : [];
+       designRequestsLoaded = true;
+   } catch (error) {
+       console.error("Không thể tải yêu cầu thiết kế:", error);
+       designRequestsLoadError = error.message || "Không thể tải yêu cầu thiết kế.";
+   } finally {
+       designRequestsLoading = false;
+       if (main.querySelector(".design-requests-page")) renderDesignRequestsTab();
+   }
+}
+
+async function saveDesignRequest(id) {
+   const status = main.querySelector(`[data-design-status="${CSS.escape(id)}"]`);
+   const total = main.querySelector(`[data-design-total="${CSS.escape(id)}"]`);
+   const note = main.querySelector(`[data-design-quote-note="${CSS.escape(id)}"]`);
+   if (!status || !total || !note) return;
+   const quotedTotal = total.value === "" ? null : Number(total.value);
+   if ((status.value === "Chờ khách xác nhận" && quotedTotal === null)
+       || (quotedTotal !== null && (!Number.isSafeInteger(quotedTotal) || quotedTotal < 0 || quotedTotal > 1000000000))) {
+       alert("Nhập báo giá cuối là số nguyên VND hợp lệ trước khi chờ khách xác nhận.");
+       total.focus();
+       return;
+   }
+   try {
+       const result = await window.FlowerOrderStore.updateDesignRequest({
+           id,
+           status: status.value,
+           quotedTotal,
+           quoteNote: note.value.trim()
+       });
+       designRequestsCache = designRequestsCache.map((request) => request.id === id ? result.request : request);
+       renderDesignRequestsTab();
+   } catch (error) {
+       console.error("Không thể cập nhật yêu cầu thiết kế:", error);
+       alert(error.message || "Chưa thể cập nhật yêu cầu thiết kế.");
+   }
+}
+
+async function saveBouquetWrapping(event) {
+   event.preventDefault();
+   const rows = [...main.querySelectorAll("[data-wrapping-tier]")];
+   const tiers = rows.map((row) => ({
+       maxStems: Number(row.querySelector('[name="maxStems"]').value),
+       fee: Number(row.querySelector('[name="fee"]').value)
+   }));
+   const normalized = window.FlowerBouquetWrapping?.normalizeTiers(tiers);
+   if (!normalized) {
+       const status = document.getElementById("bouquet-wrapping-admin-message");
+       if (status) status.textContent = "Các mốc phải tăng dần từ 1 đến 50 cành; mốc cuối phải là 50 và phí là số nguyên VND không âm.";
+       return;
+   }
+   try {
+       const result = await window.FlowerOrderStore.saveBouquetWrapping(normalized);
+       bouquetWrappingTiers = result.tiers;
+       bouquetWrappingLoaded = true;
+       bouquetWrappingLoadError = "";
+       renderDeliveryZonesTab();
+   } catch (error) {
+       console.error("Không thể lưu cấu hình phí bó hoa:", error);
+       const status = document.getElementById("bouquet-wrapping-admin-message");
+       if (status) status.textContent = error.message || "Chưa thể lưu phí bó hoa. Vui lòng thử lại.";
    }
 }
 
@@ -1071,6 +1230,10 @@ function renderOrderCard(order, showCompletionAction = true) {
                    <span class="field-value">${moneyFormat(order.shippingFee || 0)}</span>
                </div>
                <div class="field">
+                   <span class="field-label">Phí gói bó hoa</span>
+                   <span class="field-value">${moneyFormat(order.wrappingFee || 0)}</span>
+               </div>
+               <div class="field">
                    <span class="field-label">Ẩn tên trên thiệp</span>
                    <span class="field-value">${order.anonymousGreetingCard === true ? "Có" : "Không"}</span>
                </div>
@@ -1109,6 +1272,11 @@ function renderOrderCard(order, showCompletionAction = true) {
            ` : ""}
 
            <div class="section-label">Sản phẩm trong đơn</div>
+           ${(Array.isArray(order.customBouquets) && order.customBouquets.length) ? `
+               <div class="detail-block">
+                   ${order.customBouquets.map((bouquet) => `<p>Bó tùy chỉnh: ${Number(bouquet.stemCount) || 0} cành · phí gói ${moneyFormat(bouquet.wrappingFee || 0)}</p>`).join("")}
+               </div>
+           ` : ""}
            <div class="order-product-list">
                ${items.map((item) => {
                    const product = getProductById(item.productId ?? item.id) || {};
@@ -2002,6 +2170,16 @@ if (ordersPage) {
    ordersPage.addEventListener("click", renderOrdersTab);
 }
 
+if (designRequestsPage) {
+   designRequestsPage.addEventListener("click", renderDesignRequestsTab);
+   designRequestsPage.addEventListener("keydown", (event) => {
+       if (event.key === "Enter" || event.key === " ") {
+           event.preventDefault();
+           renderDesignRequestsTab();
+       }
+   });
+}
+
 if (reviewsPage) {
    reviewsPage.addEventListener("click", renderReviewsTab);
 }
@@ -2058,6 +2236,43 @@ main.addEventListener("click", (event) => {
        deliveryZonesLoadError = "";
        void loadDeliveryZones();
        renderDeliveryZonesTab();
+       return;
+   }
+   const reloadDesignRequests = event.target.closest("[data-design-requests-reload]");
+   if (reloadDesignRequests) {
+       designRequestsLoadError = "";
+       designRequestsLoaded = false;
+       void loadDesignRequests();
+       renderDesignRequestsTab();
+       return;
+   }
+   const saveDesignRequestButton = event.target.closest("[data-design-request-save]");
+   if (saveDesignRequestButton) {
+       void saveDesignRequest(saveDesignRequestButton.dataset.designRequestSave);
+       return;
+   }
+   const reloadBouquetWrapping = event.target.closest("[data-wrapping-reload]");
+   if (reloadBouquetWrapping) {
+       bouquetWrappingLoadError = "";
+       void loadBouquetWrapping();
+       renderDeliveryZonesTab();
+       return;
+   }
+   const addWrappingTier = event.target.closest("[data-wrapping-tier-add]");
+   if (addWrappingTier) {
+       const tiers = document.getElementById("bouquet-wrapping-tiers");
+       if (!tiers || tiers.querySelectorAll("[data-wrapping-tier]").length >= window.FlowerBouquetWrapping.MAX_TIERS) return;
+       const row = document.createElement("div");
+       row.className = "delivery-zone-row";
+       row.dataset.wrappingTier = "";
+       row.innerHTML = '<label><span class="field-label">Tối đa số cành</span><input name="maxStems" type="number" min="1" max="50" step="1" required></label><label><span class="field-label">Phí gói (₫)</span><input name="fee" type="number" min="0" max="1000000000" step="1" required></label><button class="delete-product" data-wrapping-tier-remove type="button">Xóa bậc</button>';
+       tiers.append(row);
+       return;
+   }
+   const removeWrappingTier = event.target.closest("[data-wrapping-tier-remove]");
+   if (removeWrappingTier) {
+       const rows = main.querySelectorAll("[data-wrapping-tier]");
+       if (rows.length > 1) removeWrappingTier.closest("[data-wrapping-tier]").remove();
        return;
    }
 
@@ -2233,6 +2448,9 @@ main.addEventListener("click", (event) => {
 main.addEventListener("submit", (event) => {
    if (event.target && event.target.id === "add-delivery-zone-form") {
        void addDeliveryZone(event);
+   }
+   if (event.target && event.target.id === "bouquet-wrapping-form") {
+       void saveBouquetWrapping(event);
    }
 
    if (event.target && event.target.id === "product-search-form") {
