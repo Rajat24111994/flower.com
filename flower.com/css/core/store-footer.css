@@ -35,11 +35,14 @@
   letter-spacing: -0.06em;
 }
 
+/* The logo file has a white background: show it in colour on a small white badge. */
 .store-footer-logo img {
   width: 44px;
   height: 44px;
+  padding: 4px;
+  border-radius: 10px;
+  background: #fff;
   object-fit: contain;
-  filter: brightness(0) invert(1);
 }
 
 .store-footer-brand p,
