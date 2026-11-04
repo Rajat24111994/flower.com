@@ -71,7 +71,7 @@ function renderWishlist() {
     addToCartButton.addEventListener("click", () => {
       try {
         const updatedCart = FlowerShoppingStore.addToCart(resolveProduct(savedProduct), 1);
-        cartTotal.textContent = updatedCart.length;
+        cartTotal.textContent = FlowerSafeStorage.countCartUnits(updatedCart);
         showWishlistFeedback("Đã thêm vào giỏ hàng", "success");
       } catch (error) {
         showWishlistError(error);
@@ -99,7 +99,7 @@ function renderWishlist() {
 function loadWishlist() {
   try {
     wishlist = FlowerShoppingStore.readWishlist();
-    cartTotal.textContent = FlowerShoppingStore.readCart().length;
+    cartTotal.textContent = FlowerSafeStorage.countCartUnits(FlowerShoppingStore.readCart());
     renderWishlist();
   } catch (error) {
     container.textContent = error.message || "Không thể tải danh sách yêu thích.";
@@ -115,6 +115,10 @@ window.addEventListener("storage", (event) => {
     products = FlowerInventory.readProducts();
     renderWishlist();
   }
+});
+
+window.addEventListener("flowerstoragechange", (event) => {
+  if (event.detail?.source === "sync" && ["wish", "cart"].includes(event.detail.key)) loadWishlist();
 });
 
 // The live Firestore sync arrives after initialize(): show the latest stock without a reload.

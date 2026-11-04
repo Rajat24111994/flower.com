@@ -66,7 +66,7 @@ function updateProductStructuredData(product, productName, productDescription) {
 }
 
 function updateShoppingCounts() {
-  Total.textContent = cart.length
+  Total.textContent = FlowerSafeStorage.countCartUnits(cart)
   if (WishTotal) WishTotal.textContent = wish.length
   document.querySelectorAll(".favorite-count").forEach((count) => {
     count.textContent = String(wish.length)
@@ -204,7 +204,7 @@ function display(data) {
         }, { once: true })
         title.innerText = productName
         price.className = "product-price"
-        price.innerText = formatVnd(el.price)
+        price.innerText = `${formatVnd(el.price)} / bó`
         stock.className = quantity > 0 ? "stock-status" : "stock-status out-of-stock"
         stock.innerText = quantity > 0 ? `Còn hàng: ${quantity}` : "Hết hàng"
         badges.className = "product-badges"
@@ -622,6 +622,7 @@ function renderProductDetail(product) {
   document.getElementById("detail-stock").textContent = stock > 0 ? `Còn hàng · ${stock} bó · Có thể thêm ${Math.max(0, stock - quantityInCart)} bó` : "Hiện đã hết hàng"
   document.getElementById("detail-stock").classList.toggle("out-of-stock", stock === 0)
   initializeBouquetOptions(product, sameProduct)
+  document.getElementById("bouquet-options").hidden = product.saleType !== "flower"
   document.getElementById("detail-description").textContent = productDescription
 
   detailQuantity.min = "1"
@@ -707,12 +708,15 @@ function renderProductDetail(product) {
 }
 
 function configuredBouquet() {
+  if (selectedProduct.saleType !== "flower") {
+    return { ...selectedProduct, productId: String(selectedProduct.id), price: Number(selectedProduct.price) }
+  }
   const size = document.getElementById("detail-size").value || "standard"
   return { ...selectedProduct, productId: String(selectedProduct.id), size,
     color: document.getElementById("detail-color").value || "original",
     cardMessage: document.getElementById("detail-card").value.trim(),
     personalNote: document.getElementById("detail-note").value.trim(),
-    price: FlowerBouquetOptions.price(selectedProduct.price, size) }
+    price: Number(selectedProduct.price) }
 }
 
 function updateBouquetPrice() {
@@ -907,12 +911,14 @@ function renderProducts() {
   if (!visibleProducts.length) {
     const emptyMessage = document.createElement("p")
     emptyMessage.className = "catalog-empty"
-    emptyMessage.textContent = "Không tìm thấy sản phẩm phù hợp. Hãy thử tên hoặc loại hoa khác, mở rộng khoảng giá hoặc xóa bộ lọc."
+    emptyMessage.textContent = products.length
+      ? "Không tìm thấy sản phẩm phù hợp. Hãy thử tên hoặc loại hoa khác, mở rộng khoảng giá hoặc xóa bộ lọc."
+      : "Cửa hàng chưa có bó hoa làm sẵn. Bạn có thể tự phối bó từ các loại hoa đang được bán."
     container.replaceChildren(emptyMessage)
     const allProductsLink = document.createElement("a")
     allProductsLink.className = "catalog-empty-link"
-    allProductsLink.href = "./product.html"
-    allProductsLink.textContent = "Xem tất cả sản phẩm"
+    allProductsLink.href = products.length ? "./product.html" : "./custom-bouquet.html"
+    allProductsLink.textContent = products.length ? "Xem tất cả sản phẩm" : "Tự phối bó hoa"
     container.append(allProductsLink)
     return
   }
@@ -951,7 +957,7 @@ searchInput.addEventListener("input", searchCatalog)
 
 window.addEventListener("storage", (event) => {
   if (event.key === "flowerInventory") {
-    products = FlowerInventory.readProducts().filter((product) => product.status !== "hidden")
+    products = FlowerInventory.readProducts().filter((product) => product.status !== "hidden" && product.saleType !== "flower")
     populateFlowerCategoryFilter()
     renderProducts()
     navigateToProductDetail()
@@ -973,8 +979,21 @@ window.addEventListener("storage", (event) => {
   }
 })
 
+window.addEventListener("flowerstoragechange", (event) => {
+  if (event.detail?.source !== "sync" || !["cart", "wish"].includes(event.detail.key)) return
+  try {
+    cart = FlowerShoppingStore.readCart()
+    wish = FlowerShoppingStore.readWishlist()
+    updateShoppingCounts()
+    refreshWishlistButtons()
+    if (selectedProduct) renderProductDetail(selectedProduct)
+  } catch (error) {
+    showShoppingError(error)
+  }
+})
+
 window.addEventListener("flowerinventorychange", (event) => {
-  products = (event.detail || FlowerInventory.readProducts()).filter((product) => product.status !== "hidden")
+  products = (event.detail || FlowerInventory.readProducts()).filter((product) => product.status !== "hidden" && product.saleType !== "flower")
   populateFlowerCategoryFilter()
   renderProducts()
   navigateToProductDetail()
@@ -992,8 +1011,7 @@ async function fetchAndRenderProducts() {
     setRelatedFlowersStatus("Đang tìm những bó hoa phù hợp...", "loading")
   }
   try {
-    products = (await FlowerInventory.initialize()).filter((product) => product.status !== "hidden")
-    if (!products.length) throw new Error("Kho sản phẩm hiện chưa có dữ liệu hoặc dịch vụ danh mục đang không khả dụng.")
+    products = (await FlowerInventory.initialize()).filter((product) => product.status !== "hidden" && product.saleType !== "flower")
     populateFlowerCategoryFilter()
     renderProducts()
     navigateToProductDetail()

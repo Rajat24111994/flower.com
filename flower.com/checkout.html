@@ -12,7 +12,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="./css/core/store-header.css?v=3">
+  <link rel="stylesheet" href="./css/core/store-header.css?v=5">
   <link rel="stylesheet" href="./css/order/checkout.css?v=6">
   <link rel="stylesheet" href="./css/core/accessibility.css?v=1">
   <link rel="stylesheet" href="./css/core/store-footer.css?v=4">
@@ -20,7 +20,7 @@
 </head>
 
 <body>
-  <script src="./js/core/store-header.js?v=6"></script>
+  <script src="./js/core/store-header.js?v=7"></script>
 
   <main class="checkout-page">
     <header class="checkout-heading">
@@ -499,7 +499,7 @@
       image.loading = "lazy";
       name.textContent = product.title || "Sản phẩm hoa";
       unitPrice.className = "checkout-unit-price";
-      unitPrice.textContent = formatVnd(product.price);
+      unitPrice.textContent = `${formatVnd(product.price)} / ${product.saleType === "flower" ? "cành" : "bó"}`;
       details.className = "checkout-item-details";
       controls.className = "checkout-quantity";
       decrease.type = "button";
@@ -573,7 +573,7 @@
     renderCartSummary(Cart);
     updatePaymentOnlinePanel();
     const cartTotal = document.getElementById("cartTotal");
-    if (cartTotal) cartTotal.textContent = Cart.length;
+    if (cartTotal) cartTotal.textContent = FlowerSafeStorage.countCartUnits(Cart);
     if (refreshQuote) void refreshServerQuote();
   }
 
@@ -605,6 +605,8 @@
           cartItem.price = quotedItem.price;
           cartItem.title = quotedItem.title;
           cartItem.image = quotedItem.image;
+          cartItem.saleType = quotedItem.saleType;
+          cartItem.priceUpdatedAt = quotedItem.priceUpdatedAt;
           if (Number.isInteger(quotedItem.stock)) cartItem.stockQuantity = quotedItem.stock;
         }
       });
@@ -626,7 +628,7 @@
           productImage.src = item.image || "";
           productImage.alt = item.title || "Sản phẩm hoa";
         }
-        card.querySelector(".checkout-unit-price").textContent = formatVnd(item.price);
+        card.querySelector(".checkout-unit-price").textContent = `${formatVnd(item.price)} / ${item.saleType === "flower" ? "cành" : "bó"}`;
         card.querySelector(".checkout-item-total").textContent = formatVnd(item.price * Math.max(1, Number(item.quantity) || 1));
         const stockMessage = card.querySelector(".checkout-stock");
         if (stockMessage && Number.isInteger(item.stockQuantity)) stockMessage.textContent = `Tồn kho: ${item.stockQuantity}`;
@@ -788,15 +790,19 @@
     }
   });
 
+  function refreshCartFromStorage() {
+    Cart = FlowerSafeStorage.readJson("cart", {
+      fallback: [],
+      validate: (value) => Array.isArray(value)
+        && value.every((item) => item && typeof item === "object" && !Array.isArray(item) && item.id !== undefined)
+    });
+    DisplayProduct();
+  }
   window.addEventListener("storage", (event) => {
-    if (event.key === "cart") {
-      Cart = FlowerSafeStorage.readJson("cart", {
-        fallback: [],
-        validate: (value) => Array.isArray(value)
-          && value.every((item) => item && typeof item === "object" && !Array.isArray(item) && item.id !== undefined)
-      });
-      DisplayProduct();
-    }
+    if (event.key === "cart") refreshCartFromStorage();
+  });
+  window.addEventListener("flowerstoragechange", (event) => {
+    if (event.detail?.source === "sync" && event.detail.key === "cart") refreshCartFromStorage();
   });
   void initializeCheckout();
 </script>

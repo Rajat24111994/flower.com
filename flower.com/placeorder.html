@@ -8,7 +8,7 @@
   <meta name="description" content="Xem xác nhận và hướng dẫn thanh toán đơn hàng Flowerflow.">
   <link rel="icon" type="image/svg+xml" href="./favicon.svg">
   <title>Xác nhận đơn hàng</title>
-  <link rel="stylesheet" href="./css/core/store-header.css?v=3">
+  <link rel="stylesheet" href="./css/core/store-header.css?v=5">
   <link rel="stylesheet" href="./css/order/cart.css?v=9">
   <link rel="stylesheet" href="./css/core/accessibility.css?v=1">
   <link rel="stylesheet" href="./css/core/store-footer.css?v=4">
@@ -16,7 +16,7 @@
 </head>
 
 <body>
-  <script src="./js/core/store-header.js?v=6"></script>
+  <script src="./js/core/store-header.js?v=7"></script>
 
   <main class="nav order-review-page">
     <div id="product-container"></div>
@@ -289,7 +289,7 @@
     function DisplayProduct() {
       CartContainer.innerHTML = "";
       const cartTotal = document.getElementById("cartTotal");
-      if (cartTotal) cartTotal.textContent = Cart.length;
+      if (cartTotal) cartTotal.textContent = FlowerSafeStorage.countCartUnits(Cart);
 
       Cart.forEach((product) => {
         let image = document.createElement("img");

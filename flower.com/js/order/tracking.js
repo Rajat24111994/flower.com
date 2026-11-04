@@ -199,7 +199,7 @@ function renderProducts(items) {
         row.append(
             image,
             makeElement("span", "tracking-product-name", product.title || "Sản phẩm"),
-            makeElement("span", "tracking-product-quantity", `× ${Math.max(1, Number(product.quantity) || 1)}`)
+            makeElement("span", "tracking-product-quantity", `× ${Math.max(1, Number(product.quantity) || 1)} ${product.unit || "bó"}`)
         );
         const selection = window.FlowerBouquetOptions.summary(product);
         if (selection) row.append(makeElement("span", "tracking-product-options", selection));
@@ -435,7 +435,8 @@ function createOrderCard(order) {
     const quantity = items.reduce((sum, item) => sum + Math.max(1, Number(item.quantity) || 1), 0);
     const firstTitle = items[0]?.title || "Sản phẩm";
     const summary = items.length > 1 ? `${firstTitle} và ${items.length - 1} sản phẩm khác` : firstTitle;
-    products.append(makeElement("span", "my-order-summary", `${summary} · ${quantity} món`));
+    const orderType = order.orderType === "custom_bouquet" ? "Bó hoa theo yêu cầu" : "Bó làm sẵn";
+    products.append(makeElement("span", "my-order-summary", `${orderType} · ${summary} · ${quantity} món`));
 
     const footer = makeElement("div", "my-order-footer");
     footer.append(makeElement("strong", "", formatOrderTotal(order)), makeElement("span", "my-order-link", "Xem chi tiết →"));

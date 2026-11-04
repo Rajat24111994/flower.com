@@ -2,20 +2,20 @@
 <html lang="vi">
   <head>
     <meta charset="UTF-8" />
-    <script src="./js/core/safe-storage.js?v=2"></script>
+    <script src="./js/core/safe-storage.js?v=3"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="robots" content="noindex, nofollow">
     <meta name="description" content="Kiểm tra hoa đã chọn và tổng tiền trong giỏ hàng Flowerflow.">
     <link rel="icon" type="image/svg+xml" href="./favicon.svg">
     <title>Giỏ hàng</title>
-    <link rel="stylesheet" href="./css/core/store-header.css?v=3" />
+    <link rel="stylesheet" href="./css/core/store-header.css?v=5" />
     <link rel="stylesheet" href="./css/order/cart.css?v=9" />
     <link rel="stylesheet" href="./css/core/accessibility.css?v=1" />
     <link rel="stylesheet" href="./css/core/store-footer.css?v=4" />
   <link rel="stylesheet" href="./css/core/contact-tools.css?v=3">
   </head>
   <body>
-    <script src="./js/core/store-header.js?v=6"></script>
+    <script src="./js/core/store-header.js?v=7"></script>
 
     <main class="nav">
       <div id="product-container"></div>
@@ -79,7 +79,7 @@
 
       function DisplayProduct() {
         const cartTotal = document.getElementById("cartTotal");
-        cartTotal.textContent = Cart.length;
+        cartTotal.textContent = FlowerSafeStorage.countCartUnits(Cart);
         document.querySelector(".nav").classList.toggle("is-empty", Cart.length === 0);
 
         CartContainer.innerHTML = "";
@@ -94,9 +94,9 @@
           icon.setAttribute("aria-hidden", "true");
           icon.textContent = "✿";
           heading.textContent = "Giỏ hàng đang trống";
-          text.textContent = "Chọn một bó hoa bạn thích rồi quay lại đây để thanh toán.";
-          link.href = "./product.html";
-          link.textContent = "Chọn hoa ngay";
+          text.textContent = "Chọn bó hoa làm sẵn hoặc tự phối hoa theo giá trong ngày rồi quay lại thanh toán.";
+          link.href = "./custom-bouquet.html";
+          link.textContent = "Tự phối bó hoa";
           empty.append(icon, heading, text, link);
           CartContainer.append(empty);
         }
@@ -129,7 +129,7 @@
           const customization = document.createElement("p");
           customization.className = "cart-item-options";
           customization.textContent = bouquetSummary;
-          price.textContent = formatVnd(product.price);
+          price.textContent = `${formatVnd(product.price)} / ${product.saleType === "flower" ? "cành" : "bó"}`;
           [Decrease, Increase, Remove].forEach((button) => { button.type = "button"; });
           Remove.textContent = "Xóa";
           Increase.textContent = "+";
@@ -185,6 +185,22 @@
       }
 
       DisplayProduct();
+
+      window.addEventListener("flowerstoragechange", (event) => {
+        if (event.detail?.source !== "sync" || event.detail.key !== "cart") return;
+        try {
+          Cart = FlowerSafeStorage.readJson("cart", {
+            fallback: [],
+            validate: (value) => Array.isArray(value)
+              && value.every((item) => item && typeof item === "object" && !Array.isArray(item) && item.id !== undefined)
+          });
+          DisplayProduct();
+        } catch (error) {
+          console.error("Không thể cập nhật giỏ hàng đã đồng bộ:", error);
+          cartActionMessage.textContent = "Không thể tải giỏ hàng vừa đồng bộ. Dữ liệu cũ vẫn được giữ lại.";
+          cartActionMessage.hidden = false;
+        }
+      });
 
       // The stock saved with each cart line is from when it was added; read the shop's current
       // stock so the page does not offer quantities that are no longer available.

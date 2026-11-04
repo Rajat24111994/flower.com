@@ -1,0 +1,142 @@
+.custom-bouquet-page {
+  width: min(1120px, calc(100% - 32px));
+  margin: 48px auto 80px;
+  color: #342d2a;
+}
+
+.custom-bouquet-heading {
+  max-width: 720px;
+  margin: 0 auto 32px;
+  text-align: center;
+}
+
+.custom-bouquet-heading .eyebrow {
+  color: #8c5a62;
+  font-size: .82rem;
+  font-weight: 700;
+  letter-spacing: .12em;
+}
+
+.custom-bouquet-heading h1 {
+  margin: 12px 0;
+  font: 600 clamp(2rem, 5vw, 3.25rem)/1.15 "Playfair Display", Georgia, serif;
+}
+
+.custom-bouquet-heading p {
+  color: #665c58;
+  line-height: 1.7;
+}
+
+.custom-bouquet-heading a,
+.custom-bouquet-footer a {
+  color: #7d3f4a;
+  font-weight: 700;
+}
+
+.custom-bouquet-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+  gap: 18px;
+}
+
+.custom-flower-card {
+  display: grid;
+  grid-template-columns: 84px minmax(0, 1fr);
+  gap: 14px;
+  align-items: center;
+  padding: 16px;
+  border: 1px solid #e8dfd9;
+  border-radius: 16px;
+  background: #fff;
+}
+
+.custom-flower-card img {
+  width: 84px;
+  height: 84px;
+  border-radius: 12px;
+  object-fit: cover;
+}
+
+.custom-flower-card h2 {
+  margin: 0 0 6px;
+  font-size: 1.05rem;
+}
+
+.custom-flower-card p {
+  margin: 4px 0;
+  color: #665c58;
+  font-size: .92rem;
+}
+
+.custom-flower-card input {
+  width: 100%;
+  margin-top: 10px;
+  padding: 9px;
+  border: 1px solid #cfc2bc;
+  border-radius: 8px;
+}
+
+.custom-bouquet-footer {
+  position: sticky;
+  bottom: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: center;
+  justify-content: center;
+  margin-top: 28px;
+  padding: 16px;
+  border: 1px solid #e8dfd9;
+  border-radius: 16px;
+  background: #fffaf7;
+  box-shadow: 0 8px 28px #342d2a1a;
+}
+
+.custom-bouquet-footer p {
+  margin: 0;
+  font-weight: 700;
+}
+
+.custom-bouquet-footer button {
+  padding: 12px 20px;
+  border: 0;
+  border-radius: 999px;
+  background: #7d3f4a;
+  color: #fff;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.custom-bouquet-footer button:disabled {
+  background: #9c9390;
+  cursor: not-allowed;
+}
+
+#custom-bouquet-message {
+  margin: 16px auto;
+  text-align: center;
+}
+
+#custom-bouquet-message.is-error {
+  color: #a32121;
+}
+
+.custom-bouquet-empty {
+  grid-column: 1 / -1;
+  padding: 28px;
+  border: 1px dashed #cfc2bc;
+  border-radius: 16px;
+  text-align: center;
+}
+
+@media (max-width: 560px) {
+  .custom-bouquet-page {
+    margin-top: 28px;
+  }
+
+  .custom-bouquet-footer {
+    bottom: 8px;
+    justify-content: space-between;
+  }
+}
