@@ -25,6 +25,7 @@ async function setupAdmin(page) {
   await page.route("**/product-store.js*", (route) => route.fulfill({ contentType: "text/javascript", body: `
     window.testProducts = JSON.parse(localStorage.getItem("adminProductsFixture") || ${JSON.stringify(JSON.stringify(products))});
     window.testCategories = ["Hoa sinh nhật", "Hoa khai trương"];
+    window.missingCatalogProducts = [];
     window.productSaveCount = 0;
     window.FlowerInventory = {
       findDuplicateProductImages: ${findDuplicateProductImages.toString()},
@@ -34,7 +35,13 @@ async function setupAdmin(page) {
       subscribeCategories: () => () => {},
       areProductsLoaded: () => true,
       isFirestoreReachable: () => true,
-      getMissingCatalogProducts: () => [],
+      getMissingCatalogProducts: () => window.missingCatalogProducts,
+      restoreCatalogProducts: async () => {
+        const restored = window.missingCatalogProducts.length;
+        window.testProducts = [...window.testProducts, ...window.missingCatalogProducts];
+        window.missingCatalogProducts = [];
+        return restored;
+      },
       saveProducts: async (next) => {
         window.productSaveCount += 1;
         if (window.delayProductSave) await new Promise((resolve) => setTimeout(resolve, 150));
@@ -215,4 +222,40 @@ test("admin uploads a product photo from the computer and the field gets its add
   await expect(page.locator("#product-image-upload-status")).toContainText("Chỉ nhận ảnh JPG, PNG hoặc WebP");
   expect(uploads).toHaveLength(1);
   expect(errors).toEqual([]);
+});
+
+test("admin deletes all products only after confirmation", async ({ page }) => {
+  await setupAdmin(page);
+  const deleteAllButton = page.locator('[data-action="delete-all-products"]');
+  await expect(deleteAllButton).toContainText("Xóa tất cả sản phẩm (3)");
+
+  await deleteAllButton.click();
+  await expect(page.locator(".admin-confirm-dialog")).toBeVisible();
+  await expect(page.locator("#admin-confirm-title")).toHaveText("Xóa toàn bộ sản phẩm?");
+  await expect(page.locator("#admin-confirm-message")).toContainText("3 sản phẩm");
+  await page.locator("[data-confirm-cancel]").click();
+  await expect(page.locator(".product-table tbody")).toContainText("Hoa hồng sắp hết");
+  expect(await page.evaluate(() => window.testProducts)).toHaveLength(3);
+
+  await deleteAllButton.click();
+  await page.locator("[data-confirm-accept]").click();
+  await expect(page.locator(".product-table tbody")).toContainText("Chưa có sản phẩm nào.");
+  await expect(deleteAllButton).toBeDisabled();
+  expect(await page.evaluate(() => window.testProducts)).toHaveLength(0);
+});
+
+test("admin confirms catalog restoration with the themed dialog", async ({ page }) => {
+  await setupAdmin(page);
+  await page.evaluate(() => {
+    window.missingCatalogProducts = [{
+      id: 4, title: "Hoa cẩm chướng", description: "Bó hoa tươi", image: "",
+      images: [], category: "", price: 200000, quantity: 5, status: "active"
+    }];
+  });
+  await page.locator("#product_page").click();
+  await page.locator('[data-action="restore-catalog"]').click();
+  await expect(page.locator("#admin-confirm-title")).toHaveText("Khôi phục sản phẩm");
+  await expect(page.locator("#admin-confirm-message")).toContainText("1 sản phẩm");
+  await page.locator("[data-confirm-cancel]").click();
+  expect(await page.evaluate(() => window.testProducts)).toHaveLength(3);
 });

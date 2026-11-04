@@ -27,10 +27,12 @@ export function periodBounds(filters, now = new Date()) {
   if (!start || !end || start > end) throw new Error("Chọn đủ ngày bắt đầu và kết thúc; ngày bắt đầu không được sau ngày kết thúc.");
   return { start, end };
 }
-export function paidAndDelivered(order) {
-  if (normalizeOrderStatus(order.status) !== "Đã giao") return false;
-  return order.paymentMethod === "qr" ? order.paymentVerified === true
+export function isOrderPaid(order) {
+  return ["qr", "vnpay"].includes(order.paymentMethod) ? order.paymentVerified === true
     : ["đã thanh toán", "paid"].includes(String(order.paymentStatus || "").trim().toLocaleLowerCase("vi"));
+}
+export function paidAndDelivered(order) {
+  return normalizeOrderStatus(order.status) === "Đã giao" && isOrderPaid(order);
 }
 export const revenueDate = (order) => dateKey(order.paidAt) || dateKey(order.deliveredAt) || dateKey(order.createdAt);
 const money = (value) => Number.isFinite(Number(value)) ? Math.round(Number(value)) : 0;

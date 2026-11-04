@@ -1,5 +1,5 @@
-import { mountReport } from "./admin-report-view.js?v=1";
-import { dateKey as reportDateKey } from "./admin-analytics.js?v=1";
+import { mountReport } from "./admin-report-view.js?v=2";
+import { dateKey as reportDateKey, isOrderPaid } from "./admin-analytics.js?v=2";
 import { firebaseConfig } from "../core/firebase-config.js";
 import { ORDER_STATUSES, normalizeOrderStatus, orderStatusLabel } from "../order/order-status.js?v=2";
 import { preparePhotos } from "../review/review-images.js?v=1";
@@ -52,14 +52,6 @@ function moneyFormat(value) {
        style: "currency",
        currency: "VND"
    }).format(Number(value || 0));
-}
-
-function isOrderPaid(order) {
-   // QR transfers count only after an admin checked the bank statement and
-   // confirmed it with "Xác nhận đã nhận tiền" (Security Rules: admin-only write).
-   if (order.paymentMethod === "qr") return order.paymentVerified === true;
-   const status = String(order.paymentStatus || "").trim().toLocaleLowerCase("vi");
-   return ["đã thanh toán", "paid", "da_thanh_toan"].includes(status);
 }
 
 // How the customer pays, shown next to the payment status (#48).
@@ -289,9 +281,60 @@ function renderRestoreCatalogNotice() {
    `;
 }
 
+function showAdminConfirmation({ title, message, confirmLabel, danger = false }) {
+   const dialog = document.createElement("dialog");
+   dialog.className = "admin-confirm-dialog";
+   dialog.setAttribute("aria-labelledby", "admin-confirm-title");
+   dialog.setAttribute("aria-describedby", "admin-confirm-message");
+
+   const content = document.createElement("div");
+   content.className = "admin-confirm-content";
+   const icon = document.createElement("span");
+   icon.className = `admin-confirm-icon${danger ? " admin-confirm-icon--danger" : ""}`;
+   icon.setAttribute("aria-hidden", "true");
+   icon.textContent = danger ? "!" : "↻";
+   const heading = document.createElement("h2");
+   heading.id = "admin-confirm-title";
+   heading.textContent = title;
+   const description = document.createElement("p");
+   description.id = "admin-confirm-message";
+   description.textContent = message;
+   const actions = document.createElement("div");
+   actions.className = "admin-confirm-actions";
+   const cancelButton = document.createElement("button");
+   cancelButton.className = "secondary-btn";
+   cancelButton.type = "button";
+   cancelButton.dataset.confirmCancel = "";
+   cancelButton.textContent = "Không, quay lại";
+   const confirmButton = document.createElement("button");
+   confirmButton.className = danger ? "delete-record" : "primary-btn";
+   confirmButton.type = "button";
+   confirmButton.dataset.confirmAccept = "";
+   confirmButton.textContent = confirmLabel;
+   actions.append(cancelButton, confirmButton);
+   content.append(icon, heading, description, actions);
+   dialog.append(content);
+   document.body.append(dialog);
+
+   return new Promise((resolve) => {
+       dialog.addEventListener("close", () => {
+           dialog.remove();
+           resolve(dialog.returnValue === "confirm");
+       }, { once: true });
+       cancelButton.addEventListener("click", () => dialog.close("cancel"), { once: true });
+       confirmButton.addEventListener("click", () => dialog.close("confirm"), { once: true });
+       dialog.showModal();
+       cancelButton.focus();
+   });
+}
+
 async function restoreCatalog() {
    const missingCount = FlowerInventory.getMissingCatalogProducts().length;
-   if (!missingCount || !window.confirm(`Thêm lại ${missingCount} sản phẩm còn thiếu từ danh mục gốc?\n\nNếu có sản phẩm bạn cố ý xóa, chúng cũng sẽ được thêm lại; bạn có thể xóa lại sau.`)) return;
+   if (!missingCount || !await showAdminConfirmation({
+       title: "Khôi phục sản phẩm",
+       message: `Sẽ thêm lại ${missingCount} sản phẩm còn thiếu từ danh mục gốc. Sản phẩm hiện có sẽ được giữ nguyên.`,
+       confirmLabel: `Khôi phục ${missingCount} sản phẩm`
+   })) return;
    try {
        const restored = await FlowerInventory.restoreCatalogProducts();
        alert(`Đã khôi phục ${restored} sản phẩm.`);
@@ -330,7 +373,10 @@ function renderProductTab() {
    main.innerHTML = `
        <section class="panel-wrap">
            <div class="panel">
-               <h2>Quản lý kho hoa</h2>
+               <div class="product-panel-heading">
+                   <h2>Quản lý kho hoa</h2>
+                   <button class="delete-record" type="button" data-action="delete-all-products" ${products.length ? "" : "disabled"}>Xóa tất cả sản phẩm (${products.length})</button>
+               </div>
                ${renderRestoreCatalogNotice()}
                <form id="product-search-form" class="product-search" role="search">
                    <label class="product-filter-field" for="product-search"><span>Tìm sản phẩm</span>
@@ -443,11 +489,16 @@ function renderProductTab() {
                    </label>
                    <div class="product-image-upload">
                        <input type="file" id="product-image-file" accept="image/jpeg,image/png,image/webp" hidden>
-                       <button type="button" class="secondary-btn" id="product-image-upload">Tải ảnh lên từ máy</button>
+                       <button type="button" class="secondary-btn" id="product-image-upload">Chọn ảnh đại diện từ máy</button>
                        <small id="product-image-upload-status" role="status" aria-live="polite">JPG, PNG hoặc WebP, tối đa 5 MB. Ảnh được tự thu nhỏ trước khi lưu.</small>
                    </div>
                    <label class="field-label" for="product-images">Ảnh bổ sung (mỗi dòng một đường dẫn, tối đa 8 ảnh)</label>
                    <textarea id="product-images" rows="3" placeholder="https://...">${escapeHtml((editingProduct?.images || []).join("\n"))}</textarea>
+                   <div class="product-image-upload">
+                       <input type="file" id="product-images-file" accept="image/jpeg,image/png,image/webp" multiple hidden>
+                       <button type="button" class="secondary-btn" id="product-images-upload">Chọn ảnh bổ sung từ máy</button>
+                       <small id="product-images-upload-status" role="status" aria-live="polite">JPG, PNG hoặc WebP, tối đa 5 MB mỗi ảnh; có thể chọn nhiều ảnh, tối đa 8 ảnh bổ sung.</small>
+                   </div>
                    <div id="product-image-previews" class="product-image-previews" aria-live="polite"></div>
                    <label class="product-form-field" for="product-category"><span>Danh mục</span>
                        <select id="product-category" required>
@@ -507,6 +558,13 @@ function renderProductTab() {
        imageFile.value = "";
        if (file) void uploadProductImage(file);
    });
+   const extraImagesFile = document.getElementById("product-images-file");
+   document.getElementById("product-images-upload").addEventListener("click", () => extraImagesFile.click());
+   extraImagesFile.addEventListener("change", () => {
+       const files = Array.from(extraImagesFile.files || []);
+       extraImagesFile.value = "";
+       if (files.length) void uploadProductExtraImages(files);
+   });
    main.querySelectorAll(".product-admin-image").forEach((image) => {
        if (image.hidden) return;
        image.addEventListener("error", () => {
@@ -545,31 +603,85 @@ function renderSharedProductImageNotice(products) {
    `;
 }
 
-// Shrinks the chosen photo in the browser, saves it through /api/product-images and puts the
-// returned address in the "Ảnh đại diện" field, so no one has to host the photo elsewhere.
-async function uploadProductImage(file) {
-   const input = document.getElementById("product-image");
-   const button = document.getElementById("product-image-upload");
-   const status = document.getElementById("product-image-upload-status");
+// Shrinks the chosen photo in the browser, saves it through /api/product-images and adds its
+// returned address to the selected product image field.
+async function uploadProductImage(file, target = "primary") {
+   const isPrimary = target === "primary";
+   const input = document.getElementById(isPrimary ? "product-image" : "product-images");
+   const button = document.getElementById(isPrimary ? "product-image-upload" : "product-images-upload");
+   const status = document.getElementById(isPrimary ? "product-image-upload-status" : "product-images-upload-status");
    button.disabled = true;
    status.textContent = "Đang tải ảnh lên…";
    try {
        const [photo] = await preparePhotos([file]);
-       const response = await fetch("/api/product-images", {
-           method: "POST",
-           headers: { "Authorization": `Bearer ${await currentUser.getIdToken()}`, "Content-Type": "application/json" },
-           body: JSON.stringify({ photo })
-       });
-       const data = await response.json().catch(() => ({}));
-       if (!response.ok || !data.url) throw new Error(data.error || "Chưa tải được ảnh. Hãy thử lại.");
+       if (!currentUser) throw new Error("Phiên đăng nhập đã hết hạn. Hãy đăng nhập lại rồi thử tải ảnh.");
+       const idToken = await currentUser.getIdToken();
+       let response;
+       try {
+           response = await fetch("/api/product-images", {
+               method: "POST",
+               headers: { "Authorization": `Bearer ${idToken}`, "Content-Type": "application/json" },
+               body: JSON.stringify({ photo })
+           });
+       } catch {
+           throw new Error("Không kết nối được API tải ảnh. Nếu đang chạy bằng máy chủ tĩnh, hãy khởi động dự án bằng `vercel dev` hoặc dùng website đã triển khai.");
+       }
+       const responseText = await response.text();
+       let data = {};
+       try {
+           data = JSON.parse(responseText);
+       } catch {
+           if (response.status === 404) {
+               throw new Error("Không tìm thấy API tải ảnh. Máy chủ hiện tại có thể chỉ phục vụ tệp tĩnh; hãy chạy dự án bằng `vercel dev` hoặc dùng website đã triển khai.");
+           }
+       }
+       if (!response.ok) {
+           const message = data.error || (response.status === 503
+               ? "API tải ảnh chưa sẵn sàng. Hãy kiểm tra cấu hình Firebase Admin trên Vercel."
+               : `Tải ảnh thất bại (HTTP ${response.status}). Hãy kiểm tra quyền quản trị và thử lại.`);
+           throw new Error(message);
+       }
+       if (!data.url) throw new Error("API tải ảnh không trả về đường dẫn ảnh hợp lệ.");
        if (!input.isConnected) return;
-       input.value = data.url;
+       if (isPrimary) {
+           input.value = data.url;
+       } else {
+           const images = input.value.split(/\r?\n/).map((value) => value.trim()).filter(Boolean);
+           if (images.length >= 8) {
+               status.textContent = "Đã đủ 8 ảnh bổ sung; không thể thêm ảnh này.";
+               return false;
+           }
+           images.push(data.url);
+           input.value = images.join("\n");
+       }
        input.dispatchEvent(new Event("input", { bubbles: true }));
-       status.textContent = "Đã tải ảnh lên. Bấm lưu sản phẩm để dùng ảnh này.";
+       status.textContent = `Đã tải ảnh lên. Bấm lưu sản phẩm để dùng ảnh${isPrimary ? " này" : " bổ sung này"}.`;
+       return true;
    } catch (error) {
        if (status.isConnected) status.textContent = error.message || "Chưa tải được ảnh. Hãy thử lại.";
+       return false;
    } finally {
-       button.disabled = false;
+       if (button.isConnected) button.disabled = false;
+   }
+}
+
+async function uploadProductExtraImages(files) {
+   const input = document.getElementById("product-images");
+   const status = document.getElementById("product-images-upload-status");
+   const currentCount = input.value.split(/\r?\n/).filter((value) => value.trim()).length;
+   const availableCount = 8 - currentCount;
+   if (files.length > availableCount) {
+       status.textContent = `Chỉ còn có thể thêm ${availableCount} ảnh bổ sung (tối đa 8 ảnh).`;
+       return;
+   }
+   let uploadedCount = 0;
+   for (const file of files) {
+       if (!await uploadProductImage(file, "extra")) {
+           if (uploadedCount) status.textContent = `Đã tải ${uploadedCount}/${files.length} ảnh; ảnh tiếp theo gặp lỗi: ${status.textContent}`;
+           return;
+       }
+       uploadedCount += 1;
+       status.textContent = `Đã tải ${uploadedCount}/${files.length} ảnh bổ sung. Bấm lưu sản phẩm để dùng ảnh.`;
    }
 }
 
@@ -1580,6 +1692,26 @@ async function deleteProduct(id) {
    renderProductTab();
 }
 
+async function deleteAllProducts() {
+   const products = getProducts();
+   if (!products.length) return;
+   if (!await showAdminConfirmation({
+       title: "Xóa toàn bộ sản phẩm?",
+       message: `Bạn sắp xóa ${products.length} sản phẩm khỏi cửa hàng. Thao tác này không thể hoàn tác. Bạn có thể khôi phục lại những sản phẩm có trong danh mục gốc.`,
+       confirmLabel: `Xóa ${products.length} sản phẩm`,
+       danger: true
+   })) return;
+   if (!await saveAdminProducts([])) return;
+   editingProductId = null;
+   productSearchTerm = "";
+   productFilterCategory = "";
+   productFilterStatus = "";
+   productFilterMinPrice = "";
+   productFilterMaxPrice = "";
+   productPriceSort = "";
+   renderProductTab();
+}
+
 async function toggleProductVisibility(id) {
    const product = getProductById(id);
    if (!product) return;
@@ -2080,6 +2212,10 @@ main.addEventListener("click", (event) => {
        productFilterMaxPrice = "";
        productPriceSort = "";
        renderProductTab();
+       return;
+   }
+   if (actionButton?.dataset.action === "delete-all-products") {
+       void deleteAllProducts();
        return;
    }
    if (actionButton?.dataset.action === "toggle-product-visibility") {

@@ -152,6 +152,98 @@ main {
     color: var(--gray-700);
 }
 
+.product-panel-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 18px;
+}
+
+.product-panel-heading h2 {
+    margin-bottom: 0;
+}
+
+.delete-record:disabled,
+.delete-record:disabled:hover {
+    cursor: not-allowed;
+    opacity: 0.55;
+}
+
+.admin-confirm-dialog {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    width: min(440px, calc(100vw - 32px));
+    max-width: none;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    border: 1px solid #f3dce7;
+    border-radius: 22px;
+    background: linear-gradient(180deg, #fff 0%, #fff8fb 100%);
+    color: var(--gray-700);
+    box-shadow: 0 24px 70px rgba(87, 24, 49, 0.24);
+    transform: translate(-50%, -50%);
+}
+
+.admin-confirm-dialog::backdrop {
+    background: rgba(57, 28, 40, 0.42);
+    backdrop-filter: blur(3px);
+}
+
+.admin-confirm-content {
+    display: grid;
+    justify-items: center;
+    padding: 30px 28px 24px;
+    text-align: center;
+}
+
+.admin-confirm-icon {
+    display: grid;
+    width: 54px;
+    height: 54px;
+    margin-bottom: 16px;
+    place-items: center;
+    border-radius: 18px;
+    background: linear-gradient(135deg, #ffe4ed, #fbcfe8);
+    color: var(--rose-700);
+    font-size: 27px;
+    font-weight: 700;
+}
+
+.admin-confirm-icon--danger {
+    background: linear-gradient(135deg, #fee2e2, #fecaca);
+    color: var(--red-700);
+}
+
+.admin-confirm-content h2 {
+    margin-bottom: 9px;
+    color: var(--gray-700);
+    font-size: 21px;
+}
+
+.admin-confirm-content p {
+    color: #6b7280;
+    font-size: 14px;
+    line-height: 1.65;
+}
+
+.admin-confirm-actions {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    width: 100%;
+    margin-top: 24px;
+}
+
+.admin-confirm-actions button:focus-visible {
+    outline: 3px solid rgba(225, 29, 72, 0.3);
+    outline-offset: 3px;
+}
+
 .list-stack {
     display: grid;
     gap: 14px;

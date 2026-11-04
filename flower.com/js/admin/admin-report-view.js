@@ -1,4 +1,4 @@
-import { buildReport, dateKey, reportSheets } from "./admin-analytics.js?v=1";
+import { buildReport, dateKey, reportSheets } from "./admin-analytics.js?v=2";
 import { downloadWorkbook } from "./excel-export.js?v=1";
 const e = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[char]));
 const vnd = (value) => new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND", maximumFractionDigits: 0 }).format(value);
