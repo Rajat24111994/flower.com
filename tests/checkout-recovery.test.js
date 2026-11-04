@@ -16,9 +16,19 @@ function review(storage, store) {
       createElement: element
     },
     FlowerSafeStorage: {
-      readJson: (key, options) => storage[key] ?? options.fallback,
-      writeJson: (key, value) => { storage[key] = JSON.parse(JSON.stringify(value)); },
-      remove: (key) => { delete storage[key]; return true; }
+      readJson: (key, options) => {
+        const values = options.storage === "session" ? storage.sessionStorage : storage;
+        return values[key] ?? options.fallback;
+      },
+      writeJson: (key, value, options = {}) => {
+        const values = options.storage === "session" ? storage.sessionStorage : storage;
+        values[key] = JSON.parse(JSON.stringify(value));
+      },
+      remove: (key, options = {}) => {
+        const values = options.storage === "session" ? storage.sessionStorage : storage;
+        delete values[key];
+        return true;
+      }
     },
     window: { FlowerOrderStore: store, location: { assign() {} } },
     alert() {}, console: { error() {} },
@@ -30,12 +40,12 @@ function review(storage, store) {
 }
 const totals = { subtotal: 250000, savings: 0, tax: 0, shippingFee: 0, total: 250000 };
 function storage() {
-  return { cart: [{ id: "1", quantity: 1, price: 10 }], flowerCheckout: {
+  return { sessionStorage: { flowerCheckout: {
     customerName: "Khách", phone: "0908123456", address: "1 Lê Lợi",
     deliveryDate: "2099-01-01", deliveryTime: "08:00–11:00",
     deliveryZoneId: "zone-one", paymentMethod: "cod",
     idempotencyKey: "1b4e28ba-2fa1-4d3b-a3f5-ef19b5a7633b", quotedTotals: totals
-  } };
+  } }, cart: [{ id: "1", quantity: 1, price: 10 }] };
 }
 const flush = () => new Promise(setImmediate);
 
@@ -53,7 +63,7 @@ test("mất phản hồi sau khi lưu: tải lại gửi đúng yêu cầu, khô
   const first = review(data, store);
   await flush();
   await vm.runInContext("saveOrderToAdmin()", first.context);
-  assert.ok(data.flowerPendingOrder);
+  assert.ok(data.sessionStorage.flowerPendingOrder);
   data.cart[0].quantity = 5; // another tab changed the cart after the uncertain submission
   store.quote = async () => { throw new Error("must not quote reserved stock again"); };
   const second = review(data, store);
@@ -63,7 +73,7 @@ test("mất phản hồi sau khi lưu: tải lại gửi đúng yêu cầu, khô
   await vm.runInContext("saveOrderToAdmin()", second.context);
   assert.equal(attempts[1], attempts[0]);
   assert.equal(second.context.window.location.href, "./tracking.html?id=saved-order");
-  assert.equal(data.flowerPendingOrder, undefined);
+  assert.equal(data.sessionStorage.flowerPendingOrder, undefined);
   assert.equal(data.cart, undefined);
 });
 
@@ -83,7 +93,7 @@ test("lỗi mạng báo giá có thể thử lại; hết hàng khi xác nhận 
   await vm.runInContext("saveOrderToAdmin()", page.context);
   assert.equal(page.elements.get("confirm").disabled, true);
   assert.equal(data.cart.length, 1);
-  assert.equal(data.flowerPendingOrder, undefined);
+  assert.equal(data.sessionStorage.flowerPendingOrder, undefined);
 });
 
 test("bấm xác nhận liên tiếp chỉ gửi một yêu cầu", async () => {
@@ -103,7 +113,7 @@ test("bấm xác nhận liên tiếp chỉ gửi một yêu cầu", async () => 
 });
 
 test("trang xác nhận hướng dẫn quay lại checkout khi chưa có đơn hàng", () => {
-  const page = review({ cart: [] }, {
+  const page = review({ sessionStorage: {}, cart: [] }, {
     quote: async () => { throw new Error("no checkout data"); },
     create: async () => "unexpected-order"
   });

@@ -1,5 +1,5 @@
-import { mountReport } from "./admin-report-view.js?v=1";
-import { dateKey as reportDateKey } from "./admin-analytics.js?v=1";
+import { mountReport } from "./admin-report-view.js?v=2";
+import { dateKey as reportDateKey } from "./admin-analytics.js?v=2";
 import { firebaseConfig } from "../core/firebase-config.js";
 import { ORDER_STATUSES, normalizeOrderStatus, orderStatusLabel } from "../order/order-status.js?v=2";
 import { preparePhotos } from "../review/review-images.js?v=1";
@@ -66,10 +66,12 @@ function isOrderPaid(order) {
 function getPaymentMethodLabel(order) {
    if (order.paymentMethod === "qr") return "Chuyển khoản QR";
    if (order.paymentMethod === "cod") return "Tiền mặt khi nhận hàng (COD)";
+   if (order.paymentMethod === "vnpay") return "VNPay";
    return "Chưa rõ";
 }
 
 function getPaymentDisplayStatus(order) {
+   if (order.paymentRefunded === true) return "Đã hoàn tiền";
    if (order.paymentMethod === "qr") {
        if (order.paymentVerified === true) return "Đã thanh toán (đã đối soát)";
        return order.paymentStatus === "Hết hạn chờ thanh toán" ? order.paymentStatus : "Chờ cửa hàng xác minh";
@@ -90,7 +92,7 @@ function isOrderDelivered(order) {
 }
 
 function getRevenueOrders(orders) {
-   return orders.filter((order) => isOrderDelivered(order) && isOrderPaid(order));
+   return orders.filter((order) => isOrderDelivered(order) && isOrderPaid(order) && order.paymentRefunded !== true);
 }
 
 async function ensureStorage() {
@@ -235,7 +237,7 @@ function renderDashboard() {
                <div class="summary-card">
                    <h3>Doanh thu thực nhận</h3>
                    <div class="value">${moneyFormat(totalRevenue)}</div>
-                   <small>Toàn thời gian · đơn đã giao và thanh toán</small>
+                   <small>Toàn thời gian · đơn đã giao, đã thanh toán và chưa hoàn tiền</small>
                </div>
                <div class="summary-card">
                    <h3>Giá trị đơn đặt</h3>
@@ -1097,6 +1099,15 @@ function renderOrderCard(order, showCompletionAction = true) {
                </div>
            </div>
 
+           ${isOrderPaid(order) || order.paymentRefunded === true ? `
+               <div class="reply-box compact-box payment-admin-actions">
+                   ${order.paymentRefunded === true
+                       ? `<p role="status">Đã ghi nhận hoàn ${moneyFormat(order.paymentRefundAmount || order.total)} · ${escapeHtml(order.paymentRefundReference || "Chưa có mã giao dịch")}</p>`
+                       : `<button class="secondary-btn record-payment-refund" data-order-id="${escapeHtml(order.id)}" type="button">Ghi nhận đã hoàn tiền</button>`}
+                   <button class="secondary-btn payment-audit" data-order-id="${escapeHtml(order.id)}" type="button">Lịch sử đối soát &amp; hoàn tiền</button>
+               </div>
+           ` : ""}
+
            ${String(order.greetingCard || "").trim() ? `
                <div class="section-label">Lời chúc trên thiệp</div>
                <div class="detail-block quote-box">${escapeHtml(order.greetingCard)}</div>
@@ -1161,9 +1172,6 @@ function renderOrderCard(order, showCompletionAction = true) {
                            : ""}
                        ${order.paymentMethod === "qr" && order.paymentVerified !== true && normalizeOrderStatus(order.status) === "Đã hủy"
                            ? `<button class="secondary-btn record-late-payment" data-order-id="${escapeHtml(order.id)}" type="button">Ghi nhận tiền chuyển trễ</button>`
-                           : ""}
-                       ${order.paymentMethod === "qr" && order.paymentVerified === true
-                           ? `<button class="secondary-btn payment-audit" data-order-id="${escapeHtml(order.id)}" type="button">Lịch sử đối soát</button>`
                            : ""}
                        ${showCompletionAction ? renderCompletionAction("orders", order) : ""}
                    </div>
@@ -1689,6 +1697,25 @@ async function recordLateOrderPayment(orderId) {
    }
 }
 
+async function recordOrderPaymentRefund(orderId) {
+   const order = getOrders().find((item) => String(item.id) === String(orderId));
+   if (!order || order.paymentRefunded === true) return;
+   const confirmed = window.confirm(
+       `Chỉ xác nhận sau khi đã chuyển hoàn đầy đủ ${moneyFormat(order.total)} cho đơn #${order.id}. ` +
+       "Thao tác này chỉ ghi nhận giao dịch, không tự chuyển tiền."
+   );
+   if (!confirmed) return;
+   const refundReference = window.prompt("Nhập mã giao dịch hoàn tiền trên sao kê:");
+   if (!refundReference?.trim()) return;
+   try {
+       await window.FlowerOrderStore.recordPaymentRefund(orderId, refundReference.trim());
+       alert("Đã ghi nhận giao dịch hoàn tiền. Hệ thống không tự chuyển tiền.");
+   } catch (error) {
+       console.error("Không thể ghi nhận hoàn tiền:", error);
+       alert(error.code ? error.message : "Chưa thể ghi nhận hoàn tiền. Hãy thử lại sau.");
+   }
+}
+
 async function viewOrderPaymentAudit(orderId) {
    try {
        const entries = await window.FlowerOrderStore.getPaymentAudit(orderId);
@@ -1697,7 +1724,9 @@ async function viewOrderPaymentAudit(orderId) {
            return;
        }
        const lines = entries.map((entry) => {
-           const action = entry.action === "qr-late-payment-recorded" ? "Ghi nhận thanh toán trễ" : "Xác nhận thanh toán";
+           const action = entry.action === "qr-late-payment-recorded" ? "Ghi nhận thanh toán trễ"
+               : entry.action === "payment-refunded" ? "Ghi nhận hoàn tiền"
+                   : "Xác nhận thanh toán";
            const timestamp = entry.createdAt ? new Date(entry.createdAt).toLocaleString("vi-VN") : "Chưa có thời gian";
            return [
                `${action} · ${timestamp}`,
@@ -2172,6 +2201,12 @@ main.addEventListener("click", (event) => {
    const paymentAudit = event.target.closest(".payment-audit");
    if (paymentAudit) {
        viewOrderPaymentAudit(paymentAudit.dataset.orderId);
+       return;
+   }
+
+   const paymentRefund = event.target.closest(".record-payment-refund");
+   if (paymentRefund) {
+       recordOrderPaymentRefund(paymentRefund.dataset.orderId);
        return;
    }
 

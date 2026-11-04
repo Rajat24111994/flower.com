@@ -14,7 +14,7 @@
   <link rel="stylesheet" href="./css/core/store-header.css?v=3">
   <link rel="stylesheet" href="./css/core/accessibility.css?v=1">
   <link rel="stylesheet" href="./css/core/information-page.css?v=1">
-  <link rel="stylesheet" href="./css/core/store-footer.css?v=3">
+  <link rel="stylesheet" href="./css/core/store-footer.css?v=4">
   <title>Quyền riêng tư | Flowerflow</title>
 </head>
 <body>
@@ -63,7 +63,6 @@
               <li>Hiển thị lịch sử và trạng thái giao hàng cho chủ tài khoản; xử lý yêu cầu hỗ trợ, đánh giá và ảnh đánh giá.</li>
               <li>Ngăn việc dò mã đơn và bảo vệ các chức năng khỏi truy cập hoặc sử dụng không phù hợp.</li>
             </ul>
-            <p>Thông tin phiên đăng nhập (như tên hiển thị, email, số điện thoại nếu có, mã tài khoản và phương thức đăng nhập) được lưu trong bộ nhớ cục bộ của trình duyệt để duy trì trạng thái đăng nhập. Firebase Authentication cũng dùng cơ chế lưu phiên của trình duyệt.</p>
           </section>
 
           <section class="information-section" id="service-providers">
@@ -81,6 +80,7 @@
           <section class="information-section" id="storage-security">
             <h2>Lưu trữ, thời hạn và bảo vệ</h2>
             <p>Dữ liệu tài khoản và đơn hàng được lưu trong Firebase/Cloud Firestore. Phiên đăng nhập, giỏ hàng và danh sách yêu thích được lưu trong bộ nhớ cục bộ (local storage) của trình duyệt trên thiết bị của bạn. Thông tin checkout và yêu cầu gửi đơn đang chờ được lưu tạm trong session storage của tab trình duyệt và được xóa sau khi đơn được gửi thành công; đóng tab có thể làm mất thông tin checkout chưa gửi.</p>
+            <p>Firebase Authentication lưu phiên đăng nhập trong trình duyệt. Ứng dụng cũng lưu tên hiển thị, email, số điện thoại nếu có, mã tài khoản và phương thức đăng nhập trong bộ nhớ cục bộ để duy trì trạng thái phiên.</p>
             <p>Chúng tôi giữ thông tin trong thời gian cần thiết để vận hành tài khoản, hoàn tất và hỗ trợ đơn hàng, xử lý thanh toán hoặc tranh chấp, và đáp ứng nghĩa vụ áp dụng. Thời hạn lưu cụ thể có thể khác nhau theo loại dữ liệu; dữ liệu đơn hàng hoặc giao dịch cần thiết có thể phải được giữ lại sau khi đóng tài khoản. Bản ghi giới hạn tra cứu nêu trên tự hết hạn sau 24 giờ.</p>
             <p>Website được cấu hình sử dụng HTTPS. Quyền đọc và cập nhật dữ liệu được giới hạn bằng xác thực, phân quyền quản trị và Firestore Security Rules; thông tin chi tiết của đơn tài khoản chỉ dành cho chủ tài khoản và nhân sự quản trị được cấp quyền. Không có biện pháp truyền hoặc lưu trữ nào đảm bảo an toàn tuyệt đối, vì vậy hãy bảo vệ thiết bị và không chia sẻ thông tin đăng nhập.</p>
           </section>

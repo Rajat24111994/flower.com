@@ -99,8 +99,12 @@ async function expireOneReservation(db, orderRef, now) {
             return false;
         }
         if (order.inventoryReserved !== true || typeof expiresAt?.toMillis !== "function"
-            || expiresAt.toMillis() > now.toMillis()
-            || (order.paymentMethod === "qr" && order.paymentVerified === true)) return false;
+            || expiresAt.toMillis() > now.toMillis()) return false;
+        if (order.paymentVerified === true
+            || ["đã thanh toán", "paid", "da_thanh_toan", "đã hoàn tiền"].includes(String(order.paymentStatus || "").trim().toLocaleLowerCase("vi"))) {
+            transaction.update(orderRef, { reservationExpiresAt: FieldValue.delete() });
+            return false;
+        }
 
         const items = aggregateItems(order.items);
         const paymentAttemptRef = order.paymentMethod === "vnpay" && order.vnpTxnRef
@@ -156,20 +160,20 @@ async function expireOneReservation(db, orderRef, now) {
 async function expireReservations(db, maxOrders = 500) {
     let released = 0;
     const batchSize = 100;
-    while (released < maxOrders) {
+    let scanned = 0;
+    while (released < maxOrders && scanned < maxOrders) {
         const now = Timestamp.now();
         const snapshot = await db.collection("orders")
             .where("inventoryReserved", "==", true)
-            .where("paymentVerified", "==", false)
             .where("reservationExpiresAt", "<=", now)
             .orderBy("reservationExpiresAt", "asc")
-            .limit(Math.min(batchSize, maxOrders - released))
+            .limit(Math.min(batchSize, maxOrders - scanned))
             .get();
         if (snapshot.empty) break;
+        scanned += snapshot.size;
         const results = await Promise.all(snapshot.docs.map((document) => expireOneReservation(db, document.ref, now)));
         const batchReleased = results.filter(Boolean).length;
         released += batchReleased;
-        if (batchReleased === 0) break;
     }
     return released;
 }
@@ -179,7 +183,7 @@ async function releaseExpiredReservations(db) {
     try {
         await expireReservations(db);
     } catch (error) {
-        console.error("Reservation cleanup failed:", error.code || error.message);
+        console.error("Reservation cleanup failed:", error.code || "unknown");
     }
 }
 
@@ -201,7 +205,10 @@ function publicTrackingOrder(id, data) {
             }))
             : [],
         // What a customer needs to finish a QR transfer (no name, phone or address).
-        ...(awaitsQrTransfer(data) ? {
+        ...(data.paymentRefunded === true ? {
+            paymentMethod: data.paymentMethod || "",
+            paymentStatus: "Đã hoàn tiền"
+        } : awaitsQrTransfer(data) ? {
             paymentMethod: "qr",
             paymentStatus: data.paymentStatus || "Chờ xác minh thanh toán",
             total: Number(data.total) || 0,
@@ -605,7 +612,7 @@ async function quoteOrder(req, res) {
         if (["invalid-promotion", "insufficient-stock", "product-unavailable", "delivery-zone-unavailable"].includes(error.code)) {
             return sendError(res, 409, error.code, error.message);
         }
-        console.error("Order quote failed:", error.code || error.message);
+        console.error("Order quote failed:", error.code || "unknown");
         return sendError(res, 503, "order-service-unavailable", "Chưa thể kiểm tra giá đơn hàng. Vui lòng thử lại sau.");
     }
 }
@@ -824,8 +831,90 @@ async function createOrder(req, res) {
             const status = ["invalid-checkout", "invalid-delivery-schedule"].includes(error.code) ? 400 : 409;
             return sendError(res, status, error.code, error.message);
         }
-        console.error("Order creation failed:", error.code || error.message);
+        console.error("Order creation failed:", error.code || "unknown");
         return sendError(res, 503, "order-service-unavailable", "Chưa thể xác nhận đơn hàng. Vui lòng thử lại sau.");
+    }
+}
+
+async function recordPaymentRefund(req, res) {
+    const orderId = String(req.body?.orderId || "").trim();
+    const refundReference = String(req.body?.refundReference || "").trim();
+    if (!orderId || orderId.length > 128 || orderId.includes("/")
+        || !refundReference || refundReference.length > 120
+        || /[\u0000-\u001f\u007f]/.test(refundReference)) {
+        return sendError(res, 400, "invalid-argument", "Cần mã đơn và mã giao dịch hoàn tiền hợp lệ.");
+    }
+
+    try {
+        const user = await authorizeOrderAdmin(req, res);
+        if (!user) return;
+        const db = getAdminFirestore();
+        const orderRef = db.collection("orders").doc(orderId);
+        const auditRef = db.collection("orderPaymentAudit").doc();
+        const result = await db.runTransaction(async (transaction) => {
+            const snapshot = await transaction.get(orderRef);
+            if (!snapshot.exists) {
+                const error = new Error("Không tìm thấy đơn hàng.");
+                error.code = "order-not-found";
+                throw error;
+            }
+            const order = snapshot.data();
+            if (order.paymentRefunded === true) {
+                const error = new Error("Đơn hàng này đã được ghi nhận hoàn tiền.");
+                error.code = "payment-already-refunded";
+                throw error;
+            }
+            const paymentStatus = String(order.paymentStatus || "").trim().toLocaleLowerCase("vi");
+            const paid = order.paymentVerified === true
+                || ["đã thanh toán", "paid", "da_thanh_toan"].includes(paymentStatus);
+            if (!paid) {
+                const error = new Error("Chỉ ghi nhận hoàn tiền cho đơn đã xác nhận thanh toán.");
+                error.code = "payment-not-complete";
+                throw error;
+            }
+            if (!Number.isSafeInteger(order.total) || order.total <= 0) {
+                const error = new Error("Tổng tiền đơn hàng không hợp lệ để hoàn tiền.");
+                error.code = "invalid-refund-amount";
+                throw error;
+            }
+
+            transaction.update(orderRef, {
+                paymentRefunded: true,
+                paymentRefundAmount: order.total,
+                paymentRefundedAt: FieldValue.serverTimestamp(),
+                paymentRefundedBy: user.uid,
+                paymentRefundReference: refundReference,
+                paymentStatus: "Đã hoàn tiền"
+            });
+            transaction.create(auditRef, {
+                orderId,
+                action: "payment-refunded",
+                actorUid: user.uid,
+                actorEmail: String(user.email || "").slice(0, 254),
+                actorRole: "admin",
+                amountVnd: order.total,
+                paymentReference: String(order.paymentReference || "").slice(0, 120),
+                reconciliationReference: refundReference,
+                previousPaymentStatus: String(order.paymentStatus || "").slice(0, 120),
+                orderStatus: String(order.status || "").slice(0, 80),
+                createdAt: FieldValue.serverTimestamp()
+            });
+            return { auditId: auditRef.id, amountVnd: order.total };
+        });
+        return res.status(200).json({ ok: true, ...result });
+    } catch (error) {
+        if (String(error.code || "").startsWith("auth/")) {
+            return sendError(res, 401, "unauthenticated", "Phiên đăng nhập đã hết hạn. Hãy đăng nhập lại.");
+        }
+        const statuses = {
+            "order-not-found": 404,
+            "payment-not-complete": 409,
+            "payment-already-refunded": 409,
+            "invalid-refund-amount": 409
+        };
+        if (statuses[error.code]) return sendError(res, statuses[error.code], error.code, error.message);
+        console.error("Payment refund recording failed:", error.code || error.message);
+        return sendError(res, 503, "payment-refund-unavailable", "Chưa thể ghi nhận hoàn tiền. Vui lòng thử lại.");
     }
 }
 
@@ -889,7 +978,7 @@ async function lookupOrder(req, res) {
         }
         return res.status(200).json({ order: publicTrackingOrder(snapshot.id, snapshot.data()) });
     } catch (error) {
-        console.error("Order lookup failed:", error.code || error.message);
+        console.error("Order lookup failed:", error.code || "unknown");
         return sendError(res, 503, "order-service-unavailable", "Chưa thể tra cứu đơn hàng. Vui lòng thử lại sau.");
     }
 }
@@ -996,7 +1085,7 @@ async function submitReview(req, res) {
             const status = { "order-not-found": 404, "invalid-argument": 400 }[error.code] || 409;
             return sendError(res, status, error.code, error.message);
         }
-        console.error("Review submission failed:", error.code || error.message);
+        console.error("Review submission failed:", error.code || "unknown");
         return sendError(res, 503, "review-service-unavailable", "Chưa thể gửi đánh giá. Vui lòng thử lại sau.");
     }
 }
@@ -1006,6 +1095,7 @@ module.exports = async function handler(req, res) {
     if (req.method === "POST") {
         if (req.body?.action === "verify-qr-payment") return reconcileQrPayment(req, res);
         if (req.body?.action === "record-late-qr-payment") return reconcileQrPayment(req, res, true);
+        if (req.body?.action === "record-payment-refund") return recordPaymentRefund(req, res);
         if (req.body?.action === "quote") return quoteOrder(req, res);
         if (req.body?.action === "lookup") return lookupOrder(req, res);
         if (req.body?.action === "review") return submitReview(req, res);
@@ -1027,7 +1117,7 @@ module.exports = async function handler(req, res) {
                 const claims = await getAdminAuth().verifyIdToken(match[1], true);
                 authorized = claims.admin === true;
             } catch (error) {
-                console.error("Reservation cleanup authentication failed:", error.code || error.message);
+                console.error("Reservation cleanup authentication failed:", error.code || "unknown");
             }
         }
         if (!authorized) return sendError(res, 401, "unauthenticated", "Quyền dọn đơn hết hạn không hợp lệ.");
@@ -1035,7 +1125,7 @@ module.exports = async function handler(req, res) {
             const released = await expireReservations(getAdminFirestore());
             return res.status(200).json({ released });
         } catch (error) {
-            console.error("Reservation cleanup failed:", error.code || error.message);
+            console.error("Reservation cleanup failed:", error.code || "unknown");
             return sendError(res, 503, "order-service-unavailable", "Chưa thể giải phóng tồn kho đơn hết hạn.");
         }
     }

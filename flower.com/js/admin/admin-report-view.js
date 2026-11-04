@@ -1,4 +1,4 @@
-import { buildReport, dateKey, reportSheets } from "./admin-analytics.js?v=1";
+import { buildReport, dateKey, reportSheets } from "./admin-analytics.js?v=2";
 import { downloadWorkbook } from "./excel-export.js?v=1";
 const e = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[char]));
 const vnd = (value) => new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND", maximumFractionDigits: 0 }).format(value);
@@ -33,14 +33,14 @@ export function mountReport({ container, orders, products, filters, onFilter }) 
       <button class="submit-btn" type="submit">Áp dụng bộ lọc</button>
       <button class="secondary-btn" id="report-reset" type="button">Đặt lại</button>
     </form><p id="report-feedback" role="status" aria-live="polite"></p>
-    <p class="report-method">Đơn hàng theo ngày đặt; doanh thu chỉ tính đơn hoàn thành và đã thanh toán, theo ngày trả tiền (dự phòng ngày giao/ngày đặt). Tồn kho là số hiện tại, không lọc theo ngày.</p>
+    <p class="report-method">Đơn hàng theo ngày đặt; doanh thu chỉ tính đơn hoàn thành, đã thanh toán và chưa hoàn tiền, theo ngày trả tiền (dự phòng ngày giao/ngày đặt). Tiền hoàn được thống kê riêng theo ngày ghi nhận hoàn tiền. Tồn kho là số hiện tại, không lọc theo ngày.</p>
     ${report.undatedOrders ? `<p class="report-warning">${report.undatedOrders} đơn thiếu ngày đặt; không được tính trong bộ lọc theo ngày.</p>` : ""}
-    <div class="report-metrics">${metric("Doanh thu ghi nhận", vnd(report.totalRevenue), `${report.revenueOrders.length} đơn hoàn thành và thanh toán`)}${metric("Đơn đặt trong kỳ", report.placed.length, "Gồm mọi trạng thái, theo ngày đặt")}${metric("Số bó đã bán", report.soldUnits, "Theo đơn ghi nhận doanh thu")}${metric("Doanh thu / đơn", vnd(report.average), "Trung bình trên đơn ghi nhận")}${metric("Tồn kho hiện tại", report.currentStock, "Tất cả sản phẩm")}${metric("Sản phẩm tồn thấp", report.lowStock.length, `Ngưỡng ≤ ${filters.lowStock} bó, gồm hết hàng`)}</div>
+    <div class="report-metrics">${metric("Doanh thu sau hoàn tiền", vnd(report.totalRevenue), `${report.revenueOrders.length} đơn hoàn thành, đã trả và chưa hoàn tiền`)}${metric("Đã hoàn tiền trong kỳ", vnd(report.totalRefunded), `${report.refundedOrders.length} đơn, theo ngày ghi nhận hoàn tiền`)}${metric("Đơn đặt trong kỳ", report.placed.length, "Gồm mọi trạng thái, theo ngày đặt")}${metric("Số bó đã bán", report.soldUnits, "Theo đơn ghi nhận doanh thu")}${metric("Doanh thu / đơn", vnd(report.average), "Trung bình trên đơn ghi nhận")}${metric("Tồn kho hiện tại", report.currentStock, "Tất cả sản phẩm")}${metric("Sản phẩm tồn thấp", report.lowStock.length, `Ngưỡng ≤ ${filters.lowStock} bó, gồm hết hàng`)}</div>
     <div class="report-panels"><section class="report-section report-wide"><h3>Biểu đồ doanh thu theo ${report.monthly ? "tháng" : "ngày"}</h3>${chart(report)}<details><summary>Xem bảng số liệu biểu đồ</summary>${table([report.monthly ? "Tháng" : "Ngày", "Doanh thu (VND)", "Đơn ghi nhận"], report.series.map((row) => [row.key || "Chưa có ngày", vnd(row.revenue), row.orders]), "Số liệu doanh thu")}</details></section>
     <section class="report-section"><h3>Thống kê trạng thái đơn</h3>${table(["Trạng thái", "Số đơn"], report.states.map((row) => [row.label, row.count]), "Đơn đặt trong kỳ theo trạng thái")}</section>
-    <section class="report-section"><h3>10 sản phẩm bán chạy</h3>${table(["Sản phẩm", "Số bó", "Số đơn"], report.bestSellers.slice(0, 10).map((row) => [row.title, row.quantity, row.orders]), "Bán chạy trong đơn hoàn thành và thanh toán")}</section>
+    <section class="report-section"><h3>10 sản phẩm bán chạy</h3>${table(["Sản phẩm", "Số bó", "Số đơn"], report.bestSellers.slice(0, 10).map((row) => [row.title, row.quantity, row.orders]), "Bán chạy trong đơn hoàn thành, đã thanh toán và chưa hoàn tiền")}</section>
     <section class="report-section report-wide"><h3>Tồn kho thấp hiện tại</h3>${table(["Mã", "Sản phẩm", "Tồn", "Cảnh báo"], report.lowStock.map((row) => [row.id, row.title, row.quantity, row.quantity === 0 ? "Hết hàng" : "Sắp hết hàng"]), `Tồn kho ≤ ${filters.lowStock} bó`)}</section></div>
-    <p class="report-method">Excel gồm 6 sheet: tổng quan, doanh thu, trạng thái đơn, bán chạy (toàn bộ), tồn thấp và đơn ghi nhận. Dữ liệu xuất khớp bộ lọc đang áp dụng ở trên.</p>
+    <p class="report-method">Excel gồm 7 sheet: tổng quan, doanh thu sau hoàn tiền, trạng thái đơn, bán chạy (toàn bộ), tồn thấp, đơn ghi nhận và hoàn tiền. Dữ liệu xuất khớp bộ lọc đang áp dụng ở trên.</p>
   </section>`;
   const form = container.querySelector("#admin-report-filters");
   const feedback = container.querySelector("#report-feedback");

@@ -30,9 +30,10 @@ export function periodBounds(filters, now = new Date()) {
 export function paidAndDelivered(order) {
   if (normalizeOrderStatus(order.status) !== "Đã giao") return false;
   return order.paymentMethod === "qr" ? order.paymentVerified === true
-    : ["đã thanh toán", "paid"].includes(String(order.paymentStatus || "").trim().toLocaleLowerCase("vi"));
+    : ["đã thanh toán", "paid", "da_thanh_toan"].includes(String(order.paymentStatus || "").trim().toLocaleLowerCase("vi"));
 }
 export const revenueDate = (order) => dateKey(order.paidAt) || dateKey(order.deliveredAt) || dateKey(order.createdAt);
+export const refundDate = (order) => dateKey(order.paymentRefundedAt) || dateKey(order.createdAt);
 const money = (value) => Number.isFinite(Number(value)) ? Math.round(Number(value)) : 0;
 export function buildReport(orders, products, filters, now = new Date()) {
   const bounds = periodBounds(filters, now);
@@ -40,8 +41,12 @@ export function buildReport(orders, products, filters, now = new Date()) {
   if (!Number.isInteger(threshold) || threshold < 0) throw new Error("Ngưỡng tồn kho phải là số nguyên không âm.");
   const within = (day) => filters.period === "all" || Boolean(day && (!bounds.start || day >= bounds.start) && (!bounds.end || day <= bounds.end));
   const placed = orders.filter((order) => within(dateKey(order.createdAt)));
-  const revenueOrders = orders.filter((order) => paidAndDelivered(order) && within(revenueDate(order)));
+  const revenueOrders = orders.filter((order) => paidAndDelivered(order)
+    && order.paymentRefunded !== true
+    && within(revenueDate(order)));
   const totalRevenue = revenueOrders.reduce((sum, order) => sum + money(order.total), 0);
+  const refundedOrders = orders.filter((order) => order.paymentRefunded === true && within(refundDate(order)));
+  const totalRefunded = refundedOrders.reduce((sum, order) => sum + money(order.paymentRefundAmount ?? order.total), 0);
   const states = new Map(ORDER_STATUSES.map((status) => [status, 0]));
   placed.forEach((order) => { const status = normalizeOrderStatus(order.status); states.set(status, (states.get(status) || 0) + 1); });
   const sales = new Map();
@@ -91,7 +96,7 @@ export function buildReport(orders, products, filters, now = new Date()) {
   const lowStock = products.filter((product) => Number.isInteger(Number(product.quantity)) && Number(product.quantity) >= 0 && Number(product.quantity) <= threshold)
     .map((product) => ({ id: String(product.id), title: product.title, quantity: Number(product.quantity) }))
     .sort((a, b) => a.quantity - b.quantity || a.title.localeCompare(b.title, "vi"));
-  return { filters: { ...filters }, bounds, generatedAt: now, placed, revenueOrders, totalRevenue,
+  return { filters: { ...filters }, bounds, generatedAt: now, placed, revenueOrders, totalRevenue, refundedOrders, totalRefunded,
     average: revenueOrders.length ? totalRevenue / revenueOrders.length : 0,
     soldUnits: bestSellers.reduce((sum, row) => sum + row.quantity, 0),
     states: [...states].map(([status, count]) => ({ status, label: orderStatusLabel(status), count })),
@@ -106,7 +111,8 @@ export function reportSheets(report) {
   return [
     { name: "Tong quan", columns: [c("Chỉ tiêu", "text", 45), c("Giá trị", "text", 38)], rows: [
       ["Flowerflow · Báo cáo quản trị", interval], ["Múi giờ", "Asia/Ho_Chi_Minh"],
-      ["Doanh thu (VND)", report.totalRevenue], ["Đơn đã giao và thanh toán", report.revenueOrders.length],
+      ["Doanh thu sau hoàn tiền (VND)", report.totalRevenue], ["Đơn đã giao, thanh toán và chưa hoàn tiền", report.revenueOrders.length],
+      ["Đơn đã hoàn tiền trong kỳ", report.refundedOrders.length], ["Tổng tiền hoàn (VND)", report.totalRefunded],
       ["Đơn đặt trong kỳ (theo ngày đặt)", report.placed.length], ["Số bó đã bán", report.soldUnits],
       ["Doanh thu / đơn (VND)", Math.round(report.average)], ["Tồn kho hiện tại", report.currentStock],
       ["Ngưỡng tồn kho thấp", Number(report.filters.lowStock ?? 5)],
@@ -117,7 +123,9 @@ export function reportSheets(report) {
     { name: "Ban chay", columns: [c("Mã sản phẩm"), c("Tên sản phẩm", "text", 45), c("Số bó", "number"), c("Số đơn", "number")],
       rows: report.bestSellers.map((row) => [row.id, row.title, row.quantity, row.orders]) },
     { name: "Ton kho thap", columns: [c("Mã sản phẩm"), c("Tên sản phẩm", "text", 45), c("Tồn hiện tại", "number")], rows: report.lowStock.map((row) => [row.id, row.title, row.quantity]) },
-    { name: "Don ghi nhan", columns: [c("Mã đơn"), c("Ngày ghi doanh thu", "date"), c("Ngày đặt", "date"), c("Trạng thái"), c("Thanh toán"), c("Doanh thu (VND)", "money")],
-      rows: report.revenueOrders.map((order) => [order.id, date(revenueDate(order)), date(dateKey(order.createdAt)), orderStatusLabel(order.status), order.paymentMethod, money(order.total)]) }
+    { name: "Don ghi nhan", columns: [c("Mã đơn"), c("Ngày ghi doanh thu", "date"), c("Ngày đặt", "date"), c("Trạng thái"), c("Thanh toán"), c("Doanh thu sau hoàn tiền (VND)", "money")],
+      rows: report.revenueOrders.map((order) => [order.id, date(revenueDate(order)), date(dateKey(order.createdAt)), orderStatusLabel(order.status), order.paymentMethod, money(order.total)]) },
+    { name: "Hoan tien", columns: [c("Mã đơn"), c("Ngày ghi hoàn tiền", "date"), c("Ngày đặt", "date"), c("Thanh toán"), c("Số tiền hoàn (VND)", "money"), c("Mã giao dịch hoàn tiền")],
+      rows: report.refundedOrders.map((order) => [order.id, date(refundDate(order)), date(dateKey(order.createdAt)), order.paymentMethod, money(order.paymentRefundAmount ?? order.total), order.paymentRefundReference || "Chưa có mã giao dịch"]) }
   ];
 }

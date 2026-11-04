@@ -314,11 +314,13 @@ function renderOrder(order) {
         da_thanh_toan: "Đã thanh toán",
         that_bai: "Thanh toán thất bại"
     };
-    document.getElementById("result-payment-status").textContent = order.paymentMethod === "qr"
-        ? (["Hết hạn chờ thanh toán", "Đã thanh toán"].includes(order.paymentStatus) ? order.paymentStatus : "Chờ cửa hàng xác minh")
-        : order.paymentMethod === "vnpay"
-            ? vnpayPaymentLabels[order.paymentStatus] || "Đang chờ VNPay xác nhận"
-            : order.paymentStatus || "Thanh toán khi nhận hàng";
+    document.getElementById("result-payment-status").textContent = order.paymentStatus === "Đã hoàn tiền"
+        ? "Đã hoàn tiền"
+        : order.paymentMethod === "qr"
+            ? (["Hết hạn chờ thanh toán", "Đã thanh toán"].includes(order.paymentStatus) ? order.paymentStatus : "Chờ cửa hàng xác minh")
+            : order.paymentMethod === "vnpay"
+                ? vnpayPaymentLabels[order.paymentStatus] || "Đang chờ VNPay xác nhận"
+                : order.paymentStatus || "Thanh toán khi nhận hàng";
     // The note and the shop's reply are only present for the signed-in owner of the order.
     const note = String(order.orderNote || "").trim();
     const reply = String(order.orderNoteReply || "").trim();

@@ -414,7 +414,7 @@
     const token = await auth.currentUser.getIdToken();
     const response = await fetch("/api/orders?action=expire", {
       method: "GET",
-      headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+      headers: {       Authorization: ["Bearer", token].join(" "), Accept: "application/json" },
       cache: "no-store"
     });
     const result = await response.json().catch(() => ({}));
@@ -570,6 +570,36 @@
     return reconcileQrPayment("record-late-qr-payment", id, reconciliation);
   }
 
+  async function recordPaymentRefund(id, refundReference) {
+    const { auth } = await getFirebase();
+    await auth.authStateReady();
+    if (!auth.currentUser) {
+      const error = new Error("Đăng nhập tài khoản quản trị để ghi nhận hoàn tiền.");
+      error.code = "unauthenticated";
+      throw error;
+    }
+    const token = await auth.currentUser.getIdToken();
+    const { response, result } = await orderRequest({
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        Authorization: ["Bearer", token].join(" "),
+      },
+      body: JSON.stringify({
+        action: "record-payment-refund",
+        orderId: String(id),
+        refundReference: String(refundReference)
+      })
+    });
+    if (!response.ok) {
+      const error = new Error(result.error || "Chưa thể ghi nhận hoàn tiền.");
+      error.code = result.code || "payment-refund-unavailable";
+      throw error;
+    }
+    return result;
+  }
+
   async function getPaymentAudit(id) {
     const { auth } = await getFirebase();
     await auth.authStateReady();
@@ -638,6 +668,7 @@
     update,
     verifyPayment,
     recordLatePayment,
+    recordPaymentRefund,
     getPaymentAudit,
     remove
   };

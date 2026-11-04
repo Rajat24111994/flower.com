@@ -6,7 +6,7 @@ Làm lần lượt từ trên xuống cho mỗi lần phát hành. Mục nào kh
 
 - [ ] Mọi thay đổi đi qua Pull Request, có ít nhất 1 người review (xem `CONTRIBUTING.md`).
 - [ ] CI trên PR xanh: **Unit test + coverage** và **Feature, system và security test (Firebase Emulator)**.
-- [ ] Coverage không giảm so với lần phát hành trước (xem bảng trong trang kết quả CI).
+- [ ] Unit-test line coverage đạt ít nhất 50% (CI tự chặn dưới ngưỡng); so sánh thêm với lần phát hành trước.
 - [ ] Đổi file JS/CSS thì đã tăng số `?v=` trong các trang `.html` dùng file đó (tránh trình duyệt dùng bản cũ).
 - [ ] Đổi `firestore.rules` thì có test trong `tests/integration/security-rules.test.js`.
 
@@ -23,7 +23,11 @@ Làm lần lượt từ trên xuống cho mỗi lần phát hành. Mục nào kh
 ## 3. Triển khai
 
 - [ ] Gộp PR vào `main` (Vercel tự deploy).
-- [ ] Có thay đổi `firestore.rules`, index hoặc dữ liệu mẫu thì chạy:
+- [ ] Có thay đổi `firestore.rules` hoặc index thì deploy đúng Firebase project:
+  ```sh
+  cd flower.com && firebase deploy --only firestore:rules,firestore:indexes
+  ```
+- [ ] Chỉ chạy migration/catalog nếu bản phát hành có thay đổi dữ liệu cần xử lý:
   ```sh
   cd flower.com && npm run setup-firestore
   ```
