@@ -1,5 +1,5 @@
 const assert = require('assert');
-const { findDuplicateProductImages, mergeCatalogProducts, normalizeProduct } = require('../flower.com/js/catalog/product-store.js');
+const { findDuplicateProductImages, mergeCatalogProducts, normalizeProduct, repairCatalogProducts } = require('../flower.com/js/catalog/product-store.js');
 
 const catalog = [
   { id: 1, title: 'Hoa hồng', price: 250000, quantity: 8, image: 'rose.jpg', description: 'Hoa hồng đỏ' },
@@ -97,6 +97,25 @@ assert.strictEqual(migratedImages[0].image, fullCatalog[0].image);
 assert.deepStrictEqual(migratedImages[0].images, ['https://cdn.example.test/custom-detail.webp']);
 assert.strictEqual(migratedImages[1].image, fullCatalog[1].image);
 assert.strictEqual(migratedImages[2].image, 'https://admin.example.test/custom-flower.webp');
+
+const canonicalProduct = fullCatalog.find((product) => String(product.id) === '10');
+const repairedProducts = repairCatalogProducts([
+  {
+    ...canonicalProduct,
+    title: 'B? hoa h?ng t?m bay b?ng',
+    image: './images/flower-04.webp',
+    price: 1557000,
+    quantity: 1044,
+  },
+  { id: 999, title: 'Sản phẩm tùy chỉnh?', image: './images/custom.webp', price: 900000 },
+], fullCatalog);
+assert.strictEqual(repairedProducts.length, 2);
+assert.strictEqual(repairedProducts[0].title, canonicalProduct.title);
+assert.strictEqual(repairedProducts[0].image, canonicalProduct.image);
+assert.strictEqual(repairedProducts[0].price, 1557000);
+assert.strictEqual(repairedProducts[0].quantity, 1044);
+assert.strictEqual(repairedProducts[1].title, 'Sản phẩm tùy chỉnh?');
+assert.strictEqual(repairedProducts[1].image, './images/custom.webp');
 
 const imageProducts = [
   { id: 1, image: './images/rose.webp?v=2', images: ['./images/detail.webp'] },
