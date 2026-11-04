@@ -7,7 +7,7 @@
     "scripts":  {
                     "set-admin":  "node scripts/set-admin-claim.js",
                     "set-owner":  "node scripts/set-owner-claim.js",
-                    "test":  "node ../tests/product-page.test.js \u0026\u0026 node ../tests/product-related.test.js \u0026\u0026 node ../tests/product-categories.test.js \u0026\u0026 node ../tests/product-store-sync.test.js \u0026\u0026 node ../tests/shopping-store.test.js \u0026\u0026 node ../tests/store-footer.test.js"
+                    "test":  "node ../tests/product-page.test.js \u0026\u0026 node ../tests/product-related.test.js \u0026\u0026 node ../tests/product-categories.test.js \u0026\u0026 node ../tests/product-store-sync.test.js \u0026\u0026 node ../tests/shopping-store.test.js \u0026\u0026 node ../tests/order-inventory.test.js \u0026\u0026 node ../tests/store-footer.test.js \u0026\u0026 node ../tests/revenue-metrics.test.js"
                 },
     "dependencies":  {
                          "firebase-admin":  "^13.0.0"

@@ -76,4 +76,29 @@ assert.strictEqual(restoredFullCatalog.some((item) => item.id === fullCatalog[24
 assert.strictEqual(restoredFullCatalog.find((item) => item.id === 999).title, 'Hoa tùy chỉnh');
 assert.strictEqual(new Set(restoredFullCatalog.map((item) => item.title)).size, restoredFullCatalog.length);
 
+const inventoryValues = new Map([
+  ['flowerInventory', JSON.stringify([{ id: 1, title: 'Hoa hồng', quantity: 7 }])]
+]);
+global.CustomEvent = class {
+  constructor(type, options) {
+    this.type = type;
+    this.detail = options.detail;
+  }
+};
+global.window = {
+  localStorage: {
+    getItem(key) {
+      return inventoryValues.has(key) ? inventoryValues.get(key) : null;
+    },
+    setItem(key, value) {
+      inventoryValues.set(key, value);
+    },
+  },
+  dispatchEvent() {},
+};
+const { applyStockUpdates } = require('../flower.com/product-store.js');
+const cachedInventory = applyStockUpdates([{ id: '1', quantity: 3 }]);
+assert.strictEqual(cachedInventory.find((item) => item.id === 1).quantity, 3);
+assert.strictEqual(JSON.parse(inventoryValues.get('flowerInventory'))[0].quantity, 3);
+
 console.log('product-store sync test passed');

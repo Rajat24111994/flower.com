@@ -1,7 +1,8 @@
 const { getApps, initializeApp, cert } = require("firebase-admin/app");
 const { getAuth } = require("firebase-admin/auth");
+const { getFirestore } = require("firebase-admin/firestore");
 
-function getAdminAuth() {
+function getAdminApp() {
     const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
     if (!serviceAccountJson) {
         const error = new Error("FIREBASE_SERVICE_ACCOUNT_JSON is not configured.");
@@ -24,7 +25,15 @@ function getAdminAuth() {
             credential: cert(serviceAccount),
             projectId: process.env.FIREBASE_PROJECT_ID || serviceAccount.project_id
         });
-    return getAuth(app);
+    return app;
+}
+
+function getAdminAuth() {
+    return getAuth(getAdminApp());
+}
+
+function getAdminFirestore() {
+    return getFirestore(getAdminApp());
 }
 
 function sendError(res, status, code, message) {
@@ -48,4 +57,4 @@ async function verifyRequest(req, res, adminAuth) {
     }
 }
 
-module.exports = { getAdminAuth, sendError, verifyRequest };
+module.exports = { getAdminAuth, getAdminFirestore, sendError, verifyRequest };

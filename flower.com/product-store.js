@@ -197,6 +197,25 @@
         return normalized;
     }
 
+    function applyStockUpdates(stockUpdates) {
+        if (!Array.isArray(stockUpdates)) {
+            throw new TypeError("Cập nhật tồn kho không hợp lệ.");
+        }
+        const updates = new Map(stockUpdates.map((item) => {
+            const quantity = Number(item && item.quantity);
+            if (!item || item.id === undefined || item.id === null
+                || !Number.isInteger(quantity) || quantity < 0) {
+                throw new TypeError("Cập nhật tồn kho không hợp lệ.");
+            }
+            return [String(item.id), quantity];
+        }));
+        return cacheProducts(readProducts().map((product) => (
+            updates.has(String(product.id))
+                ? { ...product, quantity: updates.get(String(product.id)) }
+                : product
+        )));
+    }
+
     async function synchronizeProducts(localProducts, catalog) {
         const firebase = await getFirebaseApi();
         const remoteProducts = firebase ? await readRemoteProducts() : null;
@@ -265,7 +284,7 @@
         return initialization;
     }
 
-    const api = { initialize, readProducts, saveProducts, mergeCatalogProducts, normalizeProduct };
+    const api = { initialize, readProducts, saveProducts, applyStockUpdates, mergeCatalogProducts, normalizeProduct };
     if (typeof window !== "undefined") window.FlowerInventory = api;
     if (typeof module !== "undefined" && module.exports) module.exports = api;
 })();

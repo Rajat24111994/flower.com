@@ -12,14 +12,14 @@ For local testing, run Vercel CLI from `flower.com` with `vercel dev` after link
 
 1. In Firebase Console, enable the sign-in providers required by the shop and create the admin account in **Authentication → Users**.
 2. Add the Vercel production hostname under **Authentication → Settings → Authorized domains**.
-3. In Google Cloud Console for the same project, create a service account with the **Firebase Authentication Admin** role. Create a JSON key and store it only as a Vercel environment variable:
+3. In Google Cloud Console for the same project, create a service account with the **Firebase Authentication Admin** and **Cloud Datastore User** roles. The latter is required for the order API to reserve inventory in Firestore. Create a JSON key and store it only as a Vercel environment variable:
 
    - Open Vercel → project `flower-com` → **Settings → Environment Variables**.
    - Add `FIREBASE_SERVICE_ACCOUNT_JSON` with the entire contents of the service-account JSON file. Select **Production** (and Preview too if preview deployments should have access).
    - Add `FIREBASE_PROJECT_ID` with `web-ban-hoa-9fe0b`.
    - Never paste the key into source code, commit it, or send it in chat. Restrict/delete the key if it is accidentally exposed.
 
-4. Redeploy the Vercel project after saving those variables. Its Root Directory must remain `flower.com`; the APIs are at `/api/admin/users` and `/api/owner/users`.
+4. Redeploy the Vercel project after saving those variables. Its Root Directory must remain `flower.com`; the APIs are at `/api/admin/users`, `/api/owner/users`, and `/api/orders`.
 5. Bootstrap the first Owner for the existing Firebase user from a trusted local terminal. Install Google Cloud CLI if needed, then authenticate Application Default Credentials as a project administrator:
 
    ```powershell

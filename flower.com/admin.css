@@ -185,6 +185,13 @@ main {
     font-size: 13px;
 }
 
+.demo-revenue-notice {
+    margin: -8px 0 18px;
+    color: var(--amber-700);
+    font-size: 13px;
+    font-weight: 700;
+}
+
 .panel h2 {
     font-size: 24px;
     margin-bottom: 18px;

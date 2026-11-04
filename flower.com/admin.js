@@ -1,5 +1,6 @@
 import { firebaseConfig } from "./firebase-config.js";
 import { ORDER_STATUSES, normalizeOrderStatus } from "./order-status.js";
+import { createRandomDemoRevenueOrders, getRevenueMetrics } from "./revenue-metrics.js";
 
 let productPage = document.getElementById("product_page");
 let categoriesPage = document.getElementById("categories_page");
@@ -21,7 +22,8 @@ const STORAGE_KEYS = {
    reviews: "flowerReviews",
    messages: "flowerMessages",
    categories: "flowerCategories",
-   offers: "flowerPromotions"
+   offers: "flowerPromotions",
+   demoRevenue: "flowerRevenueDemoOrders"
 };
 
 function moneyFormat(value) {
@@ -29,52 +31,6 @@ function moneyFormat(value) {
        style: "currency",
        currency: "VND"
    }).format(Number(value || 0));
-}
-
-function getDemoOrders() {
-   const now = Date.now();
-   return [
-       {
-          id: 1001,
-          customerName: "Nguyễn Thị Lan",
-          phone: "0908123456",
-          address: "147 Lê Lợi, Quận 1, TP.HCM",
-          email: "lan.nguyen@gmail.com",
-          createdAt: new Date(now - 86400000).toISOString(),
-          status: "Đang giao",
-          total: 739900 + 649900,
-          items: [
-              { id: 1, title: "Vibrant Spring Basket", quantity: 1, price: 739900 },
-              { id: 2, title: "Floral Jewels Arrangement", quantity: 1, price: 649900 }
-          ]
-       },
-       {
-          id: 1002,
-          customerName: "Phạm Minh Quân",
-          phone: "0912345678",
-          address: "88 Nguyễn Huệ, Quận 3, TP.HCM",
-          email: "quan.pham@gmail.com",
-          createdAt: new Date(now - 172800000).toISOString(),
-          status: "Chờ xác nhận",
-          total: 599900,
-          items: [
-              { id: 3, title: "Lovely Lavender Bouquet", quantity: 1, price: 599900 }
-          ]
-       },
-       {
-          id: 1003,
-          customerName: "Trần Bảo Anh",
-          phone: "0987654321",
-          address: "55 Hùng Vương, Hà Nội",
-          email: "baoanh.tran@gmail.com",
-          createdAt: new Date(now - 259200000).toISOString(),
-          status: "Đã giao",
-          total: 699900,
-          items: [
-              { id: 4, title: "Rising Star", quantity: 1, price: 699900 }
-          ]
-       }
-   ];
 }
 
 function getDemoReviews() {
@@ -134,9 +90,19 @@ async function ensureStorage() {
    const existingReviews = JSON.parse(localStorage.getItem(STORAGE_KEYS.reviews) || "[]");
    const existingMessages = JSON.parse(localStorage.getItem(STORAGE_KEYS.messages) || "[]");
 
-   if (!localStorage.getItem(STORAGE_KEYS.orders) || !existingOrders.length) {
-       localStorage.setItem(STORAGE_KEYS.orders, JSON.stringify(getDemoOrders()));
+   const demoOrderIds = new Set(["1001", "1002", "1003"]);
+   const demoOrderEmails = new Set([
+       "lan.nguyen@gmail.com",
+       "quan.pham@gmail.com",
+       "baoanh.tran@gmail.com"
+   ]);
+   const realOrders = existingOrders.filter((order) =>
+       !order || !demoOrderIds.has(String(order.id)) || !demoOrderEmails.has(order.email)
+   );
+   if (realOrders.length !== existingOrders.length) {
+       localStorage.setItem(STORAGE_KEYS.orders, JSON.stringify(realOrders));
    }
+
    if (!localStorage.getItem(STORAGE_KEYS.reviews) || !existingReviews.length) {
        localStorage.setItem(STORAGE_KEYS.reviews, JSON.stringify(getDemoReviews()));
    }
@@ -193,7 +159,7 @@ function renderDashboard() {
    const reviews = getReviews();
    const messages = getMessages();
    const totalStock = products.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
-   const totalRevenue = orders.reduce((sum, order) => sum + Number(order.total || 0), 0);
+   const { totalRevenue } = getRevenueMetrics(orders, {}, normalizeOrderStatus);
 
    main.innerHTML = `
        <section class="dashboard">
@@ -219,7 +185,7 @@ function renderDashboard() {
                    <div class="value">${messages.length}</div>
                </div>
                <div class="summary-card">
-                   <h3>Doanh thu</h3>
+                   <h3>Doanh thu (đã giao)</h3>
                    <div class="value">${moneyFormat(totalRevenue)}</div>
                </div>
            </div>
@@ -242,25 +208,13 @@ function renderRevenueTab(dateRange = {}) {
    const endDate = dateRange.endDate || defaultEndDate;
    const products = getProducts();
    const orders = getOrders();
+   const demoRevenueOrders = JSON.parse(localStorage.getItem(STORAGE_KEYS.demoRevenue) || "[]");
+   if (!Array.isArray(demoRevenueOrders)) {
+       throw new Error("Dữ liệu doanh thu demo không hợp lệ.");
+   }
    const totalCurrentStock = products.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
-   const totalSoldUnits = orders.reduce((sum, order) => {
-       const sold = (order.items || []).reduce((orderSum, item) => orderSum + Number(item.quantity || 0), 0);
-       return sum + sold;
-   }, 0);
-   const start = new Date(`${startDate}T00:00:00`);
-   const end = new Date(`${endDate}T00:00:00`);
-   end.setDate(end.getDate() + 1);
-   const revenueOrders = orders.filter((order) => {
-       const orderDate = new Date(order.createdAt).getTime();
-       return normalizeOrderStatus(order.status) !== "Đã hủy"
-           && Number.isFinite(orderDate)
-           && orderDate >= start.getTime()
-           && orderDate < end.getTime();
-   });
-   const totalRevenue = revenueOrders.reduce((sum, order) => sum + Number(order.total || 0), 0);
-   const avgRevenuePerOrder = revenueOrders.length ? totalRevenue / revenueOrders.length : 0;
-   const hoaDaThem = totalCurrentStock + totalSoldUnits;
-   const stockHealth = Math.round((totalCurrentStock / Math.max(hoaDaThem, 1)) * 100);
+   const metrics = getRevenueMetrics([...orders, ...demoRevenueOrders], { startDate, endDate }, normalizeOrderStatus);
+   const demoRevenueIncluded = demoRevenueOrders.some((order) => metrics.orders.includes(order));
 
    main.innerHTML = `
        <section class="panel">
@@ -276,38 +230,33 @@ function renderRevenueTab(dateRange = {}) {
                </label>
                <button class="primary-btn" type="submit">Áp dụng</button>
                <button id="reset-revenue-filter" class="secondary-btn" type="button">Đặt lại</button>
+               <button id="generate-demo-revenue" class="secondary-btn" type="button">Tạo doanh thu demo tháng 11 = 100 triệu</button>
+               <button id="clear-demo-revenue" class="secondary-btn" type="button" ${demoRevenueOrders.length ? "" : "hidden"}>Xóa doanh thu demo</button>
                <p id="revenue-filter-error" class="form-error" aria-live="polite"></p>
            </form>
+           <p id="demo-revenue-notice" class="demo-revenue-notice" role="status" aria-live="polite">${demoRevenueIncluded
+               ? "Báo cáo đang bao gồm doanh thu demo; đây không phải đơn hàng hoặc doanh thu thật."
+               : ""}</p>
            <div class="summary revenue-summary">
                <div class="summary-card revenue-card">
-                   <h3>Số hoa đã thêm</h3>
-                   <div class="value">${hoaDaThem}</div>
-                   <small>Tổng lượng hoa nhập/đưa vào kho</small>
-               </div>
-               <div class="summary-card revenue-card">
-                   <h3>Số hoa đã bán</h3>
-                   <div class="value">${totalSoldUnits}</div>
-                   <small>Tổng số lượng đã giao cho khách</small>
+                   <h3>Số hoa đã giao</h3>
+                   <div class="value">${metrics.totalSoldUnits}</div>
+                   <small>Tổng số lượng trong các đơn giao trong khoảng ngày đã chọn</small>
                </div>
                <div class="summary-card revenue-card">
                    <h3>Tổng doanh thu</h3>
-                   <div class="value">${moneyFormat(totalRevenue)}</div>
-                   <small>Từ đơn hàng không bị hủy trong khoảng đã chọn</small>
+                   <div class="value">${moneyFormat(metrics.totalRevenue)}</div>
+                   <small>Chỉ tính đơn giao trong khoảng ngày đã chọn</small>
                </div>
                <div class="summary-card revenue-card">
                    <h3>Doanh thu / đơn</h3>
-                   <div class="value">${moneyFormat(avgRevenuePerOrder)}</div>
-                   <small>Trung bình mỗi đơn hàng</small>
+                   <div class="value">${moneyFormat(metrics.averagePerOrder)}</div>
+                   <small>Trung bình mỗi đơn đã giao</small>
                </div>
                <div class="summary-card revenue-card">
                    <h3>Hoa hiện có</h3>
                    <div class="value">${totalCurrentStock}</div>
                    <small>Tồn kho hiện tại</small>
-               </div>
-               <div class="summary-card revenue-card">
-                   <h3>Chỉ số kho</h3>
-                   <div class="value">${stockHealth}%</div>
-                   <small>Mức độ hàng tồn kho ổn định</small>
                </div>
            </div>
        </section>
@@ -324,6 +273,30 @@ function renderRevenueTab(dateRange = {}) {
        renderRevenueTab({ startDate: selectedStartDate, endDate: selectedEndDate });
    });
    document.getElementById("reset-revenue-filter").addEventListener("click", () => renderRevenueTab());
+   document.getElementById("generate-demo-revenue").addEventListener("click", () => {
+       const year = new Date().getFullYear();
+       const monthRange = {
+           startDate: `${year}-11-01`,
+           endDate: `${year}-11-30`
+       };
+       const actualNovemberRevenue = getRevenueMetrics(orders, monthRange, normalizeOrderStatus).totalRevenue;
+       const errorMessage = document.getElementById("revenue-filter-error");
+
+       try {
+           const demoOrders = createRandomDemoRevenueOrders(100_000_000, actualNovemberRevenue, year);
+           localStorage.setItem(STORAGE_KEYS.demoRevenue, JSON.stringify(demoOrders));
+           renderRevenueTab(monthRange);
+       } catch (error) {
+           console.error("Không thể tạo doanh thu demo:", error);
+           errorMessage.textContent = error instanceof RangeError
+               ? "Doanh thu thật tháng 11 đã vượt 100 triệu nên không thể thêm số demo để tổng còn đúng 100 triệu."
+               : "Không thể lưu doanh thu demo trên trình duyệt này.";
+       }
+   });
+   document.getElementById("clear-demo-revenue").addEventListener("click", () => {
+       localStorage.removeItem(STORAGE_KEYS.demoRevenue);
+       renderRevenueTab({ startDate, endDate });
+   });
 }
 
 function renderProductTab() {
