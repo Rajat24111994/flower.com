@@ -17,7 +17,7 @@ async function setupAdmin(page) {
     export const getApp = () => ({});
   ` }));
   await page.route("**/firebase-auth.js", (route) => route.fulfill({ contentType: "text/javascript", body: `
-    const user = { uid: "admin-test", email: "admin@example.test", getIdTokenResult: async () => ({ claims: { admin: true, role: "admin" } }) };
+    const user = { uid: "admin-test", email: "admin@example.test", getIdToken: async () => "test-token", getIdTokenResult: async () => ({ claims: { admin: true, role: "admin" } }) };
     export const getAuth = () => ({});
     export const onAuthStateChanged = (_auth, callback) => { queueMicrotask(() => callback(user)); return () => {}; };
     export const signOut = async () => {};
@@ -188,5 +188,31 @@ test("admin filters product status, validates form, previews images and reports 
   await page.setViewportSize({ width: 320, height: 740 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
   await page.screenshot({ path: testInfo.outputPath("admin-products-320.png"), fullPage: true });
+  expect(errors).toEqual([]);
+});
+
+test("admin uploads a product photo from the computer and the field gets its address", async ({ page }) => {
+  const errors = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  const uploads = [];
+  await page.route("**/api/product-images", async (route) => {
+    const request = route.request();
+    uploads.push({ auth: request.headers().authorization, photo: request.postDataJSON().photo });
+    await route.fulfill({ status: 201, contentType: "application/json", body: JSON.stringify({ url: "/images/flower-02.webp" }) });
+  });
+  await setupAdmin(page);
+
+  await page.locator("#product-image-file").setInputFiles(`${__dirname}/../images/start.jpeg`);
+  await expect(page.locator("#product-image")).toHaveValue("/images/flower-02.webp");
+  await expect(page.locator("#product-image-upload-status")).toContainText("Đã tải ảnh lên");
+  await expect(page.locator("#product-image-previews img").first()).toBeVisible();
+  expect(uploads).toHaveLength(1);
+  expect(uploads[0].auth).toBe("Bearer test-token");
+  expect(uploads[0].photo).toMatch(/^data:image\/jpeg;base64,/);
+  expect((uploads[0].photo.length - 23) * 3 / 4).toBeLessThanOrEqual(120 * 1024);
+
+  await page.locator("#product-image-file").setInputFiles({ name: "note.txt", mimeType: "text/plain", buffer: Buffer.from("hello") });
+  await expect(page.locator("#product-image-upload-status")).toContainText("Chỉ nhận ảnh JPG, PNG hoặc WebP");
+  expect(uploads).toHaveLength(1);
   expect(errors).toEqual([]);
 });

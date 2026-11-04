@@ -2,6 +2,7 @@ import { mountReport } from "./admin-report-view.js?v=1";
 import { dateKey as reportDateKey } from "./admin-analytics.js?v=1";
 import { firebaseConfig } from "../core/firebase-config.js";
 import { ORDER_STATUSES, normalizeOrderStatus, orderStatusLabel } from "../order/order-status.js?v=2";
+import { preparePhotos } from "../review/review-images.js?v=1";
 
 let productPage = document.getElementById("product_page");
 let categoriesPage = document.getElementById("categories_page");
@@ -437,9 +438,14 @@ function renderProductTab() {
                    <label class="product-form-field" for="product-title"><span>Tên sản phẩm</span>
                        <input type="text" id="product-title" value="${escapeHtml(getVietnameseProductName(editingProduct?.title || ""))}" required maxlength="120" autocomplete="off">
                    </label>
-                   <label class="product-form-field" for="product-image"><span>Ảnh đại diện (URL)</span>
-                       <input type="url" id="product-image" placeholder="https://... hoặc ./images/..." value="${escapeHtml(editingProduct?.image || "")}" required>
+                   <label class="product-form-field" for="product-image"><span>Ảnh đại diện</span>
+                       <input type="text" inputmode="url" id="product-image" placeholder="Bấm Tải ảnh lên, hoặc dán link https://..." value="${escapeHtml(editingProduct?.image || "")}" required>
                    </label>
+                   <div class="product-image-upload">
+                       <input type="file" id="product-image-file" accept="image/jpeg,image/png,image/webp" hidden>
+                       <button type="button" class="secondary-btn" id="product-image-upload">Tải ảnh lên từ máy</button>
+                       <small id="product-image-upload-status" role="status" aria-live="polite">JPG, PNG hoặc WebP, tối đa 5 MB. Ảnh được tự thu nhỏ trước khi lưu.</small>
+                   </div>
                    <label class="field-label" for="product-images">Ảnh bổ sung (mỗi dòng một đường dẫn, tối đa 8 ảnh)</label>
                    <textarea id="product-images" rows="3" placeholder="https://...">${escapeHtml((editingProduct?.images || []).join("\n"))}</textarea>
                    <div id="product-image-previews" class="product-image-previews" aria-live="polite"></div>
@@ -494,6 +500,13 @@ function renderProductTab() {
        if (["product-image", "product-images"].includes(event.target.id)) renderProductImagePreviews();
    });
    renderProductImagePreviews();
+   const imageFile = document.getElementById("product-image-file");
+   document.getElementById("product-image-upload").addEventListener("click", () => imageFile.click());
+   imageFile.addEventListener("change", () => {
+       const [file] = imageFile.files;
+       imageFile.value = "";
+       if (file) void uploadProductImage(file);
+   });
    main.querySelectorAll(".product-admin-image").forEach((image) => {
        if (image.hidden) return;
        image.addEventListener("error", () => {
@@ -530,6 +543,34 @@ function renderSharedProductImageNotice(products) {
            </ul>
        </details>
    `;
+}
+
+// Shrinks the chosen photo in the browser, saves it through /api/product-images and puts the
+// returned address in the "Ảnh đại diện" field, so no one has to host the photo elsewhere.
+async function uploadProductImage(file) {
+   const input = document.getElementById("product-image");
+   const button = document.getElementById("product-image-upload");
+   const status = document.getElementById("product-image-upload-status");
+   button.disabled = true;
+   status.textContent = "Đang tải ảnh lên…";
+   try {
+       const [photo] = await preparePhotos([file]);
+       const response = await fetch("/api/product-images", {
+           method: "POST",
+           headers: { "Authorization": `Bearer ${await currentUser.getIdToken()}`, "Content-Type": "application/json" },
+           body: JSON.stringify({ photo })
+       });
+       const data = await response.json().catch(() => ({}));
+       if (!response.ok || !data.url) throw new Error(data.error || "Chưa tải được ảnh. Hãy thử lại.");
+       if (!input.isConnected) return;
+       input.value = data.url;
+       input.dispatchEvent(new Event("input", { bubbles: true }));
+       status.textContent = "Đã tải ảnh lên. Bấm lưu sản phẩm để dùng ảnh này.";
+   } catch (error) {
+       if (status.isConnected) status.textContent = error.message || "Chưa tải được ảnh. Hãy thử lại.";
+   } finally {
+       button.disabled = false;
+   }
 }
 
 function renderProductImagePreviews() {
