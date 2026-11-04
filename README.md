@@ -140,7 +140,7 @@ Mở <http://localhost:8000> trong trình duyệt.
 
 ### Chạy kèm API quản trị
 
-Máy chủ tĩnh không chạy được `/api/*`. Để thử trang quản trị đầy đủ:
+Máy chủ tĩnh không chạy được `/api/*`, bao gồm API tải ảnh sản phẩm `/api/product-images`. Để thử trang quản trị và tải ảnh đầy đủ:
 
 ```sh
 cd flower.com

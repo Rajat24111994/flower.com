@@ -29,6 +29,29 @@ test("doanh thu net đúng kỳ theo giờ VN; không cộng QR chưa đối so�
   assert.equal(report.lowStock.length, 2);
   assert.equal(report.series.reduce((sum, row) => sum + row.revenue, 0), report.totalRevenue);
 });
+test("doanh thu ghi nhận đơn VNPay đã xác minh", async () => {
+  const { buildReport, isOrderPaid, paidAndDelivered } = await import("../flower.com/js/admin/admin-analytics.js");
+  const order = {
+    id: "vnpay-1",
+    createdAt: "2026-11-02T01:00:00Z",
+    paidAt: "2026-11-02T02:00:00Z",
+    status: "Đã giao",
+    paymentMethod: "vnpay",
+    paymentStatus: "da_thanh_toan",
+    paymentVerified: true,
+    total: 125000,
+    items: []
+  };
+  assert.equal(isOrderPaid(order), true);
+  assert.equal(isOrderPaid({ ...order, paymentVerified: false }), false);
+  assert.equal(isOrderPaid({ ...order, paymentMethod: "qr", paymentVerified: true }), true);
+  assert.equal(isOrderPaid({ ...order, paymentMethod: "cod", paymentStatus: "Đã thanh toán" }), true);
+  assert.equal(paidAndDelivered(order), true);
+  assert.equal(paidAndDelivered({ ...order, paymentVerified: false }), false);
+  const report = buildReport([order], [], { period: "all", lowStock: 5 });
+  assert.equal(report.totalRevenue, 125000);
+  assert.equal(report.revenueOrders.length, 1);
+});
 test("khoảng ngày hợp lệ, ngày nhuận, kỳ rỗng và tổng hợp tháng", async () => {
   const { buildReport, periodBounds } = await import("../flower.com/js/admin/admin-analytics.js");
   assert.equal(periodBounds({ period: "month", month: "2028-02" }).end, "2028-02-29");
@@ -54,6 +77,7 @@ test("doanh thu bao gồm giao dịch VNPay đã được máy chủ xác nhận
     status: "Đã giao",
     paymentMethod: "vnpay",
     paymentStatus: "da_thanh_toan",
+    paymentVerified: true,
     total: 345000
   }], products, { period: "all", lowStock: 5 });
   assert.equal(report.totalRevenue, 345000);
