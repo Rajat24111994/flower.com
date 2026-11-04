@@ -1,0 +1,21 @@
+# Dependencies
+node_modules/
+
+# Environment variables and Vercel local config
+.env*
+.vercel/
+
+# Firebase service-account credentials
+serviceAccountKey.json
+*.service-account.json
+*-firebase-adminsdk-*.json
+
+# Logs
+*.log
+npm-debug.log*
+
+# Editor and OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

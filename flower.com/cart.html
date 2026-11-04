@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Giỏ hàng</title>
+    <link rel="stylesheet" href="./store-header.css?v=1" />
+    <link rel="stylesheet" href="./cart.css?v=3" />
+    <link rel="stylesheet" href="./store-footer.css?v=2" />
+  </head>
+  <body>
+    <script src="./store-header.js?v=2"></script>
+
+    <main class="nav">
+      <div id="product-container"></div>
+
+      <div class="checkout">
+        <div class="checkout-heading">
+          <span class="checkout-eyebrow">Flowerflow · Giỏ hàng</span>
+          <h1>Tóm tắt đơn hàng</h1>
+          <p>Kiểm tra chi phí trước khi bạn gửi yêu thương.</p>
+        </div>
+        <div class="details">
+          <div class="summary-row">
+            <div><p>Giá gốc</p></div>
+            <div id="originalprice">0</div>
+          </div>
+          <div class="summary-row summary-row--savings">
+            <div><p>Ưu đãi</p></div>
+            <div id="savings">0</div>
+          </div>
+          <div class="summary-row">
+            <div><p>Phí giao hàng</p></div>
+            <div id="deliveryCharge">Miễn phí</div>
+          </div>
+          <div class="summary-row summary-row--total">
+            <div><p>Tổng tiền</p></div>
+            <div id="total">0</div>
+          </div>
+        </div>
+        <div id="check">
+          <a class="checkout-continue" href="./checkout.html">Tiến hành thanh toán <span aria-hidden="true">→</span></a>
+        </div>
+      </div>
+    </main>
+
+    <script src="./store-footer.js?v=2"></script>
+    <script src="./currency.js?v=8"></script>
+    <script>
+      let CartContainer = document.getElementById("product-container");
+      let Cart = JSON.parse(localStorage.getItem("cart")) || [];
+
+      function DisplayProduct() {
+        const cartTotal = document.getElementById("cartTotal");
+        cartTotal.textContent = Cart.length;
+        document.querySelector(".nav").classList.toggle("is-empty", Cart.length === 0);
+
+        CartContainer.innerHTML = "";
+
+        Cart.forEach((product) => {
+          let image = document.createElement("img");
+          let details = document.createElement("p");
+          let price = document.createElement("h3");
+          let Remove = document.createElement("button");
+          let Increase = document.createElement("button");
+          let Decrease = document.createElement("button");
+          let card = document.createElement("div");
+          let quantity = document.createElement("span");
+          let stockNote = document.createElement("p");
+
+          image.src = product.image;
+          details.textContent = product.title;
+          price.textContent = formatVnd(product.price);
+          Remove.textContent = "Xóa";
+          Increase.textContent = "+";
+          Decrease.textContent = "-";
+          const productQuantity = Math.max(1, Number(product.quantity) || 1);
+          const stockQuantity = Number(product.stockQuantity);
+          const hasStockLimit = Number.isFinite(stockQuantity) && stockQuantity >= 0;
+          quantity.textContent = productQuantity;
+          Increase.disabled = hasStockLimit && productQuantity >= stockQuantity;
+          stockNote.textContent = hasStockLimit
+            ? productQuantity > stockQuantity
+              ? `Số lượng trong giỏ vượt tồn kho (${stockQuantity}).`
+              : `Tồn kho: ${stockQuantity}`
+            : "";
+
+          Decrease.addEventListener("click", () => {
+            if (productQuantity > 1) {
+              product.quantity = productQuantity - 1;
+              localStorage.setItem("cart", JSON.stringify(Cart));
+              DisplayProduct();
+            }
+          });
+          Increase.addEventListener("click", () => {
+            if (hasStockLimit && productQuantity >= stockQuantity) return;
+            product.quantity = productQuantity + 1;
+            localStorage.setItem("cart", JSON.stringify(Cart));
+            DisplayProduct();
+          });
+          Remove.addEventListener("click", () => {
+            Cart = Cart.filter((ele) => ele.id !== product.id);
+            localStorage.setItem("cart", JSON.stringify(Cart));
+            DisplayProduct();
+            Swal.fire({
+              position: "center",
+              icon: "success",
+              title: "Đã xóa sản phẩm khỏi giỏ hàng",
+              showConfirmButton: false,
+              timer: 1500
+            });
+          });
+          card.append(
+            image,
+            price,
+            details,
+            stockNote,
+            Increase,
+            quantity,
+            Decrease,
+            Remove
+          );
+          CartContainer.append(card);
+        });
+
+        renderCartSummary(Cart);
+      }
+
+      DisplayProduct();
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  </body>
+</html>

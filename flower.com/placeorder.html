@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Xác nhận đơn hàng</title>
+  <link rel="stylesheet" href="./store-header.css?v=1">
+  <link rel="stylesheet" href="./cart.css?v=2">
+  <link rel="stylesheet" href="./store-footer.css?v=2">
+</head>
+
+<body>
+  <script src="./store-header.js?v=2"></script>
+
+  <main class="nav">
+    <div id="product-container"></div>
+
+    <div class="placeorder">
+      <button type="button">Xác nhận đặt hàng</button>
+      <p id="payment-confirmation-note" role="status"></p>
+    </div>
+  </main>
+
+  <script src="./store-footer.js?v=2"></script>
+  <script src="./currency.js?v=8"></script>
+  <script src="./product-store.js?v=5"></script>
+  <script>
+    let CartContainer = document.getElementById("product-container");
+    let Cart = JSON.parse(localStorage.getItem("cart")) || [];
+    const checkoutData = JSON.parse(localStorage.getItem("flowerCheckout") || "null");
+    const paymentButton = document.querySelector(".placeorder > button");
+    const paymentNote = document.getElementById("payment-confirmation-note");
+    if (checkoutData?.paymentMethod === "qr") {
+      paymentButton.textContent = "Tôi đã chuyển khoản · Xác nhận đơn hàng";
+      paymentNote.textContent = `Thanh toán Vietcombank · STK 1063118243 · DO BA THAI. Nội dung: ${checkoutData.paymentReference || "mã đơn của bạn"}. Bấm xác nhận chỉ sau khi đã chuyển khoản.`;
+    }
+
+    async function saveOrderToAdmin() {
+      if (!Cart.length) {
+        alert("Giỏ hàng đang trống.");
+        return;
+      }
+
+      if (!checkoutData?.customerName || !checkoutData?.phone || !checkoutData?.address || !checkoutData?.paymentMethod) {
+        alert("Vui lòng hoàn tất thông tin giao hàng và thanh toán trước.");
+        window.location.assign("./checkout.html");
+        return;
+      }
+
+      const loggedUser = JSON.parse(localStorage.getItem("loggedUser") || "null");
+      const { customerName, phone, address } = checkoutData;
+
+      const orderId = String(checkoutData.orderId || checkoutData.paymentReference || `FF${Date.now()}`);
+      checkoutData.orderId = orderId;
+      paymentButton.disabled = true;
+      paymentNote.textContent = "Đang kiểm tra tồn kho và xác nhận đơn hàng...";
+      try {
+        localStorage.setItem("flowerCheckout", JSON.stringify(checkoutData));
+      } catch (error) {
+        console.error("Không thể lưu mã đơn hàng:", error);
+        paymentNote.textContent = "Không thể lưu thông tin đơn hàng. Vui lòng thử lại.";
+        paymentButton.disabled = false;
+        return;
+      }
+
+      const createdAt = new Date().toISOString();
+      const totals = calculateCartTotals(Cart, checkoutData.promotionId);
+      const orderItems = Cart.map((item) => ({
+        id: item.id,
+        title: item.title,
+        image: item.image,
+        quantity: Math.max(1, Number(item.quantity) || 1),
+        price: toVndAmount(Number(item.price || 0))
+      }));
+
+      let reservation;
+      try {
+        const response = await fetch("./api/orders", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            orderId,
+            items: orderItems.map(({ id, quantity }) => ({ id, quantity }))
+          })
+        });
+        const responseBody = await response.json();
+        if (!response.ok) {
+          const error = new Error(responseBody.error || "Không thể xác nhận tồn kho.");
+          error.code = responseBody.code;
+          throw error;
+        }
+        reservation = responseBody;
+      } catch (error) {
+        console.error("Không thể xác nhận tồn kho đơn hàng:", error);
+        const messagesByCode = {
+          "insufficient-stock": "Một số hoa vừa hết hoặc không đủ số lượng. Hãy quay lại giỏ hàng để điều chỉnh.",
+          "product-not-found": "Một sản phẩm trong đơn không còn khả dụng. Vui lòng kiểm tra lại giỏ hàng.",
+          "admin-api-not-configured": "Dịch vụ cập nhật tồn kho chưa được cấu hình. Đơn hàng chưa được xác nhận."
+        };
+        paymentNote.textContent = messagesByCode[error.code]
+          || "Chưa xác nhận được đơn hàng và chưa trừ tồn kho. Vui lòng thử lại.";
+        paymentButton.disabled = false;
+        return;
+      }
+
+      const order = {
+        id: orderId,
+        customerName,
+        phone,
+        address,
+        email: loggedUser?.email || "",
+        uid: loggedUser?.uid || "",
+        createdAt,
+        status: "Chờ xác nhận",
+        currentLocation: "Đơn hàng đã được gửi đến cửa hàng",
+        estimatedDelivery: "",
+        trackingHistory: [{
+          status: "Chờ xác nhận",
+          location: "Đơn hàng đã được gửi đến cửa hàng",
+          estimatedDelivery: "",
+          updatedAt: createdAt
+        }],
+        subtotal: toVndAmount(totals.subtotal),
+        savings: toVndAmount(totals.savings),
+        tax: 0,
+        total: toVndAmount(totals.total),
+        paymentMethod: checkoutData.paymentMethod,
+        paymentStatus: checkoutData.paymentMethod === "qr" ? "Đã thanh toán" : "Thanh toán khi nhận hàng",
+        paymentReference: checkoutData.paymentReference || "",
+        paidAt: checkoutData.paymentMethod === "qr" ? createdAt : "",
+        promotionId: checkoutData.promotionId || "",
+        items: orderItems
+      };
+
+      try {
+        const orders = JSON.parse(localStorage.getItem("flowerOrders") || "[]");
+        const existingOrderIndex = orders.findIndex((savedOrder) => String(savedOrder.id) === orderId);
+        if (existingOrderIndex >= 0) {
+          orders[existingOrderIndex] = order;
+        } else {
+          orders.push(order);
+        }
+        localStorage.setItem("flowerOrders", JSON.stringify(orders));
+      } catch (error) {
+        console.error("Đã cập nhật tồn kho nhưng không thể lưu đơn trên thiết bị:", error);
+        paymentNote.textContent = "Tồn kho đã cập nhật nhưng chưa lưu được đơn trên thiết bị. Hãy thử lại để hoàn tất.";
+        paymentButton.disabled = false;
+        return;
+      }
+
+      if (Array.isArray(reservation.stocks)) {
+        try {
+          window.FlowerInventory?.applyStockUpdates(reservation.stocks);
+        } catch (error) {
+          console.warn("Đơn hàng đã xác nhận nhưng không thể cập nhật bộ nhớ tồn kho trên thiết bị:", error);
+        }
+      }
+
+      const customerMessage = String(checkoutData.orderNote || "").trim();
+      if (customerMessage) {
+        try {
+          const messages = JSON.parse(localStorage.getItem("flowerMessages") || "[]");
+          messages.push({
+            id: Date.now() + 1,
+            customerName,
+            phone,
+            subject: "Tư vấn thiết kế hoa",
+            message: customerMessage,
+            createdAt: new Date().toISOString(),
+            reply: ""
+          });
+          localStorage.setItem("flowerMessages", JSON.stringify(messages));
+        } catch (error) {
+          console.error("Đơn hàng đã xác nhận nhưng không lưu được ghi chú khách hàng:", error);
+        }
+      }
+
+      localStorage.removeItem("cart");
+      localStorage.removeItem("flowerCheckout");
+      localStorage.removeItem("flowerSelectedPromotion");
+      localStorage.removeItem("flowerPaymentReference");
+      alert(checkoutData.paymentMethod === "qr"
+        ? "Đã xác nhận đơn hàng, cập nhật tồn kho và gửi đơn hàng tới cửa hàng."
+        : "Đặt hàng thành công! Đơn hàng đã được gửi tới cửa hàng.");
+      window.location.href = `./tracking.html?id=${encodeURIComponent(orderId)}`;
+    }
+
+    document.querySelector(".placeorder > button").addEventListener("click", saveOrderToAdmin);
+
+    function DisplayProduct() {
+      CartContainer.innerHTML = "";
+      const cartTotal = document.getElementById("cartTotal");
+      if (cartTotal) cartTotal.textContent = Cart.length;
+
+      Cart.forEach((product) => {
+        let image = document.createElement("img");
+        let details = document.createElement("p");
+        let price = document.createElement("h3");
+        let card = document.createElement("div");
+        let quantity = document.createElement("span");
+
+        image.src = product.image;
+        const productQuantity = Math.max(1, Number(product.quantity) || 1);
+        details.textContent = product.title;
+        price.textContent = formatVnd(Number(product.price) * productQuantity);
+        quantity.textContent = `${productQuantity} sản phẩm`;
+
+        card.append(image, details, quantity, price);
+        CartContainer.append(card);
+      });
+    }
+
+    DisplayProduct();
+  </script>
+</body>
+</html>

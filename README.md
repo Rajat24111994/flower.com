@@ -1,33 +1,29 @@
-# casual-metal-9545
-netlify link - https://genuine-malabi-a05086.netlify.app/
-# Landing Page 
+# FlowerFlow
 
-Hear you can see the landing page of our project :
+FlowerFlow là website cửa hàng hoa tĩnh, xây dựng bằng HTML, CSS và JavaScript thuần. Mã nguồn website nằm trong [`flower.com/`](flower.com/); xem [`flower.com/README.md`](flower.com/README.md) để biết cách chạy, cấu hình Firebase và các giới hạn hiện tại.
 
-![landing page](https://user-images.githubusercontent.com/119391188/221473747-b7ec099e-8b8d-48cc-a056-c6ca58d74e90.png)
+## Chạy website
 
-# Sign-In /Sign -Up
+1. Cài Python 3 hoặc dùng máy chủ HTTP tĩnh tương đương.
+2. Mở terminal tại thư mục `flower.com` và chạy `python -m http.server 8000`.
+3. Mở <https://flower-com-six.vercel.app/owner.html> trong trình duyệt.
 
-![sign-in](https://user-images.githubusercontent.com/119391188/221473861-fd28ed67-1162-45ae-ad24-c1dc5d85f5b7.png)
+Không mở trang trực tiếp bằng `file://`, vì website tải catalog JSON bằng `fetch`.
 
-# Product page
+## Kiểm thử
 
-![Product page](https://user-images.githubusercontent.com/119391188/221473793-c5bbcc68-8dff-4ced-a858-b512ccba9873.png)
+Cần Node.js 24 trở lên. Tại `flower.com`, chạy:
 
-# Search Option
+```sh
+npm test
+```
 
-![Search Option](https://user-images.githubusercontent.com/119391188/221473808-9413f0b0-e811-4440-9c7d-1fb7a1685bff.png)
+Sáu bộ kiểm thử dùng API có sẵn của Node.js, không cần cài dependencies.
 
-# WishList
+## Phạm vi repository
 
-![Wishlist page](https://user-images.githubusercontent.com/119391188/221473831-ccef53c4-2a72-4400-b421-c4535bb5e00d.png)
+Repository chỉ chứa website FlowerFlow (`flower.com/`) và bộ kiểm thử (`tests/`). Ứng dụng Django quản lý kho cũ đã được tách sang nhánh `django-backend`. Hướng dẫn cấu hình trang quản trị trên Vercel nằm trong [`ADMIN-SETUP.md`](ADMIN-SETUP.md).
 
-# Cart Page
-![cart page](https://user-images.githubusercontent.com/119391188/221473841-3495bc7f-ae5c-45f5-a914-7c9fd4e69811.png)
+## Phát hành
 
-# Order Page
-![Order summary](https://user-images.githubusercontent.com/119391188/221473897-d7427494-9f0d-4c24-90ae-2a8804548bbe.png)
-
-# Checkout page
-
-![Checkout](https://user-images.githubusercontent.com/119391188/221473903-f202ae27-32d0-4379-b902-ffde88b9b730.png)
+Xem [`RELEASE_NOTES_v0.1.0.md`](RELEASE_NOTES_v0.1.0.md) để biết tính năng và giới hạn của bản phát hành.
