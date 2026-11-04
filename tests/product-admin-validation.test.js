@@ -31,7 +31,8 @@ test("sản phẩm hợp lệ được chuẩn hóa đầy đủ, bỏ trùng �
         meaning: "Tượng trưng cho tình yêu.",
         colors: ["đỏ", "trắng"],
         occasions: ["sinh nhật", "kỷ niệm"],
-        status: "active"
+        status: "active",
+        saleType: "ready_made"
     });
 });
 
@@ -66,6 +67,9 @@ test("kiểm tra URL ảnh, giới hạn 8 ảnh phụ và trạng thái", () =>
     assert.match(images.errors.images, /tối đa 8/);
     const invalidStatus = validateProductInput({ ...validInput, status: "deleted" }, categories);
     assert.match(invalidStatus.errors.status, /không hợp lệ/);
+    const invalidSaleType = validateProductInput({ ...validInput, saleType: "free" }, categories);
+    assert.match(invalidSaleType.errors.saleType, /không hợp lệ/);
+    assert.equal(validateProductInput({ ...validInput, saleType: "flower" }, categories).product.saleType, "flower");
 });
 
 test("mất kết nối và lỗi quyền được thông báo bằng tiếng Việt", () => {

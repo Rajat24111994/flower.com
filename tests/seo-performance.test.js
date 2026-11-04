@@ -15,7 +15,8 @@ const publicPages = new Set([
   "privacy.html",
   "terms.html",
   "ordering.html",
-  "faq.html"
+  "faq.html",
+  "custom-bouquet.html"
 ]);
 const socialMetadataPages = new Set(["index.html", "product.html"]);
 const productIds = require("../flower.com/flower.json").flower.map((product) => String(product.id));

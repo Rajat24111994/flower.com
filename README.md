@@ -48,10 +48,11 @@ FlowerFlow là website bán hoa gồm ba lớp:
 
 | Tính năng | Mô tả |
 | --- | --- |
-| Danh mục sản phẩm | Duyệt, tìm kiếm, lọc theo danh mục, sắp xếp; hỗ trợ sản phẩm giao trong ngày và đang giảm giá |
+| Hai hình thức bán | Bó làm sẵn bán đúng giá niêm yết; khách tự phối bó từ hoa nguyên liệu có giá theo ngày |
+| Danh mục sản phẩm | Duyệt, tìm kiếm, lọc theo danh mục, sắp xếp bó làm sẵn |
 | Chi tiết sản phẩm | Thư viện ảnh, giá VND, tồn kho, chọn số lượng, gợi ý sản phẩm liên quan |
 | Đánh giá sản phẩm | Khách đã đăng nhập gửi đánh giá 1–5 sao; đánh giá hiển thị công khai trên trang sản phẩm |
-| Giỏ hàng và yêu thích | Đồng bộ giữa các trang, gộp sản phẩm trùng, giới hạn theo tồn kho |
+| Giỏ hàng và yêu thích | Đồng bộ giữa các trang và thiết bị khi đăng nhập, gộp dữ liệu cũ, giới hạn theo tồn kho |
 | Ưu đãi | Chọn chương trình khuyến mãi áp dụng cho các sản phẩm phù hợp khi thanh toán |
 | Đặt hàng | Server báo giá, kiểm tra tồn kho và giữ hàng (QR 30 phút, COD 24 giờ); đơn hết hạn tự hủy và hoàn kho |
 | Thanh toán | Thanh toán khi nhận hàng hoặc mã QR chuyển khoản Vietcombank (VietQR) |
@@ -63,10 +64,10 @@ FlowerFlow là website bán hoa gồm ba lớp:
 
 | Tính năng | Mô tả |
 | --- | --- |
-| Sản phẩm | Thêm, sửa, xóa, cập nhật tồn kho; đồng bộ lên Firestore theo thời gian thực |
+| Sản phẩm và giá hoa | Thêm bó làm sẵn giá cố định hoặc hoa nguyên liệu; nhập giá nguyên liệu theo ngày và quản lý tồn kho theo bó/cành |
 | Danh mục và ưu đãi | Quản lý danh mục hoa và chương trình khuyến mãi |
 | Đơn hàng | Xem đơn của mọi khách theo thời gian thực, cập nhật trạng thái (Chờ xác nhận, Đang giao, Đã giao, Đã hủy) |
-| Xác minh thanh toán | Bấm “Xác nhận đã nhận tiền” cho đơn QR sau khi đối chiếu sao kê; chỉ đơn đã xác minh mới tính vào doanh thu |
+| Xác minh thanh toán | Đối chiếu đúng số tiền, nhập mã giao dịch ngân hàng; API kiểm tra quyền và ghi audit người xác nhận/thời gian/thông tin đối soát |
 | Doanh thu | Báo cáo doanh thu theo hôm nay, theo tháng, toàn thời gian hoặc khoảng ngày tùy chọn |
 | Đánh giá và lời nhắn | Trả lời, đánh dấu hoàn thành hoặc xóa đánh giá và lời nhắn khách để lại khi đặt hàng |
 | Người dùng | Danh sách tài khoản Firebase và nhà cung cấp đăng nhập (qua API bảo vệ) |
@@ -105,7 +106,7 @@ FlowerFlow là website bán hoa gồm ba lớp:
 │   │   ├── account/            # Đăng nhập, quên mật khẩu, tài khoản
 │   │   └── admin/              # Trang quản trị, báo cáo, xuất Excel, trang owner
 │   ├── css/                    # Giao diện, chia theo cùng nhóm: core, catalog, order, account, admin
-│   ├── flower.json             # Catalog sản phẩm mặc định
+│   ├── flower.json             # Catalog rỗng; sản phẩm do cửa hàng chủ động thêm trong admin
 │   ├── firestore.rules         # Quy tắc bảo mật Firestore
 │   ├── firebase.json           # Cấu hình Firebase CLI
 │   ├── vercel.json             # Cấu hình Vercel (header bảo mật, cron)
@@ -135,7 +136,7 @@ python -m http.server 8000
 Mở <http://localhost:8000> trong trình duyệt.
 
 > [!NOTE]
-> Không mở trực tiếp file HTML bằng `file://`: website tải `flower.json` bằng `fetch`, nên bắt buộc phải chạy qua HTTP.
+> Không mở trực tiếp file HTML bằng `file://`: trình duyệt cần HTTP để gọi API và Firebase Authentication/Firestore.
 
 ### Chạy kèm API quản trị
 
@@ -178,7 +179,7 @@ Triển khai quy tắc bằng [Firebase CLI](https://firebase.google.com/docs/cl
 
 ```sh
 cd flower.com
-firebase deploy --only firestore:rules
+firebase deploy --only firestore:rules,firestore:indexes
 ```
 
 ### Biến môi trường (Vercel)
@@ -197,7 +198,7 @@ firebase deploy --only firestore:rules
 2. Đặt **Root Directory** là `flower.com`.
 3. Thêm các biến môi trường ở trên cho môi trường **Production** (và **Preview** nếu cần).
 4. Deploy, sau đó gán quyền Owner đầu tiên bằng script `npm run set-owner`.
-5. Triển khai Firestore Security Rules bằng `firebase deploy --only firestore:rules`.
+5. Triển khai Firestore Security Rules và composite indexes bằng `firebase deploy --only firestore:rules,firestore:indexes` (chọn đúng Firebase project trước khi chạy).
 
 Hướng dẫn từng bước, bao gồm cách gán quyền Owner bằng Application Default Credentials mà không cần tải key, có trong [`docs/ADMIN-SETUP.md`](docs/ADMIN-SETUP.md).
 
@@ -206,7 +207,7 @@ Hướng dẫn từng bước, bao gồm cách gán quyền Owner bằng Applica
 | Loại | Lệnh | Nội dung |
 | --- | --- | --- |
 | Unit test | `cd flower.com && npm test` | Tính giá, ưu đãi, dữ liệu đơn hàng, trạng thái đơn, giỏ hàng, danh mục, sản phẩm |
-| Coverage | `cd flower.com && npm run test:coverage` | Như trên, kèm tỉ lệ dòng/nhánh/hàm được test |
+| Coverage | `cd flower.com && npm run test:coverage` | Như trên, kèm tỉ lệ dòng/nhánh/hàm được test; CI yêu cầu tối thiểu 50% coverage dòng |
 | Feature, system, security | `cd tests && npm ci && npm run integration` | Đặt hàng, đăng nhập, quản lý, luồng xuyên hệ thống và Security Rules trên Firebase Emulator (cần Java 11+) |
 | Browser E2E | `cd flower.com && npm run test:e2e:emulator` | Xem sản phẩm, giỏ hàng, đăng nhập, đặt hàng trên desktop/mobile; Firebase Emulator và Playwright |
 | Smoke test sau deploy | `cd flower.com && SMOKE_URL=https://... npm run smoke` | Trang và API còn chạy, không đổi dữ liệu |
@@ -228,9 +229,11 @@ Mỗi lần đổi vai trò, refresh token của người dùng bị thu hồi �
 Dự án đang ở giai đoạn **v0.1.0 (chưa phát hành)**. Trước khi vận hành thật, cần lưu ý:
 
 - **Thanh toán QR chưa có bước đối soát tự động.** Admin cần tự kiểm tra sao kê ngân hàng rồi bấm “Xác nhận đã nhận tiền” trước khi đơn hết thời gian giữ hàng (30 phút).
+- Ghi nhận hoàn tiền chỉ hỗ trợ hoàn toàn bộ giá trị đơn sau khi cửa hàng đã chuyển tiền và nhập mã giao dịch. Không có chuyển tiền tự động, hoàn một phần hoặc nhiều khoản hoàn trên cùng đơn.
+- **Vercel Hobby chỉ hỗ trợ cron hằng ngày.** Cần cấu hình GitHub Actions `FLOWER_APP_URL` và `CRON_SECRET` theo [`ADMIN-SETUP.md`](ADMIN-SETUP.md) để chạy cleanup mỗi 15 phút; cron Vercel hằng ngày chỉ là dự phòng.
 - Dữ liệu cũ chỉ lưu trong `localStorage` (đơn hàng, đánh giá, lời nhắn trước khi có backend) không được chuyển lên Firestore. Phân loại cũ được tải lên ở lần đầu admin mở trang quản trị.
 - **Chế độ tài khoản demo** (dùng khi Firebase chưa bật Email/Password) lưu mật khẩu không mã hóa trong `localStorage`. Không dùng mật khẩu thật ở chế độ này.
-- Giỏ hàng và danh sách yêu thích chỉ lưu cục bộ theo trình duyệt.
+- Khách chưa đăng nhập chỉ lưu giỏ hàng và yêu thích trên thiết bị hiện tại. Tài khoản đăng nhập được đồng bộ hai danh sách qua Firestore; khi ngoại tuyến, bản cục bộ vẫn dùng được và sẽ báo nếu đồng bộ thất bại.
 
 ## Lộ trình
 

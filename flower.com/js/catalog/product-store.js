@@ -7,7 +7,6 @@
     let firebaseApiPromise;
     let unsubscribeProducts;
     let unsubscribeCategories;
-    let catalogProducts = [];
     let firestoreReachable = null;
     let productsLoaded = false;
     let productSubscriptionTimer = null;
@@ -44,6 +43,10 @@
             image: product.image || "",
             images: Array.isArray(product.images) ? product.images.filter((image) => typeof image === "string" && image) : [],
             status: product.status === "hidden" ? "hidden" : "active",
+            saleType: product.saleType === "flower" ? "flower" : "ready_made",
+            ...(typeof product.priceUpdatedAt === "string" && product.priceUpdatedAt
+                ? { priceUpdatedAt: product.priceUpdatedAt }
+                : {}),
             category: String(product.category || "").trim(),
             categoryKey: String(product.categoryKey || "").trim(),
             sameDayDelivery: product.sameDayDelivery === true,
@@ -114,12 +117,12 @@
         }
     }
 
-    function mergeCatalogProducts(existing = [], catalog = []) {
+    function repairCatalogProducts(existing = [], catalog = catalogProducts) {
         const catalogById = new Map((Array.isArray(catalog) ? catalog : []).map((item) => {
             const product = normalizeProduct(item);
             return [String(product.id), product];
         }));
-        const merged = new Map((Array.isArray(existing) ? existing : []).map((item) => {
+        return deduplicateProducts((Array.isArray(existing) ? existing : []).map((item) => {
             const product = normalizeProduct(item);
             const catalogProduct = catalogById.get(String(product.id));
             if (product.title.includes("?") && catalogProduct && !catalogProduct.title.includes("?")) {
@@ -129,8 +132,12 @@
                 product.image = catalogProduct.image;
                 product.images = product.images.filter((image) => !isLegacyCatalogImage(image));
             }
-            return [String(product.id), product];
+            return product;
         }));
+    }
+
+    function mergeCatalogProducts(existing = [], catalog = []) {
+        const merged = new Map(repairCatalogProducts(existing, catalog).map((product) => [String(product.id), product]));
         (Array.isArray(catalog) ? catalog : []).forEach((item) => {
             const product = normalizeProduct(item);
             if (!merged.has(String(product.id))) merged.set(String(product.id), product);
@@ -161,7 +168,7 @@
     }
 
     function cacheProducts(products, notify = true) {
-        const normalized = deduplicateProducts(products);
+        const normalized = repairCatalogProducts(products);
         if (typeof window !== "undefined" && window.FlowerSafeStorage?.writeJson) {
             window.FlowerSafeStorage.writeJson(PRODUCT_KEY, normalized);
         } else {
@@ -437,40 +444,6 @@
         }
     }
 
-    async function syncMissingRemoteProducts(remoteProducts, products, markCatalogSeeded = false) {
-        const firebase = await getFirebaseApi();
-        if (!firebase) return false;
-        try {
-            const { db, firestoreSdk } = firebase;
-            const existingIds = new Set(remoteProducts.map((product) => String(normalizeProduct(product).id)));
-            const missingProducts = products.filter((product) => !existingIds.has(String(normalizeProduct(product).id)));
-            const snapshot = await firestoreSdk.getDocs(firestoreSdk.collection(db, "products"));
-            const productsNeedingPriceMigration = snapshot.docs.filter((doc) => {
-                const normalized = normalizeProduct({ ...doc.data(), id: doc.id });
-                return Number(doc.data().price) !== normalized.price;
-            });
-            if (!missingProducts.length && !productsNeedingPriceMigration.length && !markCatalogSeeded) return true;
-
-            const batch = firestoreSdk.writeBatch(db);
-            productsNeedingPriceMigration.forEach((doc) => {
-                const normalized = normalizeProduct({ ...doc.data(), id: doc.id });
-                batch.update(doc.ref, { price: normalized.price });
-            });
-            missingProducts.forEach((product) => {
-                const normalized = normalizeProduct(product);
-                batch.set(firestoreSdk.doc(db, "products", String(normalized.id)), normalized);
-            });
-            if (markCatalogSeeded) {
-                batch.set(firestoreSdk.doc(db, "metadata", "productCatalog"), { catalogSeeded: true });
-            }
-            await batch.commit();
-            return true;
-        } catch (error) {
-            console.warn("Không thể bổ sung sản phẩm còn thiếu trên Firestore:", error);
-            return false;
-        }
-    }
-
     // Firestore is the source of truth: the cache mirrors it exactly, including deletions.
     function subscribeToProducts() {
         if (unsubscribeProducts) return;
@@ -510,9 +483,8 @@
         return cacheProducts(saved);
     }
 
-    // Loads products from Firestore. flower.json is only used once, by an admin, to seed an
-    // empty catalog; after that, products an admin deleted stay deleted.
-    async function synchronizeProducts(catalog) {
+    // Load the current catalog from Firestore; repository data never seeds or overwrites it.
+    async function synchronizeProducts() {
         const remoteProducts = await readRemoteProducts();
         if (remoteProducts === null) return false;
         productsLoaded = true;
@@ -523,36 +495,7 @@
             return true;
         }
 
-        const firebase = await getFirebaseApi();
-        if (!firebase) return false;
-
-        let isAdmin = false;
-        try {
-            const user = firebase.auth.currentUser;
-            isAdmin = Boolean(user && (await user.getIdTokenResult()).claims.admin === true);
-        } catch (error) {
-            console.warn("Không xác minh được quyền khởi tạo catalog:", error);
-        }
-
-        let products = remoteProducts;
-        if (isAdmin) {
-            // Seed only when we know for sure the catalog was never seeded; if the marker cannot be
-            // read, do nothing rather than writing (writes made offline never finish).
-            let catalogSeeded = null;
-            try {
-                const marker = await firebase.firestoreSdk.getDocFromServer(
-                    firebase.firestoreSdk.doc(firebase.db, "metadata", "productCatalog")
-                );
-                catalogSeeded = marker.exists() && marker.data().catalogSeeded === true;
-            } catch (error) {
-                console.warn("Không đọc được trạng thái khởi tạo catalog:", error);
-            }
-            if (catalogSeeded === false) {
-                products = mergeCatalogProducts(remoteProducts, catalog);
-                await syncMissingRemoteProducts(remoteProducts, products, true);
-            }
-        }
-        cacheProducts(products);
+        cacheProducts(remoteProducts);
         subscribeToProducts();
         return true;
     }
@@ -566,9 +509,9 @@
         }, 30000);
     }
 
-    function startProductSynchronization(catalog) {
+    function startProductSynchronization() {
         if (synchronization) return synchronization;
-        synchronization = synchronizeProducts(catalog)
+        synchronization = synchronizeProducts()
             .catch((error) => {
                 console.warn("Không thể đồng bộ sản phẩm:", error);
                 return false;
@@ -582,17 +525,32 @@
     async function initialize() {
         if (initialization) return initialization;
         initialization = (async () => {
-            const localProducts = readProducts();
+            let catalog = [];
+            try {
+                const response = await fetch("./flower.json?v=2");
+                if (response.ok) {
+                    const data = await response.json();
+                    catalog = Array.isArray(data.flower)
+                        ? data.flower.map((item) => ({ ...item, quantity: item.quantity ?? 10 }))
+                        : [];
+                    catalogProducts = catalog;
+                }
+            } catch (error) {
+                console.warn("Không tải được catalog sản phẩm:", error);
+            }
+
+            const localProducts = repairCatalogProducts(readProducts(), catalog);
             const isAdminPage = window.location.pathname.endsWith("/admin.html");
 
             if (!isAdminPage && localProducts.length) {
-                startProductSynchronization([]);
+                cacheProducts(localProducts, false);
+                startProductSynchronization();
                 return localProducts;
             }
 
             if (!isAdminPage) {
                 const apiProducts = await readProductsFromApi();
-                if (apiProducts?.length) {
+                if (apiProducts !== null) {
                     firestoreReachable = false;
                     productsLoaded = true;
                     cacheProducts(apiProducts);
@@ -602,68 +560,26 @@
                 }
             }
 
-            let catalog = [];
-            try {
-                const response = await fetch("./flower.json?v=2");
-                if (response.ok) {
-                    const data = await response.json();
-                    // Starting stock, used only when an admin seeds an empty catalog.
-                    catalog = Array.isArray(data.flower) ? data.flower.map((item) => ({ ...item, quantity: item.quantity ?? 10 })) : [];
-                    catalogProducts = catalog;
-                }
-            } catch (error) {
-                console.warn("Không tải được catalog sản phẩm:", error);
-            }
-
             if (localProducts.length) {
-                startProductSynchronization(catalog);
+                startProductSynchronization();
                 return localProducts;
             }
-            if (await startProductSynchronization(catalog)) return readProducts();
-            // Firestore unreachable on a first visit: show the catalog but nothing as in stock.
-            return deduplicateProducts(catalog.map((item) => ({ ...item, quantity: 0 })));
+            if (await startProductSynchronization()) return readProducts();
+            return [];
         })().finally(() => {
             initialization = null;
         });
         return initialization;
     }
 
-    // Products of flower.json that are not in the shop any more (lost or deleted).
-    function getMissingCatalogProducts() {
-        if (!productsLoaded) return [];
-        const shopIds = new Set(readProducts().map((product) => String(product.id)));
-        return catalogProducts.filter((product) => !shopIds.has(String(normalizeProduct(product).id)));
-    }
-
-    // Admin only: adds back the flower.json products that are missing from Firestore, with their
-    // starting stock, through the server (so it also works when Firestore is blocked here).
-    async function restoreCatalogProducts() {
-        const firebase = await getFirebaseApi();
-        if (!firebase) throw new Error("Không tải được Firebase.");
-        await firebase.auth.authStateReady();
-        const user = firebase.auth.currentUser;
-        if (!user) throw new Error("Vui lòng đăng nhập tài khoản quản trị.");
-        const response = await fetch("/api/products", {
-            method: "POST",
-            headers: { "Content-Type": "application/json", Accept: "application/json", Authorization: `Bearer ${await user.getIdToken()}` },
-            body: JSON.stringify({ action: "restore-catalog" })
-        });
-        const result = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(result.error || "Chưa thể khôi phục sản phẩm.");
-        const products = await readRemoteProducts();
-        if (products) cacheProducts(products);
-        return result.restored || 0;
-    }
-
     const api = {
         initialize,
-        getMissingCatalogProducts,
         isFirestoreReachable: () => firestoreReachable,
         areProductsLoaded: () => productsLoaded,
-        restoreCatalogProducts,
         readProducts,
         saveProducts,
         findDuplicateProductImages,
+        repairCatalogProducts,
         mergeCatalogProducts,
         normalizeProduct,
         toVndPrice,

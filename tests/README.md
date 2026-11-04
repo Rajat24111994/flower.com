@@ -11,7 +11,7 @@
 | Loại | Lệnh | Nội dung |
 |---|---|---|
 | Unit test | `cd flower.com && npm test` | Tính giá, ưu đãi, dữ liệu đơn hàng, trạng thái đơn, giỏ hàng, danh mục, sản phẩm |
-| Unit test + coverage | `cd flower.com && npm run test:coverage` | Như trên, kèm tỉ lệ dòng/nhánh/hàm được test |
+| Unit test + coverage | `cd flower.com && npm run test:coverage` | Như trên, kèm tỉ lệ dòng/nhánh/hàm; CI yêu cầu tối thiểu 50% coverage dòng |
 | Feature, system, security | `cd tests && npm ci && npm run integration` | Đặt hàng, đăng nhập, quản lý, luồng xuyên hệ thống, Firestore rules và quyền API |
 | Smoke test sau khi deploy | `cd flower.com && SMOKE_URL=https://... npm run smoke` | Trang và API còn chạy, không tạo đơn, không đổi dữ liệu |
 
@@ -34,9 +34,13 @@ Test tích hợp chạy API thật (`flower.com/api/*.js`) và `firestore.rules`
 | `product-categories.test.js` | Phân loại sản phẩm theo danh mục |
 | `product-store-sync.test.js` | Gộp catalog từ Firestore với dữ liệu mặc định |
 | `shopping-store.test.js` | Giỏ hàng, yêu thích, giới hạn tồn kho |
+| `shopping-sync.test.js` | Chuẩn hóa dữ liệu, gộp lần đầu, đồng bộ giữa thiết bị và giữ bản cục bộ khi lỗi mạng |
+| `cart-per-account.test.js` | Cách ly giỏ hàng theo tài khoản và đếm tổng số sản phẩm |
 | `store-footer.test.js` | Footer dùng chung |
 | `order-pricing.test.js` | Tính giá, ưu đãi, làm tròn VND, giá trình duyệt khớp giá máy chủ |
 | `order-validation.test.js` | Dữ liệu đơn hàng hợp lệ/không hợp lệ, tra cứu công khai không lộ thông tin |
+| `privacy-policy.test.js` | Nội dung chính sách quyền riêng tư bao quát dữ liệu, mục đích, lưu trữ và yêu cầu xóa |
+| `safe-storage.test.js` | Dữ liệu checkout nhạy cảm chỉ tồn tại trong session storage |
 | `order-status.test.js` | Trạng thái đơn và trạng thái cũ |
 | `integration/feature-orders.test.js` | Báo giá, tạo đơn, trừ kho, chống đặt trùng, ưu đãi, đơn hết hạn, tra cứu |
 | `integration/feature-accounts.test.js` | Đơn gắn tài khoản, token giả/thu hồi, đánh giá của chủ đơn |

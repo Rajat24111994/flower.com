@@ -3,7 +3,15 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 
 const FIRESTORE = "http://127.0.0.1:8080/v1/projects/web-ban-hoa-9fe0b/databases/(default)/documents";
-const catalog = JSON.parse(readFileSync(path.join(__dirname, "..", "flower.json"), "utf8")).flower;
+const catalog = [{
+  id: 1,
+  title: "Bó hoa xuân dịu dàng",
+  image: "./images/products/product-flower-01.webp",
+  price: 250000,
+  quantity: 10,
+  status: "active",
+  saleType: "ready_made"
+}];
 
 // Firestore REST values for plain JSON (strings, numbers, booleans, arrays, objects).
 function toFirestoreValue(value) {

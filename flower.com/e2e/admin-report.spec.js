@@ -7,7 +7,9 @@ const orders = [
   { id: "R2", createdAt: "2026-10-30T01:00:00Z", paidAt: "2026-11-02T02:00:00Z", status: "Đã giao", paymentMethod: "qr", paymentVerified: true, total: 500000,
     items: [{ id: "b", title: "Hoa lan", quantity: 1, price: 500000 }] },
   { id: "R3", createdAt: "2026-11-02T02:00:00Z", status: "Đã giao", paymentMethod: "qr", paymentVerified: false, total: 100000, items: [] },
-  { id: "R4", createdAt: "2026-11-02T03:00:00Z", status: "Đã hủy", total: 400000, items: [] }
+  { id: "R4", createdAt: "2026-11-02T03:00:00Z", status: "Đã hủy", total: 400000, items: [] },
+  { id: "R5", createdAt: "2026-11-02T04:00:00Z", paidAt: "2026-11-02T04:00:00Z", paymentRefundedAt: "2026-11-02T05:00:00Z",
+    status: "Đã giao", paymentMethod: "qr", paymentVerified: true, paymentRefunded: true, paymentRefundAmount: 150000, total: 150000, items: [] }
 ];
 async function fixtures(page, admin = true) {
   await page.route("**/firebase-app.js", (route) => route.fulfill({ contentType: "text/javascript", body: "export const getApps = () => []; export const initializeApp = () => ({}); export const getApp = () => ({});" }));
@@ -32,12 +34,15 @@ test("dashboard filters, revenue, stock, live refresh and Excel snapshot", async
   page.on("pageerror", (error) => errors.push(error.message));
   await fixtures(page);
   await page.goto("/admin.html");
+  await expect(page.locator(".summary-card").filter({ hasText: "Doanh thu thực nhận" })).toContainText("770.000");
   await expect(page.locator("#admin-report-filters")).toBeVisible();
   await page.locator('[name="period"]').selectOption("all");
   await page.locator('#admin-report-filters button[type="submit"]').click();
-  const revenue = page.locator(".report-metric").filter({ has: page.getByRole("heading", { name: "Doanh thu ghi nhận", exact: true }) }).locator("strong");
+  const revenue = page.locator(".report-metric").filter({ has: page.getByRole("heading", { name: "Doanh thu sau hoàn tiền", exact: true }) }).locator("strong");
   await expect(revenue).toContainText("770.000");
-  await expect(page.getByRole("table", { name: "Bán chạy trong đơn hoàn thành và thanh toán" }).locator("tbody tr").first()).toContainText("Hoa hồng");
+  const refunds = page.locator(".report-metric").filter({ has: page.getByRole("heading", { name: "Đã hoàn tiền trong kỳ", exact: true }) }).locator("strong");
+  await expect(refunds).toContainText("150.000");
+  await expect(page.getByRole("table", { name: "Bán chạy trong đơn hoàn thành, đã thanh toán và chưa hoàn tiền" }).locator("tbody tr").first()).toContainText("Hoa hồng");
   await expect(page.getByRole("table", { name: "Tồn kho ≤ 5 bó" }).locator("tbody tr")).toHaveCount(2);
   await expect(page.locator(".report-chart-scroll svg")).toBeVisible();
   const downloadEvent = page.waitForEvent("download");
@@ -47,7 +52,7 @@ test("dashboard filters, revenue, stock, live refresh and Excel snapshot", async
   await download.saveAs(testInfo.outputPath("admin-report.xlsx"));
   await page.screenshot({ path: testInfo.outputPath("admin-dashboard.png"), fullPage: true });
   await page.evaluate(() => {
-    window.emitAdminOrders([...window.testOrders, { ...window.testOrders[0], id: "R5", total: 100000 }]);
+    window.emitAdminOrders([...window.testOrders, { ...window.testOrders[0], id: "R6", total: 100000 }]);
   });
   await expect(page.locator(".dashboard")).toBeVisible();
   await expect(revenue).toContainText("870.000");

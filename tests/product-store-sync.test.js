@@ -1,5 +1,5 @@
 const assert = require('assert');
-const { findDuplicateProductImages, mergeCatalogProducts, normalizeProduct } = require('../flower.com/js/catalog/product-store.js');
+const { findDuplicateProductImages, mergeCatalogProducts, normalizeProduct, repairCatalogProducts } = require('../flower.com/js/catalog/product-store.js');
 
 const catalog = [
   { id: 1, title: 'Hoa hồng', price: 250000, quantity: 8, image: 'rose.jpg', description: 'Hoa hồng đỏ' },
@@ -41,6 +41,7 @@ assert.deepStrictEqual(
     image: 'main.jpg',
     images: ['detail-1.jpg'],
     status: 'active',
+    saleType: 'ready_made',
     category: 'Hoa hồng',
     categoryKey: 'flowers',
     sameDayDelivery: true,
@@ -59,21 +60,25 @@ assert.strictEqual(restoredCatalog.length, 2);
 assert.strictEqual(restoredCatalog.find((item) => item.id === 1).quantity, 2);
 assert.strictEqual(restoredCatalog.find((item) => item.id === 2).quantity, 5);
 
-const fullCatalog = require('../flower.com/flower.json').flower;
+const fullCatalog = [
+  { id: 101, title: 'Hoa mẫu A', image: 'legacy-a.webp' },
+  { id: 102, title: 'Hoa mẫu B', image: 'legacy-b.webp' },
+  { id: 103, title: 'Hoa mẫu C', image: 'legacy-c.webp' },
+];
 const restoredFullCatalog = mergeCatalogProducts(
   [
     { ...fullCatalog[0], quantity: 2 },
-    { ...fullCatalog[24], quantity: 7 },
+    { ...fullCatalog[2], quantity: 7 },
     { id: 999, title: 'Hoa tùy chỉnh', quantity: 3 },
   ],
   fullCatalog
 );
 
 // Products that share an image or a title are still different products: only ids deduplicate.
-assert.strictEqual(fullCatalog.length, 50);
-assert.strictEqual(restoredFullCatalog.length, 51);
+assert.strictEqual(fullCatalog.length, 3);
+assert.strictEqual(restoredFullCatalog.length, 4);
 assert.strictEqual(restoredFullCatalog.find((item) => item.id === fullCatalog[0].id).quantity, 2);
-assert.strictEqual(restoredFullCatalog.find((item) => item.id === fullCatalog[24].id).quantity, 7);
+assert.strictEqual(restoredFullCatalog.find((item) => item.id === fullCatalog[2].id).quantity, 7);
 assert.strictEqual(restoredFullCatalog.find((item) => item.id === 999).title, 'Hoa tùy chỉnh');
 assert.strictEqual(new Set(restoredFullCatalog.map((item) => String(item.id))).size, restoredFullCatalog.length);
 assert.strictEqual(
@@ -97,6 +102,25 @@ assert.strictEqual(migratedImages[0].image, fullCatalog[0].image);
 assert.deepStrictEqual(migratedImages[0].images, ['https://cdn.example.test/custom-detail.webp']);
 assert.strictEqual(migratedImages[1].image, fullCatalog[1].image);
 assert.strictEqual(migratedImages[2].image, 'https://admin.example.test/custom-flower.webp');
+
+const canonicalProduct = fullCatalog.find((product) => String(product.id) === '101');
+const repairedProducts = repairCatalogProducts([
+  {
+    ...canonicalProduct,
+    title: 'B? hoa h?ng t?m bay b?ng',
+    image: './images/flower-04.webp',
+    price: 1557000,
+    quantity: 1044,
+  },
+  { id: 999, title: 'Sản phẩm tùy chỉnh?', image: './images/custom.webp', price: 900000 },
+], fullCatalog);
+assert.strictEqual(repairedProducts.length, 2);
+assert.strictEqual(repairedProducts[0].title, canonicalProduct.title);
+assert.strictEqual(repairedProducts[0].image, canonicalProduct.image);
+assert.strictEqual(repairedProducts[0].price, 1557000);
+assert.strictEqual(repairedProducts[0].quantity, 1044);
+assert.strictEqual(repairedProducts[1].title, 'Sản phẩm tùy chỉnh?');
+assert.strictEqual(repairedProducts[1].image, './images/custom.webp');
 
 const imageProducts = [
   { id: 1, image: './images/rose.webp?v=2', images: ['./images/detail.webp'] },

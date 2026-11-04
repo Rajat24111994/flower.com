@@ -6,7 +6,7 @@ const path = require("node:path");
 const vm = require("node:vm");
 const { internals } = require("../flower.com/api/orders.js");
 
-const { priceCart, findPromotion } = internals;
+const { priceCart, findPromotion, getProductPrice, getVietnameseDateTime } = internals;
 const { toVndPrice } = require("../flower.com/js/catalog/product-store.js");
 const catalog = require("../flower.com/flower.json").flower;
 
@@ -34,6 +34,7 @@ const promo20All = { id: "p20", name: "Giảm 20%", discountPercent: 20, active:
 const promo30One = { id: "p30", name: "Giảm 30% hoa 1", discountPercent: 30, active: true, productIds: ["1"] };
 
 test("giá trong flower.json là số nguyên VND, làm tròn tới 1.000 ₫", () => {
+    assert.deepEqual(catalog, []);
     for (const product of catalog) {
         assert.ok(Number.isSafeInteger(product.price), `id ${product.id}: ${product.price}`);
         assert.equal(product.price % 1000, 0, `id ${product.id}: ${product.price}`);
@@ -49,6 +50,26 @@ test("toVndPrice() giữ giá VND, chỉ đổi giá USD cũ (dưới 1.000)", (
     assert.equal(toVndPrice(0), 0);
     assert.equal(toVndPrice("abc"), 0);
     assert.equal(toVndPrice(-5), 0);
+});
+
+test("giá hoa nguyên liệu cần cập nhật hôm nay; bó làm sẵn luôn dùng giá niêm yết cố định", () => {
+    const now = new Date("2025-03-20T05:30:00.000Z");
+    const today = getVietnameseDateTime(now).date;
+    const flower = { id: "rose", saleType: "flower", price: 165000, priceUpdatedAt: today };
+    assert.equal(getProductPrice(flower, now), 165000);
+    assert.throws(
+        () => getProductPrice({ ...flower, priceUpdatedAt: "2025-03-19" }, now),
+        (error) => error.code === "flower-price-outdated"
+    );
+
+    const readyMade = { id: "bouquet", saleType: "ready_made", price: 425000, priceUpdatedAt: "2020-01-01" };
+    assert.equal(getProductPrice(readyMade, now), 425000);
+    assert.deepEqual(priceCart([{ ...readyMade, quantity: 2, size: "premium" }]), {
+        subtotal: 850000,
+        savings: 0,
+        tax: 0,
+        total: 850000
+    });
 });
 
 test("trình duyệt và máy chủ đổi giá cũ giống hệt nhau", () => {

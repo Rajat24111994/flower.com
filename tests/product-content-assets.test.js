@@ -20,10 +20,10 @@ test("catalog products use one existing, optimized local photo per product group
     grouped.set(product.title, images);
   }
 
-  assert.equal(catalog.length, 50);
-  assert.equal(grouped.size, 24);
+  assert.equal(catalog.length, 0);
+  assert.equal(grouped.size, 0);
   assert.ok([...grouped.values()].every((images) => images.size === 1));
-  assert.equal(new Set([...grouped.values()].map(([image]) => image)).size, 24);
+  assert.equal(new Set([...grouped.values()].map(([image]) => image)).size, 0);
 });
 
 test("homepage and review-test images have local files and source credits", () => {

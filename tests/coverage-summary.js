@@ -3,7 +3,12 @@
 const fs = require("node:fs");
 const path = require("node:path");
 
-const [file, title = "Coverage"] = process.argv.slice(2);
+const [file, title = "Coverage", ...options] = process.argv.slice(2);
+const minimumOption = options.find((option) => option.startsWith("--min-lines="));
+const minimumLines = minimumOption === undefined ? null : Number(minimumOption.slice("--min-lines=".length));
+if (minimumLines !== null && (!Number.isFinite(minimumLines) || minimumLines < 0 || minimumLines > 100)) {
+    throw new Error("--min-lines phải là số từ 0 đến 100.");
+}
 const rows = [];
 let current = null;
 for (const line of fs.readFileSync(file, "utf8").split("\n")) {
@@ -21,9 +26,16 @@ for (const line of fs.readFileSync(file, "utf8").split("\n")) {
 const percent = ([hit, found]) => (found ? `${((hit / found) * 100).toFixed(1)}%` : "–");
 const total = (key) => rows.reduce((sum, row) => [sum[0] + row[key][0], sum[1] + row[key][1]], [0, 0]);
 const name = (file) => path.relative(path.join(__dirname, ".."), file);
+if (!rows.length) throw new Error(`Không tìm thấy dữ liệu coverage trong ${file}.`);
 
 console.log(`### ${title}\n`);
 console.log("| File | Dòng | Nhánh | Hàm |\n|---|---|---|---|");
 rows.sort((a, b) => name(a.file).localeCompare(name(b.file)))
     .forEach((row) => console.log(`| ${name(row.file)} | ${percent(row.lines)} | ${percent(row.branches)} | ${percent(row.functions)} |`));
 console.log(`| **Tổng** | **${percent(total("lines"))}** | **${percent(total("branches"))}** | **${percent(total("functions"))}** |\n`);
+const [coveredLines, foundLines] = total("lines");
+const lineCoverage = foundLines ? coveredLines / foundLines * 100 : 0;
+if (minimumLines !== null && lineCoverage < minimumLines) {
+    console.error(`Line coverage ${lineCoverage.toFixed(1)}% is below the required ${minimumLines}%.`);
+    process.exitCode = 1;
+}

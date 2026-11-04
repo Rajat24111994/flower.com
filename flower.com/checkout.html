@@ -3,7 +3,7 @@
 
 <head>
   <meta charset="UTF-8">
-  <script src="./js/core/safe-storage.js?v=2"></script>
+  <script src="./js/core/safe-storage.js?v=3"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex, nofollow">
   <meta name="description" content="Nhập thông tin nhận hoa và xác nhận thanh toán đơn hàng Flowerflow.">
@@ -12,15 +12,15 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="./css/core/store-header.css?v=3">
+  <link rel="stylesheet" href="./css/core/store-header.css?v=5">
   <link rel="stylesheet" href="./css/order/checkout.css?v=6">
   <link rel="stylesheet" href="./css/core/accessibility.css?v=1">
-  <link rel="stylesheet" href="./css/core/store-footer.css?v=3">
+  <link rel="stylesheet" href="./css/core/store-footer.css?v=4">
 <link rel="stylesheet" href="./css/core/contact-tools.css?v=3">
 </head>
 
 <body>
-  <script src="./js/core/store-header.js?v=6"></script>
+  <script src="./js/core/store-header.js?v=7"></script>
 
   <main class="checkout-page">
     <header class="checkout-heading">
@@ -202,11 +202,13 @@
   <script src="./js/core/store-footer.js?v=4"></script>
   <script src="./js/catalog/bouquet-options.js?v=1"></script>
   <script src="./js/core/currency.js?v=11"></script>
-  <script src="./js/order/order-store.js?v=18"></script>
+  <script src="./js/order/order-store.js?v=19"></script>
   <script>
   const CartContainer = document.getElementById("product-container");
   const checkoutForm = document.getElementById("checkout-form");
   const checkoutMessage = document.getElementById("checkout-message");
+  FlowerSafeStorage.remove("flowerCheckout");
+  FlowerSafeStorage.remove("flowerPaymentReference");
   const orderNoteInput = checkoutForm.querySelector('textarea[name="orderNote"]');
   const orderNoteCounter = document.getElementById("order-note-counter");
   const greetingCardInput = document.getElementById("greeting-card");
@@ -281,7 +283,12 @@
     return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
   }
 
-  const pendingOrder = FlowerSafeStorage.readJson("flowerPendingOrder", { fallback: null });
+  let pendingOrder = FlowerSafeStorage.readJson("flowerPendingOrder", { fallback: null, storage: "session" });
+  if (!pendingOrder) {
+    pendingOrder = FlowerSafeStorage.readJson("flowerPendingOrder", { fallback: null });
+    if (pendingOrder) FlowerSafeStorage.writeJson("flowerPendingOrder", pendingOrder, { required: true, storage: "session" });
+  }
+  FlowerSafeStorage.remove("flowerPendingOrder");
   if (pendingOrder?.order?.idempotencyKey) window.location.replace("./placeorder.html");
   const orderRequestId = createOrderRequestId();
   const paymentReference = `FF${orderRequestId.replaceAll("-", "").slice(0, 12).toUpperCase()}`;
@@ -492,7 +499,7 @@
       image.loading = "lazy";
       name.textContent = product.title || "Sản phẩm hoa";
       unitPrice.className = "checkout-unit-price";
-      unitPrice.textContent = formatVnd(product.price);
+      unitPrice.textContent = `${formatVnd(product.price)} / ${product.saleType === "flower" ? "cành" : "bó"}`;
       details.className = "checkout-item-details";
       controls.className = "checkout-quantity";
       decrease.type = "button";
@@ -566,7 +573,7 @@
     renderCartSummary(Cart);
     updatePaymentOnlinePanel();
     const cartTotal = document.getElementById("cartTotal");
-    if (cartTotal) cartTotal.textContent = Cart.length;
+    if (cartTotal) cartTotal.textContent = FlowerSafeStorage.countCartUnits(Cart);
     if (refreshQuote) void refreshServerQuote();
   }
 
@@ -598,6 +605,8 @@
           cartItem.price = quotedItem.price;
           cartItem.title = quotedItem.title;
           cartItem.image = quotedItem.image;
+          cartItem.saleType = quotedItem.saleType;
+          cartItem.priceUpdatedAt = quotedItem.priceUpdatedAt;
           if (Number.isInteger(quotedItem.stock)) cartItem.stockQuantity = quotedItem.stock;
         }
       });
@@ -619,7 +628,7 @@
           productImage.src = item.image || "";
           productImage.alt = item.title || "Sản phẩm hoa";
         }
-        card.querySelector(".checkout-unit-price").textContent = formatVnd(item.price);
+        card.querySelector(".checkout-unit-price").textContent = `${formatVnd(item.price)} / ${item.saleType === "flower" ? "cành" : "bó"}`;
         card.querySelector(".checkout-item-total").textContent = formatVnd(item.price * Math.max(1, Number(item.quantity) || 1));
         const stockMessage = card.querySelector(".checkout-stock");
         if (stockMessage && Number.isInteger(item.stockQuantity)) stockMessage.textContent = `Tồn kho: ${item.stockQuantity}`;
@@ -771,8 +780,9 @@
     };
 
     try {
-      FlowerSafeStorage.writeJson("flowerCheckout", checkout, { required: true });
-      FlowerSafeStorage.writeText("flowerPaymentReference", paymentReference, { required: true });
+      FlowerSafeStorage.remove("flowerCheckout");
+      FlowerSafeStorage.remove("flowerPaymentReference");
+      FlowerSafeStorage.writeJson("flowerCheckout", checkout, { required: true, storage: "session" });
       window.location.assign("./placeorder.html");
     } catch (error) {
       console.error("Không thể lưu thông tin thanh toán:", error);
@@ -780,15 +790,19 @@
     }
   });
 
+  function refreshCartFromStorage() {
+    Cart = FlowerSafeStorage.readJson("cart", {
+      fallback: [],
+      validate: (value) => Array.isArray(value)
+        && value.every((item) => item && typeof item === "object" && !Array.isArray(item) && item.id !== undefined)
+    });
+    DisplayProduct();
+  }
   window.addEventListener("storage", (event) => {
-    if (event.key === "cart") {
-      Cart = FlowerSafeStorage.readJson("cart", {
-        fallback: [],
-        validate: (value) => Array.isArray(value)
-          && value.every((item) => item && typeof item === "object" && !Array.isArray(item) && item.id !== undefined)
-      });
-      DisplayProduct();
-    }
+    if (event.key === "cart") refreshCartFromStorage();
+  });
+  window.addEventListener("flowerstoragechange", (event) => {
+    if (event.detail?.source === "sync" && event.detail.key === "cart") refreshCartFromStorage();
   });
   void initializeCheckout();
 </script>

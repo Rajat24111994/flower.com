@@ -1,6 +1,6 @@
 // One command to set up (or repair) the Firestore database of the shop:
 //   1. adminRoles/{uid} for every admin/owner account (needed by firestore.rules)
-//   2. products from flower.json that are missing (existing products are not touched), and
+//   2. marks the product catalog as shop-managed without adding starter products, and
 //      prices still stored in USD converted to whole VND
 //   3. firestore.rules deployed (Firebase Rules API)
 //   4. the composite index and TTL policy from firestore.indexes.json
@@ -131,15 +131,10 @@ async function createIndexes() {
         return `xong (${total} tài khoản quản trị, ${changed} thay đổi)`;
     }));
 
-    results.push(await step("Sản phẩm từ flower.json", async () => {
-        const catalog = JSON.parse(fs.readFileSync(path.join(root, "flower.json"), "utf8")).flower;
-        const existing = new Set((await db.collection("products").get()).docs.map((doc) => doc.id));
-        const missing = catalog.filter((product) => !existing.has(String(product.id)));
-        const batch = db.batch();
-        missing.forEach((product) => batch.set(db.collection("products").doc(String(product.id)), { ...product, quantity: product.quantity ?? 10 }));
-        batch.set(db.collection("metadata").doc("productCatalog"), { catalogSeeded: true }, { merge: true });
-        await batch.commit();
-        return `xong (thêm ${missing.length}, giữ nguyên ${existing.size} sản phẩm đã có)`;
+    results.push(await step("Catalog do cửa hàng quản lý", async () => {
+        const existing = (await db.collection("products").get()).size;
+        await db.collection("metadata").doc("productCatalog").set({ catalogSeeded: true }, { merge: true });
+        return `xong (không nạp sản phẩm mẫu, giữ nguyên ${existing} sản phẩm hiện có)`;
     }));
 
     // Prices used to be stored in USD (e.g. 73.99); they are whole VND now (#40).

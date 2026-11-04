@@ -38,10 +38,18 @@ assert.match(productScript, /img\.loading = index === 0 \? "eager" : "lazy"/);
 assert.match(productScript, /img\.fetchPriority = "high"/);
 assert.match(productScript, /new IntersectionObserver/);
 
-const product = catalog.find((item) => String(item.id) === '1');
-const related = getRelatedProducts(catalog, product, 4);
+assert.deepEqual(catalog, []);
+assert.match(productPage, /custom-bouquet\.html/);
+const fixtureCatalog = Array.from({ length: 5 }, (_, index) => ({
+  id: index + 1,
+  title: `Hoa mẫu ${index + 1}`,
+  price: 250000 + index * 1000,
+  category: "Hoa",
+  image: `flower-${index + 1}.webp`,
+}));
+const related = getRelatedProducts(fixtureCatalog, fixtureCatalog[0], 4);
 assert.strictEqual(related.length, 4);
-assert.strictEqual(related.some((item) => String(item.id) === String(product.id)), false);
+assert.strictEqual(related.some((item) => String(item.id) === String(fixtureCatalog[0].id)), false);
 assert.strictEqual(new Set(related.map((item) => String(item.id))).size, related.length);
 
 console.log('product-page test passed');

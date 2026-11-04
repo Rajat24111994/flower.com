@@ -57,6 +57,7 @@ for (const width of [320, 390, 768]) {
 
     await page.goto("/product.html");
     await expect(page.locator("#container .product-card")).toHaveCount(1);
+    await expect(page.locator("#cartTotal")).toHaveText("2");
     await noOverflow(page);
     const toggle = page.locator(".menu-toggle");
     await touchTarget(toggle);
@@ -86,6 +87,7 @@ for (const width of [320, 390, 768]) {
     await touchTarget(increase);
     await increase.click();
     await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem("cart"))[0].quantity)).toBe(3);
+    await expect(page.locator("#cartTotal")).toHaveText("3");
     await touchTarget(page.locator(".cart-remove"));
     await page.screenshot({ path: testInfo.outputPath(`cart-${width}.png`), fullPage: true });
 

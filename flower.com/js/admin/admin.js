@@ -58,10 +58,12 @@ function moneyFormat(value) {
 function getPaymentMethodLabel(order) {
    if (order.paymentMethod === "qr") return "Chuyển khoản QR";
    if (order.paymentMethod === "cod") return "Tiền mặt khi nhận hàng (COD)";
+   if (order.paymentMethod === "vnpay") return "VNPay";
    return "Chưa rõ";
 }
 
 function getPaymentDisplayStatus(order) {
+   if (order.paymentRefunded === true) return "Đã hoàn tiền";
    if (order.paymentMethod === "qr") {
        if (order.paymentVerified === true) return "Đã thanh toán (đã đối soát)";
        return order.paymentStatus === "Hết hạn chờ thanh toán" ? order.paymentStatus : "Chờ cửa hàng xác minh";
@@ -82,7 +84,7 @@ function isOrderDelivered(order) {
 }
 
 function getRevenueOrders(orders) {
-   return orders.filter((order) => isOrderDelivered(order) && isOrderPaid(order));
+   return orders.filter((order) => isOrderDelivered(order) && isOrderPaid(order) && order.paymentRefunded !== true);
 }
 
 async function ensureStorage() {
@@ -227,7 +229,7 @@ function renderDashboard() {
                <div class="summary-card">
                    <h3>Doanh thu thực nhận</h3>
                    <div class="value">${moneyFormat(totalRevenue)}</div>
-                   <small>Toàn thời gian · đơn đã giao và thanh toán</small>
+                   <small>Toàn thời gian · đơn đã giao, đã thanh toán và chưa hoàn tiền</small>
                </div>
                <div class="summary-card">
                    <h3>Giá trị đơn đặt</h3>
@@ -262,7 +264,7 @@ function renderRevenueTab() {
    mountCurrentReport(host, renderRevenueTab);
 }
 
-// Shown when products of the original catalog (flower.json) are missing from the shop.
+// Explain when the browser must rely on the server because Firestore is blocked.
 function renderRestoreCatalogNotice() {
    let offlineNotice = "";
    if (FlowerInventory.isFirestoreReachable() === false) {
@@ -416,13 +418,14 @@ function renderProductTab() {
                </form>
                <p id="product-search-message" class="product-search-message" role="alert" aria-live="assertive"></p>
                ${renderSharedProductImageNotice(products)}
-               ${lowStockProducts.length ? `<p class="product-stock-alert" role="status"><strong>Cảnh báo tồn kho:</strong> ${lowStockProducts.length} sản phẩm đang bán chỉ còn từ 1–5 bó. Hãy chuẩn bị nhập thêm hoa.</p>` : ""}
+               ${lowStockProducts.length ? `<p class="product-stock-alert" role="status"><strong>Cảnh báo tồn kho:</strong> ${lowStockProducts.length} sản phẩm đang bán chỉ còn từ 1–5 đơn vị.</p>` : ""}
                <div class="product-table-wrap">
                <table class="product-table">
                    <thead>
                        <tr>
                            <th>Ảnh</th>
                            <th>Tên sản phẩm</th>
+                           <th>Loại bán</th>
                            <th>Phân loại</th>
                            <th>Giá</th>
                            <th>Số lượng</th>
@@ -455,9 +458,13 @@ function renderProductTab() {
                                        <div><strong>${escapeHtml(item.title)}</strong></div>
                                        <small>${escapeHtml(item.description || "Mô tả chưa được cập nhật.")}</small>
                                    </td>
+                                   <td>${item.saleType === "flower" ? "Hoa nguyên liệu" : "Bó làm sẵn"}</td>
                                    <td>${escapeHtml(item.category || "Chưa phân loại")}</td>
-                                   <td>${formatVnd(item.price)}</td>
-                                   <td><input class="qty-input" data-id="${escapeHtml(item.id)}" type="number" min="0" step="1" value="${quantity}" aria-label="Tồn kho ${escapeHtml(item.title)}"></td>
+                                   <td>
+                                       ${formatVnd(item.price)} / ${item.saleType === "flower" ? "cành" : "bó"}
+                                       ${item.saleType === "flower" ? `<small>Giá ngày ${escapeHtml(item.priceUpdatedAt || "chưa cập nhật")}</small>` : ""}
+                                   </td>
+                                   <td><input class="qty-input" data-id="${escapeHtml(item.id)}" type="number" min="0" step="1" value="${quantity}" aria-label="Tồn kho ${escapeHtml(item.title)} (${item.saleType === "flower" ? "cành" : "bó"})"></td>
                                    <td>
                                        <span class="product-state product-state--${status}">${statusLabel}</span>
                                        ${status === "active" && quantity <= 5 ? '<small class="product-low-stock">Sắp hết hàng</small>' : ""}
@@ -472,7 +479,7 @@ function renderProductTab() {
                                    </td>
                                </tr>
                            `;
-                       }).join("") || `<tr><td colspan="7" class="empty-state">${products.length ? "Không tìm thấy sản phẩm phù hợp." : "Chưa có sản phẩm nào."}</td></tr>`}
+                       }).join("") || `<tr><td colspan="8" class="empty-state">${products.length ? "Không tìm thấy sản phẩm phù hợp." : "Chưa có sản phẩm nào. Hãy thêm hoa nguyên liệu hoặc bó làm sẵn."}</td></tr>`}
                    </tbody>
                </table>
                </div>
@@ -505,6 +512,12 @@ function renderProductTab() {
                        <option value="" disabled ${editingProduct?.category || !editingProduct ? "selected" : ""}>Chọn danh mục</option>
                        <option value="${window.FlowerProductAdminValidation.UNCATEGORIZED}" ${editingProduct && !editingProduct.category ? "selected" : ""}>Chưa phân loại</option>
                        ${categories.map((category) => `<option value="${escapeHtml(category)}" ${editingProduct?.category === category ? "selected" : ""}>${escapeHtml(category)}</option>`).join("")}
+                       </select>
+                   </label>
+                   <label class="product-form-field" for="product-sale-type"><span>Hình thức bán</span>
+                       <select id="product-sale-type">
+                           <option value="ready_made" ${editingProduct?.saleType !== "flower" ? "selected" : ""}>Bó làm sẵn · giá cố định</option>
+                           <option value="flower" ${editingProduct?.saleType === "flower" ? "selected" : ""}>Hoa nguyên liệu · giá theo ngày, tính theo cành</option>
                        </select>
                    </label>
                    <label class="product-form-field" for="product-price"><span>Giá bán (VND)</span>
@@ -1122,12 +1135,13 @@ function renderActiveOrderSummary(order) {
 
 function renderOrderSummary(order) {
    const itemSummary = (order.items || [])
-       .map((item) => `${escapeHtml(item.title)} × ${Number(item.quantity) || 0}`)
+       .map((item) => `${escapeHtml(item.title)} × ${Number(item.quantity) || 0} ${escapeHtml(item.unit || "bó")}`)
        .join(", ") || "Không có sản phẩm";
    return `
        <article class="record-summary">
            <div class="completed-order-info">
                <strong>Đơn #${escapeHtml(order.id)} · ${escapeHtml(order.customerName)}</strong>
+               <span><b>Loại đơn:</b> ${order.orderType === "custom_bouquet" ? "Bó hoa theo yêu cầu" : "Bó làm sẵn"}</span>
                <span><b>Sản phẩm:</b> ${itemSummary}</span>
                <span><b>Thời gian đặt:</b> ${new Date(order.createdAt).toLocaleString("vi-VN")}</span>
                <span><b>Thanh toán:</b> ${escapeHtml(getPaymentMethodLabel(order))} · ${escapeHtml(getPaymentDisplayStatus(order))}</span>
@@ -1209,6 +1223,15 @@ function renderOrderCard(order, showCompletionAction = true) {
                </div>
            </div>
 
+           ${isOrderPaid(order) || order.paymentRefunded === true ? `
+               <div class="reply-box compact-box payment-admin-actions">
+                   ${order.paymentRefunded === true
+                       ? `<p role="status">Đã ghi nhận hoàn ${moneyFormat(order.paymentRefundAmount || order.total)} · ${escapeHtml(order.paymentRefundReference || "Chưa có mã giao dịch")}</p>`
+                       : `<button class="secondary-btn record-payment-refund" data-order-id="${escapeHtml(order.id)}" type="button">Ghi nhận đã hoàn tiền</button>`}
+                   <button class="secondary-btn payment-audit" data-order-id="${escapeHtml(order.id)}" type="button">Lịch sử đối soát &amp; hoàn tiền</button>
+               </div>
+           ` : ""}
+
            ${String(order.greetingCard || "").trim() ? `
                <div class="section-label">Lời chúc trên thiệp</div>
                <div class="detail-block quote-box">${escapeHtml(order.greetingCard)}</div>
@@ -1231,8 +1254,8 @@ function renderOrderCard(order, showCompletionAction = true) {
                            <div class="product-card-content">
                                <strong>${escapeHtml(item.title)}</strong>
                                <span>${escapeHtml(FlowerBouquetOptions.summary(item))}</span>
-                               <span>Số lượng: ${Number(item.quantity) || 0}</span>
-                               <span>Giá: ${moneyFormat(item.price)}</span>
+                               <span>Số lượng: ${Number(item.quantity) || 0} ${escapeHtml(item.unit || "bó")}</span>
+                               <span>Giá: ${moneyFormat(item.price)} / ${escapeHtml(item.unit || "bó")}${item.priceUpdatedAt ? ` · giá ngày ${escapeHtml(item.priceUpdatedAt)}` : ""}</span>
                            </div>
                        </div>
                    `;
@@ -1592,6 +1615,7 @@ async function addNewProduct(event) {
    const read = (id) => document.getElementById(id).value;
    const { product: inputProduct, errors } = window.FlowerProductAdminValidation.validateProductInput({
        title: read("product-title"),
+       saleType: read("product-sale-type"),
        image: read("product-image"),
        images: read("product-images"),
        meaning: read("product-meaning"),
@@ -1605,6 +1629,7 @@ async function addNewProduct(event) {
    }, getCategories());
    const fields = {
        title: "product-title",
+       saleType: "product-sale-type",
        image: "product-image",
        images: "product-images",
        category: "product-category",
@@ -1629,6 +1654,9 @@ async function addNewProduct(event) {
    }
    const productData = {
        ...inputProduct,
+       ...(inputProduct.saleType === "flower" ? { priceUpdatedAt: new Intl.DateTimeFormat("en-CA", {
+           timeZone: "Asia/Ho_Chi_Minh", year: "numeric", month: "2-digit", day: "2-digit"
+       }).format(new Date()) } : {}),
        image: getStoredImageUrl(inputProduct.image),
        images: inputProduct.images.map(getStoredImageUrl)
    };
@@ -1782,11 +1810,16 @@ async function verifyOrderPayment(orderId) {
        "? Chỉ xác nhận sau khi đã kiểm tra sao kê ngân hàng."
    );
    if (!confirmed) return;
+   const reconciliationReference = window.prompt("Nhập mã giao dịch trên sao kê ngân hàng:");
+   if (!reconciliationReference?.trim()) return;
    try {
-       await window.FlowerOrderStore.verifyPayment(orderId);
+       await window.FlowerOrderStore.verifyPayment(orderId, {
+           amount: Number(order.total),
+           reconciliationReference: reconciliationReference.trim()
+       });
    } catch (error) {
-       console.error("Không thể xác nhận thanh toán trên Firestore:", error);
-       alert(error.code === "order-cancelled" ? error.message : "Chưa thể xác nhận thanh toán. Hãy thử lại sau.");
+       console.error("Không thể xác nhận thanh toán:", error);
+       alert(error.code ? error.message : "Chưa thể xác nhận thanh toán. Hãy thử lại sau.");
    }
 }
 
@@ -1799,12 +1832,63 @@ async function recordLateOrderPayment(orderId) {
        "?\n\nSau đó hãy khôi phục đơn (chọn lại trạng thái “Chờ xác nhận”) hoặc hoàn tiền cho khách."
    );
    if (!confirmed) return;
+   const reconciliationReference = window.prompt("Nhập mã giao dịch trên sao kê ngân hàng:");
+   if (!reconciliationReference?.trim()) return;
    try {
-       await window.FlowerOrderStore.recordLatePayment(orderId);
+       await window.FlowerOrderStore.recordLatePayment(orderId, {
+           amount: Number(order.total),
+           reconciliationReference: reconciliationReference.trim()
+       });
        alert("Đã ghi nhận tiền chuyển trễ. Đơn được đánh dấu cần khôi phục hoặc hoàn tiền.");
    } catch (error) {
        console.error("Không thể ghi nhận thanh toán trễ:", error);
        alert(error.code ? error.message : "Chưa thể ghi nhận thanh toán. Hãy thử lại sau.");
+   }
+}
+
+async function recordOrderPaymentRefund(orderId) {
+   const order = getOrders().find((item) => String(item.id) === String(orderId));
+   if (!order || order.paymentRefunded === true) return;
+   const confirmed = window.confirm(
+       `Chỉ xác nhận sau khi đã chuyển hoàn đầy đủ ${moneyFormat(order.total)} cho đơn #${order.id}. ` +
+       "Thao tác này chỉ ghi nhận giao dịch, không tự chuyển tiền."
+   );
+   if (!confirmed) return;
+   const refundReference = window.prompt("Nhập mã giao dịch hoàn tiền trên sao kê:");
+   if (!refundReference?.trim()) return;
+   try {
+       await window.FlowerOrderStore.recordPaymentRefund(orderId, refundReference.trim());
+       alert("Đã ghi nhận giao dịch hoàn tiền. Hệ thống không tự chuyển tiền.");
+   } catch (error) {
+       console.error("Không thể ghi nhận hoàn tiền:", error);
+       alert(error.code ? error.message : "Chưa thể ghi nhận hoàn tiền. Hãy thử lại sau.");
+   }
+}
+
+async function viewOrderPaymentAudit(orderId) {
+   try {
+       const entries = await window.FlowerOrderStore.getPaymentAudit(orderId);
+       if (!entries.length) {
+           alert("Chưa có lịch sử đối soát cho đơn này.");
+           return;
+       }
+       const lines = entries.map((entry) => {
+           const action = entry.action === "qr-late-payment-recorded" ? "Ghi nhận thanh toán trễ"
+               : entry.action === "payment-refunded" ? "Ghi nhận hoàn tiền"
+                   : "Xác nhận thanh toán";
+           const timestamp = entry.createdAt ? new Date(entry.createdAt).toLocaleString("vi-VN") : "Chưa có thời gian";
+           return [
+               `${action} · ${timestamp}`,
+               `Người xác nhận: ${entry.actorEmail || entry.actorUid}`,
+               `Số tiền: ${moneyFormat(entry.amountVnd)}`,
+               `Mã giao dịch ngân hàng: ${entry.reconciliationReference}`,
+               `Nội dung chuyển khoản: ${entry.paymentReference || "Không có"}`
+           ].join("\n");
+       });
+       alert(lines.join("\n\n"));
+   } catch (error) {
+       console.error("Không thể tải lịch sử đối soát thanh toán:", error);
+       alert(error.code ? error.message : "Chưa thể tải lịch sử đối soát. Hãy thử lại sau.");
    }
 }
 
@@ -2200,10 +2284,6 @@ main.addEventListener("click", (event) => {
    }
 
    const actionButton = event.target.closest("[data-action]");
-   if (actionButton?.dataset.action === "restore-catalog") {
-       restoreCatalog();
-       return;
-   }
    if (actionButton?.dataset.action === "clear-search") {
        productSearchTerm = "";
        productFilterCategory = "";
@@ -2264,6 +2344,18 @@ main.addEventListener("click", (event) => {
    const verifyPayment = event.target.closest(".verify-payment");
    if (verifyPayment) {
        verifyOrderPayment(verifyPayment.dataset.orderId);
+       return;
+   }
+
+   const paymentAudit = event.target.closest(".payment-audit");
+   if (paymentAudit) {
+       viewOrderPaymentAudit(paymentAudit.dataset.orderId);
+       return;
+   }
+
+   const paymentRefund = event.target.closest(".record-payment-refund");
+   if (paymentRefund) {
+       recordOrderPaymentRefund(paymentRefund.dataset.orderId);
        return;
    }
 

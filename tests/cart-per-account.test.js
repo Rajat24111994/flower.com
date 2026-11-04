@@ -20,7 +20,7 @@ function browser(initial = {}) {
     const read = (key) => (values.has(key) ? JSON.parse(values.get(key)) : null);
     const login = (uid) => { values.set("loggedUser", JSON.stringify({ uid, role: "customer" })); load(); };
     const logout = () => { values.delete("loggedUser"); load(); };
-    return { read, login, logout, values };
+    return { read, login, logout, values, context };
 }
 
 const rose = { id: 1, title: "Hoa hồng", price: 100000, quantity: 2 };
@@ -57,4 +57,14 @@ test("đang có giỏ từ trước khi có tính năng này thì giữ nguyên 
     const b = browser({ loggedUser: { uid: "an", role: "customer" }, cart: [rose] });
     assert.deepEqual(b.read("cart"), [rose]);
     assert.equal(b.values.get("flowerShoppingOwner"), "an");
+});
+
+test("số lượng trên biểu tượng giỏ tính theo số bó, không phải số dòng sản phẩm", () => {
+    const b = browser();
+    assert.equal(b.context.FlowerSafeStorage.countCartUnits([
+        { id: 1, quantity: 3 },
+        { id: 2 },
+        { id: 3, quantity: 0 }
+    ]), 5);
+    assert.equal(b.context.FlowerSafeStorage.countCartUnits([]), 0);
 });

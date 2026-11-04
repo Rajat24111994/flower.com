@@ -88,6 +88,63 @@ test("VNPay IPN rejects a correctly signed amount mismatch", async () => {
     assert.equal((await h.db().doc(`orders/${orderId}`).get()).data().paymentVerified, false);
 });
 
+test("VNPay IPN không thể xác nhận đơn QR bằng callback ký hợp lệ", async () => {
+    const placed = await h.placeOrder({ paymentMethod: "qr" });
+    const orderId = placed.body.order.id;
+    const order = (await h.db().doc(`orders/${orderId}`).get()).data();
+    const txnRef = "a".repeat(32);
+    await h.db().doc(`paymentTransactions/${txnRef}`).set({
+        orderId, amount: order.total, status: "pending"
+    });
+
+    const response = await h.callApi("vnpayIpn", {
+        method: "GET",
+        query: signCallback({ txnRef, amount: order.total * 100 })
+    });
+    assert.equal(response.body.RspCode, "01");
+    assert.equal((await h.db().doc(`orders/${orderId}`).get()).data().paymentVerified, false);
+});
+
+test("VNPay IPN báo lỗi giao dịch thất bại và đánh dấu thanh toán thành công đến muộn", async () => {
+    const failedOrder = await h.placeOrder({ paymentMethod: "vnpay" });
+    const failedId = failedOrder.body.order.id;
+    const failedData = (await h.db().doc(`orders/${failedId}`).get()).data();
+    const failedAttempt = await h.callApi("payments", {
+        body: { action: "create", orderId: failedId, paymentReference: failedData.paymentReference }
+    });
+    const failedTxnRef = new URL(failedAttempt.body.paymentUrl).searchParams.get("vnp_TxnRef");
+    const failure = await h.callApi("vnpayIpn", {
+        method: "GET",
+        query: signCallback({ txnRef: failedTxnRef, amount: failedData.total * 100, responseCode: "24", transactionStatus: "02" })
+    });
+    assert.equal(failure.body.RspCode, "00");
+    assert.equal((await h.db().doc(`orders/${failedId}`).get()).data().paymentVerified, false);
+
+    const placed = await h.placeOrder({ paymentMethod: "vnpay" });
+    const orderId = placed.body.order.id;
+    const orderRef = h.db().doc(`orders/${orderId}`);
+    const order = (await orderRef.get()).data();
+    const created = await h.callApi("payments", {
+        body: { action: "create", orderId, paymentReference: order.paymentReference }
+    });
+    const txnRef = new URL(created.body.paymentUrl).searchParams.get("vnp_TxnRef");
+    await orderRef.update({ reservationExpiresAt: h.Timestamp.fromMillis(Date.now() - 1000) });
+    await h.callApi("orders", {
+        method: "GET",
+        query: { action: "expire" },
+        headers: { authorization: "Bearer test-cron-secret" }
+    });
+    const late = await h.callApi("vnpayIpn", {
+        method: "GET",
+        query: signCallback({ txnRef, amount: order.total * 100 })
+    });
+    assert.equal(late.body.RspCode, "00");
+    const paid = (await orderRef.get()).data();
+    assert.equal(paid.paymentVerified, true);
+    assert.equal(paid.latePayment, true);
+    assert.match(paid.paymentAttention, /đã hủy/);
+});
+
 test("retry reuses a live VNPay attempt and a paid order cannot get another link", async () => {
     const placed = await h.placeOrder({ paymentMethod: "vnpay" });
     const orderId = placed.body.order.id;

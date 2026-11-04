@@ -2,7 +2,7 @@ const bouquet = require("../js/catalog/bouquet-options.js");
 const { validateReviewPhotos } = require("../lib/review-images");
 const { createHash, createHmac } = require("node:crypto");
 const { FieldValue, Timestamp } = require("firebase-admin/firestore");
-const { getAdminAuth, getAdminFirestore, sendError } = require("../lib/firebase-admin");
+const { getAdminAuth, getAdminFirestore, sendError, verifyRequest } = require("../lib/firebase-admin");
 // Same price reading as the shop pages (whole VND, old USD prices converted), so both agree.
 const { toVndPrice } = require("../js/catalog/product-store.js");
 
@@ -76,6 +76,19 @@ function resolveDeliveryZone(data, zoneId) {
     return { zone, shippingFee: zone.fee };
 }
 
+function getProductSaleType(data) {
+    return data.saleType === "flower" ? "flower" : "ready_made";
+}
+
+function getProductPrice(data, now = new Date()) {
+    if (getProductSaleType(data) === "flower" && data.priceUpdatedAt !== getVietnameseDateTime(now).date) {
+        const error = new Error(`Giá hoa “${String(data.title || "Nguyên liệu").slice(0, 120)}” chưa được cập nhật hôm nay. Vui lòng liên hệ cửa hàng.`);
+        error.code = "flower-price-outdated";
+        throw error;
+    }
+    return toVndPrice(data.price);
+}
+
 function aggregateItems(items) {
     const quantities = new Map();
     (Array.isArray(items) ? items : []).forEach((item) => {
@@ -99,8 +112,12 @@ async function expireOneReservation(db, orderRef, now) {
             return false;
         }
         if (order.inventoryReserved !== true || typeof expiresAt?.toMillis !== "function"
-            || expiresAt.toMillis() > now.toMillis()
-            || (order.paymentMethod === "qr" && order.paymentVerified === true)) return false;
+            || expiresAt.toMillis() > now.toMillis()) return false;
+        if (order.paymentVerified === true
+            || ["đã thanh toán", "paid", "da_thanh_toan", "đã hoàn tiền"].includes(String(order.paymentStatus || "").trim().toLocaleLowerCase("vi"))) {
+            transaction.update(orderRef, { reservationExpiresAt: FieldValue.delete() });
+            return false;
+        }
 
         const items = aggregateItems(order.items);
         const paymentAttemptRef = order.paymentMethod === "vnpay" && order.vnpTxnRef
@@ -156,20 +173,20 @@ async function expireOneReservation(db, orderRef, now) {
 async function expireReservations(db, maxOrders = 500) {
     let released = 0;
     const batchSize = 100;
-    while (released < maxOrders) {
+    let scanned = 0;
+    while (released < maxOrders && scanned < maxOrders) {
         const now = Timestamp.now();
         const snapshot = await db.collection("orders")
             .where("inventoryReserved", "==", true)
-            .where("paymentVerified", "==", false)
             .where("reservationExpiresAt", "<=", now)
             .orderBy("reservationExpiresAt", "asc")
-            .limit(Math.min(batchSize, maxOrders - released))
+            .limit(Math.min(batchSize, maxOrders - scanned))
             .get();
         if (snapshot.empty) break;
+        scanned += snapshot.size;
         const results = await Promise.all(snapshot.docs.map((document) => expireOneReservation(db, document.ref, now)));
         const batchReleased = results.filter(Boolean).length;
         released += batchReleased;
-        if (batchReleased === 0) break;
     }
     return released;
 }
@@ -179,7 +196,7 @@ async function releaseExpiredReservations(db) {
     try {
         await expireReservations(db);
     } catch (error) {
-        console.error("Reservation cleanup failed:", error.code || error.message);
+        console.error("Reservation cleanup failed:", error.code || "unknown");
     }
 }
 
@@ -201,7 +218,10 @@ function publicTrackingOrder(id, data) {
             }))
             : [],
         // What a customer needs to finish a QR transfer (no name, phone or address).
-        ...(awaitsQrTransfer(data) ? {
+        ...(data.paymentRefunded === true ? {
+            paymentMethod: data.paymentMethod || "",
+            paymentStatus: "Đã hoàn tiền"
+        } : awaitsQrTransfer(data) ? {
             paymentMethod: "qr",
             paymentStatus: data.paymentStatus || "Chờ xác minh thanh toán",
             total: Number(data.total) || 0,
@@ -221,9 +241,11 @@ function awaitsQrTransfer(data) {
 }
 
 async function checkOrderLookupLimit(db, req) {
-    const forwardedFor = String(req.headers["x-forwarded-for"] || req.headers["x-real-ip"] || req.socket?.remoteAddress || "");
+    // Vercel overwrites X-Forwarded-For at its edge. Do not trust caller-controlled
+    // X-Real-IP or socket fallbacks, which would let clients rotate their limiter key.
+    const forwardedFor = String(req.headers["x-forwarded-for"] || "");
     const clientIp = forwardedFor.split(",")[0].trim();
-    if (!clientIp) throw new Error("Client IP is unavailable for order lookup rate limiting.");
+    if (!clientIp || clientIp.length > 64) throw new Error("Trusted client IP is unavailable for order lookup rate limiting.");
 
     const secret = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
     if (!secret) throw new Error("Firebase service credentials are required for order lookup rate limiting.");
@@ -243,7 +265,6 @@ async function checkOrderLookupLimit(db, req) {
                 retryAfter: Math.max(1, Math.ceil((windowStartedAt + ORDER_LOOKUP_WINDOW_MS - now.toMillis()) / 1000))
             };
         }
-
         transaction.set(limitRef, {
             windowStartedAt: sameWindow ? record.windowStartedAt : now,
             attempts: attempts + 1,
@@ -251,6 +272,125 @@ async function checkOrderLookupLimit(db, req) {
         });
         return { allowed: true, retryAfter: 0 };
     });
+}
+
+async function authorizeOrderAdmin(req, res) {
+    const user = await verifyRequest(req, res, getAdminAuth());
+    if (!user) return null;
+    if (user.admin !== true) {
+        sendError(res, 403, "forbidden", "Thao tác này chỉ dành cho quản trị viên.");
+        return null;
+    }
+    const role = await getAdminFirestore().collection("adminRoles").doc(user.uid).get();
+    if (!role.exists) {
+        sendError(res, 403, "forbidden", "Quyền quản trị viên đã bị thu hồi.");
+        return null;
+    }
+    return user;
+}
+
+async function reconcileQrPayment(req, res, latePayment = false) {
+    const orderId = String(req.body?.orderId || "").trim();
+    const reconciliationReference = String(req.body?.reconciliationReference || "").trim();
+    const confirmedAmount = Number(req.body?.amount);
+    if (!orderId || orderId.length > 128 || orderId.includes("/")
+        || !reconciliationReference || reconciliationReference.length > 120
+        || /[\u0000-\u001f\u007f]/.test(reconciliationReference)
+        || !Number.isSafeInteger(confirmedAmount) || confirmedAmount <= 0) {
+        return sendError(res, 400, "invalid-argument", "Cần mã đơn, mã giao dịch ngân hàng và số tiền đã đối chiếu hợp lệ.");
+    }
+
+    try {
+        const user = await authorizeOrderAdmin(req, res);
+        if (!user) return;
+        const db = getAdminFirestore();
+        const orderRef = db.collection("orders").doc(orderId);
+        const auditRef = db.collection("orderPaymentAudit").doc();
+        const result = await db.runTransaction(async (transaction) => {
+            const snapshot = await transaction.get(orderRef);
+            if (!snapshot.exists) {
+                const error = new Error("Không tìm thấy đơn hàng.");
+                error.code = "order-not-found";
+                throw error;
+            }
+            const order = snapshot.data();
+            if (order.paymentMethod !== "qr") {
+                const error = new Error("Đơn hàng này không sử dụng chuyển khoản QR.");
+                error.code = "payment-method-mismatch";
+                throw error;
+            }
+            if (order.paymentVerified === true) {
+                const error = new Error("Thanh toán của đơn này đã được xác nhận.");
+                error.code = "payment-already-complete";
+                throw error;
+            }
+            if (!Number.isSafeInteger(order.total) || order.total <= 0 || confirmedAmount !== order.total) {
+                const error = new Error("Số tiền đối chiếu không khớp tổng tiền đơn hàng.");
+                error.code = "payment-amount-mismatch";
+                throw error;
+            }
+            if (latePayment ? order.status !== "Đã hủy" : order.status === "Đã hủy") {
+                const error = new Error(latePayment
+                    ? "Đơn này chưa bị hủy. Hãy dùng xác minh thanh toán thông thường."
+                    : "Đơn này đã bị hủy. Hãy dùng thao tác ghi nhận thanh toán trễ.");
+                error.code = latePayment ? "order-not-cancelled" : "order-cancelled";
+                throw error;
+            }
+            if (!latePayment && order.inventoryState === "released") {
+                const error = new Error("Đơn đã giải phóng tồn kho. Hãy khôi phục đơn trước khi xác nhận thanh toán.");
+                error.code = "order-inventory-released";
+                throw error;
+            }
+
+            const now = new Date();
+            const action = latePayment ? "qr-late-payment-recorded" : "qr-payment-verified";
+            transaction.update(orderRef, {
+                paymentVerified: true,
+                paymentStatus: latePayment
+                    ? "Đã nhận tiền sau khi đơn bị hủy – cần khôi phục đơn hoặc hoàn tiền"
+                    : "Đã thanh toán",
+                paidAt: now.toISOString(),
+                paymentVerifiedAt: FieldValue.serverTimestamp(),
+                paymentVerifiedBy: user.uid,
+                paymentReconciliationReference: reconciliationReference,
+                ...(latePayment ? {
+                    latePayment: true,
+                    paymentAttention: "Thanh toán đến sau khi đơn đã hủy; cần kiểm tra và xử lý hoàn tiền hoặc khôi phục đơn."
+                } : {})
+            });
+            transaction.create(auditRef, {
+                orderId,
+                action,
+                actorUid: user.uid,
+                actorEmail: String(user.email || "").slice(0, 254),
+                actorRole: "admin",
+                amountVnd: order.total,
+                paymentReference: String(order.paymentReference || "").slice(0, 120),
+                reconciliationReference,
+                previousPaymentStatus: String(order.paymentStatus || "").slice(0, 120),
+                orderStatus: String(order.status || "").slice(0, 80),
+                createdAt: FieldValue.serverTimestamp()
+            });
+            return { auditId: auditRef.id };
+        });
+        return res.status(200).json({ ok: true, auditId: result.auditId });
+    } catch (error) {
+        if (String(error.code || "").startsWith("auth/")) {
+            return sendError(res, 401, "unauthenticated", "Phiên đăng nhập đã hết hạn. Hãy đăng nhập lại.");
+        }
+        const statuses = {
+            "order-not-found": 404,
+            "payment-method-mismatch": 409,
+            "payment-already-complete": 409,
+            "payment-amount-mismatch": 409,
+            "order-not-cancelled": 409,
+            "order-cancelled": 409,
+            "order-inventory-released": 409
+        };
+        if (statuses[error.code]) return sendError(res, statuses[error.code], error.code, error.message);
+        console.error("QR payment reconciliation failed:", error.code || error.message);
+        return sendError(res, 503, "payment-reconciliation-unavailable", "Chưa thể ghi nhận đối soát. Vui lòng thử lại.");
+    }
 }
 
 function validateCheckout(body = {}) {
@@ -421,7 +561,7 @@ async function quoteOrder(req, res) {
         const cart = quote.items.map((item, index) => {
             const snapshot = products[index];
             const data = snapshot.exists ? snapshot.data() : {};
-            const price = bouquet.price(toVndPrice(data.price), item.size);
+            const price = getProductPrice(data);
             const stock = Number(data.quantity);
             if (data.status === "hidden") {
                 shortages.push({
@@ -473,19 +613,21 @@ async function quoteOrder(req, res) {
             deliveryZonesConfigured: getEnabledDeliveryZones(deliverySnapshot.data()).length > 0,
             items: cart.map((item) => ({
                 id: item.id,
-                ...bouquet.normalize(item),
                 title: String(item.data.title || "Sản phẩm").slice(0, 120),
                 image: String(item.data.image || "").slice(0, 1000),
+                saleType: getProductSaleType(item.data),
+                unit: getProductSaleType(item.data) === "flower" ? "cành" : "bó",
+                priceUpdatedAt: getProductSaleType(item.data) === "flower" ? item.data.priceUpdatedAt : "",
                 quantity: item.quantity,
                 price: item.price,
                 stock: item.stock
             }))
         });
     } catch (error) {
-        if (["invalid-promotion", "insufficient-stock", "product-unavailable", "delivery-zone-unavailable"].includes(error.code)) {
+        if (["invalid-promotion", "insufficient-stock", "product-unavailable", "delivery-zone-unavailable", "flower-price-outdated"].includes(error.code)) {
             return sendError(res, 409, error.code, error.message);
         }
-        console.error("Order quote failed:", error.code || error.message);
+        console.error("Order quote failed:", error.code || "unknown");
         return sendError(res, 503, "order-service-unavailable", "Chưa thể kiểm tra giá đơn hàng. Vui lòng thử lại sau.");
     }
 }
@@ -579,7 +721,7 @@ async function createOrder(req, res) {
                     error.code = "product-unavailable";
                     throw error;
                 }
-                const price = bouquet.price(toVndPrice(data.price), item.size);
+                const price = getProductPrice(data);
                 const stock = Number(data.quantity);
                 const title = String(data.title || "Một sản phẩm");
                 if (!Number.isFinite(price) || price <= 0) {
@@ -619,9 +761,11 @@ async function createOrder(req, res) {
             const paymentReference = paymentReferenceFor(checkout.idempotencyKey);
             const items = products.map((item) => ({
                 id: item.id,
-                ...bouquet.normalize(item),
                 title: String(item.data.title || "Sản phẩm").slice(0, 120),
                 image: String(item.data.image || "").slice(0, 1000),
+                saleType: getProductSaleType(item.data),
+                unit: getProductSaleType(item.data) === "flower" ? "cành" : "bó",
+                priceUpdatedAt: getProductSaleType(item.data) === "flower" ? item.data.priceUpdatedAt : "",
                 quantity: item.quantity,
                 price: item.price,
                 stock: item.stock
@@ -629,6 +773,7 @@ async function createOrder(req, res) {
             const initialStatus = "Chờ xác nhận";
             const initialLocation = "Đơn hàng đã được gửi đến cửa hàng";
             const orderData = {
+                orderType: products.some((item) => getProductSaleType(item.data) === "flower") ? "custom_bouquet" : "ready_made",
                 uid: user?.uid || "",
                 email: String(user?.email || "").slice(0, 254),
                 customerName: checkout.customerName,
@@ -700,12 +845,133 @@ async function createOrder(req, res) {
         if (String(error.code || "").startsWith("auth/")) {
             return sendError(res, 401, "unauthenticated", "Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại rồi đặt hàng.");
         }
-        if (["invalid-checkout", "invalid-delivery-schedule", "invalid-promotion", "insufficient-stock", "product-unavailable", "price-changed", "idempotency-conflict", "delivery-zone-unavailable"].includes(error.code)) {
+        if (["invalid-checkout", "invalid-delivery-schedule", "invalid-promotion", "insufficient-stock", "product-unavailable", "price-changed", "idempotency-conflict", "delivery-zone-unavailable", "flower-price-outdated"].includes(error.code)) {
             const status = ["invalid-checkout", "invalid-delivery-schedule"].includes(error.code) ? 400 : 409;
             return sendError(res, status, error.code, error.message);
         }
-        console.error("Order creation failed:", error.code || error.message);
+        console.error("Order creation failed:", error.code || "unknown");
         return sendError(res, 503, "order-service-unavailable", "Chưa thể xác nhận đơn hàng. Vui lòng thử lại sau.");
+    }
+}
+
+async function recordPaymentRefund(req, res) {
+    const orderId = String(req.body?.orderId || "").trim();
+    const refundReference = String(req.body?.refundReference || "").trim();
+    if (!orderId || orderId.length > 128 || orderId.includes("/")
+        || !refundReference || refundReference.length > 120
+        || /[\u0000-\u001f\u007f]/.test(refundReference)) {
+        return sendError(res, 400, "invalid-argument", "Cần mã đơn và mã giao dịch hoàn tiền hợp lệ.");
+    }
+
+    try {
+        const user = await authorizeOrderAdmin(req, res);
+        if (!user) return;
+        const db = getAdminFirestore();
+        const orderRef = db.collection("orders").doc(orderId);
+        const auditRef = db.collection("orderPaymentAudit").doc();
+        const result = await db.runTransaction(async (transaction) => {
+            const snapshot = await transaction.get(orderRef);
+            if (!snapshot.exists) {
+                const error = new Error("Không tìm thấy đơn hàng.");
+                error.code = "order-not-found";
+                throw error;
+            }
+            const order = snapshot.data();
+            if (order.paymentRefunded === true) {
+                const error = new Error("Đơn hàng này đã được ghi nhận hoàn tiền.");
+                error.code = "payment-already-refunded";
+                throw error;
+            }
+            const paymentStatus = String(order.paymentStatus || "").trim().toLocaleLowerCase("vi");
+            const paid = order.paymentVerified === true
+                || ["đã thanh toán", "paid", "da_thanh_toan"].includes(paymentStatus);
+            if (!paid) {
+                const error = new Error("Chỉ ghi nhận hoàn tiền cho đơn đã xác nhận thanh toán.");
+                error.code = "payment-not-complete";
+                throw error;
+            }
+            if (!Number.isSafeInteger(order.total) || order.total <= 0) {
+                const error = new Error("Tổng tiền đơn hàng không hợp lệ để hoàn tiền.");
+                error.code = "invalid-refund-amount";
+                throw error;
+            }
+
+            transaction.update(orderRef, {
+                paymentRefunded: true,
+                paymentRefundAmount: order.total,
+                paymentRefundedAt: FieldValue.serverTimestamp(),
+                paymentRefundedBy: user.uid,
+                paymentRefundReference: refundReference,
+                paymentStatus: "Đã hoàn tiền"
+            });
+            transaction.create(auditRef, {
+                orderId,
+                action: "payment-refunded",
+                actorUid: user.uid,
+                actorEmail: String(user.email || "").slice(0, 254),
+                actorRole: "admin",
+                amountVnd: order.total,
+                paymentReference: String(order.paymentReference || "").slice(0, 120),
+                reconciliationReference: refundReference,
+                previousPaymentStatus: String(order.paymentStatus || "").slice(0, 120),
+                orderStatus: String(order.status || "").slice(0, 80),
+                createdAt: FieldValue.serverTimestamp()
+            });
+            return { auditId: auditRef.id, amountVnd: order.total };
+        });
+        return res.status(200).json({ ok: true, ...result });
+    } catch (error) {
+        if (String(error.code || "").startsWith("auth/")) {
+            return sendError(res, 401, "unauthenticated", "Phiên đăng nhập đã hết hạn. Hãy đăng nhập lại.");
+        }
+        const statuses = {
+            "order-not-found": 404,
+            "payment-not-complete": 409,
+            "payment-already-refunded": 409,
+            "invalid-refund-amount": 409
+        };
+        if (statuses[error.code]) return sendError(res, statuses[error.code], error.code, error.message);
+        console.error("Payment refund recording failed:", error.code || error.message);
+        return sendError(res, 503, "payment-refund-unavailable", "Chưa thể ghi nhận hoàn tiền. Vui lòng thử lại.");
+    }
+}
+
+async function getQrPaymentAudit(req, res) {
+    const orderId = String(req.query?.orderId || "").trim();
+    if (!orderId || orderId.length > 128 || orderId.includes("/")) {
+        return sendError(res, 400, "invalid-argument", "Mã đơn không hợp lệ.");
+    }
+    try {
+        if (!await authorizeOrderAdmin(req, res)) return;
+        const db = getAdminFirestore();
+        const snapshot = await db.collection("orderPaymentAudit")
+            .where("orderId", "==", orderId)
+            .orderBy("createdAt", "desc")
+            .limit(25)
+            .get();
+        const entries = snapshot.docs.map((document) => {
+            const data = document.data();
+            return {
+                id: document.id,
+                action: data.action,
+                actorUid: data.actorUid,
+                actorEmail: data.actorEmail,
+                actorRole: data.actorRole,
+                amountVnd: data.amountVnd,
+                paymentReference: data.paymentReference,
+                reconciliationReference: data.reconciliationReference,
+                previousPaymentStatus: data.previousPaymentStatus,
+                orderStatus: data.orderStatus,
+                createdAt: serializeTimestamp(data.createdAt)
+            };
+        });
+        return res.status(200).json({ entries });
+    } catch (error) {
+        if (String(error.code || "").startsWith("auth/")) {
+            return sendError(res, 401, "unauthenticated", "Phiên đăng nhập đã hết hạn. Hãy đăng nhập lại.");
+        }
+        console.error("QR payment audit lookup failed:", error.code || error.message);
+        return sendError(res, 503, "payment-audit-unavailable", "Chưa thể tải lịch sử đối soát. Vui lòng thử lại.");
     }
 }
 
@@ -730,7 +996,7 @@ async function lookupOrder(req, res) {
         }
         return res.status(200).json({ order: publicTrackingOrder(snapshot.id, snapshot.data()) });
     } catch (error) {
-        console.error("Order lookup failed:", error.code || error.message);
+        console.error("Order lookup failed:", error.code || "unknown");
         return sendError(res, 503, "order-service-unavailable", "Chưa thể tra cứu đơn hàng. Vui lòng thử lại sau.");
     }
 }
@@ -837,7 +1103,7 @@ async function submitReview(req, res) {
             const status = { "order-not-found": 404, "invalid-argument": 400 }[error.code] || 409;
             return sendError(res, status, error.code, error.message);
         }
-        console.error("Review submission failed:", error.code || error.message);
+        console.error("Review submission failed:", error.code || "unknown");
         return sendError(res, 503, "review-service-unavailable", "Chưa thể gửi đánh giá. Vui lòng thử lại sau.");
     }
 }
@@ -845,6 +1111,9 @@ async function submitReview(req, res) {
 module.exports = async function handler(req, res) {
     res.setHeader("Cache-Control", "no-store");
     if (req.method === "POST") {
+        if (req.body?.action === "verify-qr-payment") return reconcileQrPayment(req, res);
+        if (req.body?.action === "record-late-qr-payment") return reconcileQrPayment(req, res, true);
+        if (req.body?.action === "record-payment-refund") return recordPaymentRefund(req, res);
         if (req.body?.action === "quote") return quoteOrder(req, res);
         if (req.body?.action === "lookup") return lookupOrder(req, res);
         if (req.body?.action === "review") return submitReview(req, res);
@@ -856,6 +1125,8 @@ module.exports = async function handler(req, res) {
         return sendError(res, 405, "method-not-allowed", "API đơn hàng chỉ chấp nhận phương thức GET hoặc POST.");
     }
 
+    if (req.query?.action === "payment-audit") return getQrPaymentAudit(req, res);
+
     if (req.query?.action === "expire") {
         const match = String(req.headers.authorization || "").match(/^Bearer\s+(.+)$/i);
         let authorized = Boolean(process.env.CRON_SECRET && match?.[1] === process.env.CRON_SECRET);
@@ -864,7 +1135,7 @@ module.exports = async function handler(req, res) {
                 const claims = await getAdminAuth().verifyIdToken(match[1], true);
                 authorized = claims.admin === true;
             } catch (error) {
-                console.error("Reservation cleanup authentication failed:", error.code || error.message);
+                console.error("Reservation cleanup authentication failed:", error.code || "unknown");
             }
         }
         if (!authorized) return sendError(res, 401, "unauthenticated", "Quyền dọn đơn hết hạn không hợp lệ.");
@@ -872,7 +1143,7 @@ module.exports = async function handler(req, res) {
             const released = await expireReservations(getAdminFirestore());
             return res.status(200).json({ released });
         } catch (error) {
-            console.error("Reservation cleanup failed:", error.code || error.message);
+            console.error("Reservation cleanup failed:", error.code || "unknown");
             return sendError(res, 503, "order-service-unavailable", "Chưa thể giải phóng tồn kho đơn hết hạn.");
         }
     }
@@ -892,6 +1163,8 @@ module.exports.internals = {
     getVietnameseDateTime,
     getEnabledDeliveryZones,
     resolveDeliveryZone,
+    getProductPrice,
+    getProductSaleType,
     DELIVERY_TIME_WINDOWS,
     paymentReferenceFor,
     publicTrackingOrder,
