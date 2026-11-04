@@ -272,7 +272,7 @@ function renderRevenueTab() {
    mountCurrentReport(host, renderRevenueTab);
 }
 
-// Shown when products of the original catalog (flower.json) are missing from the shop.
+// Explain when the browser must rely on the server because Firestore is blocked.
 function renderRestoreCatalogNotice() {
    let offlineNotice = "";
    if (FlowerInventory.isFirestoreReachable() === false) {
@@ -280,30 +280,7 @@ function renderRestoreCatalogNotice() {
            ? `<div class="restore-catalog-notice" role="alert"><p><strong>Trình duyệt không kết nối trực tiếp được Firestore</strong> (mạng có thể đang chặn Firebase). Sản phẩm đang được đọc qua máy chủ; đơn hàng, ưu đãi và thao tác lưu trên trang này có thể chưa hoạt động. Hãy thử mạng khác (ví dụ 4G) nếu cần chỉnh sửa.</p></div>`
            : `<div class="restore-catalog-notice" role="alert"><p><strong>Không đọc được kho sản phẩm</strong> cả từ trình duyệt lẫn qua máy chủ. Hãy kiểm tra mạng rồi tải lại trang.</p></div>`;
    }
-   const missingCount = FlowerInventory.getMissingCatalogProducts().length;
-   if (!missingCount) return offlineNotice;
-   return offlineNotice + `
-       <div class="restore-catalog-notice" role="status">
-           <p><strong>Cửa hàng đang thiếu ${missingCount} sản phẩm so với danh mục gốc.</strong>
-           Sản phẩm có thể đã bị xóa do lỗi lưu kho trước đây. Khôi phục sẽ thêm lại các sản phẩm còn thiếu với tồn kho ban đầu; sản phẩm đang có giữ nguyên.</p>
-           <button class="primary-btn" type="button" data-action="restore-catalog">Khôi phục ${missingCount} sản phẩm</button>
-       </div>
-   `;
-}
-
-async function restoreCatalog() {
-   const missingCount = FlowerInventory.getMissingCatalogProducts().length;
-   if (!missingCount || !window.confirm(`Thêm lại ${missingCount} sản phẩm còn thiếu từ danh mục gốc?\n\nNếu có sản phẩm bạn cố ý xóa, chúng cũng sẽ được thêm lại; bạn có thể xóa lại sau.`)) return;
-   try {
-       const restored = await FlowerInventory.restoreCatalogProducts();
-       alert(`Đã khôi phục ${restored} sản phẩm.`);
-   } catch (error) {
-       console.error("Không thể khôi phục sản phẩm:", error);
-       alert(error.message || "Chưa thể khôi phục sản phẩm. Hãy thử lại sau.");
-   }
-   const heading = main.querySelector(".panel h2")?.textContent;
-   if (heading === "Quản lý kho hoa") renderProductTab();
-   else renderDashboard();
+   return offlineNotice;
 }
 
 function renderProductTab() {
@@ -372,13 +349,14 @@ function renderProductTab() {
                </form>
                <p id="product-search-message" class="product-search-message" role="alert" aria-live="assertive"></p>
                ${renderSharedProductImageNotice(products)}
-               ${lowStockProducts.length ? `<p class="product-stock-alert" role="status"><strong>Cảnh báo tồn kho:</strong> ${lowStockProducts.length} sản phẩm đang bán chỉ còn từ 1–5 bó. Hãy chuẩn bị nhập thêm hoa.</p>` : ""}
+               ${lowStockProducts.length ? `<p class="product-stock-alert" role="status"><strong>Cảnh báo tồn kho:</strong> ${lowStockProducts.length} sản phẩm đang bán chỉ còn từ 1–5 đơn vị.</p>` : ""}
                <div class="product-table-wrap">
                <table class="product-table">
                    <thead>
                        <tr>
                            <th>Ảnh</th>
                            <th>Tên sản phẩm</th>
+                           <th>Loại bán</th>
                            <th>Phân loại</th>
                            <th>Giá</th>
                            <th>Số lượng</th>
@@ -411,9 +389,13 @@ function renderProductTab() {
                                        <div><strong>${escapeHtml(item.title)}</strong></div>
                                        <small>${escapeHtml(item.description || "Mô tả chưa được cập nhật.")}</small>
                                    </td>
+                                   <td>${item.saleType === "flower" ? "Hoa nguyên liệu" : "Bó làm sẵn"}</td>
                                    <td>${escapeHtml(item.category || "Chưa phân loại")}</td>
-                                   <td>${formatVnd(item.price)}</td>
-                                   <td><input class="qty-input" data-id="${escapeHtml(item.id)}" type="number" min="0" step="1" value="${quantity}" aria-label="Tồn kho ${escapeHtml(item.title)}"></td>
+                                   <td>
+                                       ${formatVnd(item.price)} / ${item.saleType === "flower" ? "cành" : "bó"}
+                                       ${item.saleType === "flower" ? `<small>Giá ngày ${escapeHtml(item.priceUpdatedAt || "chưa cập nhật")}</small>` : ""}
+                                   </td>
+                                   <td><input class="qty-input" data-id="${escapeHtml(item.id)}" type="number" min="0" step="1" value="${quantity}" aria-label="Tồn kho ${escapeHtml(item.title)} (${item.saleType === "flower" ? "cành" : "bó"})"></td>
                                    <td>
                                        <span class="product-state product-state--${status}">${statusLabel}</span>
                                        ${status === "active" && quantity <= 5 ? '<small class="product-low-stock">Sắp hết hàng</small>' : ""}
@@ -428,7 +410,7 @@ function renderProductTab() {
                                    </td>
                                </tr>
                            `;
-                       }).join("") || `<tr><td colspan="7" class="empty-state">${products.length ? "Không tìm thấy sản phẩm phù hợp." : "Chưa có sản phẩm nào."}</td></tr>`}
+                       }).join("") || `<tr><td colspan="8" class="empty-state">${products.length ? "Không tìm thấy sản phẩm phù hợp." : "Chưa có sản phẩm nào. Hãy thêm hoa nguyên liệu hoặc bó làm sẵn."}</td></tr>`}
                    </tbody>
                </table>
                </div>
@@ -456,6 +438,12 @@ function renderProductTab() {
                        <option value="" disabled ${editingProduct?.category || !editingProduct ? "selected" : ""}>Chọn danh mục</option>
                        <option value="${window.FlowerProductAdminValidation.UNCATEGORIZED}" ${editingProduct && !editingProduct.category ? "selected" : ""}>Chưa phân loại</option>
                        ${categories.map((category) => `<option value="${escapeHtml(category)}" ${editingProduct?.category === category ? "selected" : ""}>${escapeHtml(category)}</option>`).join("")}
+                       </select>
+                   </label>
+                   <label class="product-form-field" for="product-sale-type"><span>Hình thức bán</span>
+                       <select id="product-sale-type">
+                           <option value="ready_made" ${editingProduct?.saleType !== "flower" ? "selected" : ""}>Bó làm sẵn · giá cố định</option>
+                           <option value="flower" ${editingProduct?.saleType === "flower" ? "selected" : ""}>Hoa nguyên liệu · giá theo ngày, tính theo cành</option>
                        </select>
                    </label>
                    <label class="product-form-field" for="product-price"><span>Giá bán (VND)</span>
@@ -1012,12 +1000,13 @@ function renderActiveOrderSummary(order) {
 
 function renderOrderSummary(order) {
    const itemSummary = (order.items || [])
-       .map((item) => `${escapeHtml(item.title)} × ${Number(item.quantity) || 0}`)
+       .map((item) => `${escapeHtml(item.title)} × ${Number(item.quantity) || 0} ${escapeHtml(item.unit || "bó")}`)
        .join(", ") || "Không có sản phẩm";
    return `
        <article class="record-summary">
            <div class="completed-order-info">
                <strong>Đơn #${escapeHtml(order.id)} · ${escapeHtml(order.customerName)}</strong>
+               <span><b>Loại đơn:</b> ${order.orderType === "custom_bouquet" ? "Bó hoa theo yêu cầu" : "Bó làm sẵn"}</span>
                <span><b>Sản phẩm:</b> ${itemSummary}</span>
                <span><b>Thời gian đặt:</b> ${new Date(order.createdAt).toLocaleString("vi-VN")}</span>
                <span><b>Thanh toán:</b> ${escapeHtml(getPaymentMethodLabel(order))} · ${escapeHtml(getPaymentDisplayStatus(order))}</span>
@@ -1130,8 +1119,8 @@ function renderOrderCard(order, showCompletionAction = true) {
                            <div class="product-card-content">
                                <strong>${escapeHtml(item.title)}</strong>
                                <span>${escapeHtml(FlowerBouquetOptions.summary(item))}</span>
-                               <span>Số lượng: ${Number(item.quantity) || 0}</span>
-                               <span>Giá: ${moneyFormat(item.price)}</span>
+                               <span>Số lượng: ${Number(item.quantity) || 0} ${escapeHtml(item.unit || "bó")}</span>
+                               <span>Giá: ${moneyFormat(item.price)} / ${escapeHtml(item.unit || "bó")}${item.priceUpdatedAt ? ` · giá ngày ${escapeHtml(item.priceUpdatedAt)}` : ""}</span>
                            </div>
                        </div>
                    `;
@@ -1491,6 +1480,7 @@ async function addNewProduct(event) {
    const read = (id) => document.getElementById(id).value;
    const { product: inputProduct, errors } = window.FlowerProductAdminValidation.validateProductInput({
        title: read("product-title"),
+       saleType: read("product-sale-type"),
        image: read("product-image"),
        images: read("product-images"),
        meaning: read("product-meaning"),
@@ -1504,6 +1494,7 @@ async function addNewProduct(event) {
    }, getCategories());
    const fields = {
        title: "product-title",
+       saleType: "product-sale-type",
        image: "product-image",
        images: "product-images",
        category: "product-category",
@@ -1528,6 +1519,9 @@ async function addNewProduct(event) {
    }
    const productData = {
        ...inputProduct,
+       ...(inputProduct.saleType === "flower" ? { priceUpdatedAt: new Intl.DateTimeFormat("en-CA", {
+           timeZone: "Asia/Ho_Chi_Minh", year: "numeric", month: "2-digit", day: "2-digit"
+       }).format(new Date()) } : {}),
        image: getStoredImageUrl(inputProduct.image),
        images: inputProduct.images.map(getStoredImageUrl)
    };
@@ -2135,10 +2129,6 @@ main.addEventListener("click", (event) => {
    }
 
    const actionButton = event.target.closest("[data-action]");
-   if (actionButton?.dataset.action === "restore-catalog") {
-       restoreCatalog();
-       return;
-   }
    if (actionButton?.dataset.action === "clear-search") {
        productSearchTerm = "";
        productFilterCategory = "";

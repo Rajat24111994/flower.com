@@ -14,7 +14,7 @@ test("API quản trị từ chối khi không có hoặc sai mã đăng nhập",
         assert.equal((await h.callApi(name, { body: { action: "list" } })).status, 401, name);
         assert.equal((await h.callApi(name, { token: "gia-mao", body: { action: "list" } })).status, 401, name);
     }
-    assert.equal((await h.callApi("products", { body: { action: "restore-catalog" } })).status, 401);
+    assert.equal((await h.callApi("products", { body: { action: "restore-catalog" } })).status, 405);
     assert.equal((await h.callApi("products", { method: "GET", query: { manage: "1" } })).status, 401);
 });
 
@@ -22,7 +22,7 @@ test("khách thường không dùng được API quản trị", async () => {
     const customer = await h.createUser();
     assert.equal((await h.callApi("adminUsers", { token: customer.token, body: {} })).status, 403);
     assert.equal((await h.callApi("ownerUsers", { token: customer.token, body: { action: "list" } })).status, 403);
-    assert.equal((await h.callApi("products", { token: customer.token, body: { action: "restore-catalog" } })).status, 403);
+    assert.equal((await h.callApi("products", { token: customer.token, body: { action: "restore-catalog" } })).status, 405);
     assert.equal((await h.callApi("products", { method: "GET", query: { manage: "1" }, token: customer.token })).status, 403);
     assert.equal((await h.callApi("orders", { method: "GET", query: { action: "expire" }, token: customer.token })).status, 401);
 });

@@ -2,7 +2,6 @@
 // firestore.rules against the Firebase emulators (started by `npm run integration`), never
 // against the live project: the project id is a "demo-" id, which the emulators keep offline.
 const { generateKeyPairSync, randomUUID } = require("node:crypto");
-const fs = require("node:fs");
 const path = require("node:path");
 
 const PROJECT_ID = process.env.GCLOUD_PROJECT || "demo-flowerflow";
@@ -34,7 +33,17 @@ Object.assign(process.env, {
 const { getAdminAuth, getAdminFirestore } = require(path.join(ROOT, "lib/firebase-admin.js"));
 const { Timestamp } = require(require.resolve("firebase-admin/firestore", { paths: [ROOT] }));
 const { syncAdminRole } = require(path.join(ROOT, "lib/admin-roles.js"));
-const catalog = JSON.parse(fs.readFileSync(path.join(ROOT, "flower.json"), "utf8")).flower;
+const catalog = [{
+    id: 1,
+    title: "Bó hoa fixture",
+    description: "Sản phẩm dùng riêng cho integration test",
+    image: "./images/products/product-flower-01.webp",
+    category: "Hoa tươi",
+    price: 250000,
+    quantity: 10,
+    status: "active",
+    saleType: "ready_made"
+}];
 
 const handlers = {
     orders: require(path.join(ROOT, "api/orders.js")),

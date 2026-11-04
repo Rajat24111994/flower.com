@@ -17,7 +17,9 @@ service cloud.firestore {
           && (!keys.hasAny(['description']) || (data.description is string && data.description.size() > 0 && data.description.size() <= 1000))
           && (!keys.hasAny(['image']) || (data.image is string && data.image.size() > 0))
           && (!keys.hasAny(['category']) || data.category is string)
-          && (!keys.hasAny(['images']) || (data.images is list && data.images.size() <= 8));
+          && (!keys.hasAny(['images']) || (data.images is list && data.images.size() <= 8))
+          && (!keys.hasAny(['saleType']) || data.saleType in ['flower', 'ready_made'])
+          && (!keys.hasAny(['priceUpdatedAt']) || (data.priceUpdatedAt is string && data.priceUpdatedAt.matches('^\\d{4}-\\d{2}-\\d{2}$')));
       }
       allow get, list: if true;
       allow create: if isAdmin()
@@ -97,6 +99,25 @@ service cloud.firestore {
         || (request.auth != null && resource.data.uid == request.auth.uid);
       allow update: if isAdmin() && allowedAdminOrderUpdate();
       allow delete: if isAdmin();
+    }
+
+    // Each customer can access only their own bounded, non-authoritative shopping snapshot.
+    match /shoppingCarts/{userId} {
+      function isOwner() {
+        return request.auth != null && request.auth.uid == userId;
+      }
+      function validShoppingData() {
+        return request.resource.data.keys().hasOnly(['cart', 'wish'])
+          && request.resource.data.keys().hasAll(['cart', 'wish'])
+          && request.resource.data.cart is list
+          && request.resource.data.cart.size() <= 100
+          && request.resource.data.wish is list
+          && request.resource.data.wish.size() <= 100;
+      }
+      allow get: if isOwner();
+      allow list: if false;
+      allow create, update: if isOwner() && validShoppingData();
+      allow delete: if isOwner();
     }
 
     match /{document=**} {

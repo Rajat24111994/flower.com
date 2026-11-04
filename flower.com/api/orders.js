@@ -76,6 +76,19 @@ function resolveDeliveryZone(data, zoneId) {
     return { zone, shippingFee: zone.fee };
 }
 
+function getProductSaleType(data) {
+    return data.saleType === "flower" ? "flower" : "ready_made";
+}
+
+function getProductPrice(data, now = new Date()) {
+    if (getProductSaleType(data) === "flower" && data.priceUpdatedAt !== getVietnameseDateTime(now).date) {
+        const error = new Error(`Giá hoa “${String(data.title || "Nguyên liệu").slice(0, 120)}” chưa được cập nhật hôm nay. Vui lòng liên hệ cửa hàng.`);
+        error.code = "flower-price-outdated";
+        throw error;
+    }
+    return toVndPrice(data.price);
+}
+
 function aggregateItems(items) {
     const quantities = new Map();
     (Array.isArray(items) ? items : []).forEach((item) => {
@@ -548,7 +561,7 @@ async function quoteOrder(req, res) {
         const cart = quote.items.map((item, index) => {
             const snapshot = products[index];
             const data = snapshot.exists ? snapshot.data() : {};
-            const price = bouquet.price(toVndPrice(data.price), item.size);
+            const price = getProductPrice(data);
             const stock = Number(data.quantity);
             if (data.status === "hidden") {
                 shortages.push({
@@ -600,16 +613,18 @@ async function quoteOrder(req, res) {
             deliveryZonesConfigured: getEnabledDeliveryZones(deliverySnapshot.data()).length > 0,
             items: cart.map((item) => ({
                 id: item.id,
-                ...bouquet.normalize(item),
                 title: String(item.data.title || "Sản phẩm").slice(0, 120),
                 image: String(item.data.image || "").slice(0, 1000),
+                saleType: getProductSaleType(item.data),
+                unit: getProductSaleType(item.data) === "flower" ? "cành" : "bó",
+                priceUpdatedAt: getProductSaleType(item.data) === "flower" ? item.data.priceUpdatedAt : "",
                 quantity: item.quantity,
                 price: item.price,
                 stock: item.stock
             }))
         });
     } catch (error) {
-        if (["invalid-promotion", "insufficient-stock", "product-unavailable", "delivery-zone-unavailable"].includes(error.code)) {
+        if (["invalid-promotion", "insufficient-stock", "product-unavailable", "delivery-zone-unavailable", "flower-price-outdated"].includes(error.code)) {
             return sendError(res, 409, error.code, error.message);
         }
         console.error("Order quote failed:", error.code || "unknown");
@@ -706,7 +721,7 @@ async function createOrder(req, res) {
                     error.code = "product-unavailable";
                     throw error;
                 }
-                const price = bouquet.price(toVndPrice(data.price), item.size);
+                const price = getProductPrice(data);
                 const stock = Number(data.quantity);
                 const title = String(data.title || "Một sản phẩm");
                 if (!Number.isFinite(price) || price <= 0) {
@@ -746,9 +761,11 @@ async function createOrder(req, res) {
             const paymentReference = paymentReferenceFor(checkout.idempotencyKey);
             const items = products.map((item) => ({
                 id: item.id,
-                ...bouquet.normalize(item),
                 title: String(item.data.title || "Sản phẩm").slice(0, 120),
                 image: String(item.data.image || "").slice(0, 1000),
+                saleType: getProductSaleType(item.data),
+                unit: getProductSaleType(item.data) === "flower" ? "cành" : "bó",
+                priceUpdatedAt: getProductSaleType(item.data) === "flower" ? item.data.priceUpdatedAt : "",
                 quantity: item.quantity,
                 price: item.price,
                 stock: item.stock
@@ -756,6 +773,7 @@ async function createOrder(req, res) {
             const initialStatus = "Chờ xác nhận";
             const initialLocation = "Đơn hàng đã được gửi đến cửa hàng";
             const orderData = {
+                orderType: products.some((item) => getProductSaleType(item.data) === "flower") ? "custom_bouquet" : "ready_made",
                 uid: user?.uid || "",
                 email: String(user?.email || "").slice(0, 254),
                 customerName: checkout.customerName,
@@ -827,7 +845,7 @@ async function createOrder(req, res) {
         if (String(error.code || "").startsWith("auth/")) {
             return sendError(res, 401, "unauthenticated", "Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại rồi đặt hàng.");
         }
-        if (["invalid-checkout", "invalid-delivery-schedule", "invalid-promotion", "insufficient-stock", "product-unavailable", "price-changed", "idempotency-conflict", "delivery-zone-unavailable"].includes(error.code)) {
+        if (["invalid-checkout", "invalid-delivery-schedule", "invalid-promotion", "insufficient-stock", "product-unavailable", "price-changed", "idempotency-conflict", "delivery-zone-unavailable", "flower-price-outdated"].includes(error.code)) {
             const status = ["invalid-checkout", "invalid-delivery-schedule"].includes(error.code) ? 400 : 409;
             return sendError(res, status, error.code, error.message);
         }
@@ -1145,6 +1163,8 @@ module.exports.internals = {
     getVietnameseDateTime,
     getEnabledDeliveryZones,
     resolveDeliveryZone,
+    getProductPrice,
+    getProductSaleType,
     DELIVERY_TIME_WINDOWS,
     paymentReferenceFor,
     publicTrackingOrder,

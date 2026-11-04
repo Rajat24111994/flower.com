@@ -36,17 +36,16 @@ test("chủ cửa hàng không tự hạ quyền mình và không đổi quyền
     assert.equal((await h.callApi("ownerUsers", { token: owner.token, body: { action: "remove-admin", uid: otherOwner.uid } })).status, 403);
 });
 
-test("khôi phục sản phẩm mẫu bị thiếu, giữ nguyên sản phẩm đã có", async () => {
+test("API sản phẩm chỉ đọc và không nạp lại dữ liệu mẫu", async () => {
     const admin = await h.createUser("admin");
     await h.db().doc("products/1").set({ id: 1, title: "Đã sửa", price: 10, quantity: 3 });
-    const result = await h.callApi("products", { token: admin.token, body: { action: "restore-catalog" } });
-    assert.equal(result.status, 200);
-    assert.equal(result.body.restored, h.catalog.length - 1);
+    const result = await h.callApi("products", { method: "POST", token: admin.token, body: { action: "restore-catalog" } });
+    assert.equal(result.status, 405);
     assert.equal((await h.db().doc("products/1").get()).data().title, "Đã sửa");
     const list = await h.callApi("products", { method: "GET" });
-    assert.equal(list.body.products.length, h.catalog.length);
+    assert.equal(list.body.products.length, 1);
     await h.db().doc(`adminRoles/${admin.uid}`).delete();
-    assert.equal((await h.callApi("products", { token: admin.token, body: { action: "restore-catalog" } })).status, 403);
+    assert.equal((await h.callApi("products", { method: "POST", token: admin.token, body: { action: "restore-catalog" } })).status, 405);
 });
 
 test("sản phẩm tạm ẩn chỉ hiện trong API quản trị đã xác thực", async () => {
