@@ -52,6 +52,7 @@ const handlers = {
     reviewImages: require(path.join(ROOT, "api/review-images.js")),
     productImages: require(path.join(ROOT, "api/product-images.js")),
     deliveryZones: require(path.join(ROOT, "api/delivery-zones.js")),
+    designRequests: require(path.join(ROOT, "api/design-requests.js")),
     products: require(path.join(ROOT, "api/products.js")),
     adminUsers: require(path.join(ROOT, "api/admin/users.js")),
     ownerUsers: require(path.join(ROOT, "api/owner/users.js"))

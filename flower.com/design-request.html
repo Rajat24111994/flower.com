@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <script src="./js/core/safe-storage.js?v=3"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="description" content="Xem trạng thái, lịch sử và báo giá yêu cầu thiết kế bó hoa Flowerflow.">
+  <link rel="icon" type="image/svg+xml" href="./favicon.svg">
+  <title>Theo dõi yêu cầu thiết kế | Flowerflow</title>
+  <link rel="stylesheet" href="./css/core/store-header.css?v=5">
+  <link rel="stylesheet" href="./css/core/accessibility.css?v=1">
+  <link rel="stylesheet" href="./css/core/store-footer.css?v=3">
+  <link rel="stylesheet" href="./css/catalog/custom-bouquet.css?v=2">
+</head>
+<body>
+  <script src="./js/core/store-header.js?v=7"></script>
+  <main class="custom-bouquet-page">
+    <header class="custom-bouquet-heading">
+      <p class="eyebrow">FLOWERFLOW · YÊU CẦU THIẾT KẾ</p>
+      <h1>Theo dõi yêu cầu</h1>
+      <p>Trạng thái và báo giá mới nhất do cửa hàng cập nhật.</p>
+    </header>
+    <p id="design-request-message" role="status" aria-live="polite">Đang tải yêu cầu…</p>
+    <section id="design-request-details" class="design-panel" hidden>
+      <h2 id="design-request-title"></h2>
+      <p id="design-request-status"></p>
+      <div id="design-request-content"></div>
+      <div id="design-request-history" class="design-selected-list"></div>
+      <div id="design-quote-actions" hidden>
+        <p id="design-quote-text"></p>
+        <button id="design-quote-accept" type="button">Chấp nhận báo giá</button>
+        <button id="design-quote-reject" class="secondary-design-button" type="button">Từ chối báo giá</button>
+      </div>
+    </section>
+    <a href="./custom-bouquet.html">Tạo thiết kế mới</a>
+  </main>
+  <script src="./js/core/store-footer.js?v=4"></script>
+  <script src="./js/order/order-store.js?v=21"></script>
+  <script src="./js/order/design-request.js?v=1"></script>
+</body>
+</html>

@@ -4,36 +4,162 @@
   <meta charset="UTF-8">
   <script src="./js/core/safe-storage.js?v=3"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Tự phối bó hoa từ nguyên liệu tươi với giá được cửa hàng cập nhật hôm nay.">
+  <meta name="description" content="Tự thiết kế bó hoa theo sở thích, xem dự toán và gửi yêu cầu đến Flowerflow.">
   <link rel="canonical" href="https://flower-com-six.vercel.app/custom-bouquet.html">
   <link rel="icon" type="image/svg+xml" href="./favicon.svg">
-  <title>Tự phối bó hoa | Flowerflow</title>
+  <title>Tự thiết kế bó hoa | Flowerflow</title>
   <link rel="stylesheet" href="./css/core/store-header.css?v=5">
   <link rel="stylesheet" href="./css/core/accessibility.css?v=1">
   <link rel="stylesheet" href="./css/core/store-footer.css?v=3">
-  <link rel="stylesheet" href="./css/catalog/custom-bouquet.css?v=1">
+  <link rel="stylesheet" href="./css/catalog/custom-bouquet.css?v=2">
 </head>
 <body>
   <script src="./js/core/store-header.js?v=7"></script>
   <main class="custom-bouquet-page">
     <header class="custom-bouquet-heading">
-      <p class="eyebrow">FLOWERFLOW · TỰ PHỐI HOA</p>
-      <h1>Tạo bó hoa theo ý bạn</h1>
-      <p>Chọn loại hoa và số cành. Giá từng loại được chủ cửa hàng cập nhật trong ngày và sẽ được máy chủ xác nhận lại khi thanh toán.</p>
+      <p class="eyebrow">FLOWERFLOW · TỰ THIẾT KẾ</p>
+      <h1>Tự thiết kế bó hoa</h1>
+      <p>Chọn từng loại hoa, số cành và màu mong muốn. Dự toán hoa cùng phí gói được máy chủ xác nhận; các phụ kiện hoặc yêu cầu đặc biệt sẽ được cửa hàng báo giá trước khi thực hiện.</p>
       <a href="./product.html">Xem bó hoa làm sẵn với giá cố định →</a>
     </header>
     <p id="custom-bouquet-message" role="status" aria-live="polite"></p>
-    <div id="custom-bouquet-list" class="custom-bouquet-grid"></div>
-    <footer class="custom-bouquet-footer">
-      <p id="custom-bouquet-total">Tạm tính: 0 ₫</p>
-      <button id="custom-bouquet-add" type="button" disabled>Thêm thành phần vào giỏ</button>
-      <a href="./cart.html">Xem giỏ hàng</a>
+
+    <section class="design-panel" aria-labelledby="flower-selection-heading">
+      <div class="design-section-heading">
+        <div><p class="eyebrow">01 · THÀNH PHẦN</p><h2 id="flower-selection-heading">Chọn hoa</h2></div>
+        <p>Tồn kho được kiểm tra theo loại hoa; màu sắc là yêu cầu phối và cửa hàng sẽ xác nhận biến thể còn hàng.</p>
+      </div>
+      <div class="design-filters">
+        <label>Tìm loại hoa<input id="flower-search" type="search" placeholder="Ví dụ: hồng, tulip"></label>
+        <label>Màu mong muốn
+          <select id="flower-color-filter">
+            <option value="">Tất cả màu</option><option>Trắng</option><option>Đen</option><option>Kem</option>
+            <option>Hồng</option><option>Đỏ</option><option>Vàng</option><option>Cam</option><option>Xanh</option><option>Tím</option><option>Nhiều màu</option><option>Khác</option>
+          </select>
+        </label>
+        <label>Giá tối đa / cành (₫)<input id="flower-price-filter" type="number" min="0" step="1000" placeholder="Không giới hạn"></label>
+      </div>
+      <div id="custom-bouquet-list" class="custom-bouquet-grid"></div>
+    </section>
+
+    <section class="design-panel" aria-labelledby="design-options-heading">
+      <div class="design-section-heading">
+        <div><p class="eyebrow">02 · PHONG CÁCH</p><h2 id="design-options-heading">Tùy chỉnh thiết kế</h2></div>
+      </div>
+      <div class="design-options-grid">
+        <label>Kiểu sắp xếp
+          <select data-design="arrangement"><option>Đối xứng</option><option selected>Tự nhiên</option><option>Hoa chính ở giữa</option><option>Hoa xen kẽ</option></select>
+        </label>
+        <label>Kích thước bó
+          <select data-design="size"><option>Mini</option><option>Nhỏ</option><option selected>Vừa</option><option>Lớn</option></select>
+        </label>
+        <label>Kiểu bó
+          <select data-design="wrapStyle"><option>Bó tròn</option><option>Bó dài</option><option>Bó một mặt</option><option selected>Bó Hàn Quốc</option><option>Bó tối giản</option><option>Không gói</option></select>
+        </label>
+        <label>Chất liệu giấy
+          <select data-design="paperMaterial"><option>Giấy kraft</option><option>Giấy nhám</option><option selected>Giấy Hàn Quốc</option><option>Giấy bóng kính</option></select>
+        </label>
+        <label>Màu giấy
+          <select data-design="paperColor"><option>Trắng</option><option>Đen</option><option selected>Kem</option><option>Hồng</option><option>Xanh</option><option>Tím</option></select>
+        </label>
+        <label>Số lớp giấy
+          <select data-design="paperLayers"><option value="0">Không giấy</option><option value="1">1 lớp</option><option value="2" selected>2 lớp</option><option value="3">3 lớp</option><option value="4">4 lớp</option><option value="5">5 lớp</option></select>
+        </label>
+        <label>Kiểu nơ
+          <select data-design="bowStyle"><option>Nơ nhỏ</option><option selected>Nơ lớn</option><option>Nơ lụa</option><option>Không nơ</option></select>
+        </label>
+        <label>Màu nơ / ruy băng
+          <select data-design="bowColor"><option>Trắng</option><option>Đen</option><option selected>Kem</option><option>Hồng</option><option>Đỏ</option><option>Xanh</option><option>Tím</option></select>
+        </label>
+        <label>Chủ đề
+          <select data-design="theme"><option>Sinh nhật</option><option>Tình yêu</option><option>Tốt nghiệp</option><option>Khai trương</option><option>Cảm ơn</option><option>Kỷ niệm</option><option>Ngày lễ</option><option selected>Tự chọn</option></select>
+        </label>
+        <label>Phong cách
+          <select data-design="style"><option>Lãng mạn</option><option>Sang trọng</option><option>Dễ thương</option><option>Tối giản</option><option>Cổ điển</option><option selected>Tự nhiên</option></select>
+        </label>
+        <label>Tông màu chủ đạo
+          <select data-design="palette"><option>Trắng - kem</option><option>Hồng pastel</option><option>Đỏ ấm</option><option>Vàng tươi</option><option>Xanh dịu</option><option>Tím</option><option>Nhiều màu</option></select>
+        </label>
+        <label>Ngân sách mong muốn (₫)<input data-design="budget" type="number" min="0" max="1000000000" step="10000" placeholder="Không giới hạn"></label>
+      </div>
+      <div class="design-checkboxes">
+        <label><input data-design="greenery" type="checkbox"> Thêm lá trang trí</label>
+        <label><input data-addon value="hoa baby phụ" type="checkbox"> Thêm hoa baby</label>
+        <label><input data-addon value="gấu bông nhỏ" type="checkbox"> Gấu bông nhỏ</label>
+        <label><input data-addon value="hộp quà" type="checkbox"> Hộp quà</label>
+        <label><input data-addon value="túi quà" type="checkbox"> Túi quà</label>
+        <label><input data-addon value="chocolate" type="checkbox"> Chocolate</label>
+        <label><input data-design="lowFragrance" type="checkbox"> Ưu tiên hoa ít mùi</label>
+        <label><input data-design="surprise" type="checkbox"> Thiết kế bất ngờ theo ngân sách</label>
+        <label><input data-design="confirmBeforeMaking" type="checkbox" checked> Cần cửa hàng xác nhận thiết kế trước khi làm</label>
+        <label><input data-design="anonymousGreetingCard" type="checkbox"> Ẩn tên người gửi trên thiệp</label>
+      </div>
+      <div class="design-options-grid">
+        <label>Không sử dụng loại hoa<input data-design="excludedFlowers" type="text" maxlength="300" placeholder="Phân cách bằng dấu phẩy"></label>
+        <label>Loại hoa người nhận không thích<input data-design="dislikedFlowers" type="text" maxlength="300" placeholder="Phân cách bằng dấu phẩy"></label>
+        <label>Mẫu thiệp
+          <select data-design="greetingCardTemplate"><option>Không cần thiệp</option><option>Hoa lá</option><option>Tối giản</option><option>Chúc mừng</option><option>Tình cảm</option></select>
+        </label>
+        <label>Lời chúc trên thiệp<input data-design="greetingCard" type="text" maxlength="300" placeholder="Lời nhắn dành cho người nhận"></label>
+      </div>
+      <label class="design-wide-field">Yêu cầu đặc biệt dành cho cửa hàng
+        <textarea data-design="specialRequest" maxlength="1500" rows="4" placeholder="Ví dụ: hoa hồng ở giữa, tulip ở ngoài, giấy gói màu đen."></textarea>
+      </label>
+      <label class="design-wide-field">Ảnh mẫu (JPG, PNG hoặc WebP; tối đa 5 MB, sẽ được nén trước khi gửi)
+        <input id="design-reference-image" type="file" accept="image/jpeg,image/png,image/webp">
+      </label>
+      <p id="design-image-message" role="status" aria-live="polite"></p>
+      <img id="design-reference-preview" class="design-reference-preview" alt="Ảnh mẫu do khách chọn" width="600" height="400" hidden>
+    </section>
+
+    <section class="design-preview-panel" aria-labelledby="design-preview-heading">
+      <div>
+        <p class="eyebrow">03 · XEM TRƯỚC</p>
+        <h2 id="design-preview-heading">Bố cục tham khảo</h2>
+        <p>Hình minh họa thể hiện loại hoa đã chọn, không phải ảnh sản phẩm hoàn thiện.</p>
+        <div id="design-preview" class="design-preview" aria-live="polite"></div>
+        <div id="design-selected" class="design-selected-list"></div>
+      </div>
+      <div class="design-costs">
+        <h2>Chi tiết dự toán</h2>
+        <p id="custom-bouquet-total">Tiền hoa: 0 ₫ · Phí gói: 0 ₫</p>
+        <p id="design-budget-message" role="status" aria-live="polite"></p>
+        <p id="design-direct-order-note" class="design-price-note" role="status" aria-live="polite"></p>
+        <p class="design-price-note">Giá phụ kiện và vật liệu đặc biệt sẽ được cửa hàng xác nhận trong báo giá cuối.</p>
+      </div>
+    </section>
+
+    <section class="design-panel" aria-labelledby="delivery-heading">
+      <div class="design-section-heading"><div><p class="eyebrow">04 · GỬI YÊU CẦU</p><h2 id="delivery-heading">Thông tin người nhận và giao hoa</h2></div></div>
+      <div class="design-options-grid">
+        <label>Tên người nhận<input id="design-customer-name" type="text" maxlength="100" required></label>
+        <label>Số điện thoại<input id="design-phone" type="tel" maxlength="30" required></label>
+        <label class="design-wide-field">Địa chỉ giao hoa<input id="design-address" type="text" maxlength="500" required></label>
+        <label>Ngày giao<input id="design-delivery-date" type="date" required></label>
+        <label>Khung giờ giao
+          <select id="design-delivery-time" required><option value="">Chọn khung giờ</option><option>08:00–11:00</option><option>11:00–14:00</option><option>14:00–17:00</option><option>17:00–20:00</option></select>
+        </label>
+        <label>Khu vực giao hàng<select id="design-delivery-zone" required><option value="">Đang tải khu vực…</option></select></label>
+        <label class="design-wide-field">Lời nhắn cho người giao<input id="design-delivery-note" type="text" maxlength="500"></label>
+      </div>
+      <p class="design-price-note">Hiện hỗ trợ giao theo khu vực cửa hàng đã khai báo; chưa có lựa chọn nhận tại cửa hàng.</p>
+    </section>
+
+    <footer class="custom-bouquet-footer design-actions">
+      <button id="design-reset" class="secondary-design-button" type="button">Đặt lại thiết kế</button>
+      <button id="design-save" class="secondary-design-button" type="button">Lưu thiết kế</button>
+      <button id="custom-bouquet-add" type="button" disabled>Thêm vào giỏ hàng</button>
+      <button id="design-order-now" type="button" disabled>Đặt hoa theo thiết kế</button>
+      <button id="design-request-submit" class="secondary-design-button" type="button" disabled>Gửi yêu cầu tư vấn</button>
     </footer>
+    <p id="design-request-result" role="status" aria-live="polite"></p>
   </main>
   <script src="./js/core/store-footer.js?v=4"></script>
   <script defer src="./js/core/currency.js?v=11"></script>
   <script defer src="./js/catalog/product-store.js?v=24"></script>
-  <script defer src="./js/order/shopping-store.js?v=3"></script>
-  <script defer src="./js/catalog/custom-bouquet.js?v=1"></script>
+  <script defer src="./js/catalog/bouquet-wrapping.js?v=1"></script>
+  <script defer src="./js/order/shopping-store.js?v=4"></script>
+  <script defer src="./js/order/order-store.js?v=21"></script>
+  <script defer src="./js/catalog/custom-bouquet.js?v=3"></script>
 </body>
 </html>
