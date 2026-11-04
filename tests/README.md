@@ -37,6 +37,7 @@ Test tích hợp chạy API thật (`flower.com/api/*.js`) và `firestore.rules`
 | `store-footer.test.js` | Footer dùng chung |
 | `order-pricing.test.js` | Tính giá, ưu đãi, làm tròn VND, giá trình duyệt khớp giá máy chủ |
 | `order-validation.test.js` | Dữ liệu đơn hàng hợp lệ/không hợp lệ, tra cứu công khai không lộ thông tin |
+| `safe-storage.test.js` | Dữ liệu checkout nhạy cảm chỉ tồn tại trong session storage |
 | `order-status.test.js` | Trạng thái đơn và trạng thái cũ |
 | `integration/feature-orders.test.js` | Báo giá, tạo đơn, trừ kho, chống đặt trùng, ưu đãi, đơn hết hạn, tra cứu |
 | `integration/feature-accounts.test.js` | Đơn gắn tài khoản, token giả/thu hồi, đánh giá của chủ đơn |

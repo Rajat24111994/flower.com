@@ -56,6 +56,29 @@ test("tra cứu đơn: không lộ tên, số điện thoại, địa chỉ; ch�
     assert.equal(status, 429, "phải chặn sau nhiều lần tra cứu");
 });
 
+test("thông tin thẻ không được lưu và dữ liệu thanh toán/giao hàng không lộ qua tra cứu công khai", async () => {
+    const placed = await h.placeOrder({
+        overrides: { cardNumber: "4111111111111111", cvv: "123", billingAddress: "Địa chỉ thanh toán bí mật" }
+    });
+    assert.equal(placed.status, 201);
+
+    const orderId = placed.body.order.id;
+    const storedOrder = (await h.db().doc(`orders/${orderId}`).get()).data();
+    for (const key of ["cardNumber", "cvv", "billingAddress"]) assert.equal(storedOrder[key], undefined, key);
+
+    const lookup = await h.callApi("orders", {
+        body: { action: "lookup", id: orderId, phone: "0908123456" }
+    });
+    assert.equal(lookup.status, 200);
+    const response = JSON.stringify(lookup.body);
+    for (const secret of ["4111111111111111", "Địa chỉ thanh toán bí mật", "0908123456", "147 Lê Lợi"]) {
+        assert.ok(!response.includes(secret), secret);
+    }
+
+    const cardPayment = await h.placeOrder({ paymentMethod: "card" });
+    assert.equal(cardPayment.status, 400);
+});
+
 test("đối soát QR chỉ qua API admin, kiểm tra số tiền và ghi audit bất biến", async () => {
     const admin = await h.createUser("admin");
     const placed = await h.placeOrder({ paymentMethod: "qr" });

@@ -183,7 +183,7 @@ async function releaseExpiredReservations(db) {
     try {
         await expireReservations(db);
     } catch (error) {
-        console.error("Reservation cleanup failed:", error.code || error.message);
+        console.error("Reservation cleanup failed:", error.code || "unknown");
     }
 }
 
@@ -612,7 +612,7 @@ async function quoteOrder(req, res) {
         if (["invalid-promotion", "insufficient-stock", "product-unavailable", "delivery-zone-unavailable"].includes(error.code)) {
             return sendError(res, 409, error.code, error.message);
         }
-        console.error("Order quote failed:", error.code || error.message);
+        console.error("Order quote failed:", error.code || "unknown");
         return sendError(res, 503, "order-service-unavailable", "Chưa thể kiểm tra giá đơn hàng. Vui lòng thử lại sau.");
     }
 }
@@ -831,7 +831,7 @@ async function createOrder(req, res) {
             const status = ["invalid-checkout", "invalid-delivery-schedule"].includes(error.code) ? 400 : 409;
             return sendError(res, status, error.code, error.message);
         }
-        console.error("Order creation failed:", error.code || error.message);
+        console.error("Order creation failed:", error.code || "unknown");
         return sendError(res, 503, "order-service-unavailable", "Chưa thể xác nhận đơn hàng. Vui lòng thử lại sau.");
     }
 }
@@ -978,7 +978,7 @@ async function lookupOrder(req, res) {
         }
         return res.status(200).json({ order: publicTrackingOrder(snapshot.id, snapshot.data()) });
     } catch (error) {
-        console.error("Order lookup failed:", error.code || error.message);
+        console.error("Order lookup failed:", error.code || "unknown");
         return sendError(res, 503, "order-service-unavailable", "Chưa thể tra cứu đơn hàng. Vui lòng thử lại sau.");
     }
 }
@@ -1085,7 +1085,7 @@ async function submitReview(req, res) {
             const status = { "order-not-found": 404, "invalid-argument": 400 }[error.code] || 409;
             return sendError(res, status, error.code, error.message);
         }
-        console.error("Review submission failed:", error.code || error.message);
+        console.error("Review submission failed:", error.code || "unknown");
         return sendError(res, 503, "review-service-unavailable", "Chưa thể gửi đánh giá. Vui lòng thử lại sau.");
     }
 }
@@ -1117,7 +1117,7 @@ module.exports = async function handler(req, res) {
                 const claims = await getAdminAuth().verifyIdToken(match[1], true);
                 authorized = claims.admin === true;
             } catch (error) {
-                console.error("Reservation cleanup authentication failed:", error.code || error.message);
+                console.error("Reservation cleanup authentication failed:", error.code || "unknown");
             }
         }
         if (!authorized) return sendError(res, 401, "unauthenticated", "Quyền dọn đơn hết hạn không hợp lệ.");
@@ -1125,7 +1125,7 @@ module.exports = async function handler(req, res) {
             const released = await expireReservations(getAdminFirestore());
             return res.status(200).json({ released });
         } catch (error) {
-            console.error("Reservation cleanup failed:", error.code || error.message);
+            console.error("Reservation cleanup failed:", error.code || "unknown");
             return sendError(res, 503, "order-service-unavailable", "Chưa thể giải phóng tồn kho đơn hết hạn.");
         }
     }

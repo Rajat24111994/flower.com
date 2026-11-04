@@ -114,12 +114,12 @@
         }
     }
 
-    function mergeCatalogProducts(existing = [], catalog = []) {
+    function repairCatalogProducts(existing = [], catalog = catalogProducts) {
         const catalogById = new Map((Array.isArray(catalog) ? catalog : []).map((item) => {
             const product = normalizeProduct(item);
             return [String(product.id), product];
         }));
-        const merged = new Map((Array.isArray(existing) ? existing : []).map((item) => {
+        return deduplicateProducts((Array.isArray(existing) ? existing : []).map((item) => {
             const product = normalizeProduct(item);
             const catalogProduct = catalogById.get(String(product.id));
             if (product.title.includes("?") && catalogProduct && !catalogProduct.title.includes("?")) {
@@ -129,8 +129,12 @@
                 product.image = catalogProduct.image;
                 product.images = product.images.filter((image) => !isLegacyCatalogImage(image));
             }
-            return [String(product.id), product];
+            return product;
         }));
+    }
+
+    function mergeCatalogProducts(existing = [], catalog = []) {
+        const merged = new Map(repairCatalogProducts(existing, catalog).map((product) => [String(product.id), product]));
         (Array.isArray(catalog) ? catalog : []).forEach((item) => {
             const product = normalizeProduct(item);
             if (!merged.has(String(product.id))) merged.set(String(product.id), product);
@@ -161,7 +165,7 @@
     }
 
     function cacheProducts(products, notify = true) {
-        const normalized = deduplicateProducts(products);
+        const normalized = repairCatalogProducts(products);
         if (typeof window !== "undefined" && window.FlowerSafeStorage?.writeJson) {
             window.FlowerSafeStorage.writeJson(PRODUCT_KEY, normalized);
         } else {
@@ -510,8 +514,8 @@
         return cacheProducts(saved);
     }
 
-    // Loads products from Firestore. flower.json is only used once, by an admin, to seed an
-    // empty catalog; after that, products an admin deleted stay deleted.
+    // flower.json repairs known legacy names/photos and seeds only a never-initialized catalog.
+    // Existing products an admin deleted are never restored by synchronization.
     async function synchronizeProducts(catalog) {
         const remoteProducts = await readRemoteProducts();
         if (remoteProducts === null) return false;
@@ -582,11 +586,26 @@
     async function initialize() {
         if (initialization) return initialization;
         initialization = (async () => {
-            const localProducts = readProducts();
+            let catalog = [];
+            try {
+                const response = await fetch("./flower.json?v=2");
+                if (response.ok) {
+                    const data = await response.json();
+                    catalog = Array.isArray(data.flower)
+                        ? data.flower.map((item) => ({ ...item, quantity: item.quantity ?? 10 }))
+                        : [];
+                    catalogProducts = catalog;
+                }
+            } catch (error) {
+                console.warn("Không tải được catalog sản phẩm:", error);
+            }
+
+            const localProducts = repairCatalogProducts(readProducts(), catalog);
             const isAdminPage = window.location.pathname.endsWith("/admin.html");
 
             if (!isAdminPage && localProducts.length) {
-                startProductSynchronization([]);
+                cacheProducts(localProducts, false);
+                startProductSynchronization(catalog);
                 return localProducts;
             }
 
@@ -600,19 +619,6 @@
                     scheduleProductSubscription();
                     return apiProducts;
                 }
-            }
-
-            let catalog = [];
-            try {
-                const response = await fetch("./flower.json?v=2");
-                if (response.ok) {
-                    const data = await response.json();
-                    // Starting stock, used only when an admin seeds an empty catalog.
-                    catalog = Array.isArray(data.flower) ? data.flower.map((item) => ({ ...item, quantity: item.quantity ?? 10 })) : [];
-                    catalogProducts = catalog;
-                }
-            } catch (error) {
-                console.warn("Không tải được catalog sản phẩm:", error);
             }
 
             if (localProducts.length) {
@@ -664,6 +670,7 @@
         readProducts,
         saveProducts,
         findDuplicateProductImages,
+        repairCatalogProducts,
         mergeCatalogProducts,
         normalizeProduct,
         toVndPrice,
