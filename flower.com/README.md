@@ -36,6 +36,8 @@ flowchart LR
 
 ## Các module chính
 
+> File JavaScript nằm trong `js/<nhóm>/`, CSS trong `css/<nhóm>/` (nhóm: `core`, `catalog`, `order`, `review`, `account`, `admin`). Ví dụ `product-store.js` ở `js/catalog/product-store.js`.
+
 | Khu vực | Tệp | Trách nhiệm |
 | --- | --- | --- |
 | Header và footer | `store-header.js/.css`, `store-footer.js/.css` | Chèn header (tìm kiếm, tài khoản, yêu thích, đơn hàng, giỏ hàng, menu mobile) và footer cho các trang cửa hàng |

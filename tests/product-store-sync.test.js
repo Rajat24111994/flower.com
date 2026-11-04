@@ -1,5 +1,5 @@
 const assert = require('assert');
-const { findDuplicateProductImages, mergeCatalogProducts, normalizeProduct } = require('../flower.com/product-store.js');
+const { findDuplicateProductImages, mergeCatalogProducts, normalizeProduct } = require('../flower.com/js/catalog/product-store.js');
 
 const catalog = [
   { id: 1, title: 'Hoa hồng', price: 250000, quantity: 8, image: 'rose.jpg', description: 'Hoa hồng đỏ' },

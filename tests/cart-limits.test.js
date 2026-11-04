@@ -1,7 +1,7 @@
 // Unit tests: a cart line can hold at most what the order API accepts (50 of each product).
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { createShoppingStore, MAX_QUANTITY_PER_PRODUCT } = require("../flower.com/shopping-store.js");
+const { createShoppingStore, MAX_QUANTITY_PER_PRODUCT } = require("../flower.com/js/order/shopping-store.js");
 const { internals } = require("../flower.com/api/orders.js");
 
 function memoryStore(cart = []) {

@@ -1,7 +1,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const options = require("../flower.com/bouquet-options.js");
-const { createShoppingStore } = require("../flower.com/shopping-store.js");
+const options = require("../flower.com/js/catalog/bouquet-options.js");
+const { createShoppingStore } = require("../flower.com/js/order/shopping-store.js");
 const { internals: api } = require("../flower.com/api/orders.js");
 
 function shopping() {

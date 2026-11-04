@@ -1,5 +1,5 @@
 const assert = require('assert');
-const { createShoppingStore, ShoppingStoreError } = require('../flower.com/shopping-store.js');
+const { createShoppingStore, ShoppingStoreError } = require('../flower.com/js/order/shopping-store.js');
 
 function createMemoryStorage(initial = {}) {
   const values = new Map(Object.entries(initial));

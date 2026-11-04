@@ -1,4 +1,4 @@
-import { firebaseConfig } from "./firebase-config.js";
+import { firebaseConfig } from "../core/firebase-config.js";
 
 function getStoredAccount() {
     try {

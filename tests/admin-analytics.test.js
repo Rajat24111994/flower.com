@@ -11,7 +11,7 @@ const orders = [
     items: [{ id: "b", title: "Hoa B", quantity: 1, price: 500000 }] }
 ];
 test("doanh thu net đúng kỳ theo giờ VN; không cộng QR chưa đối soát/hủy/chưa giao", async () => {
-  const { buildReport, dateKey } = await import("../flower.com/admin-analytics.js");
+  const { buildReport, dateKey } = await import("../flower.com/js/admin/admin-analytics.js");
   assert.equal(dateKey("2026-10-31T18:00:00Z"), "2026-11-01");
   const report = buildReport(orders, products, { period: "custom", start: "2026-11-02", end: "2026-11-02", lowStock: 5 });
   assert.equal(report.totalRevenue, 770000);
@@ -25,7 +25,7 @@ test("doanh thu net đúng kỳ theo giờ VN; không cộng QR chưa đối so�
   assert.equal(report.series.reduce((sum, row) => sum + row.revenue, 0), report.totalRevenue);
 });
 test("khoảng ngày hợp lệ, ngày nhuận, kỳ rỗng và tổng hợp tháng", async () => {
-  const { buildReport, periodBounds } = await import("../flower.com/admin-analytics.js");
+  const { buildReport, periodBounds } = await import("../flower.com/js/admin/admin-analytics.js");
   assert.equal(periodBounds({ period: "month", month: "2028-02" }).end, "2028-02-29");
   assert.throws(() => periodBounds({ period: "custom", start: "2026-02-30", end: "2026-03-01" }));
   assert.throws(() => periodBounds({ period: "custom", start: "2026-11-03", end: "2026-11-02" }));
@@ -41,8 +41,8 @@ test("khoảng ngày hợp lệ, ngày nhuận, kỳ rỗng và tổng hợp th�
   assert.equal(yearly.series[0].revenue, 0);
 });
 test("Excel giữ 6 sheet, số VND, ngày thật và văn bản không trở thành công thức", async () => {
-  const { buildReport, reportSheets } = await import("../flower.com/admin-analytics.js");
-  const { workbookBytes } = await import("../flower.com/excel-export.js");
+  const { buildReport, reportSheets } = await import("../flower.com/js/admin/admin-analytics.js");
+  const { workbookBytes } = await import("../flower.com/js/admin/excel-export.js");
   const report = buildReport(orders, [{ id: "x", title: '=HYPERLINK("bad") & <test>', quantity: 0 }], { period: "all", lowStock: 5 });
   const sheets = reportSheets(report);
   assert.equal(sheets.length, 6);

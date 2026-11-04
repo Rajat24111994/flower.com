@@ -14,7 +14,7 @@ test.beforeEach(async ({ page }) => {
       subscribeAccount: async (_uid, callback) => { window.emitOrders = callback; callback([window.testOrder]); return () => {}; }
     };` }));
   await page.route("**/store-header.js*", (route) => route.fulfill({ contentType: "text/javascript",
-    body: readFileSync(path.join(__dirname, "../store-header.js"), "utf8").replace("void verifyStoredSession();", "") }));
+    body: readFileSync(path.join(__dirname, "../js/core/store-header.js"), "utf8").replace("void verifyStoredSession();", "") }));
 });
 
 test("guest sees all four stages, actual history, legacy completion and cancellation", async ({ page }, testInfo) => {

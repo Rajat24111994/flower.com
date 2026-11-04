@@ -96,16 +96,19 @@ FlowerFlow là website bán hoa gồm ba lớp:
 │   ├── lib/firebase-admin.js   # Khởi tạo Firebase Admin, xác minh ID token
 │   ├── scripts/                # Script gán quyền owner/admin lần đầu
 │   ├── images/                 # Ảnh sản phẩm và giao diện
+│   ├── *.html                  # Các trang web (giữ ở gốc để địa chỉ như /product.html không đổi)
+│   ├── js/                     # JavaScript chạy trên trình duyệt, chia theo chức năng
+│   │   ├── core/               # Dùng chung: cấu hình Firebase, header, footer, tiền tệ, lưu trữ
+│   │   ├── catalog/            # Sản phẩm: danh sách, tìm kiếm, tùy chọn bó hoa, yêu thích
+│   │   ├── order/              # Giỏ hàng, đặt hàng, trạng thái đơn, theo dõi, kết quả thanh toán
+│   │   ├── review/             # Đánh giá và ảnh đánh giá
+│   │   ├── account/            # Đăng nhập, quên mật khẩu, tài khoản
+│   │   └── admin/              # Trang quản trị, báo cáo, xuất Excel, trang owner
+│   ├── css/                    # Giao diện, chia theo cùng nhóm: core, catalog, order, account, admin
 │   ├── flower.json             # Catalog sản phẩm mặc định
-│   ├── firebase-config.js      # Cấu hình Firebase Web App (công khai)
 │   ├── firestore.rules         # Quy tắc bảo mật Firestore
 │   ├── firebase.json           # Cấu hình Firebase CLI
-│   ├── product-store.js        # Đồng bộ catalog giữa Firestore và localStorage
-│   ├── shopping-store.js       # Logic giỏ hàng và danh sách yêu thích
-│   ├── order-store.js          # Gọi API đơn hàng; đọc/cập nhật đơn, ưu đãi, phân loại trên Firestore
-│   ├── review-store.js         # Đọc/ghi đánh giá; trả lời, ẩn, xóa đánh giá (admin)
-│   ├── store-header.js, store-footer.js   # Header/footer dùng chung
-│   ├── *.html, *.css, *.js     # Các trang: chủ, sản phẩm, giỏ hàng, thanh toán, quản trị...
+│   ├── vercel.json             # Cấu hình Vercel (header bảo mật, cron)
 │   └── package.json
 ├── tests/                      # Unit test; tests/integration: test trên Firebase Emulator
 ├── ADMIN-SETUP.md              # Hướng dẫn cấu hình quản trị trên Vercel
@@ -156,7 +159,7 @@ Cần cấu hình biến môi trường như mô tả ở mục [Cấu hình](#c
 1. Tạo project trong [Firebase Console](https://console.firebase.google.com/) và đăng ký một Web App.
 2. Vào **Authentication → Sign-in method**, bật **Email/Password** và **Google**.
 3. Vào **Authentication → Settings → Authorized domains**, thêm domain triển khai và `localhost`.
-4. Dán cấu hình Web App vào [`flower.com/firebase-config.js`](flower.com/firebase-config.js).
+4. Dán cấu hình Web App vào [`flower.com/js/core/firebase-config.js`](flower.com/js/core/firebase-config.js).
 
 > [!IMPORTANT]
 > Cấu hình Firebase Web App là thông tin công khai, không phải bí mật. Dữ liệu được bảo vệ bằng **Firestore Security Rules**, Authorized domains và custom claims.

@@ -1,10 +1,10 @@
-const bouquet = require("../bouquet-options.js");
+const bouquet = require("../js/catalog/bouquet-options.js");
 const { validateReviewPhotos } = require("../lib/review-images");
 const { createHash, createHmac } = require("node:crypto");
 const { FieldValue, Timestamp } = require("firebase-admin/firestore");
 const { getAdminAuth, getAdminFirestore, sendError } = require("../lib/firebase-admin");
 // Same price reading as the shop pages (whole VND, old USD prices converted), so both agree.
-const { toVndPrice } = require("../product-store.js");
+const { toVndPrice } = require("../js/catalog/product-store.js");
 
 const MAX_QUANTITY_PER_PRODUCT = 50;
 const QR_RESERVATION_MS = 30 * 60 * 1000;

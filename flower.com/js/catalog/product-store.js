@@ -160,7 +160,7 @@
     async function getFirebaseApi() {
         if (!firebaseApiPromise) {
             firebaseApiPromise = (async () => {
-                const configModule = await import("./firebase-config.js");
+                const configModule = await import("../core/firebase-config.js");
                 const [appSdk, authSdk, firestoreSdk] = await Promise.all([
                     import("https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js"),
                     import("https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js"),

@@ -1,7 +1,7 @@
 import { mountReport } from "./admin-report-view.js?v=1";
 import { dateKey as reportDateKey } from "./admin-analytics.js?v=1";
-import { firebaseConfig } from "./firebase-config.js";
-import { ORDER_STATUSES, normalizeOrderStatus, orderStatusLabel } from "./order-status.js?v=2";
+import { firebaseConfig } from "../core/firebase-config.js";
+import { ORDER_STATUSES, normalizeOrderStatus, orderStatusLabel } from "../order/order-status.js?v=2";
 
 let productPage = document.getElementById("product_page");
 let categoriesPage = document.getElementById("categories_page");

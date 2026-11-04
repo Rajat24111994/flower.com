@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { UNCATEGORIZED, safeImageUrl, validateProductInput } = require("../flower.com/product-admin-validation.js");
+const { UNCATEGORIZED, safeImageUrl, validateProductInput } = require("../flower.com/js/admin/product-admin-validation.js");
 
 const categories = ["Hoa sinh nhật", "Hoa khai trương"];
 const validInput = {
@@ -69,7 +69,7 @@ test("kiểm tra URL ảnh, giới hạn 8 ảnh phụ và trạng thái", () =>
 });
 
 test("mất kết nối và lỗi quyền được thông báo bằng tiếng Việt", () => {
-    const source = require("node:fs").readFileSync(require("node:path").join(__dirname, "../flower.com/product-store.js"), "utf8");
+    const source = require("node:fs").readFileSync(require("node:path").join(__dirname, "../flower.com/js/catalog/product-store.js"), "utf8");
     assert.match(source, /Mất kết nối Firestore nên thay đổi chưa được lưu/);
     assert.match(source, /Tài khoản không có quyền quản lý sản phẩm/);
 });
