@@ -2,7 +2,7 @@
 <html lang="vi">
 <head>
   <meta charset="UTF-8">
-    <script src="./js/core/safe-storage.js?v=2"></script>
+    <script src="./js/core/safe-storage.js?v=3"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex, nofollow">
   <meta name="description" content="Xem xác nhận và hướng dẫn thanh toán đơn hàng Flowerflow.">
@@ -43,17 +43,26 @@
   <script src="./js/order/order-store.js?v=18"></script>
   <script>
     let CartContainer = document.getElementById("product-container");
-    let pendingSubmission = FlowerSafeStorage.readJson("flowerPendingOrder", { fallback: null });
+    let pendingSubmission = FlowerSafeStorage.readJson("flowerPendingOrder", { fallback: null, storage: "session" });
+    const legacyPendingSubmission = FlowerSafeStorage.readJson("flowerPendingOrder", { fallback: null });
+    if (!pendingSubmission && legacyPendingSubmission) {
+      pendingSubmission = legacyPendingSubmission;
+      FlowerSafeStorage.writeJson("flowerPendingOrder", pendingSubmission, { required: true, storage: "session" });
+    }
+    FlowerSafeStorage.remove("flowerPendingOrder");
+    FlowerSafeStorage.remove("flowerCheckout");
+    FlowerSafeStorage.remove("flowerPaymentReference");
     let Cart = FlowerSafeStorage.readJson("cart", {
       fallback: [],
       validate: (value) => Array.isArray(value)
         && value.every((item) => item && typeof item === "object" && !Array.isArray(item) && item.id !== undefined)
     });
     if (pendingSubmission?.cart) Cart = pendingSubmission.cart;
-    const checkoutData = pendingSubmission?.order || FlowerSafeStorage.readJson("flowerCheckout", {
+    const checkoutData = FlowerSafeStorage.readJson("flowerCheckout", {
       fallback: null,
-      validate: (value) => value !== null && typeof value === "object" && !Array.isArray(value)
-    });
+      validate: (value) => value !== null && typeof value === "object" && !Array.isArray(value),
+      storage: "session"
+    }) || pendingSubmission?.order || null;
     document.querySelector(".nav").classList.toggle("is-empty", !checkoutData);
     const paymentButton = document.querySelector(".placeorder > button");
     const paymentNote = document.getElementById("payment-confirmation-note");
@@ -152,7 +161,7 @@
       paymentButton.disabled = true;
       try {
         pendingSubmission = pendingSubmission || { order, totals: serverQuote.totals, cart: Cart };
-        FlowerSafeStorage.writeJson("flowerPendingOrder", pendingSubmission, { required: true });
+        FlowerSafeStorage.writeJson("flowerPendingOrder", pendingSubmission, { required: true, storage: "session" });
         orderId = await window.FlowerOrderStore.create(pendingSubmission.order, pendingSubmission.totals);
         if (checkoutData.paymentMethod === "vnpay") {
           const payment = await window.FlowerOrderStore.createPaymentLink(orderId, checkoutData.paymentReference);
@@ -164,7 +173,7 @@
         if (["insufficient-stock", "product-unavailable", "price-changed", "invalid-checkout", "invalid-delivery-schedule", "delivery-zone-unavailable", "invalid-promotion", "note-too-long", "quantity-limit"].includes(error.code)) {
           // The shop refused this request for good: forget it (so it is not resent as "pending"),
           // keep the button locked and show the new prices or stock instead.
-          if (FlowerSafeStorage.remove("flowerPendingOrder")) pendingSubmission = null;
+          if (FlowerSafeStorage.remove("flowerPendingOrder", { storage: "session" })) pendingSubmission = null;
           serverQuote = null;
           paymentButton.disabled = true;
           document.getElementById("retry-quote").hidden = false;
@@ -188,7 +197,10 @@
 
       const cleanupSucceeded = ["cart", "flowerCheckout", "flowerSelectedPromotion", "flowerPaymentReference", "flowerPendingOrder"]
         .map((key) => FlowerSafeStorage.remove(key))
-        .every(Boolean);
+        .every(Boolean)
+        && ["flowerCheckout", "flowerPendingOrder"]
+          .map((key) => FlowerSafeStorage.remove(key, { storage: "session" }))
+          .every(Boolean);
       const successMessage = checkoutData.paymentMethod === "qr"
         ? "Đã nhận đơn hàng. Cửa hàng sẽ đối chiếu giao dịch trước khi xác nhận thanh toán."
         : "Đặt hàng thành công! Đơn hàng đã được gửi tới cửa hàng.";
