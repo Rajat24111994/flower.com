@@ -48,10 +48,11 @@ FlowerFlow là website bán hoa gồm ba lớp:
 
 | Tính năng | Mô tả |
 | --- | --- |
-| Danh mục sản phẩm | Duyệt, tìm kiếm, lọc theo danh mục, sắp xếp; hỗ trợ sản phẩm giao trong ngày và đang giảm giá |
+| Hai hình thức bán | Bó làm sẵn bán đúng giá niêm yết; khách tự phối bó từ hoa nguyên liệu có giá theo ngày |
+| Danh mục sản phẩm | Duyệt, tìm kiếm, lọc theo danh mục, sắp xếp bó làm sẵn |
 | Chi tiết sản phẩm | Thư viện ảnh, giá VND, tồn kho, chọn số lượng, gợi ý sản phẩm liên quan |
 | Đánh giá sản phẩm | Khách đã đăng nhập gửi đánh giá 1–5 sao; đánh giá hiển thị công khai trên trang sản phẩm |
-| Giỏ hàng và yêu thích | Đồng bộ giữa các trang, gộp sản phẩm trùng, giới hạn theo tồn kho |
+| Giỏ hàng và yêu thích | Đồng bộ giữa các trang và thiết bị khi đăng nhập, gộp dữ liệu cũ, giới hạn theo tồn kho |
 | Ưu đãi | Chọn chương trình khuyến mãi áp dụng cho các sản phẩm phù hợp khi thanh toán |
 | Đặt hàng | Server báo giá, kiểm tra tồn kho và giữ hàng (QR 30 phút, COD 24 giờ); đơn hết hạn tự hủy và hoàn kho |
 | Thanh toán | Thanh toán khi nhận hàng hoặc mã QR chuyển khoản Vietcombank (VietQR) |
@@ -63,7 +64,7 @@ FlowerFlow là website bán hoa gồm ba lớp:
 
 | Tính năng | Mô tả |
 | --- | --- |
-| Sản phẩm | Thêm, sửa, xóa, cập nhật tồn kho; đồng bộ lên Firestore theo thời gian thực |
+| Sản phẩm và giá hoa | Thêm bó làm sẵn giá cố định hoặc hoa nguyên liệu; nhập giá nguyên liệu theo ngày và quản lý tồn kho theo bó/cành |
 | Danh mục và ưu đãi | Quản lý danh mục hoa và chương trình khuyến mãi |
 | Đơn hàng | Xem đơn của mọi khách theo thời gian thực, cập nhật trạng thái (Chờ xác nhận, Đang giao, Đã giao, Đã hủy) |
 | Xác minh thanh toán | Đối chiếu đúng số tiền, nhập mã giao dịch ngân hàng; API kiểm tra quyền và ghi audit người xác nhận/thời gian/thông tin đối soát |
@@ -105,7 +106,7 @@ FlowerFlow là website bán hoa gồm ba lớp:
 │   │   ├── account/            # Đăng nhập, quên mật khẩu, tài khoản
 │   │   └── admin/              # Trang quản trị, báo cáo, xuất Excel, trang owner
 │   ├── css/                    # Giao diện, chia theo cùng nhóm: core, catalog, order, account, admin
-│   ├── flower.json             # Catalog sản phẩm mặc định
+│   ├── flower.json             # Catalog rỗng; sản phẩm do cửa hàng chủ động thêm trong admin
 │   ├── firestore.rules         # Quy tắc bảo mật Firestore
 │   ├── firebase.json           # Cấu hình Firebase CLI
 │   ├── vercel.json             # Cấu hình Vercel (header bảo mật, cron)
@@ -135,7 +136,7 @@ python -m http.server 8000
 Mở <http://localhost:8000> trong trình duyệt.
 
 > [!NOTE]
-> Không mở trực tiếp file HTML bằng `file://`: website tải `flower.json` bằng `fetch`, nên bắt buộc phải chạy qua HTTP.
+> Không mở trực tiếp file HTML bằng `file://`: trình duyệt cần HTTP để gọi API và Firebase Authentication/Firestore.
 
 ### Chạy kèm API quản trị
 
@@ -232,7 +233,7 @@ Dự án đang ở giai đoạn **v0.1.0 (chưa phát hành)**. Trước khi v�
 - **Vercel Hobby chỉ hỗ trợ cron hằng ngày.** Cần cấu hình GitHub Actions `FLOWER_APP_URL` và `CRON_SECRET` theo [`ADMIN-SETUP.md`](ADMIN-SETUP.md) để chạy cleanup mỗi 15 phút; cron Vercel hằng ngày chỉ là dự phòng.
 - Dữ liệu cũ chỉ lưu trong `localStorage` (đơn hàng, đánh giá, lời nhắn trước khi có backend) không được chuyển lên Firestore. Phân loại cũ được tải lên ở lần đầu admin mở trang quản trị.
 - **Chế độ tài khoản demo** (dùng khi Firebase chưa bật Email/Password) lưu mật khẩu không mã hóa trong `localStorage`. Không dùng mật khẩu thật ở chế độ này.
-- Giỏ hàng và danh sách yêu thích chỉ lưu cục bộ theo trình duyệt.
+- Khách chưa đăng nhập chỉ lưu giỏ hàng và yêu thích trên thiết bị hiện tại. Tài khoản đăng nhập được đồng bộ hai danh sách qua Firestore; khi ngoại tuyến, bản cục bộ vẫn dùng được và sẽ báo nếu đồng bộ thất bại.
 
 ## Lộ trình
 

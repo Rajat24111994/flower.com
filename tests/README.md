@@ -34,6 +34,8 @@ Test tích hợp chạy API thật (`flower.com/api/*.js`) và `firestore.rules`
 | `product-categories.test.js` | Phân loại sản phẩm theo danh mục |
 | `product-store-sync.test.js` | Gộp catalog từ Firestore với dữ liệu mặc định |
 | `shopping-store.test.js` | Giỏ hàng, yêu thích, giới hạn tồn kho |
+| `shopping-sync.test.js` | Chuẩn hóa dữ liệu, gộp lần đầu, đồng bộ giữa thiết bị và giữ bản cục bộ khi lỗi mạng |
+| `cart-per-account.test.js` | Cách ly giỏ hàng theo tài khoản và đếm tổng số sản phẩm |
 | `store-footer.test.js` | Footer dùng chung |
 | `order-pricing.test.js` | Tính giá, ưu đãi, làm tròn VND, giá trình duyệt khớp giá máy chủ |
 | `order-validation.test.js` | Dữ liệu đơn hàng hợp lệ/không hợp lệ, tra cứu công khai không lộ thông tin |

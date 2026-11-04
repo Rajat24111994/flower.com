@@ -2,7 +2,7 @@
 <html lang="vi">
 <head>
   <meta charset="UTF-8">
-  <script src="./js/core/safe-storage.js?v=2"></script>
+  <script src="./js/core/safe-storage.js?v=3"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#fbf8f3">
   <meta name="description" content="Thông tin về dữ liệu bạn nhập khi đặt hàng trên website Flowerflow.">
@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="./css/core/store-header.css?v=3">
+  <link rel="stylesheet" href="./css/core/store-header.css?v=5">
   <link rel="stylesheet" href="./css/core/accessibility.css?v=1">
   <link rel="stylesheet" href="./css/core/information-page.css?v=1">
   <link rel="stylesheet" href="./css/core/store-footer.css?v=4">
@@ -19,7 +19,7 @@
 </head>
 <body>
   <a class="skip-link" href="#main-content">Chuyển đến nội dung chính</a>
-  <script src="./js/core/store-header.js?v=6"></script>
+  <script src="./js/core/store-header.js?v=7"></script>
   <main class="information-page" id="main-content">
     <div class="information-main">
       <nav class="information-breadcrumbs" aria-label="Đường dẫn">
@@ -39,6 +39,7 @@
           <a href="#storage-security">Lưu trữ và bảo vệ</a>
           <a href="#your-choices">Lựa chọn và yêu cầu</a>
           <a href="#contact">Liên hệ</a>
+          <a href="#shopping-data">Giỏ hàng và yêu thích</a>
         </nav>
         <div class="information-content">
           <section class="information-section" id="information-collected">
@@ -52,6 +53,10 @@
               <li><strong>Dữ liệu kỹ thuật cần cho an toàn:</strong> khi tra cứu đơn, dịch vụ có thể dùng địa chỉ IP do hạ tầng Vercel cung cấp để giới hạn số lần thử. API lưu mã HMAC thay vì địa chỉ IP thô trong bản ghi giới hạn tra cứu; bản ghi này tự hết hạn sau 24 giờ.</li>
             </ul>
             <aside class="information-note">Các trường tên người nhận, số điện thoại người nhận, lời chúc, ảnh đánh giá và ghi chú là tùy chọn nếu biểu mẫu không đánh dấu bắt buộc. Vui lòng không nhập mật khẩu, thông tin thẻ hoặc dữ liệu nhạy cảm vào ghi chú hay nội dung đánh giá.</aside>
+          </section>
+          <section class="information-section" id="shopping-data">
+            <h2>Giỏ hàng và danh sách yêu thích</h2>
+            <p>Nếu bạn đăng nhập, Flowerflow lưu bản giỏ hàng và danh sách yêu thích gắn với tài khoản để khôi phục trên thiết bị khác. Nếu chưa đăng nhập, các danh sách chỉ được lưu trên trình duyệt hiện tại. Thông tin này không thay thế dữ liệu sản phẩm, giá hoặc tồn kho mà máy chủ xác minh khi đặt hàng.</p>
           </section>
 
           <section class="information-section" id="purposes">
@@ -79,7 +84,7 @@
 
           <section class="information-section" id="storage-security">
             <h2>Lưu trữ, thời hạn và bảo vệ</h2>
-            <p>Dữ liệu tài khoản và đơn hàng được lưu trong Firebase/Cloud Firestore. Phiên đăng nhập, giỏ hàng và danh sách yêu thích được lưu trong bộ nhớ cục bộ (local storage) của trình duyệt trên thiết bị của bạn. Thông tin checkout và yêu cầu gửi đơn đang chờ được lưu tạm trong session storage của tab trình duyệt và được xóa sau khi đơn được gửi thành công; đóng tab có thể làm mất thông tin checkout chưa gửi.</p>
+            <p>Dữ liệu tài khoản và đơn hàng được lưu trong Firebase/Cloud Firestore. Giỏ hàng và danh sách yêu thích được lưu trong local storage; khi đăng nhập, chúng được đồng bộ với tài khoản để khôi phục trên thiết bị khác. Thông tin checkout và yêu cầu gửi đơn đang chờ được lưu tạm trong session storage của tab trình duyệt và được xóa sau khi đơn được gửi thành công; đóng tab có thể làm mất thông tin checkout chưa gửi.</p>
             <p>Firebase Authentication lưu phiên đăng nhập trong trình duyệt. Ứng dụng cũng lưu tên hiển thị, email, số điện thoại nếu có, mã tài khoản và phương thức đăng nhập trong bộ nhớ cục bộ để duy trì trạng thái phiên.</p>
             <p>Chúng tôi giữ thông tin trong thời gian cần thiết để vận hành tài khoản, hoàn tất và hỗ trợ đơn hàng, xử lý thanh toán hoặc tranh chấp, và đáp ứng nghĩa vụ áp dụng. Thời hạn lưu cụ thể có thể khác nhau theo loại dữ liệu; dữ liệu đơn hàng hoặc giao dịch cần thiết có thể phải được giữ lại sau khi đóng tài khoản. Bản ghi giới hạn tra cứu nêu trên tự hết hạn sau 24 giờ.</p>
             <p>Website được cấu hình sử dụng HTTPS. Quyền đọc và cập nhật dữ liệu được giới hạn bằng xác thực, phân quyền quản trị và Firestore Security Rules; thông tin chi tiết của đơn tài khoản chỉ dành cho chủ tài khoản và nhân sự quản trị được cấp quyền. Không có biện pháp truyền hoặc lưu trữ nào đảm bảo an toàn tuyệt đối, vì vậy hãy bảo vệ thiết bị và không chia sẻ thông tin đăng nhập.</p>

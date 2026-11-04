@@ -9,16 +9,17 @@ FlowerFlow là ứng dụng frontend tĩnh (HTML, CSS, JavaScript thuần, khôn
 - **Firebase Authentication** để đăng nhập khách hàng và quản trị viên.
 - **Cloud Firestore** để lưu catalog, đánh giá và đơn hàng dùng chung giữa các thiết bị.
 - **Vercel Functions** (`api/`) để chạy các thao tác cần Firebase Admin SDK.
-- **`localStorage`** để cache catalog và lưu giỏ hàng, danh sách yêu thích trên trình duyệt.
+- **`localStorage`** để cache catalog, duy trì giỏ hàng cục bộ và làm bản lưu ngoại tuyến.
 
 ```mermaid
 flowchart LR
     Browser[Trình duyệt] --> Pages[Trang HTML tĩnh]
     Pages --> Store["product-store.js"]
-    Store --> Catalog["flower.json<br/>(catalog mặc định)"]
     Store <--> Firestore[(Cloud Firestore<br/>products)]
     Store <--> Cache[(localStorage)]
+    Custom["custom-bouquet.html"] -->|Loại hoa, số cành| Checkout
     Pages --> Shopping["shopping-store.js<br/>(cart, wish)"] <--> Cache
+    Shopping <--> ShoppingCloud[(Firestore shoppingCarts<br/>theo UID, giới hạn 100 dòng)]
     Checkout["checkout.html"] -->|Mã sản phẩm, số lượng| OrderAPI["/api/orders"] -->|Tính giá, kiểm kho, tạo đơn| Orders[(Cloud Firestore<br/>orders)]
     Admin["admin.js"] <-->|Đọc/cập nhật đơn| Orders
     Tracking["tracking.js"] -->|Đơn tài khoản| Orders
@@ -42,10 +43,11 @@ flowchart LR
 | --- | --- | --- |
 | Header và footer | `store-header.js/.css`, `store-footer.js/.css` | Chèn header (tìm kiếm, tài khoản, yêu thích, đơn hàng, giỏ hàng, menu mobile) và footer cho các trang cửa hàng |
 | Trang chủ | `index.html`, `homepage.css` | Giới thiệu, danh mục nổi bật, điều hướng |
-| Catalog | `product-store.js`, `flower.json` | Tải catalog mặc định, đồng bộ hai chiều với Firestore, cache vào `localStorage`, lắng nghe thay đổi theo thời gian thực |
+| Catalog | `product-store.js`, `flower.json` | Đồng bộ catalog do cửa hàng quản lý với Firestore, cache vào `localStorage`, lắng nghe thay đổi theo thời gian thực; không tự nạp sản phẩm mẫu |
+| Tự phối bó | `custom-bouquet.html`, `custom-bouquet.js` | Chọn hoa nguyên liệu và số cành; giá chỉ hợp lệ trong ngày chủ shop cập nhật |
 | Danh mục và chi tiết | `product.html`, `product.js`, `product-categories.js`, `related-products.js` | Tìm kiếm, lọc, sắp xếp; trang chi tiết, thư viện ảnh, gợi ý sản phẩm liên quan |
 | Đánh giá | `review-store.js` | Đọc đánh giá công khai và gửi đánh giá mới (yêu cầu đăng nhập) lên Firestore |
-| Giỏ hàng và yêu thích | `shopping-store.js`, `cart.html`, `wish.html`, `wish.js` | Dùng chung khóa `cart`/`wish`, gộp dòng trùng, kiểm tra tồn kho |
+| Giỏ hàng và yêu thích | `shopping-store.js`, `shopping-sync.js`, `cart.html`, `wish.html` | Lưu ngoại tuyến, đồng bộ Firestore theo UID khi đăng nhập; giá/tồn kho vẫn do API đặt hàng xác minh |
 | Thanh toán | `checkout.html`, `placeorder.html` | Người gửi/người nhận, lịch giao giờ Việt Nam, khu vực và phí giao do máy chủ báo giá, ưu đãi, QR, tạo đơn |
 | Theo dõi đơn | `tracking.html`, `tracking.js`, `order-status.js` | Tra cứu công khai giới hạn thông tin; đơn tài khoản hiển thị chi tiết người gửi/nhận và phí |
 | Tài khoản | `login.*`, `account.*`, `forgot-password.*` | Đăng ký, đăng nhập, khôi phục mật khẩu, hồ sơ |
@@ -61,12 +63,12 @@ flowchart LR
 
 | Dữ liệu | Nơi lưu | Đồng bộ giữa thiết bị |
 | --- | --- | :---: |
-| Catalog sản phẩm | Firestore `products`, cache `localStorage.flowerInventory` | ✅ |
+| Hoa nguyên liệu và bó làm sẵn | Firestore `products`, cache `localStorage.flowerInventory` | ✅ |
 | Trạng thái khởi tạo catalog | Firestore `metadata/productCatalog` | ✅ |
 | Đánh giá trên trang sản phẩm | Firestore `reviews` | ✅ |
 | Tài khoản Firebase, vai trò | Firebase Authentication (custom claims) | ✅ |
-| Giỏ hàng, yêu thích | `localStorage.cart`, `localStorage.wish` | ❌ |
-| Đơn hàng mới | `/api/orders` xác minh rồi ghi Firestore `orders` | ✅ |
+| Giỏ hàng, yêu thích | `localStorage` (bản cục bộ) và Firestore `shoppingCarts/{uid}` (tài khoản đăng nhập) | ✅ với tài khoản |
+| Đơn hàng mới | `/api/orders` xác minh giá/tồn kho rồi ghi Firestore `orders`; mỗi dòng lưu giá và đơn vị tại thời điểm đặt | ✅ |
 | Audit đối soát QR | `/api/orders` ghi/đọc `orderPaymentAudit`; Security Rules chặn truy cập từ client | ✅ |
 | Đánh giá trong trang quản trị (phản hồi, hoàn thành) | Firestore `reviews` | ✅ |
 | Lời nhắn của khách và câu trả lời | Trường `orderNote`, `orderNoteReply`, `orderNoteCompletedAt` của đơn trong `orders` | ✅ |
@@ -77,16 +79,19 @@ flowchart LR
 | Ảnh sản phẩm tải lên | Firestore `productImages`, tải lên và xem qua `/api/product-images` (chỉ admin được tải lên; ảnh được thu nhỏ còn ≤ 120 KB ngay trên trình duyệt) | ✅ |
 | Phiên đăng nhập | `localStorage.loggedUser` | ❌ |
 
-Trang quản trị không còn tự điền dữ liệu demo cho đánh giá và lời nhắn; cả hai đều đọc từ Firestore.
+Trang quản trị không còn tự điền dữ liệu demo cho đánh giá và lời nhắn; cả hai đều đọc từ Firestore. Giỏ hàng và yêu thích được lưu trong tài liệu riêng theo UID, chỉ chủ tài khoản được đọc/ghi; khách chưa đăng nhập chỉ lưu cục bộ. Lần đồng bộ đầu gộp giỏ cũ theo mã dòng (lấy số lượng lớn hơn, tránh cộng trùng) và hợp nhất yêu thích; thay đổi tiếp theo dùng trạng thái mới nhất. Mỗi danh sách giới hạn 100 dòng. Nếu mất mạng, dữ liệu cục bộ không bị xóa và giao diện báo đồng bộ thất bại. Khi phát hành thay đổi Security Rules, triển khai riêng bằng `firebase deploy --only firestore:rules` sau khi test và có phê duyệt; thao tác này không nằm trong deploy Vercel.
 
 Phản hồi cũ trong `localStorage.flowerMessages` được chuyển sang Firestore `messages` khi quản trị đăng nhập. Đánh giá cũ được hợp nhất một lần với Firestore; bản cache đánh giá cục bộ của khách vẫn được giữ để tránh gửi trùng trên cùng trình duyệt.
 
-### Đồng bộ catalog
+### Cơ chế bán hoa và giá
 
-1. Khi tải trang, `product-store.js` đọc cache cục bộ và `flower.json`.
-2. Nếu Firebase đã cấu hình, catalog được đọc từ Firestore và gộp với catalog mặc định (`mergeCatalogProducts`).
-3. Chỉ tài khoản có claim `admin: true` mới ghi được sản phẩm còn thiếu lên Firestore khi khởi tạo lần đầu.
-4. Sau đó trang đăng ký `onSnapshot` để nhận thay đổi theo thời gian thực.
+`flower.json` hiện rỗng; website không tự thêm lại sản phẩm đã xóa. Chủ cửa hàng tạo dữ liệu trong **Quản trị → Sản phẩm**:
+
+- **Hoa nguyên liệu**: `saleType: "flower"`, giá VND/cành, tồn kho tính theo cành và ngày cập nhật theo múi giờ Việt Nam. Hoa nguyên liệu chỉ tham gia tạo bó theo yêu cầu; backend từ chối báo giá nếu giá chưa được cập nhật trong ngày.
+- **Bó làm sẵn**: `saleType: "ready_made"` (mặc định cho dữ liệu cũ), bán đúng giá niêm yết, không nhân giá theo cỡ.
+- Khi khách phối bó, API đọc giá và tồn kho hiện hành từ Firestore, tính lại tổng tiền, giữ tồn kho trong transaction và ghi `orderType`, đơn vị, giá/ngày giá vào ảnh chụp từng dòng trong đơn `orders`. Đổi giá ngày sau không thay đổi đơn cũ.
+
+Firestore vẫn là nguồn dữ liệu chính; `product-store.js` đồng bộ với Firestore, giữ cache `localStorage` khi ngoại tuyến và lắng nghe cập nhật theo thời gian thực. Xóa sản phẩm mẫu khỏi repo không xóa dữ liệu đang có trong Firestore.
 
 ### Trạng thái đơn hàng
 
@@ -117,6 +122,7 @@ Quy tắc nằm trong `firestore.rules` (khai báo trong `firebase.json`). Tóm 
 - `reviews`: ai cũng đọc được; người dùng đã đăng nhập được tạo đánh giá đúng schema (`productIds`, `productName`, `customerName`, `rating` 1–5, `comment` tối đa 1000 ký tự, `createdAt` là thời điểm server); chỉ admin được sửa hoặc xóa.
 - `metadata`: chỉ admin, ngoại trừ đọc tài liệu `activePromotions` để hiển thị ưu đãi công khai.
 - `orders`: không cho client tạo trực tiếp; API backend tạo đơn sau khi tính giá và xác minh tồn kho. Khách đã đăng nhập chỉ đọc đơn của UID mình; chỉ admin được đọc toàn bộ, cập nhật hoặc xóa.
+- `shoppingCarts/{uid}`: chỉ chủ UID được đọc/ghi tài liệu giỏ hàng và yêu thích; mỗi danh sách tối đa 100 dòng. Nội dung chỉ là bản tiện ích của khách, không phải nguồn giá, tồn kho hay dữ liệu đơn hàng.
 - Các collection khác, bao gồm `orderRequests` và `orderLookupLimits`, bị từ chối bởi quy tắc mặc định; chỉ backend dùng Firebase Admin SDK mới truy cập được.
 - Mọi đường dẫn khác bị từ chối.
 

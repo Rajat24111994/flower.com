@@ -23,14 +23,12 @@ Làm lần lượt từ trên xuống cho mỗi lần phát hành. Mục nào kh
 ## 3. Triển khai
 
 - [ ] Gộp PR vào `main` (Vercel tự deploy).
-- [ ] Có thay đổi `firestore.rules` hoặc index thì deploy đúng Firebase project:
+- [ ] Có thay đổi firestore.rules hoặc index thì triển khai lên đúng Firebase project sau khi test và được phê duyệt:
   ```sh
   cd flower.com && firebase deploy --only firestore:rules,firestore:indexes
   ```
-- [ ] Chỉ chạy migration/catalog nếu bản phát hành có thay đổi dữ liệu cần xử lý:
-  ```sh
-  cd flower.com && npm run setup-firestore
-  ```
+- [ ] Chỉ chạy migration/catalog nếu bản phát hành có thay đổi dữ liệu cần xử lý.
+- [ ] Không chạy script seed/ghi dữ liệu production như một phần của kiểm thử.
 - [ ] Biến môi trường trên Vercel còn đủ: `FIREBASE_SERVICE_ACCOUNT_JSON`, `CRON_SECRET`.
 - [ ] Lần chạy gần nhất của workflow **Sao lưu Firestore** xanh (có bản sao lưu trước khi phát hành).
 
