@@ -6,7 +6,7 @@
 
 **Website cửa hàng hoa tươi trực tuyến: danh mục sản phẩm, giỏ hàng, thanh toán QR và trang quản trị.**
 
-[Xem bản demo](https://flower-com-six.vercel.app) · [Kiến trúc kỹ thuật](flower.com/README.md) · [Cấu hình quản trị](ADMIN-SETUP.md) · [Ghi chú phát hành](RELEASE_NOTES_v0.2.0.md)
+[Xem bản demo](https://flower-com-six.vercel.app) · [Kiến trúc kỹ thuật](flower.com/README.md) · [Cấu hình quản trị](docs/ADMIN-SETUP.md) · [Ghi chú phát hành](docs/RELEASE_NOTES_v0.2.0.md)
 
 ![HTML5](https://img.shields.io/badge/HTML5-E34F26?logo=html5&logoColor=white)
 ![CSS3](https://img.shields.io/badge/CSS3-1572B6?logo=css3&logoColor=white)
@@ -111,9 +111,7 @@ FlowerFlow là website bán hoa gồm ba lớp:
 │   ├── vercel.json             # Cấu hình Vercel (header bảo mật, cron)
 │   └── package.json
 ├── tests/                      # Unit test; tests/integration: test trên Firebase Emulator
-├── ADMIN-SETUP.md              # Hướng dẫn cấu hình quản trị trên Vercel
-├── RELEASE-CHECKLIST.md
-└── RELEASE_NOTES_v0.2.0.md
+└── docs/                       # Tài liệu: cấu hình quản trị, sao lưu, phát hành, ảnh wiki, báo cáo test
 ```
 
 Mô tả chi tiết kiến trúc và luồng dữ liệu nằm trong [`flower.com/README.md`](flower.com/README.md).
@@ -201,7 +199,7 @@ firebase deploy --only firestore:rules
 4. Deploy, sau đó gán quyền Owner đầu tiên bằng script `npm run set-owner`.
 5. Triển khai Firestore Security Rules bằng `firebase deploy --only firestore:rules`.
 
-Hướng dẫn từng bước, bao gồm cách gán quyền Owner bằng Application Default Credentials mà không cần tải key, có trong [`ADMIN-SETUP.md`](ADMIN-SETUP.md).
+Hướng dẫn từng bước, bao gồm cách gán quyền Owner bằng Application Default Credentials mà không cần tải key, có trong [`docs/ADMIN-SETUP.md`](docs/ADMIN-SETUP.md).
 
 ## Kiểm thử
 
@@ -213,7 +211,7 @@ Hướng dẫn từng bước, bao gồm cách gán quyền Owner bằng Applica
 | Browser E2E | `cd flower.com && npm run test:e2e:emulator` | Xem sản phẩm, giỏ hàng, đăng nhập, đặt hàng trên desktop/mobile; Firebase Emulator và Playwright |
 | Smoke test sau deploy | `cd flower.com && SMOKE_URL=https://... npm run smoke` | Trang và API còn chạy, không đổi dữ liệu |
 
-CI trên GitHub Actions chạy unit test, test tích hợp và browser E2E cho mọi Pull Request và mỗi lần push lên `main`; báo cáo coverage và ảnh/trace trình duyệt được lưu trong kết quả chạy. Chi tiết: [`tests/README.md`](tests/README.md). Sau mỗi đợt kiểm thử, tạo báo cáo từ [mẫu báo cáo](docs/test-reports/TEMPLATE.md) trong `docs/test-reports/` ([ví dụ ngày 2026-10-28](docs/test-reports/2026-10-28.md)). Trước mỗi lần phát hành làm theo [`RELEASE-CHECKLIST.md`](RELEASE-CHECKLIST.md).
+CI trên GitHub Actions chạy unit test, test tích hợp và browser E2E cho mọi Pull Request và mỗi lần push lên `main`; báo cáo coverage và ảnh/trace trình duyệt được lưu trong kết quả chạy. Chi tiết: [`tests/README.md`](tests/README.md). Sau mỗi đợt kiểm thử, tạo báo cáo từ [mẫu báo cáo](docs/test-reports/TEMPLATE.md) trong `docs/test-reports/` ([ví dụ ngày 2026-10-28](docs/test-reports/2026-10-28.md)). Trước mỗi lần phát hành làm theo [`docs/RELEASE-CHECKLIST.md`](docs/RELEASE-CHECKLIST.md).
 
 ## Phân quyền
 

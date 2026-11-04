@@ -1859,7 +1859,7 @@ async function loadFirebaseUsers(pageToken) {
        status.textContent = error.code === "permission-denied"
            ? "Tài khoản hiện tại không có quyền xem danh sách."
            : error.code === "admin-api-not-configured"
-               ? "API chưa được cấu hình khóa dịch vụ trong Vercel. Xem ADMIN-SETUP.md."
+               ? "API chưa được cấu hình khóa dịch vụ trong Vercel. Xem docs/ADMIN-SETUP.md."
                : "Không tải được danh sách tài khoản. Kiểm tra kết nối rồi thử lại.";
    } finally {
        refresh.disabled = false;

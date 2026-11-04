@@ -23,7 +23,7 @@ Ngày phát hành: chưa phát hành
 - Unit test: tính giá, ưu đãi, kiểm tra dữ liệu đơn hàng, trạng thái đơn, giỏ hàng, danh mục, sản phẩm.
 - Feature, system và security test chạy API thật và `firestore.rules` thật trên Firebase Emulator (`tests/integration`).
 - CI trên GitHub Actions cho mọi PR và mỗi lần push lên `main`, kèm báo cáo coverage.
-- Smoke test sau deploy: `npm run smoke` và checklist trong `RELEASE-CHECKLIST.md`.
+- Smoke test sau deploy: `npm run smoke` và checklist trong `docs/RELEASE-CHECKLIST.md`.
 
 ## Cần làm tay khi nâng cấp
 
