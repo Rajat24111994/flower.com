@@ -30,11 +30,20 @@
       ]
     },
     {
-      "source": "/(.*\\.(?:css|js|webp|png|svg|ico|woff2?))",
+      "source": "/(.*\\.(?:css|js|woff2?))",
       "headers": [
         {
           "key": "Cache-Control",
           "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    },
+    {
+      "source": "/(.*\\.(?:webp|png|jpe?g|svg|ico))",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=86400, must-revalidate"
         }
       ]
     },
