@@ -29,7 +29,7 @@ const informationPages = [
 
 for (const page of pages) {
   const html = fs.readFileSync(path.join(root, page), "utf8");
-  assert.match(html, /store-footer\.css\?v=3/, `${page} should load the current shared footer styles`);
+  assert.match(html, /store-footer\.css\?v=4/, `${page} should load the current shared footer styles`);
   assert.match(html, /store-footer\.js\?v=4/, `${page} should load the current shared footer markup`);
   if (page === "checkout.html") {
     assert.doesNotMatch(html, /id="bottomtext"|id="endline"/, "checkout should not retain its duplicate legacy footer");
@@ -39,7 +39,7 @@ for (const page of pages) {
 for (const page of informationPages) {
   const html = fs.readFileSync(path.join(root, page), "utf8");
   assert.match(html, /store-header\.js\?v=\d+/, `${page} should load the shared header`);
-  assert.match(html, /store-footer\.css\?v=3/, `${page} should load the current shared footer styles`);
+  assert.match(html, /store-footer\.css\?v=4/, `${page} should load the current shared footer styles`);
   assert.match(html, /store-footer\.js\?v=4/, `${page} should load the current shared footer markup`);
   assert.match(html, /information-page\.css\?v=1/, `${page} should load the information page styles`);
   assert.match(html, /<main\b[^>]*id="main-content"/, `${page} should provide a main landmark`);
