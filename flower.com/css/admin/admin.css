@@ -696,6 +696,7 @@ main {
 }
 
 .product-form > #product-form-message,
+.product-form > .product-image-upload,
 .product-form > .field-label,
 .product-form > #product-images,
 .product-form > #product-image-previews,
@@ -719,6 +720,19 @@ main {
 
 .product-form-message:empty {
     display: none;
+}
+
+.product-image-upload {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: -4px;
+}
+
+.product-image-upload small {
+    color: #6b7280;
+    font-size: 12px;
 }
 
 .product-image-previews {

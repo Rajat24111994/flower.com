@@ -41,6 +41,7 @@ const handlers = {
     payments: require(path.join(ROOT, "api/payments.js")),
     vnpayIpn: require(path.join(ROOT, "api/vnpay-ipn.js")),
     reviewImages: require(path.join(ROOT, "api/review-images.js")),
+    productImages: require(path.join(ROOT, "api/product-images.js")),
     deliveryZones: require(path.join(ROOT, "api/delivery-zones.js")),
     products: require(path.join(ROOT, "api/products.js")),
     adminUsers: require(path.join(ROOT, "api/admin/users.js")),

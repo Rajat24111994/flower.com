@@ -108,6 +108,9 @@ test("kiểm duyệt không cho admin sửa nội dung, sao, ảnh, tác giả h
     assert.equal(preserved.rating, 1);
     assert.deepEqual(preserved.photoIds, ["photo"]);
     await assertFails(setDoc(doc(admin(), "reviewImages/photo"), { bytes: "changed" }));
+    // Product photos go only through /api/product-images, never straight from a browser.
+    await assertFails(setDoc(doc(admin(), "productImages/photo"), { bytes: "changed" }));
+    await assertFails(getDoc(doc(guest(), "productImages/photo")));
 });
 
 test("dữ liệu nội bộ: danh sách admin, lời nhắn, cấu hình chỉ admin truy cập", async () => {

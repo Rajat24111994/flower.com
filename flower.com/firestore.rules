@@ -63,6 +63,11 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // Product photos are saved and served only by /api/product-images (admin upload, public read).
+    match /productImages/{photoId} {
+      allow read, write: if false;
+    }
+
     match /messages/{messageId} {
       allow read, write: if isAdmin();
     }
