@@ -66,3 +66,20 @@ Do not share one Owner login among a group. Bootstrap one trusted Owner, then le
 After deploying the current site, sign in at `/admin.html` with an Owner or Admin account and open **Giao hàng**. Add only province/city and district names that the shop has confirmed it serves; this project intentionally does not seed an unverified area list or rate table. Each entry starts with a fee of **0 ₫** and can be edited, paused, or removed. Fees are whole VND amounts.
 
 There are no delivery areas preconfigured. Until at least one enabled area is added, checkout explains that setup is incomplete and customers cannot submit orders. The storefront lists only enabled areas. The `/api/delivery-zones` endpoint exposes those configured names and fees to checkout, while changes require a Firebase ID token with the `admin: true` claim. `/api/orders` independently reads the zone and fee from Firestore for quotes and verifies them again when creating an order; a browser-supplied fee is never authoritative. No additional Vercel environment variable is required beyond the Firebase Admin configuration above.
+
+## Expire unpaid reservations on Vercel Hobby
+
+QR reservations expire after 30 minutes and VNPay reservations after 15 minutes. Vercel Hobby cron jobs can run only once per day, so the daily Vercel cron remains a fallback while the repository workflow `.github/workflows/expire-orders.yml` calls the authenticated cleanup API every 15 minutes. Checkout, order creation, and the admin dashboard also run cleanup opportunistically.
+
+Configure both hosting services before relying on scheduled cleanup:
+
+1. In Vercel **Settings → Environment Variables**, set `CRON_SECRET` to a long random value for Production (and Preview if needed). Keep it private.
+2. In GitHub **Settings → Secrets and variables → Actions**, add the repository secret `CRON_SECRET` with the exact same value.
+3. Add the Actions repository variable `FLOWER_APP_URL` with the production origin, for example `https://your-store.vercel.app` (no path required).
+4. Run **Actions → Expire unpaid orders → Run workflow** once and confirm it succeeds. Scheduled runs can be delayed during GitHub Actions load; the workflow retries transient HTTP failures twice.
+
+The endpoint rejects requests without the matching bearer secret. Do not put the secret in the workflow file, a URL, or a committed environment file. If the GitHub workflow is not configured, Hobby's daily cron is not frequent enough to reliably release 15–30-minute holds on time.
+
+## QR payment reconciliation audit
+
+Admins must enter the bank transaction reference and confirm the exact order total when reconciling QR or late payments. The server verifies the current admin role and order state, then writes both the payment update and an `orderPaymentAudit` record atomically. Browser Firestore writes cannot set payment verification fields or read/write audit records. Keep the Firebase Admin service-account environment variable server-side; never expose it to browser code.

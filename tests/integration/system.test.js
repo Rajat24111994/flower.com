@@ -41,7 +41,16 @@ test("khách đặt hàng → admin giao hàng → khách theo dõi và đánh g
     // 3. Admin xác nhận tiền và giao hàng (trang admin).
     const adminOrders = await getDocs(collection(adminDb, "orders"));
     assert.equal(adminOrders.size, 1);
-    await updateDoc(doc(adminDb, "orders", id), { paymentVerified: true, paymentStatus: "Đã thanh toán" });
+    const reconciled = await h.callApi("orders", {
+        token: admin.token,
+        body: {
+            action: "verify-qr-payment",
+            orderId: id,
+            amount: placed.quote.body.totals.total,
+            reconciliationReference: "BANK-SYSTEM-001"
+        }
+    });
+    assert.equal(reconciled.status, 200, JSON.stringify(reconciled.body));
     await updateDoc(doc(adminDb, "orders", id), { status: "Đang giao", currentLocation: "Quận 1" });
 
     // 4. Người chỉ có mã đơn + số điện thoại tra cứu được tiến độ nhưng không thấy địa chỉ.

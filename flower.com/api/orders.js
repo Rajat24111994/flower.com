@@ -2,7 +2,7 @@ const bouquet = require("../js/catalog/bouquet-options.js");
 const { validateReviewPhotos } = require("../lib/review-images");
 const { createHash, createHmac } = require("node:crypto");
 const { FieldValue, Timestamp } = require("firebase-admin/firestore");
-const { getAdminAuth, getAdminFirestore, sendError } = require("../lib/firebase-admin");
+const { getAdminAuth, getAdminFirestore, sendError, verifyRequest } = require("../lib/firebase-admin");
 // Same price reading as the shop pages (whole VND, old USD prices converted), so both agree.
 const { toVndPrice } = require("../js/catalog/product-store.js");
 
@@ -221,9 +221,11 @@ function awaitsQrTransfer(data) {
 }
 
 async function checkOrderLookupLimit(db, req) {
-    const forwardedFor = String(req.headers["x-forwarded-for"] || req.headers["x-real-ip"] || req.socket?.remoteAddress || "");
+    // Vercel overwrites X-Forwarded-For at its edge. Do not trust caller-controlled
+    // X-Real-IP or socket fallbacks, which would let clients rotate their limiter key.
+    const forwardedFor = String(req.headers["x-forwarded-for"] || "");
     const clientIp = forwardedFor.split(",")[0].trim();
-    if (!clientIp) throw new Error("Client IP is unavailable for order lookup rate limiting.");
+    if (!clientIp || clientIp.length > 64) throw new Error("Trusted client IP is unavailable for order lookup rate limiting.");
 
     const secret = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
     if (!secret) throw new Error("Firebase service credentials are required for order lookup rate limiting.");
@@ -243,7 +245,6 @@ async function checkOrderLookupLimit(db, req) {
                 retryAfter: Math.max(1, Math.ceil((windowStartedAt + ORDER_LOOKUP_WINDOW_MS - now.toMillis()) / 1000))
             };
         }
-
         transaction.set(limitRef, {
             windowStartedAt: sameWindow ? record.windowStartedAt : now,
             attempts: attempts + 1,
@@ -251,6 +252,125 @@ async function checkOrderLookupLimit(db, req) {
         });
         return { allowed: true, retryAfter: 0 };
     });
+}
+
+async function authorizeOrderAdmin(req, res) {
+    const user = await verifyRequest(req, res, getAdminAuth());
+    if (!user) return null;
+    if (user.admin !== true) {
+        sendError(res, 403, "forbidden", "Thao tác này chỉ dành cho quản trị viên.");
+        return null;
+    }
+    const role = await getAdminFirestore().collection("adminRoles").doc(user.uid).get();
+    if (!role.exists) {
+        sendError(res, 403, "forbidden", "Quyền quản trị viên đã bị thu hồi.");
+        return null;
+    }
+    return user;
+}
+
+async function reconcileQrPayment(req, res, latePayment = false) {
+    const orderId = String(req.body?.orderId || "").trim();
+    const reconciliationReference = String(req.body?.reconciliationReference || "").trim();
+    const confirmedAmount = Number(req.body?.amount);
+    if (!orderId || orderId.length > 128 || orderId.includes("/")
+        || !reconciliationReference || reconciliationReference.length > 120
+        || /[\u0000-\u001f\u007f]/.test(reconciliationReference)
+        || !Number.isSafeInteger(confirmedAmount) || confirmedAmount <= 0) {
+        return sendError(res, 400, "invalid-argument", "Cần mã đơn, mã giao dịch ngân hàng và số tiền đã đối chiếu hợp lệ.");
+    }
+
+    try {
+        const user = await authorizeOrderAdmin(req, res);
+        if (!user) return;
+        const db = getAdminFirestore();
+        const orderRef = db.collection("orders").doc(orderId);
+        const auditRef = db.collection("orderPaymentAudit").doc();
+        const result = await db.runTransaction(async (transaction) => {
+            const snapshot = await transaction.get(orderRef);
+            if (!snapshot.exists) {
+                const error = new Error("Không tìm thấy đơn hàng.");
+                error.code = "order-not-found";
+                throw error;
+            }
+            const order = snapshot.data();
+            if (order.paymentMethod !== "qr") {
+                const error = new Error("Đơn hàng này không sử dụng chuyển khoản QR.");
+                error.code = "payment-method-mismatch";
+                throw error;
+            }
+            if (order.paymentVerified === true) {
+                const error = new Error("Thanh toán của đơn này đã được xác nhận.");
+                error.code = "payment-already-complete";
+                throw error;
+            }
+            if (!Number.isSafeInteger(order.total) || order.total <= 0 || confirmedAmount !== order.total) {
+                const error = new Error("Số tiền đối chiếu không khớp tổng tiền đơn hàng.");
+                error.code = "payment-amount-mismatch";
+                throw error;
+            }
+            if (latePayment ? order.status !== "Đã hủy" : order.status === "Đã hủy") {
+                const error = new Error(latePayment
+                    ? "Đơn này chưa bị hủy. Hãy dùng xác minh thanh toán thông thường."
+                    : "Đơn này đã bị hủy. Hãy dùng thao tác ghi nhận thanh toán trễ.");
+                error.code = latePayment ? "order-not-cancelled" : "order-cancelled";
+                throw error;
+            }
+            if (!latePayment && order.inventoryState === "released") {
+                const error = new Error("Đơn đã giải phóng tồn kho. Hãy khôi phục đơn trước khi xác nhận thanh toán.");
+                error.code = "order-inventory-released";
+                throw error;
+            }
+
+            const now = new Date();
+            const action = latePayment ? "qr-late-payment-recorded" : "qr-payment-verified";
+            transaction.update(orderRef, {
+                paymentVerified: true,
+                paymentStatus: latePayment
+                    ? "Đã nhận tiền sau khi đơn bị hủy – cần khôi phục đơn hoặc hoàn tiền"
+                    : "Đã thanh toán",
+                paidAt: now.toISOString(),
+                paymentVerifiedAt: FieldValue.serverTimestamp(),
+                paymentVerifiedBy: user.uid,
+                paymentReconciliationReference: reconciliationReference,
+                ...(latePayment ? {
+                    latePayment: true,
+                    paymentAttention: "Thanh toán đến sau khi đơn đã hủy; cần kiểm tra và xử lý hoàn tiền hoặc khôi phục đơn."
+                } : {})
+            });
+            transaction.create(auditRef, {
+                orderId,
+                action,
+                actorUid: user.uid,
+                actorEmail: String(user.email || "").slice(0, 254),
+                actorRole: "admin",
+                amountVnd: order.total,
+                paymentReference: String(order.paymentReference || "").slice(0, 120),
+                reconciliationReference,
+                previousPaymentStatus: String(order.paymentStatus || "").slice(0, 120),
+                orderStatus: String(order.status || "").slice(0, 80),
+                createdAt: FieldValue.serverTimestamp()
+            });
+            return { auditId: auditRef.id };
+        });
+        return res.status(200).json({ ok: true, auditId: result.auditId });
+    } catch (error) {
+        if (String(error.code || "").startsWith("auth/")) {
+            return sendError(res, 401, "unauthenticated", "Phiên đăng nhập đã hết hạn. Hãy đăng nhập lại.");
+        }
+        const statuses = {
+            "order-not-found": 404,
+            "payment-method-mismatch": 409,
+            "payment-already-complete": 409,
+            "payment-amount-mismatch": 409,
+            "order-not-cancelled": 409,
+            "order-cancelled": 409,
+            "order-inventory-released": 409
+        };
+        if (statuses[error.code]) return sendError(res, statuses[error.code], error.code, error.message);
+        console.error("QR payment reconciliation failed:", error.code || error.message);
+        return sendError(res, 503, "payment-reconciliation-unavailable", "Chưa thể ghi nhận đối soát. Vui lòng thử lại.");
+    }
 }
 
 function validateCheckout(body = {}) {
@@ -709,6 +829,45 @@ async function createOrder(req, res) {
     }
 }
 
+async function getQrPaymentAudit(req, res) {
+    const orderId = String(req.query?.orderId || "").trim();
+    if (!orderId || orderId.length > 128 || orderId.includes("/")) {
+        return sendError(res, 400, "invalid-argument", "Mã đơn không hợp lệ.");
+    }
+    try {
+        if (!await authorizeOrderAdmin(req, res)) return;
+        const db = getAdminFirestore();
+        const snapshot = await db.collection("orderPaymentAudit")
+            .where("orderId", "==", orderId)
+            .orderBy("createdAt", "desc")
+            .limit(25)
+            .get();
+        const entries = snapshot.docs.map((document) => {
+            const data = document.data();
+            return {
+                id: document.id,
+                action: data.action,
+                actorUid: data.actorUid,
+                actorEmail: data.actorEmail,
+                actorRole: data.actorRole,
+                amountVnd: data.amountVnd,
+                paymentReference: data.paymentReference,
+                reconciliationReference: data.reconciliationReference,
+                previousPaymentStatus: data.previousPaymentStatus,
+                orderStatus: data.orderStatus,
+                createdAt: serializeTimestamp(data.createdAt)
+            };
+        });
+        return res.status(200).json({ entries });
+    } catch (error) {
+        if (String(error.code || "").startsWith("auth/")) {
+            return sendError(res, 401, "unauthenticated", "Phiên đăng nhập đã hết hạn. Hãy đăng nhập lại.");
+        }
+        console.error("QR payment audit lookup failed:", error.code || error.message);
+        return sendError(res, 503, "payment-audit-unavailable", "Chưa thể tải lịch sử đối soát. Vui lòng thử lại.");
+    }
+}
+
 async function lookupOrder(req, res) {
     try {
         const db = getAdminFirestore();
@@ -845,6 +1004,8 @@ async function submitReview(req, res) {
 module.exports = async function handler(req, res) {
     res.setHeader("Cache-Control", "no-store");
     if (req.method === "POST") {
+        if (req.body?.action === "verify-qr-payment") return reconcileQrPayment(req, res);
+        if (req.body?.action === "record-late-qr-payment") return reconcileQrPayment(req, res, true);
         if (req.body?.action === "quote") return quoteOrder(req, res);
         if (req.body?.action === "lookup") return lookupOrder(req, res);
         if (req.body?.action === "review") return submitReview(req, res);
@@ -855,6 +1016,8 @@ module.exports = async function handler(req, res) {
         res.setHeader("Allow", "GET, POST");
         return sendError(res, 405, "method-not-allowed", "API đơn hàng chỉ chấp nhận phương thức GET hoặc POST.");
     }
+
+    if (req.query?.action === "payment-audit") return getQrPaymentAudit(req, res);
 
     if (req.query?.action === "expire") {
         const match = String(req.headers.authorization || "").match(/^Bearer\s+(.+)$/i);

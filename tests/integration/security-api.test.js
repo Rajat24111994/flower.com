@@ -48,9 +48,99 @@ test("tra cứu đơn: không lộ tên, số điện thoại, địa chỉ; ch�
 
     let status = 0;
     for (let attempt = 0; attempt < 25 && status !== 429; attempt += 1) {
-        status = (await h.callApi("orders", { body: { action: "lookup", id: `doan-${attempt}`, phone: "0908123456" } })).status;
+        status = (await h.callApi("orders", {
+            body: { action: "lookup", id: `doan-${attempt}`, phone: "0908123456" },
+            headers: { "x-real-ip": `198.51.100.${attempt + 1}` }
+        })).status;
     }
     assert.equal(status, 429, "phải chặn sau nhiều lần tra cứu");
+});
+
+test("đối soát QR chỉ qua API admin, kiểm tra số tiền và ghi audit bất biến", async () => {
+    const admin = await h.createUser("admin");
+    const placed = await h.placeOrder({ paymentMethod: "qr" });
+    const orderId = placed.body.order.id;
+    const orderRef = h.db().doc(`orders/${orderId}`);
+    const order = (await orderRef.get()).data();
+    const payload = {
+        action: "verify-qr-payment",
+        orderId,
+        amount: order.total,
+        reconciliationReference: "BANK-TRANSFER-001"
+    };
+
+    assert.equal((await h.callApi("orders", { body: payload })).status, 401);
+    const customer = await h.createUser();
+    assert.equal((await h.callApi("orders", { token: customer.token, body: payload })).status, 403);
+    const wrongAmount = await h.callApi("orders", { token: admin.token, body: { ...payload, amount: order.total + 1 } });
+    assert.equal(wrongAmount.status, 409);
+    assert.equal(wrongAmount.body.code, "payment-amount-mismatch");
+    assert.equal((await orderRef.get()).data().paymentVerified, false);
+
+    const verified = await h.callApi("orders", { token: admin.token, body: payload });
+    assert.equal(verified.status, 200, JSON.stringify(verified.body));
+    const paid = (await orderRef.get()).data();
+    assert.equal(paid.paymentVerified, true);
+    assert.equal(paid.paymentVerifiedBy, admin.uid);
+    assert.equal(paid.paymentReconciliationReference, payload.reconciliationReference);
+
+    const audit = await h.db().collection("orderPaymentAudit").where("orderId", "==", orderId).get();
+    assert.equal(audit.size, 1);
+    assert.equal(audit.docs[0].data().actorUid, admin.uid);
+    assert.equal(audit.docs[0].data().actorEmail, admin.email);
+    assert.equal(audit.docs[0].data().amountVnd, order.total);
+    assert.equal(audit.docs[0].data().reconciliationReference, payload.reconciliationReference);
+    assert.equal(audit.docs[0].data().action, "qr-payment-verified");
+    const auditResponse = await h.callApi("orders", {
+        method: "GET",
+        query: { action: "payment-audit", orderId },
+        token: admin.token
+    });
+    assert.equal(auditResponse.status, 200);
+    assert.equal(auditResponse.body.entries.length, 1);
+    assert.equal(auditResponse.body.entries[0].reconciliationReference, payload.reconciliationReference);
+    assert.equal((await h.callApi("orders", {
+        method: "GET",
+        query: { action: "payment-audit", orderId },
+        token: customer.token
+    })).status, 403);
+
+    const duplicate = await h.callApi("orders", { token: admin.token, body: payload });
+    assert.equal(duplicate.status, 409);
+    assert.equal((await h.db().collection("orderPaymentAudit").where("orderId", "==", orderId).get()).size, 1);
+});
+
+test("thanh toán QR đến sau khi đơn hủy được ghi nhận riêng, không dùng xác minh thường", async () => {
+    const admin = await h.createUser("admin");
+    const placed = await h.placeOrder({ paymentMethod: "qr" });
+    const orderId = placed.body.order.id;
+    const orderRef = h.db().doc(`orders/${orderId}`);
+    await orderRef.update({ reservationExpiresAt: h.Timestamp.fromMillis(Date.now() - 1000) });
+    await h.callApi("orders", {
+        method: "GET",
+        query: { action: "expire" },
+        headers: { authorization: "Bearer test-cron-secret" }
+    });
+    const order = (await orderRef.get()).data();
+    const basePayload = {
+        orderId,
+        amount: order.total,
+        reconciliationReference: "BANK-LATE-002"
+    };
+    const regular = await h.callApi("orders", {
+        token: admin.token, body: { ...basePayload, action: "verify-qr-payment" }
+    });
+    assert.equal(regular.status, 409);
+    const late = await h.callApi("orders", {
+        token: admin.token, body: { ...basePayload, action: "record-late-qr-payment" }
+    });
+    assert.equal(late.status, 200, JSON.stringify(late.body));
+    const updated = (await orderRef.get()).data();
+    assert.equal(updated.paymentVerified, true);
+    assert.equal(updated.latePayment, true);
+    const audit = await h.db().collection("orderPaymentAudit").where("orderId", "==", orderId).get();
+    assert.equal(audit.size, 1);
+    assert.equal(audit.docs[0].data().action, "qr-late-payment-recorded");
 });
 
 test("khách không tự đặt giá hay số lượng bất thường", async () => {

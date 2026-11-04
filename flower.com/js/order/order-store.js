@@ -5,11 +5,12 @@
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 20000);
     try {
-      const response = await fetch("/api/orders", { ...options, signal: controller.signal });
+      const { url, ...requestOptions } = options;
+      const response = await fetch(url || "/api/orders", { ...requestOptions, signal: controller.signal });
       const result = await response.json();
       return { response, result };
     } catch (cause) {
-      const error = new Error("Không nhận được phản hồi từ cửa hàng. Kiểm tra kết nối rồi thử lại; yêu cầu đặt hàng vẫn được giữ để tránh tạo trùng đơn.");
+      const error = new Error("Không nhận được phản hồi từ API đơn hàng. Kiểm tra kết nối rồi thử lại.");
       error.code = "order-network-error";
       error.cause = cause;
       throw error;
@@ -530,50 +531,65 @@
     });
   }
 
-  // Marks a QR transfer as received. Runs in a transaction so it cannot land on an order
-  // that the reservation cleanup has just cancelled and restocked.
-  async function verifyPayment(id) {
-    const { db, firestoreSdk } = await getFirebase();
-    const orderRef = firestoreSdk.doc(db, "orders", String(id));
-    await firestoreSdk.runTransaction(db, async (transaction) => {
-      const snapshot = await transaction.get(orderRef);
-      if (!snapshot.exists()) throw new Error("Không tìm thấy đơn hàng.");
-      const order = snapshot.data();
-      if (order.status === "Đã hủy" || inventoryStateOf(order) === "released") {
-        const error = new Error("Đơn này đã bị hủy (có thể do hết hạn giữ hàng) nên không xác nhận thanh toán được. Hãy khôi phục đơn trước nếu khách đã chuyển tiền.");
-        error.code = "order-cancelled";
-        throw error;
-      }
-      transaction.update(orderRef, {
-        paymentVerified: true,
-        paymentStatus: "Đã thanh toán",
-        paidAt: new Date().toISOString()
-      });
+  async function reconcileQrPayment(action, id, reconciliation) {
+    const { auth } = await getFirebase();
+    await auth.authStateReady();
+    if (!auth.currentUser) {
+      const error = new Error("Đăng nhập tài khoản quản trị để xác nhận thanh toán.");
+      error.code = "unauthenticated";
+      throw error;
+    }
+    const token = await auth.currentUser.getIdToken();
+    const { response, result } = await orderRequest({
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        action,
+        orderId: String(id),
+        amount: reconciliation.amount,
+        reconciliationReference: reconciliation.reconciliationReference
+      })
     });
+    if (!response.ok) {
+      const error = new Error(result.error || "Chưa thể ghi nhận đối soát thanh toán.");
+      error.code = result.code || "payment-reconciliation-unavailable";
+      throw error;
+    }
+    return result;
   }
 
-  // Records a QR transfer that arrived after the order was cancelled (usually by the 30-minute
-  // hold expiring), so the shop remembers to restore the order or refund the customer.
-  async function recordLatePayment(id) {
-    const { db, firestoreSdk } = await getFirebase();
-    const orderRef = firestoreSdk.doc(db, "orders", String(id));
-    await firestoreSdk.runTransaction(db, async (transaction) => {
-      const snapshot = await transaction.get(orderRef);
-      if (!snapshot.exists()) throw new Error("Không tìm thấy đơn hàng.");
-      const order = snapshot.data();
-      if (order.status !== "Đã hủy") {
-        const error = new Error("Đơn này chưa bị hủy. Hãy dùng nút “Xác nhận đã nhận tiền”.");
-        error.code = "order-changed";
-        throw error;
-      }
-      if (order.paymentVerified === true) return;
-      transaction.update(orderRef, {
-        paymentVerified: true,
-        paymentStatus: "Đã nhận tiền sau khi đơn bị hủy – cần khôi phục đơn hoặc hoàn tiền",
-        paidAt: new Date().toISOString(),
-        latePayment: true
-      });
+  function verifyPayment(id, reconciliation) {
+    return reconcileQrPayment("verify-qr-payment", id, reconciliation);
+  }
+
+  function recordLatePayment(id, reconciliation) {
+    return reconcileQrPayment("record-late-qr-payment", id, reconciliation);
+  }
+
+  async function getPaymentAudit(id) {
+    const { auth } = await getFirebase();
+    await auth.authStateReady();
+    if (!auth.currentUser) {
+      const error = new Error("Đăng nhập tài khoản quản trị để xem lịch sử đối soát.");
+      error.code = "unauthenticated";
+      throw error;
+    }
+    const token = await auth.currentUser.getIdToken();
+    const { response, result } = await orderRequest({
+      url: `/api/orders?action=payment-audit&orderId=${encodeURIComponent(String(id))}`,
+      method: "GET",
+      headers: { Accept: "application/json", Authorization: `Bearer ${token}` }
     });
+    if (!response.ok) {
+      const error = new Error(result.error || "Chưa thể tải lịch sử đối soát.");
+      error.code = result.code || "payment-audit-unavailable";
+      throw error;
+    }
+    return result.entries;
   }
 
   async function remove(id) {
@@ -622,6 +638,7 @@
     update,
     verifyPayment,
     recordLatePayment,
+    getPaymentAudit,
     remove
   };
 })(typeof window !== "undefined" ? window : globalThis);

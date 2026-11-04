@@ -51,9 +51,9 @@ flowchart LR
 | Tài khoản | `login.*`, `account.*`, `forgot-password.*` | Đăng ký, đăng nhập, khôi phục mật khẩu, hồ sơ |
 | Tiền tệ | `currency.js` | Định dạng giá VND; mọi giá lưu là số nguyên VND (ví dụ `450000`) |
 | Liên hệ | `contact-tools.js/.css` | Thanh liên hệ Facebook và Zalo (ẩn trên trang quản trị) |
-| Quản trị | `admin.html`, `admin.js`, `admin.css` | Sản phẩm, danh mục, ưu đãi, cấu hình khu vực/phí giao, đơn hàng, xác minh QR, doanh thu, đánh giá, lời nhắn, người dùng |
+| Quản trị | `admin.html`, `admin.js`, `admin.css` | Sản phẩm, danh mục, ưu đãi, cấu hình khu vực/phí giao, đơn hàng, xác minh QR và xem audit đối soát, doanh thu, đánh giá, lời nhắn, người dùng |
 | Owner | `owner.html`, `owner.js` | Cấp hoặc gỡ quyền admin |
-| API | `api/admin/users.js`, `api/owner/users.js`, `api/delivery-zones.js`, `api/orders.js`, `lib/firebase-admin.js` | Quản lý khu vực bằng quyền admin, báo giá/tạo đơn authoritative, tra cứu đơn khách bằng mã và số điện thoại |
+| API | `api/admin/users.js`, `api/owner/users.js`, `api/delivery-zones.js`, `api/orders.js`, `lib/firebase-admin.js` | Quản lý khu vực bằng quyền admin, báo giá/tạo đơn authoritative, tra cứu đơn khách và đối soát thanh toán qua API có xác thực |
 
 ## Dữ liệu
 
@@ -67,6 +67,7 @@ flowchart LR
 | Tài khoản Firebase, vai trò | Firebase Authentication (custom claims) | ✅ |
 | Giỏ hàng, yêu thích | `localStorage.cart`, `localStorage.wish` | ❌ |
 | Đơn hàng mới | `/api/orders` xác minh rồi ghi Firestore `orders` | ✅ |
+| Audit đối soát QR | `/api/orders` ghi/đọc `orderPaymentAudit`; Security Rules chặn truy cập từ client | ✅ |
 | Đánh giá trong trang quản trị (phản hồi, hoàn thành) | Firestore `reviews` | ✅ |
 | Lời nhắn của khách và câu trả lời | Trường `orderNote`, `orderNoteReply`, `orderNoteCompletedAt` của đơn trong `orders` | ✅ |
 | Phản hồi cũ trên trình duyệt | Firestore `messages` (chuyển khi quản trị đăng nhập) | ✅ |
@@ -98,13 +99,13 @@ Phản hồi cũ trong `localStorage.flowerMessages` được chuyển sang Fire
 | Đã giao | Đơn đã giao thành công |
 | Đã hủy | Đơn bị hủy hoặc giao thất bại |
 
-Admin có thể chuyển đơn sang bất kỳ trạng thái nào. Các tên trạng thái cũ (ví dụ "Đã vận chuyển", "Giao hàng thất bại") được tự động chuyển sang tên mới tương ứng.
+Admin có thể chuyển đơn sang các trạng thái giao hàng. Security Rules chỉ cho trình duyệt cập nhật các trường vận hành nằm trong danh sách cho phép; trạng thái xác minh thanh toán chỉ do API máy chủ ghi. Các tên trạng thái cũ (ví dụ "Đã vận chuyển", "Giao hàng thất bại") được tự động chuyển sang tên mới tương ứng.
 
-Đơn mới được gửi tới `/api/orders`. Backend chỉ nhận mã sản phẩm, số lượng và thông tin giao hàng; tự đọc giá, tồn kho, ưu đãi từ Firestore, tính lại tổng tiền và dành tồn kho trong cùng một transaction trước khi ghi đơn. Hệ thống giữ hàng 30 phút với QR chưa xác minh và 24 giờ với COD; đơn hết hạn hoặc bị hủy sẽ được hoàn kho bằng transaction. QR đã xác minh giữ hàng đến khi hoàn tất hoặc hủy đơn. Đơn đã giao chốt phần tồn kho đã bán, không hoàn kho khi dọn đơn. Việc dọn chạy khi báo giá/đặt hàng, lúc quản trị mở dashboard và theo lịch Vercel. Khách đã đăng nhập chỉ đọc được đơn có UID của mình; khách chưa đăng nhập tra cứu qua API bằng mã đơn và số điện thoại. Chỉ tài khoản có claim `admin: true` được xem danh sách, cập nhật hoặc xóa đơn. Dữ liệu đơn cũ trong `localStorage.flowerOrders` không tự động chuyển lên Firestore.
+Đơn mới được gửi tới `/api/orders`. Backend chỉ nhận mã sản phẩm, số lượng và thông tin giao hàng; tự đọc giá, tồn kho, ưu đãi từ Firestore, tính lại tổng tiền và dành tồn kho trong cùng một transaction trước khi ghi đơn. Hệ thống giữ hàng 30 phút với QR chưa xác minh và 24 giờ với COD; đơn hết hạn hoặc bị hủy sẽ được hoàn kho bằng transaction. QR đã xác minh giữ hàng đến khi hoàn tất hoặc hủy đơn. Đơn đã giao chốt phần tồn kho đã bán, không hoàn kho khi dọn đơn. Việc dọn chạy khi báo giá/đặt hàng, lúc quản trị mở dashboard, theo GitHub Actions mỗi 15 phút và theo lịch Vercel hằng ngày làm dự phòng. Trên Vercel Hobby, cron chỉ chạy tối đa một lần mỗi ngày; cần cấu hình `FLOWER_APP_URL` và `CRON_SECRET` cho GitHub Actions như hướng dẫn tại [`../ADMIN-SETUP.md`](../ADMIN-SETUP.md). Khách đã đăng nhập chỉ đọc được đơn có UID của mình; khách chưa đăng nhập tra cứu qua API bằng mã đơn và số điện thoại. Chỉ tài khoản có claim `admin: true` được xem danh sách, cập nhật hoặc xóa đơn. Dữ liệu đơn cũ trong `localStorage.flowerOrders` không tự động chuyển lên Firestore.
 
 Khu vực giao hàng được quản trị viên cấu hình thủ công trong mục **Giao hàng**; không có danh sách địa bàn hoặc mức phí mẫu. Mỗi khu vực gồm tỉnh/thành, quận/huyện, trạng thái phục vụ và phí VND (mặc định khi thêm là 0 ₫). Khách chỉ chọn được khu vực đang bật. Nếu chưa có khu vực bật, checkout giải thích cấu hình cần thiết và không cho gửi đơn. `/api/orders` đọc khu vực/fee từ Firestore để báo giá và kiểm tra lại trong transaction khi tạo đơn; số phí từ trình duyệt không được tin cậy. Lịch dùng múi giờ `Asia/Ho_Chi_Minh`, nhận giao trong ngày trước 15:00, với các khung 08:00–11:00, 11:00–14:00, 14:00–17:00 và 17:00–20:00.
 
-Đơn QR ở trạng thái chờ xác minh cho đến khi admin đối chiếu sao kê và bấm “Xác nhận đã nhận tiền”. Thao tác này đặt `paymentVerified: true`, `paymentStatus: "Đã thanh toán"` và `paidAt`; chỉ admin được ghi các trường này (Security Rules). Đơn đã xác minh không bị dọn khi hết thời gian giữ hàng và được tính vào doanh thu sau khi giao. Dự án chưa tích hợp API/webhook ngân hàng nên chưa có đối soát tự động.
+Đơn QR ở trạng thái chờ xác minh cho đến khi admin đối chiếu số tiền với sao kê, nhập mã giao dịch ngân hàng và bấm xác nhận. Trình duyệt gửi yêu cầu tới API; máy chủ kiểm tra ID token đã thu hồi, quyền admin hiện hành, phương thức QR, trạng thái đơn và số tiền chính xác rồi cập nhật đơn trong transaction. API đồng thời tạo bản ghi trong `orderPaymentAudit`; Security Rules chặn mọi thao tác đọc/ghi trực tiếp lên bộ sưu tập audit và không cho client tự sửa trạng thái thanh toán. Bản ghi lưu người xác nhận, thời điểm, số tiền, nội dung chuyển khoản và mã giao dịch đối soát. Thanh toán đến sau khi đơn bị hủy có thao tác riêng và cũng được audit để cửa hàng xử lý khôi phục hoặc hoàn tiền. Đơn đã xác minh không bị dọn khi hết thời gian giữ hàng và được tính vào doanh thu sau khi giao. Dự án chưa tích hợp API/webhook ngân hàng nên chưa có đối soát tự động.
 
 Tra cứu công khai gửi mã đơn và số điện thoại bằng `POST`; backend giới hạn 20 lượt mỗi IP trong 10 phút, lưu khóa IP dưới dạng HMAC và tự xóa bản ghi giới hạn sau 24 giờ. Kết quả công khai chỉ gồm mã đơn, trạng thái, thời gian dự kiến và lịch sử trạng thái; địa chỉ, số điện thoại, người nhận, sản phẩm và thông tin thanh toán chỉ được đọc khi khách đăng nhập đúng tài khoản sở hữu đơn. Mã đơn không khớp và số điện thoại không khớp cùng trả về một lỗi.
 

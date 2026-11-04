@@ -1162,6 +1162,9 @@ function renderOrderCard(order, showCompletionAction = true) {
                        ${order.paymentMethod === "qr" && order.paymentVerified !== true && normalizeOrderStatus(order.status) === "Đã hủy"
                            ? `<button class="secondary-btn record-late-payment" data-order-id="${escapeHtml(order.id)}" type="button">Ghi nhận tiền chuyển trễ</button>`
                            : ""}
+                       ${order.paymentMethod === "qr" && order.paymentVerified === true
+                           ? `<button class="secondary-btn payment-audit" data-order-id="${escapeHtml(order.id)}" type="button">Lịch sử đối soát</button>`
+                           : ""}
                        ${showCompletionAction ? renderCompletionAction("orders", order) : ""}
                    </div>
                </div>
@@ -1650,11 +1653,16 @@ async function verifyOrderPayment(orderId) {
        "? Chỉ xác nhận sau khi đã kiểm tra sao kê ngân hàng."
    );
    if (!confirmed) return;
+   const reconciliationReference = window.prompt("Nhập mã giao dịch trên sao kê ngân hàng:");
+   if (!reconciliationReference?.trim()) return;
    try {
-       await window.FlowerOrderStore.verifyPayment(orderId);
+       await window.FlowerOrderStore.verifyPayment(orderId, {
+           amount: Number(order.total),
+           reconciliationReference: reconciliationReference.trim()
+       });
    } catch (error) {
-       console.error("Không thể xác nhận thanh toán trên Firestore:", error);
-       alert(error.code === "order-cancelled" ? error.message : "Chưa thể xác nhận thanh toán. Hãy thử lại sau.");
+       console.error("Không thể xác nhận thanh toán:", error);
+       alert(error.code ? error.message : "Chưa thể xác nhận thanh toán. Hãy thử lại sau.");
    }
 }
 
@@ -1667,12 +1675,42 @@ async function recordLateOrderPayment(orderId) {
        "?\n\nSau đó hãy khôi phục đơn (chọn lại trạng thái “Chờ xác nhận”) hoặc hoàn tiền cho khách."
    );
    if (!confirmed) return;
+   const reconciliationReference = window.prompt("Nhập mã giao dịch trên sao kê ngân hàng:");
+   if (!reconciliationReference?.trim()) return;
    try {
-       await window.FlowerOrderStore.recordLatePayment(orderId);
+       await window.FlowerOrderStore.recordLatePayment(orderId, {
+           amount: Number(order.total),
+           reconciliationReference: reconciliationReference.trim()
+       });
        alert("Đã ghi nhận tiền chuyển trễ. Đơn được đánh dấu cần khôi phục hoặc hoàn tiền.");
    } catch (error) {
        console.error("Không thể ghi nhận thanh toán trễ:", error);
        alert(error.code ? error.message : "Chưa thể ghi nhận thanh toán. Hãy thử lại sau.");
+   }
+}
+
+async function viewOrderPaymentAudit(orderId) {
+   try {
+       const entries = await window.FlowerOrderStore.getPaymentAudit(orderId);
+       if (!entries.length) {
+           alert("Chưa có lịch sử đối soát cho đơn này.");
+           return;
+       }
+       const lines = entries.map((entry) => {
+           const action = entry.action === "qr-late-payment-recorded" ? "Ghi nhận thanh toán trễ" : "Xác nhận thanh toán";
+           const timestamp = entry.createdAt ? new Date(entry.createdAt).toLocaleString("vi-VN") : "Chưa có thời gian";
+           return [
+               `${action} · ${timestamp}`,
+               `Người xác nhận: ${entry.actorEmail || entry.actorUid}`,
+               `Số tiền: ${moneyFormat(entry.amountVnd)}`,
+               `Mã giao dịch ngân hàng: ${entry.reconciliationReference}`,
+               `Nội dung chuyển khoản: ${entry.paymentReference || "Không có"}`
+           ].join("\n");
+       });
+       alert(lines.join("\n\n"));
+   } catch (error) {
+       console.error("Không thể tải lịch sử đối soát thanh toán:", error);
+       alert(error.code ? error.message : "Chưa thể tải lịch sử đối soát. Hãy thử lại sau.");
    }
 }
 
@@ -2128,6 +2166,12 @@ main.addEventListener("click", (event) => {
    const verifyPayment = event.target.closest(".verify-payment");
    if (verifyPayment) {
        verifyOrderPayment(verifyPayment.dataset.orderId);
+       return;
+   }
+
+   const paymentAudit = event.target.closest(".payment-audit");
+   if (paymentAudit) {
+       viewOrderPaymentAudit(paymentAudit.dataset.orderId);
        return;
    }
 

@@ -66,7 +66,7 @@ FlowerFlow là website bán hoa gồm ba lớp:
 | Sản phẩm | Thêm, sửa, xóa, cập nhật tồn kho; đồng bộ lên Firestore theo thời gian thực |
 | Danh mục và ưu đãi | Quản lý danh mục hoa và chương trình khuyến mãi |
 | Đơn hàng | Xem đơn của mọi khách theo thời gian thực, cập nhật trạng thái (Chờ xác nhận, Đang giao, Đã giao, Đã hủy) |
-| Xác minh thanh toán | Bấm “Xác nhận đã nhận tiền” cho đơn QR sau khi đối chiếu sao kê; chỉ đơn đã xác minh mới tính vào doanh thu |
+| Xác minh thanh toán | Đối chiếu đúng số tiền, nhập mã giao dịch ngân hàng; API kiểm tra quyền và ghi audit người xác nhận/thời gian/thông tin đối soát |
 | Doanh thu | Báo cáo doanh thu theo hôm nay, theo tháng, toàn thời gian hoặc khoảng ngày tùy chọn |
 | Đánh giá và lời nhắn | Trả lời, đánh dấu hoàn thành hoặc xóa đánh giá và lời nhắn khách để lại khi đặt hàng |
 | Người dùng | Danh sách tài khoản Firebase và nhà cung cấp đăng nhập (qua API bảo vệ) |
@@ -228,6 +228,7 @@ Mỗi lần đổi vai trò, refresh token của người dùng bị thu hồi �
 Dự án đang ở giai đoạn **v0.1.0 (chưa phát hành)**. Trước khi vận hành thật, cần lưu ý:
 
 - **Thanh toán QR chưa có bước đối soát tự động.** Admin cần tự kiểm tra sao kê ngân hàng rồi bấm “Xác nhận đã nhận tiền” trước khi đơn hết thời gian giữ hàng (30 phút).
+- **Vercel Hobby chỉ hỗ trợ cron hằng ngày.** Cần cấu hình GitHub Actions `FLOWER_APP_URL` và `CRON_SECRET` theo [`ADMIN-SETUP.md`](ADMIN-SETUP.md) để chạy cleanup mỗi 15 phút; cron Vercel hằng ngày chỉ là dự phòng.
 - Dữ liệu cũ chỉ lưu trong `localStorage` (đơn hàng, đánh giá, lời nhắn trước khi có backend) không được chuyển lên Firestore. Phân loại cũ được tải lên ở lần đầu admin mở trang quản trị.
 - **Chế độ tài khoản demo** (dùng khi Firebase chưa bật Email/Password) lưu mật khẩu không mã hóa trong `localStorage`. Không dùng mật khẩu thật ở chế độ này.
 - Giỏ hàng và danh sách yêu thích chỉ lưu cục bộ theo trình duyệt.

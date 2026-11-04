@@ -23,8 +23,15 @@ test.beforeEach(async () => {
     await env.withSecurityRulesDisabled(async (context) => {
         const db = context.firestore();
         await setDoc(doc(db, "products/1"), { id: 1, title: "Hoa", price: 10, quantity: 5 });
-        await setDoc(doc(db, "orders/o1"), { uid: "alice", phone: "0908123456", status: "Chờ xác nhận", total: 100 });
+        await setDoc(doc(db, "orders/o1"), {
+            uid: "alice", phone: "0908123456", status: "Chờ xác nhận", total: 100,
+            paymentMethod: "qr", paymentVerified: false, paymentStatus: "Chờ xác minh thanh toán"
+        });
         await setDoc(doc(db, "orders/o2"), { uid: "bob", phone: "0911222333", status: "Chờ xác nhận", total: 100 });
+        await setDoc(doc(db, "orders/cod1"), {
+            uid: "alice", status: "Đang giao", paymentMethod: "cod",
+            paymentStatus: "Thanh toán khi nhận hàng", paymentVerified: false, paidAt: ""
+        });
         await setDoc(doc(db, "reviews/r1"), { productIds: ["1"], customerName: "Alice", authorUid: "alice", rating: 5, comment: "Đẹp", moderationStatus: "approved" });
         await setDoc(doc(db, "reviews/pending"), { productIds: ["1"], customerName: "Alice", authorUid: "alice", rating: 1, comment: "Chưa hài lòng", photoIds: ["photo"], moderationStatus: "pending" });
         await setDoc(doc(db, "metadata/activePromotions"), { items: [] });
@@ -72,6 +79,21 @@ test("đơn hàng: admin xem và cập nhật được, admin đã bị thu hồ
     await assertSucceeds(getDocs(collection(admin(), "orders")));
     await assertSucceeds(updateDoc(doc(admin(), "orders/o1"), { status: "Đang giao" }));
     await assertFails(getDocs(collection(revokedAdmin(), "orders")));
+});
+
+test("đơn hàng: admin không thể tự xác minh thanh toán hoặc thêm trường tùy ý", async () => {
+    await assertFails(updateDoc(doc(admin(), "orders/o1"), {
+        paymentVerified: true, paymentStatus: "Đã thanh toán", paidAt: "2026-01-01T00:00:00.000Z"
+    }));
+    await assertFails(updateDoc(doc(admin(), "orders/o1"), { paymentStatus: "Đã thanh toán" }));
+    await assertFails(updateDoc(doc(admin(), "orders/o1"), { paymentReconciliationReference: "BANK-123" }));
+    await assertFails(updateDoc(doc(admin(), "orders/o1"), { arbitraryAdminField: true }));
+    await assertSucceeds(updateDoc(doc(admin(), "orders/cod1"), {
+        status: "Đã giao", paymentStatus: "Đã thanh toán", paidAt: "2026-01-01T00:00:00.000Z"
+    }));
+    await assertFails(getDoc(doc(admin(), "orderPaymentAudit/audit1")));
+    await assertFails(setDoc(doc(admin(), "orderPaymentAudit/audit1"), { action: "fake" }));
+    await assertFails(updateDoc(doc(admin(), "orderPaymentAudit/audit1"), { action: "changed" }));
 });
 
 test("đánh giá: ai cũng đọc được, khách không ghi trực tiếp được", async () => {

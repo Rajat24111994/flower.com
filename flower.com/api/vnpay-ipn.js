@@ -36,16 +36,24 @@ module.exports = async function handler(req, res) {
             const attemptSnapshot = await transaction.get(attemptRef);
             if (!attemptSnapshot.exists) return { code: "01", message: "Order not found" };
             const attempt = attemptSnapshot.data();
-            const orderRef = db.collection("orders").doc(String(attempt.orderId || ""));
+            if (typeof attempt.orderId !== "string" || !attempt.orderId
+                || !Number.isSafeInteger(attempt.amount) || attempt.amount <= 0
+                || !Number.isSafeInteger(attempt.amount * 100)) {
+                return { code: "01", message: "Order not found" };
+            }
+            const orderRef = db.collection("orders").doc(attempt.orderId);
             const orderSnapshot = await transaction.get(orderRef);
             if (!orderSnapshot.exists) return { code: "01", message: "Order not found" };
             const order = orderSnapshot.data();
+            if (order.paymentMethod !== "vnpay") return { code: "01", message: "Order not found" };
             if (String(params.vnp_TmnCode || "") !== secrets.tmnCode) return { code: "97", message: "Invalid signature" };
             const amount = String(params.vnp_Amount || "");
             if (params.vnp_CurrCode !== "VND"
                 || !/^\d+$/.test(amount)
                 || !Number.isSafeInteger(Number(amount))
                 || Number(amount) !== attempt.amount * 100
+                || !Number.isSafeInteger(order.total)
+                || !Number.isSafeInteger(order.total * 100)
                 || Number(amount) !== order.total * 100) {
                 return { code: "04", message: "Invalid amount" };
             }
