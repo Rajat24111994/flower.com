@@ -28,7 +28,8 @@ function review(storage, store) {
         const values = options.storage === "session" ? storage.sessionStorage : storage;
         delete values[key];
         return true;
-      }
+      },
+      countCartUnits: (cart) => cart.reduce((total, item) => total + Number(item.quantity || 1), 0)
     },
     window: { FlowerOrderStore: store, location: { assign() {} } },
     alert() {}, console: { error() {} },
