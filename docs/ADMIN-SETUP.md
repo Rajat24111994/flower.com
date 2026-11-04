@@ -51,7 +51,7 @@ When upgrading an existing deployment, keep this order so current admins keep ac
    npm run sync-admin-roles
    ```
 
-3. Deploy the rules: `firebase deploy --only firestore:rules`.
+3. Deploy the rules and indexes: `firebase deploy --only firestore:rules,firestore:indexes`.
 
 `npm run set-admin` and `npm run set-owner` also write the document.
 

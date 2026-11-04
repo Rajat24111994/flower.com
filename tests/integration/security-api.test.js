@@ -143,6 +143,57 @@ test("thanh toán QR đến sau khi đơn hủy được ghi nhận riêng, khô
     assert.equal(audit.docs[0].data().action, "qr-late-payment-recorded");
 });
 
+test("hoàn tiền cần quyền admin, chỉ áp dụng đơn đã trả và ghi audit idempotent", async () => {
+    const admin = await h.createUser("admin");
+    const customer = await h.createUser();
+    const placed = await h.placeOrder({ paymentMethod: "qr" });
+    const orderId = placed.body.order.id;
+    const orderRef = h.db().doc(`orders/${orderId}`);
+    const order = (await orderRef.get()).data();
+    const payload = {
+        action: "record-payment-refund",
+        orderId,
+        refundReference: "BANK-REFUND-003"
+    };
+
+    assert.equal((await h.callApi("orders", { body: payload })).status, 401);
+    assert.equal((await h.callApi("orders", { token: customer.token, body: payload })).status, 403);
+    const unpaid = await h.callApi("orders", { token: admin.token, body: payload });
+    assert.equal(unpaid.status, 409);
+    assert.equal(unpaid.body.code, "payment-not-complete");
+
+    assert.equal((await h.callApi("orders", {
+        token: admin.token,
+        body: {
+            action: "verify-qr-payment",
+            orderId,
+            amount: order.total,
+            reconciliationReference: "BANK-TRANSFER-003"
+        }
+    })).status, 200);
+    const refunded = await h.callApi("orders", { token: admin.token, body: payload });
+    assert.equal(refunded.status, 200, JSON.stringify(refunded.body));
+    assert.equal(refunded.body.amountVnd, order.total);
+    const updated = (await orderRef.get()).data();
+    assert.equal(updated.paymentRefunded, true);
+    assert.equal(updated.paymentRefundAmount, order.total);
+    assert.equal(updated.paymentRefundReference, payload.refundReference);
+    assert.equal(updated.paymentStatus, "Đã hoàn tiền");
+    assert.equal((await h.callApi("orders", { token: admin.token, body: payload })).body.code, "payment-already-refunded");
+    const publicOrder = await h.callApi("orders", {
+        body: { action: "lookup", id: orderId, phone: "0908123456" }
+    });
+    assert.equal(publicOrder.body.order.paymentStatus, "Đã hoàn tiền");
+    assert.equal(publicOrder.body.order.paymentMethod, "qr");
+    assert.equal(publicOrder.body.order.paymentRefundReference, undefined);
+
+    const audit = await h.db().collection("orderPaymentAudit").where("orderId", "==", orderId).get();
+    assert.equal(audit.size, 2);
+    assert.ok(audit.docs.some((entry) => entry.data().action === "payment-refunded"
+        && entry.data().amountVnd === order.total
+        && entry.data().reconciliationReference === payload.refundReference));
+});
+
 test("khách không tự đặt giá hay số lượng bất thường", async () => {
     for (const items of [[{ id: "1", quantity: -5 }], [{ id: "1", quantity: 1000 }], [{ id: "../adminRoles/x", quantity: 1 }]]) {
         assert.equal((await h.callApi("orders", { body: { action: "quote", items } })).status, 400, JSON.stringify(items));

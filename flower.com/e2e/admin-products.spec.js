@@ -198,12 +198,12 @@ test("admin uploads a product photo from the computer and the field gets its add
   await page.route("**/api/product-images", async (route) => {
     const request = route.request();
     uploads.push({ auth: request.headers().authorization, photo: request.postDataJSON().photo });
-    await route.fulfill({ status: 201, contentType: "application/json", body: JSON.stringify({ url: "/images/flower-02.webp" }) });
+    await route.fulfill({ status: 201, contentType: "application/json", body: JSON.stringify({ url: "/images/start.jpeg" }) });
   });
   await setupAdmin(page);
 
   await page.locator("#product-image-file").setInputFiles(`${__dirname}/../images/start.jpeg`);
-  await expect(page.locator("#product-image")).toHaveValue("/images/flower-02.webp");
+  await expect(page.locator("#product-image")).toHaveValue("/images/start.jpeg");
   await expect(page.locator("#product-image-upload-status")).toContainText("Đã tải ảnh lên");
   await expect(page.locator("#product-image-previews img").first()).toBeVisible();
   expect(uploads).toHaveLength(1);

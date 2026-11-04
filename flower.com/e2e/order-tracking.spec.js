@@ -64,3 +64,16 @@ test("account history follows the selected order through preparation and complet
   await expect(page.locator('[data-group="done"]')).toHaveAttribute("aria-selected", "true");
   await expect(page.locator("#order-progress li").nth(2).locator("time")).toHaveCount(0);
 });
+
+test("customer sees a completed refund instead of a pending payment status", async ({ page }) => {
+  await page.goto("/tracking.html");
+  await page.evaluate(() => {
+    window.testOrder.paymentMethod = "vnpay";
+    window.testOrder.paymentStatus = "Đã hoàn tiền";
+    window.testOrder.status = "Đã giao";
+  });
+  await page.locator("#tracking-order-id").fill("TRACK-1");
+  await page.locator("#tracking-phone").fill("0908123456");
+  await page.locator('#tracking-search button[type="submit"]').click();
+  await expect(page.locator("#result-payment-status")).toHaveText("Đã hoàn tiền");
+});

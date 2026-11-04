@@ -13,7 +13,6 @@
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "inventoryReserved", "order": "ASCENDING" },
-        { "fieldPath": "paymentVerified", "order": "ASCENDING" },
         { "fieldPath": "reservationExpiresAt", "order": "ASCENDING" }
       ]
     }

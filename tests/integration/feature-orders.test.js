@@ -5,10 +5,41 @@ const { randomUUID } = require("node:crypto");
 const h = require("./helpers");
 
 const { Timestamp } = h;
+const { FieldValue } = require(require.resolve("firebase-admin/firestore", { paths: [h.ROOT] }));
 
 test.beforeEach(async () => {
     await h.resetEmulators();
     await h.seedProducts();
+});
+
+test("giá hoặc mức giảm đổi sau quote thì từ chối tạo đơn theo tổng cũ", async () => {
+    const items = [{ id: "1", quantity: 1 }];
+    const quote = await h.callApi("orders", {
+        body: { action: "quote", items, deliveryZoneId: "test-zone" }
+    });
+    await h.db().doc("products/1").update({ price: 600000 });
+
+    const changedPrice = await h.placeOrder({
+        items,
+        overrides: { expectedTotals: quote.body.totals }
+    });
+    assert.equal(changedPrice.status, 409);
+    assert.equal(changedPrice.body.code, "price-changed");
+    assert.equal(await h.stockOf("1"), 10);
+
+    await h.setPromotions([{ id: "p20", name: "Giảm 20%", discountPercent: 20, active: true, allProducts: true, productIds: [] }]);
+    const promotionQuote = await h.callApi("orders", {
+        body: { action: "quote", items, promotionId: "p20", deliveryZoneId: "test-zone" }
+    });
+    await h.setPromotions([{ id: "p20", name: "Giảm 30%", discountPercent: 30, active: true, allProducts: true, productIds: [] }]);
+    const changedPromotion = await h.placeOrder({
+        items,
+        promotionId: "p20",
+        overrides: { expectedTotals: promotionQuote.body.totals }
+    });
+    assert.equal(changedPromotion.status, 409);
+    assert.equal(changedPromotion.body.code, "price-changed");
+    assert.equal(await h.stockOf("1"), 10);
 });
 
 test("báo giá trả tổng tiền, giá từng sản phẩm và tồn kho", async () => {
@@ -170,6 +201,48 @@ test("đơn QR quá 30 phút chưa trả tiền: tự hủy và trả hàng về
     assert.equal(order.status, "Đã hủy");
     assert.equal(order.inventoryState, "released");
     assert.equal(await h.stockOf("3"), 10);
+});
+
+test("cleanup xử lý đơn QR legacy thiếu paymentVerified và chỉ hoàn kho một lần", async () => {
+    const result = await h.placeOrder({ items: [{ id: "3", quantity: 1 }], paymentMethod: "qr" });
+    const orderRef = h.db().doc(`orders/${result.body.order.id}`);
+    await orderRef.update({
+        paymentVerified: FieldValue.delete(),
+        reservationExpiresAt: Timestamp.fromMillis(Date.now() - 1000)
+    });
+
+    const cleanupResults = await Promise.all([1, 2].map(() => h.callApi("orders", {
+        method: "GET",
+        query: { action: "expire" },
+        headers: { authorization: ["Bearer", process.env.CRON_SECRET].join(" ") }
+    })));
+
+    assert.equal(cleanupResults.reduce((sum, cleanup) => sum + cleanup.body.released, 0), 1);
+    assert.equal((await orderRef.get()).data().status, "Đã hủy");
+    assert.equal(await h.stockOf("3"), 10);
+});
+
+test("cleanup không hủy đơn legacy đã thanh toán khi paymentVerified bị thiếu", async () => {
+    const result = await h.placeOrder({ paymentMethod: "qr" });
+    const orderRef = h.db().doc(`orders/${result.body.order.id}`);
+    await orderRef.update({
+        paymentVerified: FieldValue.delete(),
+        paymentStatus: "Đã thanh toán",
+        reservationExpiresAt: Timestamp.fromMillis(Date.now() - 1000)
+    });
+
+    const cleanup = await h.callApi("orders", {
+        method: "GET",
+        query: { action: "expire" },
+        headers: { authorization: ["Bearer", process.env.CRON_SECRET].join(" ") }
+    });
+
+    const order = (await orderRef.get()).data();
+    assert.equal(cleanup.body.released, 0);
+    assert.equal(order.status, "Chờ xác nhận");
+    assert.equal(order.inventoryReserved, true);
+    assert.equal(order.reservationExpiresAt, undefined);
+    assert.equal(await h.stockOf("1"), 9);
 });
 
 test("đơn QR đã xác nhận tiền thì không bị hủy khi hết hạn", async () => {

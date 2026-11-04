@@ -178,7 +178,7 @@ Triển khai quy tắc bằng [Firebase CLI](https://firebase.google.com/docs/cl
 
 ```sh
 cd flower.com
-firebase deploy --only firestore:rules
+firebase deploy --only firestore:rules,firestore:indexes
 ```
 
 ### Biến môi trường (Vercel)
@@ -197,7 +197,7 @@ firebase deploy --only firestore:rules
 2. Đặt **Root Directory** là `flower.com`.
 3. Thêm các biến môi trường ở trên cho môi trường **Production** (và **Preview** nếu cần).
 4. Deploy, sau đó gán quyền Owner đầu tiên bằng script `npm run set-owner`.
-5. Triển khai Firestore Security Rules bằng `firebase deploy --only firestore:rules`.
+5. Triển khai Firestore Security Rules và composite indexes bằng `firebase deploy --only firestore:rules,firestore:indexes` (chọn đúng Firebase project trước khi chạy).
 
 Hướng dẫn từng bước, bao gồm cách gán quyền Owner bằng Application Default Credentials mà không cần tải key, có trong [`docs/ADMIN-SETUP.md`](docs/ADMIN-SETUP.md).
 
@@ -206,7 +206,7 @@ Hướng dẫn từng bước, bao gồm cách gán quyền Owner bằng Applica
 | Loại | Lệnh | Nội dung |
 | --- | --- | --- |
 | Unit test | `cd flower.com && npm test` | Tính giá, ưu đãi, dữ liệu đơn hàng, trạng thái đơn, giỏ hàng, danh mục, sản phẩm |
-| Coverage | `cd flower.com && npm run test:coverage` | Như trên, kèm tỉ lệ dòng/nhánh/hàm được test |
+| Coverage | `cd flower.com && npm run test:coverage` | Như trên, kèm tỉ lệ dòng/nhánh/hàm được test; CI yêu cầu tối thiểu 50% coverage dòng |
 | Feature, system, security | `cd tests && npm ci && npm run integration` | Đặt hàng, đăng nhập, quản lý, luồng xuyên hệ thống và Security Rules trên Firebase Emulator (cần Java 11+) |
 | Browser E2E | `cd flower.com && npm run test:e2e:emulator` | Xem sản phẩm, giỏ hàng, đăng nhập, đặt hàng trên desktop/mobile; Firebase Emulator và Playwright |
 | Smoke test sau deploy | `cd flower.com && SMOKE_URL=https://... npm run smoke` | Trang và API còn chạy, không đổi dữ liệu |
@@ -228,6 +228,7 @@ Mỗi lần đổi vai trò, refresh token của người dùng bị thu hồi �
 Dự án đang ở giai đoạn **v0.1.0 (chưa phát hành)**. Trước khi vận hành thật, cần lưu ý:
 
 - **Thanh toán QR chưa có bước đối soát tự động.** Admin cần tự kiểm tra sao kê ngân hàng rồi bấm “Xác nhận đã nhận tiền” trước khi đơn hết thời gian giữ hàng (30 phút).
+- Ghi nhận hoàn tiền chỉ hỗ trợ hoàn toàn bộ giá trị đơn sau khi cửa hàng đã chuyển tiền và nhập mã giao dịch. Không có chuyển tiền tự động, hoàn một phần hoặc nhiều khoản hoàn trên cùng đơn.
 - **Vercel Hobby chỉ hỗ trợ cron hằng ngày.** Cần cấu hình GitHub Actions `FLOWER_APP_URL` và `CRON_SECRET` theo [`ADMIN-SETUP.md`](ADMIN-SETUP.md) để chạy cleanup mỗi 15 phút; cron Vercel hằng ngày chỉ là dự phòng.
 - Dữ liệu cũ chỉ lưu trong `localStorage` (đơn hàng, đánh giá, lời nhắn trước khi có backend) không được chuyển lên Firestore. Phân loại cũ được tải lên ở lần đầu admin mở trang quản trị.
 - **Chế độ tài khoản demo** (dùng khi Firebase chưa bật Email/Password) lưu mật khẩu không mã hóa trong `localStorage`. Không dùng mật khẩu thật ở chế độ này.
