@@ -5,8 +5,8 @@ const path = require("node:path");
 const vm = require("node:vm");
 
 test("quản trị ghi bước chuẩn bị và hoàn thành kèm lịch sử và kiểm tra xung đột", async () => {
-    const { ORDER_STATUSES, normalizeOrderStatus } = await import("../flower.com/order-status.js");
-    const source = fs.readFileSync(path.join(__dirname, "../flower.com/admin.js"), "utf8");
+    const { ORDER_STATUSES, normalizeOrderStatus } = await import("../flower.com/js/order/order-status.js");
+    const source = fs.readFileSync(path.join(__dirname, "../flower.com/js/admin/admin.js"), "utf8");
     const handler = source.slice(source.indexOf("async function updateOrderStatus("), source.indexOf("async function verifyOrderPayment("));
     const order = { id: "test-order", status: "Chờ xác nhận", paymentMethod: "cod" };
     const calls = [];

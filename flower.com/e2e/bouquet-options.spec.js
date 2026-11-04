@@ -17,7 +17,7 @@ test("personalized bouquet keeps its price, color and message through cart and r
   await page.route("**/review-store.js*", (route) => route.fulfill({ contentType: "text/javascript",
     body: "window.FlowerReviewStore = { subscribe: (_id, callback) => { callback([]); return () => {}; } };" }));
   await page.route("**/order-store.js*", (route) => route.fulfill({ contentType: "text/javascript",
-    body: readFileSync(path.join(__dirname, "../order-store.js"), "utf8")
+    body: readFileSync(path.join(__dirname, "../js/order/order-store.js"), "utf8")
       + `\nwindow.FlowerOrderStore.getPromotions = async () => [];
         window.FlowerOrderStore.getDeliveryZones = async () => ({ configured: true, zones: [
           { id: "fixture-zone", province: "Test Province", district: "Test District", fee: 0, enabled: true }

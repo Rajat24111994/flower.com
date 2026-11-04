@@ -15,7 +15,7 @@ function browser(initial = {}) {
     const context = { localStorage, console };
     context.globalThis = context;
     vm.createContext(context);
-    const load = () => vm.runInContext(fs.readFileSync(path.join(__dirname, "../flower.com/safe-storage.js"), "utf8"), context);
+    const load = () => vm.runInContext(fs.readFileSync(path.join(__dirname, "../flower.com/js/core/safe-storage.js"), "utf8"), context);
     load();
     const read = (key) => (values.has(key) ? JSON.parse(values.get(key)) : null);
     const login = (uid) => { values.set("loggedUser", JSON.stringify({ uid, role: "customer" })); load(); };

@@ -9,7 +9,7 @@ function review(storage, store) {
   const element = () => ({ textContent: "", disabled: false, hidden: false,
     classList: { toggle() {} }, append() {}, addEventListener() {} });
   const context = vm.createContext({
-    FlowerBouquetOptions: require("../flower.com/bouquet-options.js"),
+    FlowerBouquetOptions: require("../flower.com/js/catalog/bouquet-options.js"),
     document: {
       getElementById(id) { if (!elements.has(id)) elements.set(id, element()); return elements.get(id); },
       querySelector() { return this.getElementById("confirm"); },
@@ -113,7 +113,7 @@ test("trang xác nhận hướng dẫn quay lại checkout khi chưa có đơn h
 });
 
 test("API báo giá lỗi mạng và quá thời gian trả lỗi có thể thử lại", async () => {
-  const code = fs.readFileSync(path.join(__dirname, "../flower.com/order-store.js"), "utf8");
+  const code = fs.readFileSync(path.join(__dirname, "../flower.com/js/order/order-store.js"), "utf8");
   for (const timeout of [false, true]) {
     let timer;
     const context = vm.createContext({

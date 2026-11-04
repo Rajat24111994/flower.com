@@ -1,8 +1,8 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const catalog = require("../flower.com/catalog-search.js");
-const { adjustment } = require("../flower.com/product-sales.js");
-const { normalizeProduct } = require("../flower.com/product-store.js");
+const catalog = require("../flower.com/js/catalog/catalog-search.js");
+const { adjustment } = require("../flower.com/js/catalog/product-sales.js");
+const { normalizeProduct } = require("../flower.com/js/catalog/product-store.js");
 const products = [
   { id: 1, title: "Bó hồng đỏ", description: "Hoa hồng đỏ", price: 450000, soldCount: 7, colors: ["đỏ"], occasions: ["sinh nhật"] },
   { id: 2, title: "Bó hướng dương", description: "Hoa hướng dương vàng", price: 600000, soldCount: 12, colors: ["vàng"], occasions: ["tốt nghiệp", "khai trương"] },
@@ -49,7 +49,7 @@ test("chỉ ghi nhận bán một lần khi giao, giảm khi nhận lại hàng 
 
 {
   // #30: the occasion filter lists the usual occasions plus every occasion the admin set on a product.
-  const { occasionOptions } = require("../flower.com/catalog-search.js");
+  const { occasionOptions } = require("../flower.com/js/catalog/catalog-search.js");
   const options = occasionOptions([
     { occasions: ["Valentine", "sinh nhật"] },
     { occasions: ["  Lễ tốt nghiệp  "] },

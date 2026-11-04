@@ -19,7 +19,7 @@ function inventory(db, products = []) {
         window: { localStorage: { getItem: (key) => data.get(key), setItem: (key, value) => data.set(key, value) }, dispatchEvent() {} },
         CustomEvent: class { constructor(type, options) { this.type = type; this.detail = options.detail; } }
     };
-    const source = fs.readFileSync(path.join(h.ROOT, "product-store.js"), "utf8")
+    const source = fs.readFileSync(path.join(h.ROOT, "js/catalog/product-store.js"), "utf8")
         .replace("async function getFirebaseApi() {", "async function getFirebaseApi() { return __firebase;");
     new Function("window", "__firebase", "navigator", "CustomEvent", source)(
         context.window, context.__firebase, context.navigator, context.CustomEvent);

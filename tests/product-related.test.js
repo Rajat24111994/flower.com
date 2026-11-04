@@ -1,5 +1,5 @@
 const assert = require('assert');
-const { getRelatedProducts } = require('../flower.com/related-products.js');
+const { getRelatedProducts } = require('../flower.com/js/catalog/related-products.js');
 
 const current = {
   id: 'current',

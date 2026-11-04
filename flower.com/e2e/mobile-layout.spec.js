@@ -35,7 +35,7 @@ for (const width of [320, 390, 768]) {
     await page.route("**/review-store.js*", (route) => route.fulfill({ contentType: "text/javascript",
       body: "window.FlowerReviewStore = { subscribe: (_id, callback) => { callback([]); return () => {}; } };" }));
     await page.route("**/order-store.js*", (route) => route.fulfill({ contentType: "text/javascript",
-      body: readFileSync(path.join(__dirname, "../order-store.js"), "utf8") + "\nwindow.FlowerOrderStore.getPromotions = async () => [];" }));
+      body: readFileSync(path.join(__dirname, "../js/order/order-store.js"), "utf8") + "\nwindow.FlowerOrderStore.getPromotions = async () => [];" }));
     await page.route("**/api/products", (route) => route.fulfill({ json: { products: [product] } }));
     await page.route("**/api/orders", (route) => {
       const body = route.request().postDataJSON();

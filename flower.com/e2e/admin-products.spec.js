@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { createRequire } from "node:module";
 
-const { findDuplicateProductImages } = createRequire(__filename)("../product-store.js");
+const { findDuplicateProductImages } = createRequire(__filename)("../js/catalog/product-store.js");
 
 const products = [
   { id: 1, title: "Hoa hồng sắp hết", description: "Bó hoa đỏ", image: "./images/flower-01.webp", images: [], category: "Hoa sinh nhật", price: 250000, quantity: 3, status: "active" },

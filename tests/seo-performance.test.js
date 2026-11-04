@@ -34,7 +34,7 @@ for (const file of htmlFiles) {
   titles.add(title);
   descriptions.add(description);
   assert.match(html, /rel="icon"[^>]+favicon\.svg/i, `${file} must declare the favicon`);
-  assert.match(html, /href="\.\/accessibility\.css\?v=\d+"/i, `${file} must load shared keyboard focus styles`);
+  assert.match(html, /href="\.\/css\/core\/accessibility\.css\?v=\d+"/i, `${file} must load shared keyboard focus styles`);
 
   if (publicPages.has(file)) {
     assert.match(html, /rel="canonical"/i, `${file} must have a canonical URL`);
@@ -79,7 +79,7 @@ assert.match(homeImages[0], /fetchpriority="high"/i, "the hero image should be p
 assert.ok(homeImages.slice(1).every((image) => /loading="lazy"/i.test(image)), "below-the-fold homepage images should lazy-load");
 
 const productPage = fs.readFileSync(path.join(siteRoot, "product.html"), "utf8");
-const productScript = fs.readFileSync(path.join(siteRoot, "product.js"), "utf8");
+const productScript = fs.readFileSync(path.join(siteRoot, "js/catalog/product.js"), "utf8");
 const staticCatalogData = JSON.parse(productPage.match(/<script id="catalog-structured-data" type="application\/ld\+json">([\s\S]*?)<\/script>/i)?.[1]);
 assert.equal(staticCatalogData.itemListElement.length, productIds.length);
 assert.deepEqual(

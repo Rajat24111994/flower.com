@@ -1,5 +1,5 @@
 import { normalizeOrderStatus, orderStatusLabel, getOrderProgress } from "./order-status.js?v=2";
-import { validateFiles, preparePhotos } from "./review-images.js?v=1";
+import { validateFiles, preparePhotos } from "../review/review-images.js?v=1";
 
 let reviewSubmissionInProgress = false;
 let reviewPreviewUrls = [];

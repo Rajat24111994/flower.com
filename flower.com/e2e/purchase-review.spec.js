@@ -16,7 +16,7 @@ async function setup(page, role, reviews = []) {
     if (role !== "guest") localStorage.setItem("loggedUser", JSON.stringify({ uid: role, email: `${role}@example.test` }));
   }, { role, reviews });
   await page.route("**/store-header.js*", (route) => route.fulfill({ contentType: "text/javascript", body:
-    readFileSync(path.join(__dirname, "../store-header.js"), "utf8").replace("void verifyStoredSession();", "") }));
+    readFileSync(path.join(__dirname, "../js/core/store-header.js"), "utf8").replace("void verifyStoredSession();", "") }));
   await page.route("**/firebase-app.js", (route) => route.fulfill({ contentType: "text/javascript", body: "export const getApps = () => []; export const initializeApp = () => ({}); export const getApp = () => ({});" }));
   await page.route("**/firebase-auth.js", (route) => route.fulfill({ contentType: "text/javascript", body: `
     const user = window.testRole === "guest" ? null : {uid: window.testRole, email: "fixture@example.test", getIdToken: async () => "fixture-token", getIdTokenResult: async () => ({claims: { admin: window.testRole === "admin" }})};

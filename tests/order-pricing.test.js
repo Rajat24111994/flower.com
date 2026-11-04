@@ -7,7 +7,7 @@ const vm = require("node:vm");
 const { internals } = require("../flower.com/api/orders.js");
 
 const { priceCart, findPromotion } = internals;
-const { toVndPrice } = require("../flower.com/product-store.js");
+const { toVndPrice } = require("../flower.com/js/catalog/product-store.js");
 const catalog = require("../flower.com/flower.json").flower;
 
 function loadBrowserCurrency(selectedPromotionId = "", saved = {}) {
@@ -25,7 +25,7 @@ function loadBrowserCurrency(selectedPromotionId = "", saved = {}) {
         Intl
     };
     vm.createContext(context);
-    vm.runInContext(fs.readFileSync(path.join(__dirname, "../flower.com/currency.js"), "utf8"), context);
+    vm.runInContext(fs.readFileSync(path.join(__dirname, "../flower.com/js/core/currency.js"), "utf8"), context);
     context.writes = writes;
     return context;
 }

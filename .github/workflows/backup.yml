@@ -30,7 +30,7 @@ jobs:
           [ -n "$FIREBASE_SERVICE_ACCOUNT_JSON" ] || missing="$missing FIREBASE_SERVICE_ACCOUNT_JSON"
           [ -n "$BACKUP_PASSPHRASE" ] || missing="$missing BACKUP_PASSPHRASE"
           if [ -n "$missing" ]; then
-            echo "::error::Chưa cài secret:$missing. Vào Settings → Secrets and variables → Actions của repo để thêm (xem flower.com/BACKUP-RESTORE.md)."
+            echo "::error::Chưa cài secret:$missing. Vào Settings → Secrets and variables → Actions của repo để thêm (xem docs/BACKUP-RESTORE.md)."
             exit 1
           fi
       - uses: actions/checkout@v4

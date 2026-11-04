@@ -1,7 +1,7 @@
 import { mountReport } from "./admin-report-view.js?v=1";
 import { dateKey as reportDateKey } from "./admin-analytics.js?v=1";
-import { firebaseConfig } from "./firebase-config.js";
-import { ORDER_STATUSES, normalizeOrderStatus, orderStatusLabel } from "./order-status.js?v=2";
+import { firebaseConfig } from "../core/firebase-config.js";
+import { ORDER_STATUSES, normalizeOrderStatus, orderStatusLabel } from "../order/order-status.js?v=2";
 
 let productPage = document.getElementById("product_page");
 let categoriesPage = document.getElementById("categories_page");
@@ -1859,7 +1859,7 @@ async function loadFirebaseUsers(pageToken) {
        status.textContent = error.code === "permission-denied"
            ? "Tài khoản hiện tại không có quyền xem danh sách."
            : error.code === "admin-api-not-configured"
-               ? "API chưa được cấu hình khóa dịch vụ trong Vercel. Xem ADMIN-SETUP.md."
+               ? "API chưa được cấu hình khóa dịch vụ trong Vercel. Xem docs/ADMIN-SETUP.md."
                : "Không tải được danh sách tài khoản. Kiểm tra kết nối rồi thử lại.";
    } finally {
        refresh.disabled = false;

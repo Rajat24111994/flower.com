@@ -2,20 +2,20 @@
 <html lang="vi">
   <head>
     <meta charset="UTF-8" />
-    <script src="./safe-storage.js?v=2"></script>
+    <script src="./js/core/safe-storage.js?v=2"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="robots" content="noindex, nofollow">
     <meta name="description" content="Kiểm tra hoa đã chọn và tổng tiền trong giỏ hàng Flowerflow.">
     <link rel="icon" type="image/svg+xml" href="./favicon.svg">
     <title>Giỏ hàng</title>
-    <link rel="stylesheet" href="./store-header.css?v=3" />
-    <link rel="stylesheet" href="./cart.css?v=9" />
-    <link rel="stylesheet" href="./accessibility.css?v=1" />
-    <link rel="stylesheet" href="./store-footer.css?v=3" />
-  <link rel="stylesheet" href="./contact-tools.css?v=3">
+    <link rel="stylesheet" href="./css/core/store-header.css?v=3" />
+    <link rel="stylesheet" href="./css/order/cart.css?v=9" />
+    <link rel="stylesheet" href="./css/core/accessibility.css?v=1" />
+    <link rel="stylesheet" href="./css/core/store-footer.css?v=3" />
+  <link rel="stylesheet" href="./css/core/contact-tools.css?v=3">
   </head>
   <body>
-    <script src="./store-header.js?v=6"></script>
+    <script src="./js/core/store-header.js?v=6"></script>
 
     <main class="nav">
       <div id="product-container"></div>
@@ -50,10 +50,10 @@
       </div>
     </main>
 
-    <script src="./store-footer.js?v=4"></script>
-    <script src="./bouquet-options.js?v=1"></script>
-    <script src="./currency.js?v=11"></script>
-    <script src="./product-names.js?v=2"></script>
+    <script src="./js/core/store-footer.js?v=4"></script>
+    <script src="./js/catalog/bouquet-options.js?v=1"></script>
+    <script src="./js/core/currency.js?v=11"></script>
+    <script src="./js/core/product-names.js?v=2"></script>
     <script>
       // Same limit as the order API (api/orders.js MAX_QUANTITY_PER_PRODUCT).
       const MAX_QUANTITY_PER_PRODUCT = 50;
@@ -205,6 +205,6 @@
         })
         .catch((error) => console.warn("Không thể cập nhật tồn kho mới nhất:", error));
     </script>
-    <script defer src="./contact-tools.js?v=1"></script>
+    <script defer src="./js/core/contact-tools.js?v=1"></script>
   </body>
 </html>

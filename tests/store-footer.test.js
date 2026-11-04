@@ -53,7 +53,7 @@ for (const page of informationPages) {
   }
 }
 
-const footer = fs.readFileSync(path.join(root, "store-footer.js"), "utf8");
+const footer = fs.readFileSync(path.join(root, "js/core/store-footer.js"), "utf8");
 assert.match(footer, /Tất cả sản phẩm/);
 assert.match(footer, /Theo dõi đơn hàng/);
 assert.match(footer, /Cần giúp chọn hoa/);
@@ -73,19 +73,19 @@ for (const page of informationPages) {
   assert.ok(fs.existsSync(path.join(root, page)), `${page} should resolve to an existing page`);
 }
 
-const footerStyles = fs.readFileSync(path.join(root, "store-footer.css"), "utf8");
+const footerStyles = fs.readFileSync(path.join(root, "css/core/store-footer.css"), "utf8");
 assert.match(footerStyles, /\.store-footer--checkout\s*\{[^}]*background:\s*#382a31/s);
 assert.match(footerStyles, /\.store-footer--checkout\s+\.store-footer-main\s*\{[^}]*repeat\(2,\s*minmax\(0,\s*1fr\)\)/s);
 assert.match(footerStyles, /@media \(max-width: 640px\)[\s\S]*?\.store-footer--checkout \.store-footer-main[\s\S]*?grid-template-columns: minmax\(0, 1fr\)/);
 
 for (const stylesheet of [
-  "account.css",
-  "forgot-password.css",
-  "homepage.css",
-  "login.css",
-  "product.css",
-  "store-footer.css",
-  "checkout.css"
+  "css/account/account.css",
+  "css/account/forgot-password.css",
+  "css/core/homepage.css",
+  "css/account/login.css",
+  "css/catalog/product.css",
+  "css/core/store-footer.css",
+  "css/order/checkout.css"
 ]) {
   const styles = fs.readFileSync(path.join(root, stylesheet), "utf8");
   if (styles.includes("Playfair Display")) {

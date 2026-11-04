@@ -12,7 +12,7 @@ Làm lần lượt từ trên xuống cho mỗi lần phát hành. Mục nào kh
 
 ## 2. Chuẩn bị bản phát hành
 
-- [ ] Viết `RELEASE_NOTES_vX.Y.Z.md`: tính năng mới, lỗi đã sửa, thay đổi cần thao tác tay, hạn chế còn lại.
+- [ ] Viết `docs/RELEASE_NOTES_vX.Y.Z.md`: tính năng mới, lỗi đã sửa, thay đổi cần thao tác tay, hạn chế còn lại.
 - [ ] Cập nhật mục "Hạn chế đã biết" trong `README.md` nếu có thay đổi.
 - [ ] Chạy trên máy:
   ```sh

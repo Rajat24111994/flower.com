@@ -5,7 +5,7 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function createShoppingStoreModule(root) {
   // Same limit as MAX_QUANTITY_PER_PRODUCT in api/orders.js: the order API refuses more.
   const MAX_QUANTITY_PER_PRODUCT = 50;
-  const bouquet = root.FlowerBouquetOptions || (typeof require === "function" ? require("./bouquet-options.js") : null);
+  const bouquet = root.FlowerBouquetOptions || (typeof require === "function" ? require("../catalog/bouquet-options.js") : null);
 
   class ShoppingStoreError extends Error {
     constructor(message, code, cause) {

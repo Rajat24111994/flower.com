@@ -1,4 +1,4 @@
-import { normalizeOrderStatus, orderStatusLabel, ORDER_STATUSES } from "./order-status.js?v=2";
+import { normalizeOrderStatus, orderStatusLabel, ORDER_STATUSES } from "../order/order-status.js?v=2";
 
 const dateFormatter = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Ho_Chi_Minh", year: "numeric", month: "2-digit", day: "2-digit" });
 export function dateKey(value) {

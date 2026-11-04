@@ -1,5 +1,5 @@
 const assert = require("node:assert/strict");
-const { getCategory, matchesCategory } = require("../flower.com/product-categories.js");
+const { getCategory, matchesCategory } = require("../flower.com/js/catalog/product-categories.js");
 
 const catalog = require("../flower.com/flower.json").flower;
 const birthdayProducts = catalog.filter((product) => matchesCategory(product, "birthday"));

@@ -3,7 +3,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 
 test("trạng thái đơn hàng chuẩn và trạng thái cũ", async () => {
-    const { ORDER_STATUSES, normalizeOrderStatus } = await import("../flower.com/order-status.js");
+    const { ORDER_STATUSES, normalizeOrderStatus } = await import("../flower.com/js/order/order-status.js");
     assert.deepEqual([...ORDER_STATUSES], ["Chờ xác nhận", "Đang chuẩn bị", "Đang giao", "Đã giao", "Đã hủy"]);
     assert.ok(Object.isFrozen(ORDER_STATUSES));
     for (const status of ORDER_STATUSES) assert.equal(normalizeOrderStatus(status), status);
@@ -19,7 +19,7 @@ test("trạng thái đơn hàng chuẩn và trạng thái cũ", async () => {
 });
 
 test("tiến độ bốn bước, đơn cũ và đơn hủy không tạo mốc cập nhật giả", async () => {
-    const { getOrderProgress, orderStatusLabel } = await import("../flower.com/order-status.js");
+    const { getOrderProgress, orderStatusLabel } = await import("../flower.com/js/order/order-status.js");
     assert.equal(orderStatusLabel("Đã giao"), "Hoàn thành");
     const order = { status: "Đang chuẩn bị", trackingHistory: [
         { status: "Chờ xác nhận", updatedAt: "2026-11-02T01:00:00Z" },
