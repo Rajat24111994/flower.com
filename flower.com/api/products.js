@@ -1,5 +1,18 @@
 const { getAdminAuth, getAdminFirestore, sendError, verifyRequest } = require("../lib/firebase-admin");
 const catalog = require("../flower.json").flower;
+const catalogById = new Map(catalog.map((product) => [String(product.id), product]));
+
+function isLegacyCatalogImage(value) {
+    const image = String(value || "").trim();
+    if (!image) return false;
+    try {
+        const pathname = new URL(image, "https://flowerflow.invalid").pathname;
+        return /\/img\/p\/GEN\/lgwt\/\d+\.jpg$/i.test(pathname)
+            || /^\/images\/flower-0[1-6]\.webp$/i.test(pathname);
+    } catch {
+        return false;
+    }
+}
 
 // Server-side access to the product catalog, for browsers that cannot reach Firestore directly
 // (blocked networks, offline Firestore client).
@@ -12,6 +25,16 @@ function serializeProduct(doc) {
     Object.keys(product).forEach((key) => {
         if (product[key] && typeof product[key].toDate === "function") product[key] = product[key].toDate().toISOString();
     });
+    const catalogProduct = catalogById.get(String(product.id));
+    if (catalogProduct && typeof product.title === "string" && product.title.includes("?")) {
+        product.title = catalogProduct.title;
+    }
+    if (catalogProduct && isLegacyCatalogImage(product.image)) {
+        product.image = catalogProduct.image;
+        if (Array.isArray(product.images)) {
+            product.images = product.images.filter((image) => !isLegacyCatalogImage(image));
+        }
+    }
     return product;
 }
 
