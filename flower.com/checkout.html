@@ -187,6 +187,7 @@
           <dl class="checkout-totals">
             <div><dt>Giá gốc</dt><dd id="originalprice">0 ₫</dd></div>
             <div><dt>Tiền giảm</dt><dd id="savings">0 ₫</dd></div>
+            <div><dt>Phí bó hoa tùy chỉnh</dt><dd id="bouquetWrappingCharge">0 ₫</dd></div>
             <div><dt>Phí giao hàng</dt><dd id="deliveryCharge">Chọn khu vực</dd></div>
             <div class="checkout-grand-total"><dt>Tổng tiền <small>(đã gồm VAT)</small></dt><dd id="total">0 ₫</dd></div>
           </dl>
@@ -202,7 +203,7 @@
   <script src="./js/core/store-footer.js?v=4"></script>
   <script src="./js/catalog/bouquet-options.js?v=1"></script>
   <script src="./js/core/currency.js?v=11"></script>
-  <script src="./js/order/order-store.js?v=19"></script>
+  <script src="./js/order/order-store.js?v=20"></script>
   <script>
   const CartContainer = document.getElementById("product-container");
   const checkoutForm = document.getElementById("checkout-form");
@@ -268,6 +269,7 @@
   });
   // Same limit as the order API (api/orders.js MAX_QUANTITY_PER_PRODUCT).
   const MAX_QUANTITY_PER_PRODUCT = 50;
+  const MAX_BOUQUET_STEMS = 50;
   let serverQuote = null;
   let quoteRequestId = 0;
   const paymentOnlinePanel = document.getElementById("payment-online-panel");
@@ -475,7 +477,11 @@
       0
     );
 
+    const bouquetNumbers = new Map();
     Cart.forEach((product) => {
+      if (product.customBouquetId && !bouquetNumbers.has(product.customBouquetId)) {
+        bouquetNumbers.set(product.customBouquetId, bouquetNumbers.size + 1);
+      }
       const itemQuantity = Math.max(1, Number(product.quantity) || 1);
       const card = document.createElement("article");
       const image = document.createElement("img");
@@ -491,6 +497,10 @@
       const stock = Number(product.stockQuantity);
       const hasStockLimit = Number.isFinite(stock) && stock >= 0;
       const requestedStock = FlowerBouquetOptions.demand(Cart, product.productId ?? product.id);
+      const requestedBouquetStems = product.customBouquetId
+        ? Cart.filter((item) => item.customBouquetId === product.customBouquetId)
+          .reduce((sum, item) => sum + Math.max(1, Number(item.quantity) || 1), 0)
+        : 0;
       const exceedsStock = hasStockLimit && requestedStock > stock;
 
       card.className = "checkout-item";
@@ -512,7 +522,9 @@
       increase.className = "quantity-button";
       increase.textContent = "+";
       increase.setAttribute("aria-label", `Tăng số lượng ${name.textContent}`);
-      increase.disabled = itemQuantity >= MAX_QUANTITY_PER_PRODUCT || (hasStockLimit && requestedStock >= stock);
+      increase.disabled = itemQuantity >= MAX_QUANTITY_PER_PRODUCT
+        || (hasStockLimit && requestedStock >= stock)
+        || (product.customBouquetId && requestedBouquetStems >= MAX_BOUQUET_STEMS);
       lineTotal.className = "checkout-item-total";
       lineTotal.textContent = formatVnd(Number(product.price) * itemQuantity);
       remove.type = "button";
@@ -525,6 +537,10 @@
           : item));
       });
       increase.addEventListener("click", () => {
+        if (product.customBouquetId && requestedBouquetStems >= MAX_BOUQUET_STEMS) {
+          checkoutMessage.textContent = `Mỗi bó tùy chỉnh tối đa ${MAX_BOUQUET_STEMS} cành.`;
+          return;
+        }
         if (itemQuantity >= MAX_QUANTITY_PER_PRODUCT) {
           checkoutMessage.textContent = `Mỗi lựa chọn bó hoa đặt tối đa ${MAX_QUANTITY_PER_PRODUCT} bó.`;
           return;
@@ -545,7 +561,10 @@
       details.append(name, unitPrice);
       const selectionSummary = document.createElement("p");
       selectionSummary.className = "bouquet-line-summary";
-      selectionSummary.textContent = FlowerBouquetOptions.summary(product);
+      const optionSummary = FlowerBouquetOptions.summary(product);
+      selectionSummary.textContent = product.customBouquetId
+        ? `Bó tùy chỉnh ${bouquetNumbers.get(product.customBouquetId)} · ${optionSummary}`
+        : optionSummary;
       details.append(selectionSummary);
       if (hasStockLimit) {
         const stockMessage = document.createElement("p");
@@ -593,7 +612,7 @@
 
     try {
       const quote = await window.FlowerOrderStore.quote(
-        Cart.map((item) => ({ id: item.id, productId: item.productId, size: item.size, color: item.color, cardMessage: item.cardMessage, personalNote: item.personalNote, quantity: Math.max(1, Number(item.quantity) || 1) })),
+        Cart.map((item) => ({ id: item.id, productId: item.productId, customBouquetId: item.customBouquetId, size: item.size, color: item.color, cardMessage: item.cardMessage, personalNote: item.personalNote, quantity: Math.max(1, Number(item.quantity) || 1) })),
         promotionSelect.value,
         selectedDeliveryZoneId
       );
@@ -614,6 +633,7 @@
       const totals = quote.totals;
       document.getElementById("originalprice").textContent = formatVnd(totals.subtotal);
       document.getElementById("savings").textContent = formatVnd(totals.savings);
+      document.getElementById("bouquetWrappingCharge").textContent = formatVnd(totals.wrappingFee || 0);
       document.getElementById("deliveryCharge").textContent = quote.deliveryZone
         ? formatVnd(totals.shippingFee || 0)
         : "Chọn khu vực";

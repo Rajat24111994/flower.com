@@ -40,7 +40,7 @@
   <script src="./js/core/store-footer.js?v=4"></script>
   <script src="./js/catalog/bouquet-options.js?v=1"></script>
   <script src="./js/core/currency.js?v=11"></script>
-  <script src="./js/order/order-store.js?v=19"></script>
+  <script src="./js/order/order-store.js?v=20"></script>
   <script>
     let CartContainer = document.getElementById("product-container");
     let pendingSubmission = FlowerSafeStorage.readJson("flowerPendingOrder", { fallback: null, storage: "session" });
@@ -100,7 +100,7 @@
       });
       const quotedTotals = pendingSubmission?.totals || checkoutData.quotedTotals || {};
       const shippingFee = Number(quotedTotals.shippingFee) || 0;
-      reviewTotals.textContent = `Phí giao hàng: ${formatVnd(shippingFee)} · Tổng dự kiến: ${formatVnd(quotedTotals.total || 0)} · Sẽ xác minh lại trước khi gửi đơn.`;
+      reviewTotals.textContent = `Phí bó hoa: ${formatVnd(quotedTotals.wrappingFee || 0)} · Phí giao hàng: ${formatVnd(shippingFee)} · Tổng dự kiến: ${formatVnd(quotedTotals.total || 0)} · Sẽ xác minh lại trước khi gửi đơn.`;
     }
     if (checkoutData?.paymentMethod === "qr") {
       paymentButton.textContent = "Gửi đơn hàng chờ xác minh";
@@ -152,7 +152,7 @@
         paymentMethod: checkoutData.paymentMethod,
         promotionId: checkoutData.promotionId || "",
         idempotencyKey: checkoutData.idempotencyKey,
-        items: Cart.map((item) => ({ id: item.id, productId: item.productId, size: item.size, color: item.color, cardMessage: item.cardMessage, personalNote: item.personalNote, quantity: Math.max(1, Number(item.quantity) || 1) }))
+        items: Cart.map((item) => ({ id: item.id, productId: item.productId, customBouquetId: item.customBouquetId, size: item.size, color: item.color, cardMessage: item.cardMessage, personalNote: item.personalNote, quantity: Math.max(1, Number(item.quantity) || 1) }))
       };
 
       let orderId;
@@ -170,7 +170,7 @@
       } catch (error) {
         console.error("Không thể lưu đơn hàng tập trung:", error);
         orderSubmissionInProgress = false;
-        if (["insufficient-stock", "product-unavailable", "price-changed", "invalid-checkout", "invalid-delivery-schedule", "delivery-zone-unavailable", "invalid-promotion", "note-too-long", "quantity-limit"].includes(error.code)) {
+        if (["insufficient-stock", "product-unavailable", "price-changed", "invalid-checkout", "invalid-delivery-schedule", "delivery-zone-unavailable", "invalid-promotion", "invalid-custom-bouquet", "bouquet-quantity-limit", "bouquet-wrapping-unavailable", "note-too-long", "quantity-limit"].includes(error.code)) {
           // The shop refused this request for good: forget it (so it is not resent as "pending"),
           // keep the button locked and show the new prices or stock instead.
           if (FlowerSafeStorage.remove("flowerPendingOrder", { storage: "session" })) pendingSubmission = null;
@@ -221,7 +221,7 @@
           totals: pendingSubmission.totals,
           deliveryZone: { id: pendingSubmission.order.deliveryZoneId }
         };
-        reviewTotals.textContent = `Phí giao hàng: ${formatVnd(pendingSubmission.totals.shippingFee || 0)} · Tổng thanh toán: ${formatVnd(pendingSubmission.totals.total)}`;
+        reviewTotals.textContent = `Phí bó hoa: ${formatVnd(pendingSubmission.totals.wrappingFee || 0)} · Phí giao hàng: ${formatVnd(pendingSubmission.totals.shippingFee || 0)} · Tổng thanh toán: ${formatVnd(pendingSubmission.totals.total)}`;
         paymentNote.textContent = "Lần gửi trước chưa nhận được kết quả. Bấm xác nhận để thử lại cùng yêu cầu, không tạo thêm đơn.";
         paymentButton.disabled = false;
         return;
@@ -233,7 +233,7 @@
       }
       try {
         serverQuote = await window.FlowerOrderStore.quote(
-          Cart.map((item) => ({ id: item.id, productId: item.productId, size: item.size, color: item.color, cardMessage: item.cardMessage, personalNote: item.personalNote, quantity: Math.max(1, Number(item.quantity) || 1) })),
+          Cart.map((item) => ({ id: item.id, productId: item.productId, customBouquetId: item.customBouquetId, size: item.size, color: item.color, cardMessage: item.cardMessage, personalNote: item.personalNote, quantity: Math.max(1, Number(item.quantity) || 1) })),
           checkoutData?.promotionId || "",
           checkoutData?.deliveryZoneId || ""
         );
@@ -244,11 +244,11 @@
           cartItem.image = quotedItem.image;
           cartItem.price = quotedItem.price;
         });
-        reviewTotals.textContent = `Tiền hàng ${formatVnd(serverQuote.totals.subtotal)} · Giảm ${formatVnd(serverQuote.totals.savings)} · Phí giao hàng ${formatVnd(serverQuote.totals.shippingFee || 0)} · Tổng thanh toán ${formatVnd(serverQuote.totals.total)}`;
+        reviewTotals.textContent = `Tiền hàng ${formatVnd(serverQuote.totals.subtotal)} · Giảm ${formatVnd(serverQuote.totals.savings)} · Phí bó hoa ${formatVnd(serverQuote.totals.wrappingFee || 0)} · Phí giao hàng ${formatVnd(serverQuote.totals.shippingFee || 0)} · Tổng thanh toán ${formatVnd(serverQuote.totals.total)}`;
         DisplayProduct();
         const previousQuote = checkoutData?.quotedTotals;
-        const amountChanged = previousQuote && ["subtotal", "savings", "tax", "shippingFee", "total"].some(
-          (key) => Number(previousQuote[key]) !== Number(serverQuote.totals[key])
+        const amountChanged = previousQuote && ["subtotal", "savings", "tax", "wrappingFee", "shippingFee", "total"].some(
+          (key) => Number(previousQuote[key] ?? 0) !== Number(serverQuote.totals[key] ?? 0)
         );
         if (amountChanged || (!previousQuote && ["qr", "vnpay"].includes(checkoutData?.paymentMethod))) {
           const newTotal = formatVnd(serverQuote.totals.total);

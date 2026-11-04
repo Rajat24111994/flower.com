@@ -129,6 +129,40 @@ test("validateQuote() kiểm tra sản phẩm giống như khi đặt hàng", ()
     assert.equal(validateQuote({}), null);
 });
 
+test("validateQuote() bảo toàn nhóm bó tùy chỉnh và từ chối mã nhóm sai", () => {
+    const quote = validateQuote({
+        items: [
+            { id: "line-a", productId: "rose", customBouquetId: "bouquet_one", quantity: 2 },
+            { id: "line-b", productId: "tulip", customBouquetId: "bouquet_one", quantity: 3 }
+        ]
+    });
+    assert.equal(quote.items[0].customBouquetId, "bouquet_one");
+    assert.equal(quote.items[1].customBouquetId, "bouquet_one");
+    assert.equal(validateQuote({ items: [{ id: "line-a", productId: "rose", customBouquetId: "../other", quantity: 1 }] }), null);
+});
+
+test("phí bó hoa được tính cho từng nhóm theo tổng số cành", () => {
+    const bouquets = internals.calculateCustomBouquets([
+        { customBouquetId: "bouquet-a", quantity: 4, data: { saleType: "flower" } },
+        { customBouquetId: "bouquet-a", quantity: 8, data: { saleType: "flower" } },
+        { customBouquetId: "bouquet-b", quantity: 2, data: { saleType: "flower" } }
+    ], [
+        { maxStems: 10, fee: 25000 },
+        { maxStems: 25, fee: 40000 },
+        { maxStems: 50, fee: 65000 }
+    ]);
+    assert.deepEqual(bouquets, [
+        { id: "bouquet-a", stemCount: 12, wrappingFee: 40000 },
+        { id: "bouquet-b", stemCount: 2, wrappingFee: 25000 }
+    ]);
+    assert.throws(() => internals.calculateCustomBouquets([
+        { customBouquetId: "bouquet-a", quantity: 51, data: { saleType: "flower" } }
+    ], [{ maxStems: 50, fee: 25000 }]), { code: "bouquet-quantity-limit" });
+    assert.throws(() => internals.calculateCustomBouquets([
+        { quantity: 1, data: { saleType: "flower" } }
+    ], []), { code: "invalid-custom-bouquet" });
+});
+
 test("aggregateItems() gộp cùng sản phẩm để trừ kho đúng", () => {
     assert.deepEqual(aggregateItems([{ id: 1, quantity: 2 }, { id: "1", quantity: 3 }, { id: 2 }]), [
         { id: "1", quantity: 5 },

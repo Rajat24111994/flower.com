@@ -186,7 +186,11 @@ function renderProducts(items) {
     const container = document.getElementById("tracking-products");
     container.replaceChildren();
 
+    const bouquetNumbers = new Map();
     (Array.isArray(items) ? items : []).forEach((product) => {
+        if (product.customBouquetId && !bouquetNumbers.has(product.customBouquetId)) {
+            bouquetNumbers.set(product.customBouquetId, bouquetNumbers.size + 1);
+        }
         const row = makeElement("div", "tracking-product");
         const image = document.createElement("img");
         image.src = product.image || "";
@@ -202,6 +206,9 @@ function renderProducts(items) {
             makeElement("span", "tracking-product-quantity", `× ${Math.max(1, Number(product.quantity) || 1)} ${product.unit || "bó"}`)
         );
         const selection = window.FlowerBouquetOptions.summary(product);
+        if (product.customBouquetId) {
+            row.append(makeElement("span", "tracking-product-options", `Bó tùy chỉnh ${bouquetNumbers.get(product.customBouquetId)}`));
+        }
         if (selection) row.append(makeElement("span", "tracking-product-options", selection));
         container.append(row);
     });
@@ -306,6 +313,8 @@ function renderOrder(order) {
     document.getElementById("result-anonymous-greeting").textContent = order.anonymousGreetingCard === true ? "Có" : "Không";
     document.getElementById("result-gift-wrap").textContent = GIFT_WRAP_LABELS[order.giftWrap] || order.giftWrap || "Không yêu cầu thêm";
     const formatVnd = (amount) => new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(Number(amount) || 0);
+    document.getElementById("result-wrapping-fee").textContent = formatVnd(order.wrappingFee);
+    document.getElementById("result-wrapping-fee").parentElement.hidden = order.privacyLimited === true && order.wrappingFee === undefined;
     document.getElementById("result-shipping-fee").textContent = formatVnd(order.shippingFee);
     document.getElementById("result-total").textContent = formatOrderTotal(order);
     document.getElementById("result-order-note").textContent = order.orderNote || "";
@@ -561,7 +570,7 @@ reviewForm.addEventListener("submit", async (event) => {
     const items = Array.isArray(currentOrder.items) ? currentOrder.items : [];
     const review = {
         orderId: currentOrder.id,
-        productIds: [...new Set(items.map((item) => item.id).filter((id) => id !== undefined && id !== null).map(String))],
+        productIds: [...new Set(items.map((item) => item.productId ?? item.id).filter((id) => id !== undefined && id !== null).map(String))],
         customerName: currentOrder.customerName || "Khách hàng",
         productName: items.map((item) => item.title).filter(Boolean).join(", ") || `Đơn hàng #${currentOrder.id}`,
         rating: selectedRating,
