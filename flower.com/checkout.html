@@ -203,7 +203,6 @@
   <script src="./js/catalog/bouquet-options.js?v=1"></script>
   <script src="./js/core/currency.js?v=11"></script>
   <script src="./js/order/order-store.js?v=18"></script>
-  <script src="./js/core/product-names.js?v=2"></script>
   <script>
   const CartContainer = document.getElementById("product-container");
   const checkoutForm = document.getElementById("checkout-form");
@@ -489,9 +488,9 @@
 
       card.className = "checkout-item";
       image.src = product.image || "";
-      image.alt = getVietnameseProductName(product.title);
+      image.alt = product.title || "Sản phẩm hoa";
       image.loading = "lazy";
-      name.textContent = getVietnameseProductName(product.title);
+      name.textContent = product.title || "Sản phẩm hoa";
       unitPrice.className = "checkout-unit-price";
       unitPrice.textContent = formatVnd(product.price);
       details.className = "checkout-item-details";
@@ -615,10 +614,10 @@
         if (!card) return;
         const productName = card.querySelector("h3");
         const productImage = card.querySelector("img");
-        if (productName) productName.textContent = getVietnameseProductName(item.title);
+        if (productName) productName.textContent = item.title || "Sản phẩm hoa";
         if (productImage) {
           productImage.src = item.image || "";
-          productImage.alt = getVietnameseProductName(item.title);
+          productImage.alt = item.title || "Sản phẩm hoa";
         }
         card.querySelector(".checkout-unit-price").textContent = formatVnd(item.price);
         card.querySelector(".checkout-item-total").textContent = formatVnd(item.price * Math.max(1, Number(item.quantity) || 1));

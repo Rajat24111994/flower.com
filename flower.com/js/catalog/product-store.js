@@ -102,6 +102,18 @@
         return Array.from(uniqueProducts.values());
     }
 
+    function isLegacyCatalogImage(value) {
+        const image = String(value || "").trim();
+        if (!image) return false;
+        try {
+            const pathname = new URL(image, "https://flowerflow.invalid").pathname;
+            return /\/img\/p\/GEN\/lgwt\/\d+\.jpg$/i.test(pathname)
+                || /^\/images\/flower-0[1-6]\.webp$/i.test(pathname);
+        } catch {
+            return false;
+        }
+    }
+
     function mergeCatalogProducts(existing = [], catalog = []) {
         const catalogById = new Map((Array.isArray(catalog) ? catalog : []).map((item) => {
             const product = normalizeProduct(item);
@@ -112,6 +124,10 @@
             const catalogProduct = catalogById.get(String(product.id));
             if (product.title.includes("?") && catalogProduct && !catalogProduct.title.includes("?")) {
                 product.title = catalogProduct.title;
+            }
+            if (catalogProduct && isLegacyCatalogImage(product.image)) {
+                product.image = catalogProduct.image;
+                product.images = product.images.filter((image) => !isLegacyCatalogImage(image));
             }
             return [String(product.id), product];
         }));

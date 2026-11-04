@@ -23,7 +23,6 @@ function review(storage, store) {
     window: { FlowerOrderStore: store, location: { assign() {} } },
     alert() {}, console: { error() {} },
     formatVnd: String,
-    getVietnameseProductName: String
   });
   const html = fs.readFileSync(path.join(__dirname, "../flower.com/placeorder.html"), "utf8");
   vm.runInContext(html.match(/<script>\s*([\s\S]*?)<\/script>/)[1], context);

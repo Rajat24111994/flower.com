@@ -43,7 +43,7 @@ flowchart LR
 | Header và footer | `store-header.js/.css`, `store-footer.js/.css` | Chèn header (tìm kiếm, tài khoản, yêu thích, đơn hàng, giỏ hàng, menu mobile) và footer cho các trang cửa hàng |
 | Trang chủ | `index.html`, `homepage.css` | Giới thiệu, danh mục nổi bật, điều hướng |
 | Catalog | `product-store.js`, `flower.json` | Tải catalog mặc định, đồng bộ hai chiều với Firestore, cache vào `localStorage`, lắng nghe thay đổi theo thời gian thực |
-| Danh mục và chi tiết | `product.html`, `product.js`, `product-categories.js`, `product-names.js`, `related-products.js` | Tìm kiếm, lọc, sắp xếp; trang chi tiết, thư viện ảnh, gợi ý sản phẩm liên quan |
+| Danh mục và chi tiết | `product.html`, `product.js`, `product-categories.js`, `related-products.js` | Tìm kiếm, lọc, sắp xếp; trang chi tiết, thư viện ảnh, gợi ý sản phẩm liên quan |
 | Đánh giá | `review-store.js` | Đọc đánh giá công khai và gửi đánh giá mới (yêu cầu đăng nhập) lên Firestore |
 | Giỏ hàng và yêu thích | `shopping-store.js`, `cart.html`, `wish.html`, `wish.js` | Dùng chung khóa `cart`/`wish`, gộp dòng trùng, kiểm tra tồn kho |
 | Thanh toán | `checkout.html`, `placeorder.html` | Người gửi/người nhận, lịch giao giờ Việt Nam, khu vực và phí giao do máy chủ báo giá, ưu đãi, QR, tạo đơn |

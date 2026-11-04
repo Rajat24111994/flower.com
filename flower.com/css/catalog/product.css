@@ -124,7 +124,7 @@ select{
     align-content:start;
     gap:20px;
     /* background-color: aqua; */
-    background-image: url("../../images/flower-04.webp");
+    background-image: url("../../images/products/product-flower-03.webp");
 }
 
 @media only screen and (max-width: 1000px) {
@@ -146,7 +146,7 @@ select{
         height: 100vh;
         padding: 20px;
         /* background-color: aqua; */
-        background-image: url("../../images/flower-04.webp");
+        background-image: url("../../images/products/product-flower-03.webp");
     }
    
     #sidebar select{
@@ -174,7 +174,7 @@ select{
         height: 100vh;
         padding: 20px;
         /* background-color: aqua; */
-        background-image: url("../../images/flower-04.webp");
+        background-image: url("../../images/products/product-flower-03.webp");
     }
 
 #sidebar select{

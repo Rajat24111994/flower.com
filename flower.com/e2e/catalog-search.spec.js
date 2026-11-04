@@ -4,7 +4,7 @@ const products = [
   { id: "search-2", title: "Bó hướng dương", description: "Hoa hướng dương vàng", price: 600000, soldCount: 12, colors: ["vàng"], occasions: ["tốt nghiệp", "khai trương"] },
   { id: "search-3", title: "Giỏ hồng vàng", description: "Hoa hồng vàng", price: 850000, soldCount: 3, colors: ["vàng"], occasions: ["khai trương"] },
   { id: "search-4", title: "Lan trắng", description: "Hoa lan hồ điệp", price: 1200000 }
-].map((item) => ({ ...item, quantity: 5, image: "./images/flower-01.webp" }));
+].map((item) => ({ ...item, quantity: 5, image: "./images/products/product-flower-01.webp" }));
 async function openFilters(page) {
   const summary = page.locator("#sidebar summary");
   if (await summary.count() && !await page.locator("#sidebar").evaluate((element) => element.open)) await summary.click();

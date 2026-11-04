@@ -2,343 +2,343 @@
   "flower": [
     {
       "id": 1,
-      "image": "./images/flower-01.webp",
+      "image": "./images/products/product-flower-01.webp",
       "title": "Bó hoa xuân dịu dàng",
       "price": 1920000,
       "description": "Thiết kế Flowerflow gồm Cẩm chướng, cúc tana, phối sắc hồng phấn và tím nhạt; bó vừa, khoảng 20–24 cành. Mỗi loài hoa được chọn để gửi gắm sự dịu dàng và khởi đầu tươi mới. Thích hợp tặng dịp sinh nhật, thăm hỏi hoặc chúc mừng. Hoa theo mùa có thể thay đổi nhẹ, vẫn giữ nguyên tông màu và tinh thần thiết kế."
     },
     {
       "id": 2,
-      "image": "./images/flower-02.webp",
+      "image": "./images/products/product-flower-01.webp",
       "title": "Bó hoa xuân dịu dàng",
       "price": 1686000,
       "description": "Thiết kế Flowerflow gồm Cẩm chướng, cúc tana, phối sắc hồng phấn và tím nhạt; bó vừa, khoảng 20–24 cành. Mỗi loài hoa được chọn để gửi gắm sự dịu dàng và khởi đầu tươi mới. Thích hợp tặng dịp sinh nhật, thăm hỏi hoặc chúc mừng. Hoa theo mùa có thể thay đổi nhẹ, vẫn giữ nguyên tông màu và tinh thần thiết kế."
     },
     {
       "id": 3,
-      "image": "./images/flower-03.webp",
+      "image": "./images/products/product-flower-02.webp",
       "title": "Bó hoa sắc màu rực rỡ",
       "price": 1557000,
       "description": "Thiết kế Flowerflow gồm Hoa hồng, cẩm chướng và cúc, phối sắc đỏ, trắng, vàng và xanh; bó lớn, khoảng 24–28 cành. Mỗi loài hoa được chọn để gửi gắm niềm vui và sự gắn kết. Thích hợp tặng dịp sinh nhật, khai trương hoặc chúc mừng. Hoa theo mùa có thể thay đổi nhẹ, vẫn giữ nguyên tông màu và tinh thần thiết kế."
     },
     {
       "id": 4,
-      "image": "./images/flower-04.webp",
+      "image": "./images/products/product-flower-02.webp",
       "title": "Bó hoa sắc màu rực rỡ",
       "price": 1816000,
       "description": "Thiết kế Flowerflow gồm Hoa hồng, cẩm chướng và cúc, phối sắc đỏ, trắng, vàng và xanh; bó lớn, khoảng 24–28 cành. Mỗi loài hoa được chọn để gửi gắm niềm vui và sự gắn kết. Thích hợp tặng dịp sinh nhật, khai trương hoặc chúc mừng. Hoa theo mùa có thể thay đổi nhẹ, vẫn giữ nguyên tông màu và tinh thần thiết kế."
     },
     {
       "id": 5,
-      "image": "./images/flower-05.webp",
+      "image": "./images/products/product-flower-03.webp",
       "title": "Bó oải hương tím mộng mơ",
       "price": 1557000,
       "description": "Thiết kế Flowerflow gồm Oải hương và cúc tana, phối sắc tím lavender và trắng; bó vừa, khoảng 18–22 cành. Mỗi loài hoa được chọn để gửi gắm sự bình yên và thủy chung. Thích hợp tặng dịp kỷ niệm, cảm ơn hoặc tặng người thương. Hoa theo mùa có thể thay đổi nhẹ, vẫn giữ nguyên tông màu và tinh thần thiết kế."
     },
     {
       "id": 6,
-      "image": "./images/flower-06.webp",
+      "image": "./images/products/product-flower-03.webp",
       "title": "Bó oải hương tím mộng mơ",
       "price": 1297000,
       "description": "Thiết kế Flowerflow gồm Oải hương và cúc tana, phối sắc tím lavender và trắng; bó vừa, khoảng 18–22 cành. Mỗi loài hoa được chọn để gửi gắm sự bình yên và thủy chung. Thích hợp tặng dịp kỷ niệm, cảm ơn hoặc tặng người thương. Hoa theo mùa có thể thay đổi nhẹ, vẫn giữ nguyên tông màu và tinh thần thiết kế."
     },
     {
       "id": 7,
-      "image": "./images/flower-01.webp",
+      "image": "./images/products/product-flower-04.webp",
       "title": "Hoa ly hồng ánh sao",
       "price": 1816000,
       "description": "Thiết kế Flowerflow gồm Hoa ly kép, phối sắc hồng phấn; bó lớn, 10–12 cành ly. Mỗi loài hoa được chọn để gửi gắm sự trân trọng và yêu thương. Thích hợp tặng dịp chúc mừng, kỷ niệm hoặc tân gia. Hoa theo mùa có thể thay đổi nhẹ, vẫn giữ nguyên tông màu và tinh thần thiết kế."
     },
     {
       "id": 8,
-      "image": "./images/flower-02.webp",
+      "image": "./images/products/product-flower-04.webp",
       "title": "Hoa ly hồng ánh sao",
       "price": 1816000,
       "description": "Thiết kế Flowerflow gồm Hoa ly kép, phối sắc hồng phấn; bó lớn, 10–12 cành ly. Mỗi loài hoa được chọn để gửi gắm sự trân trọng và yêu thương. Thích hợp tặng dịp chúc mừng, kỷ niệm hoặc tân gia. Hoa theo mùa có thể thay đổi nhẹ, vẫn giữ nguyên tông màu và tinh thần thiết kế."
     },
     {
       "id": 9,
-      "image": "./images/flower-03.webp",
+      "image": "./images/products/product-flower-05.webp",
       "title": "Bó hoa cầu vồng tươi vui",
       "price": 2205000,
       "description": "Thiết kế Flowerflow gồm Đồng tiền, cúc và cẩm chướng, phối sắc tím, cam, xanh và hồng; bó lớn, khoảng 26–30 cành. Mỗi loài hoa được chọn để gửi gắm sự lạc quan và năng lượng tích cực. Thích hợp tặng dịp sinh nhật, khai trương hoặc chúc mừng. Hoa theo mùa có thể thay đổi nhẹ, vẫn giữ nguyên tông màu và tinh thần thiết kế."
     },
     {
       "id": 10,
-      "image": "./images/flower-04.webp",
+      "image": "./images/products/product-flower-05.webp",
       "title": "Bó hoa cầu vồng tươi vui",
       "price": 1557000,
       "description": "Thiết kế Flowerflow gồm Đồng tiền, cúc và cẩm chướng, phối sắc tím, cam, xanh và hồng; bó lớn, khoảng 26–30 cành. Mỗi loài hoa được chọn để gửi gắm sự lạc quan và năng lượng tích cực. Thích hợp tặng dịp sinh nhật, khai trương hoặc chúc mừng. Hoa theo mùa có thể thay đổi nhẹ, vẫn giữ nguyên tông màu và tinh thần thiết kế."
     },
     {
       "id": 11,
-      "image": "./images/flower-05.webp",
+      "image": "./images/products/product-flower-06.webp",
       "title": "Giỏ hoa vàng lời chúc tốt lành",
       "price": 1427000,
       "description": "Thiết kế Flowerflow gồm Hoa hồng vàng và cúc, phối sắc vàng bơ và kem; giỏ vừa, khoảng 20–24 cành. Mỗi loài hoa được chọn để gửi gắm niềm vui và lời chúc may mắn. Thích hợp tặng dịp tân gia, sinh nhật hoặc chúc mừng. Hoa theo mùa có thể thay đổi nhẹ, vẫn giữ nguyên tông màu và tinh thần thiết kế."
     },
     {
       "id": 12,
-      "image": "./images/flower-06.webp",
+      "image": "./images/products/product-flower-06.webp",
       "title": "Giỏ hoa vàng lời chúc tốt lành",
       "price": 1816000,
       "description": "Thiết kế Flowerflow gồm Hoa hồng vàng và cúc, phối sắc vàng bơ và kem; giỏ vừa, khoảng 20–24 cành. Mỗi loài hoa được chọn để gửi gắm niềm vui và lời chúc may mắn. Thích hợp tặng dịp tân gia, sinh nhật hoặc chúc mừng. Hoa theo mùa có thể thay đổi nhẹ, vẫn giữ nguyên tông màu và tinh thần thiết kế."
     },
     {
       "id": 13,
-      "image": "./images/flower-01.webp",
+      "image": "./images/products/product-flower-07.webp",
       "title": "Bó hoa đỏ tím sang trọng",
       "price": 1816000,
       "description": "Thiết kế Flowerflow gồm Hoa hồng, cát tường và lan, phối sắc đỏ, tím và trắng; bó lớn, khoảng 24–28 cành. Mỗi loài hoa được chọn để gửi gắm sự ngưỡng mộ và tình cảm nồng nhiệt. Thích hợp tặng dịp kỷ niệm, chúc mừng hoặc tặng người thương. Hoa theo mùa có thể thay đổi nhẹ, vẫn giữ nguyên tông màu và tinh thần thiết kế."
     },
     {
       "id": 14,
-      "image": "./images/flower-02.webp",
+      "image": "./images/products/product-flower-07.webp",
       "title": "Bó hoa đỏ tím sang trọng",
       "price": 1297000,
       "description": "Thiết kế Flowerflow gồm Hoa hồng, cát tường và lan, phối sắc đỏ, tím và trắng; bó lớn, khoảng 24–28 cành. Mỗi loài hoa được chọn để gửi gắm sự ngưỡng mộ và tình cảm nồng nhiệt. Thích hợp tặng dịp kỷ niệm, chúc mừng hoặc tặng người thương. Hoa theo mùa có thể thay đổi nhẹ, vẫn giữ nguyên tông màu và tinh thần thiết kế."
     },
     {
       "id": 15,
-      "image": "./images/flower-03.webp",
+      "image": "./images/products/product-flower-08.webp",
       "title": "Bó hoa hồng tím yêu thương",
       "price": 1816000,
       "description": "Thiết kế Flowerflow gồm Hoa hồng và cát tường, phối sắc tím và hồng phấn; bó vừa, khoảng 20–24 cành. Mỗi loài hoa được chọn để gửi gắm sự lãng mạn và gắn bó. Thích hợp tặng dịp kỷ niệm, sinh nhật hoặc tặng người thương. Hoa theo mùa có thể thay đổi nhẹ, vẫn giữ nguyên tông màu và tinh thần thiết kế."
     },
     {
       "id": 16,
-      "image": "./images/flower-04.webp",
+      "image": "./images/products/product-flower-08.webp",
       "title": "Bó hoa hồng tím yêu thương",
       "price": 1946000,
       "description": "Thiết kế Flowerflow gồm Hoa hồng và cát tường, phối sắc tím và hồng phấn; bó vừa, khoảng 20–24 cành. Mỗi loài hoa được chọn để gửi gắm sự lãng mạn và gắn bó. Thích hợp tặng dịp kỷ niệm, sinh nhật hoặc tặng người thương. Hoa theo mùa có thể thay đổi nhẹ, vẫn giữ nguyên tông màu và tinh thần thiết kế."
     },
     {
       "id": 17,
-      "image": "./images/flower-05.webp",
+      "image": "./images/products/product-flower-09.webp",
       "title": "Bó hoa hồng phấn dịu dàng",
       "price": 1557000,
       "description": "Thiết kế Flowerflow gồm Hoa hồng và baby trắng, phối sắc hồng phấn và trắng; bó vừa, 18–22 cành hồng. Mỗi loài hoa được chọn để gửi gắm sự nâng niu và chân thành. Thích hợp tặng dịp sinh nhật, cảm ơn hoặc thăm hỏi. Hoa theo mùa có thể thay đổi nhẹ, vẫn giữ nguyên tông màu và tinh thần thiết kế."
     },
     {
       "id": 18,
-      "image": "./images/flower-06.webp",
+      "image": "./images/products/product-flower-09.webp",
       "title": "Bó hoa hồng phấn dịu dàng",
       "price": 1816000,
       "description": "Thiết kế Flowerflow gồm Hoa hồng và baby trắng, phối sắc hồng phấn và trắng; bó vừa, 18–22 cành hồng. Mỗi loài hoa được chọn để gửi gắm sự nâng niu và chân thành. Thích hợp tặng dịp sinh nhật, cảm ơn hoặc thăm hỏi. Hoa theo mùa có thể thay đổi nhẹ, vẫn giữ nguyên tông màu và tinh thần thiết kế."
     },
     {
       "id": 19,
-      "image": "./images/flower-01.webp",
+      "image": "./images/products/product-flower-10.webp",
       "title": "Bó hoa hồng tím bồng bềnh",
       "price": 1816000,
       "description": "Thiết kế Flowerflow gồm Hoa hồng và cẩm chướng, phối sắc tím lavender và trắng; bó vừa, khoảng 20–24 cành. Mỗi loài hoa được chọn để gửi gắm vẻ duyên dáng và sự thủy chung. Thích hợp tặng dịp kỷ niệm, sinh nhật hoặc tặng người thương. Hoa theo mùa có thể thay đổi nhẹ, vẫn giữ nguyên tông màu và tinh thần thiết kế."
     },
     {
       "id": 20,
-      "image": "./images/flower-02.webp",
+      "image": "./images/products/product-flower-10.webp",
       "title": "Bó hoa hồng tím bồng bềnh",
       "price": 1686000,
       "description": "Thiết kế Flowerflow gồm Hoa hồng và cẩm chướng, phối sắc tím lavender và trắng; bó vừa, khoảng 20–24 cành. Mỗi loài hoa được chọn để gửi gắm vẻ duyên dáng và sự thủy chung. Thích hợp tặng dịp kỷ niệm, sinh nhật hoặc tặng người thương. Hoa theo mùa có thể thay đổi nhẹ, vẫn giữ nguyên tông màu và tinh thần thiết kế."
     },
     {
       "id": 21,
-      "image": "./images/flower-03.webp",
+      "image": "./images/products/product-flower-11.webp",
       "title": "Bó đồng tiền nắng mai",
       "price": 1349000,
       "description": "Thiết kế Flowerflow gồm Hoa đồng tiền và lá bạc, phối sắc vàng cam và xanh lá; bó vừa, khoảng 20–24 cành. Mỗi loài hoa được chọn để gửi gắm niềm vui và lời chúc thuận lợi. Thích hợp tặng dịp sinh nhật, khai trương hoặc chúc mừng. Hoa theo mùa có thể thay đổi nhẹ, vẫn giữ nguyên tông màu và tinh thần thiết kế."
     },
     {
       "id": 22,
-      "image": "./images/flower-04.webp",
+      "image": "./images/products/product-flower-11.webp",
       "title": "Bó đồng tiền nắng mai",
       "price": 2335000,
       "description": "Thiết kế Flowerflow gồm Hoa đồng tiền và lá bạc, phối sắc vàng cam và xanh lá; bó vừa, khoảng 20–24 cành. Mỗi loài hoa được chọn để gửi gắm niềm vui và lời chúc thuận lợi. Thích hợp tặng dịp sinh nhật, khai trương hoặc chúc mừng. Hoa theo mùa có thể thay đổi nhẹ, vẫn giữ nguyên tông màu và tinh thần thiết kế."
     },
     {
       "id": 23,
-      "image": "./images/flower-05.webp",
+      "image": "./images/products/product-flower-12.webp",
       "title": "Bó hoa đồng nội nước Pháp",
       "price": 1557000,
       "description": "Thiết kế Flowerflow gồm Cúc tana, cẩm chướng và hoa sao, phối sắc trắng, vàng nhạt và xanh; bó vừa, khoảng 24–28 cành. Mỗi loài hoa được chọn để gửi gắm sự mộc mạc và bình yên. Thích hợp tặng dịp thăm hỏi, cảm ơn hoặc sinh nhật. Hoa theo mùa có thể thay đổi nhẹ, vẫn giữ nguyên tông màu và tinh thần thiết kế."
     },
     {
       "id": 24,
-      "image": "./images/flower-06.webp",
+      "image": "./images/products/product-flower-12.webp",
       "title": "Bó hoa đồng nội nước Pháp",
       "price": 1686000,
       "description": "Thiết kế Flowerflow gồm Cúc tana, cẩm chướng và hoa sao, phối sắc trắng, vàng nhạt và xanh; bó vừa, khoảng 24–28 cành. Mỗi loài hoa được chọn để gửi gắm sự mộc mạc và bình yên. Thích hợp tặng dịp thăm hỏi, cảm ơn hoặc sinh nhật. Hoa theo mùa có thể thay đổi nhẹ, vẫn giữ nguyên tông màu và tinh thần thiết kế."
     },
     {
       "id": 25,
-      "image": "./images/flower-01.webp",
+      "image": "./images/products/product-flower-13.webp",
       "title": "Bó hồng bên nhau mãi mãi",
       "price": 1920000,
       "description": "Thiết kế Flowerflow gồm Hoa hồng đỏ, phối sắc đỏ nhung; bó lớn, 24–30 cành hồng. Mỗi loài hoa được chọn để gửi gắm tình yêu bền lâu và đam mê. Thích hợp tặng dịp kỷ niệm ngày cưới hoặc tặng người thương. Hoa theo mùa có thể thay đổi nhẹ, vẫn giữ nguyên tông màu và tinh thần thiết kế."
     },
     {
       "id": 26,
-      "image": "./images/flower-02.webp",
+      "image": "./images/products/product-flower-13.webp",
       "title": "Bó hồng bên nhau mãi mãi",
       "price": 1686000,
       "description": "Thiết kế Flowerflow gồm Hoa hồng đỏ, phối sắc đỏ nhung; bó lớn, 24–30 cành hồng. Mỗi loài hoa được chọn để gửi gắm tình yêu bền lâu và đam mê. Thích hợp tặng dịp kỷ niệm ngày cưới hoặc tặng người thương. Hoa theo mùa có thể thay đổi nhẹ, vẫn giữ nguyên tông màu và tinh thần thiết kế."
     },
     {
       "id": 27,
-      "image": "./images/flower-03.webp",
+      "image": "./images/products/product-flower-14.webp",
       "title": "Bó hoa xuân tỏa sáng",
       "price": 1557000,
       "description": "Thiết kế Flowerflow gồm Hoa hồng, cúc và tulip, phối sắc vàng, cam và hồng; bó lớn, khoảng 24–28 cành. Mỗi loài hoa được chọn để gửi gắm sức sống và niềm hy vọng. Thích hợp tặng dịp sinh nhật, khai trương hoặc chúc mừng. Hoa theo mùa có thể thay đổi nhẹ, vẫn giữ nguyên tông màu và tinh thần thiết kế."
     },
     {
       "id": 28,
-      "image": "./images/flower-04.webp",
+      "image": "./images/products/product-flower-14.webp",
       "title": "Bó hoa xuân tỏa sáng",
       "price": 1816000,
       "description": "Thiết kế Flowerflow gồm Hoa hồng, cúc và tulip, phối sắc vàng, cam và hồng; bó lớn, khoảng 24–28 cành. Mỗi loài hoa được chọn để gửi gắm sức sống và niềm hy vọng. Thích hợp tặng dịp sinh nhật, khai trương hoặc chúc mừng. Hoa theo mùa có thể thay đổi nhẹ, vẫn giữ nguyên tông màu và tinh thần thiết kế."
     },
     {
       "id": 29,
-      "image": "./images/flower-05.webp",
+      "image": "./images/products/product-flower-15.webp",
       "title": "Bó hoa xuân ban mai",
       "price": 1557000,
       "description": "Thiết kế Flowerflow gồm Tulip, cẩm chướng và cúc, phối sắc hồng đào, trắng và vàng; bó vừa, khoảng 20–24 cành. Mỗi loài hoa được chọn để gửi gắm khởi đầu an lành và niềm vui. Thích hợp tặng dịp sinh nhật, thăm hỏi hoặc chúc mừng. Hoa theo mùa có thể thay đổi nhẹ, vẫn giữ nguyên tông màu và tinh thần thiết kế."
     },
     {
       "id": 30,
-      "image": "./images/flower-06.webp",
+      "image": "./images/products/product-flower-15.webp",
       "title": "Bó hoa xuân ban mai",
       "price": 1297000,
       "description": "Thiết kế Flowerflow gồm Tulip, cẩm chướng và cúc, phối sắc hồng đào, trắng và vàng; bó vừa, khoảng 20–24 cành. Mỗi loài hoa được chọn để gửi gắm khởi đầu an lành và niềm vui. Thích hợp tặng dịp sinh nhật, thăm hỏi hoặc chúc mừng. Hoa theo mùa có thể thay đổi nhẹ, vẫn giữ nguyên tông màu và tinh thần thiết kế."
     },
     {
       "id": 31,
-      "image": "./images/flower-01.webp",
+      "image": "./images/products/product-flower-16.webp",
       "title": "Bó hoa hồng tình thân",
       "price": 1816000,
       "description": "Thiết kế Flowerflow gồm Hoa hồng kem và cẩm chướng, phối sắc kem và hồng nhạt; bó vừa, khoảng 20–24 cành. Mỗi loài hoa được chọn để gửi gắm lòng biết ơn và sự gắn kết. Thích hợp tặng dịp Ngày của Mẹ, sinh nhật hoặc cảm ơn. Hoa theo mùa có thể thay đổi nhẹ, vẫn giữ nguyên tông màu và tinh thần thiết kế."
     },
     {
       "id": 32,
-      "image": "./images/flower-02.webp",
+      "image": "./images/products/product-flower-16.webp",
       "title": "Bó hoa hồng tình thân",
       "price": 1816000,
       "description": "Thiết kế Flowerflow gồm Hoa hồng kem và cẩm chướng, phối sắc kem và hồng nhạt; bó vừa, khoảng 20–24 cành. Mỗi loài hoa được chọn để gửi gắm lòng biết ơn và sự gắn kết. Thích hợp tặng dịp Ngày của Mẹ, sinh nhật hoặc cảm ơn. Hoa theo mùa có thể thay đổi nhẹ, vẫn giữ nguyên tông màu và tinh thần thiết kế."
     },
     {
       "id": 33,
-      "image": "./images/flower-03.webp",
+      "image": "./images/products/product-flower-17.webp",
       "title": "Bó hoa phong cách thanh lịch",
       "price": 2205000,
       "description": "Thiết kế Flowerflow gồm Hoa hồng, lan và baby, phối sắc trắng, xanh lá và kem; bó lớn, khoảng 22–26 cành. Mỗi loài hoa được chọn để gửi gắm sự tinh tế và trân trọng. Thích hợp tặng dịp chúc mừng, tân gia hoặc kỷ niệm. Hoa theo mùa có thể thay đổi nhẹ, vẫn giữ nguyên tông màu và tinh thần thiết kế."
     },
     {
       "id": 34,
-      "image": "./images/flower-04.webp",
+      "image": "./images/products/product-flower-17.webp",
       "title": "Bó hoa phong cách thanh lịch",
       "price": 1557000,
       "description": "Thiết kế Flowerflow gồm Hoa hồng, lan và baby, phối sắc trắng, xanh lá và kem; bó lớn, khoảng 22–26 cành. Mỗi loài hoa được chọn để gửi gắm sự tinh tế và trân trọng. Thích hợp tặng dịp chúc mừng, tân gia hoặc kỷ niệm. Hoa theo mùa có thể thay đổi nhẹ, vẫn giữ nguyên tông màu và tinh thần thiết kế."
     },
     {
       "id": 35,
-      "image": "./images/flower-05.webp",
+      "image": "./images/products/product-flower-18.webp",
       "title": "Bó hồng phấn ngọt ngào",
       "price": 1427000,
       "description": "Thiết kế Flowerflow gồm Hoa hồng và cát tường, phối sắc hồng phấn và trắng; bó vừa, 18–22 cành hồng. Mỗi loài hoa được chọn để gửi gắm sự trìu mến và dịu dàng. Thích hợp tặng dịp sinh nhật, kỷ niệm hoặc tặng người thương. Hoa theo mùa có thể thay đổi nhẹ, vẫn giữ nguyên tông màu và tinh thần thiết kế."
     },
     {
       "id": 36,
-      "image": "./images/flower-06.webp",
+      "image": "./images/products/product-flower-18.webp",
       "title": "Bó hồng phấn ngọt ngào",
       "price": 1816000,
       "description": "Thiết kế Flowerflow gồm Hoa hồng và cát tường, phối sắc hồng phấn và trắng; bó vừa, 18–22 cành hồng. Mỗi loài hoa được chọn để gửi gắm sự trìu mến và dịu dàng. Thích hợp tặng dịp sinh nhật, kỷ niệm hoặc tặng người thương. Hoa theo mùa có thể thay đổi nhẹ, vẫn giữ nguyên tông màu và tinh thần thiết kế."
     },
     {
       "id": 37,
-      "image": "./images/flower-01.webp",
+      "image": "./images/products/product-flower-19.webp",
       "title": "Bó hoa tím quyến rũ",
       "price": 1816000,
       "description": "Thiết kế Flowerflow gồm Hoa hồng tím và lan, phối sắc tím đậm và trắng; bó lớn, khoảng 22–26 cành. Mỗi loài hoa được chọn để gửi gắm sự ngưỡng mộ và vẻ duyên dáng. Thích hợp tặng dịp kỷ niệm, chúc mừng hoặc sinh nhật. Hoa theo mùa có thể thay đổi nhẹ, vẫn giữ nguyên tông màu và tinh thần thiết kế."
     },
     {
       "id": 38,
-      "image": "./images/flower-02.webp",
+      "image": "./images/products/product-flower-19.webp",
       "title": "Bó hoa tím quyến rũ",
       "price": 1297000,
       "description": "Thiết kế Flowerflow gồm Hoa hồng tím và lan, phối sắc tím đậm và trắng; bó lớn, khoảng 22–26 cành. Mỗi loài hoa được chọn để gửi gắm sự ngưỡng mộ và vẻ duyên dáng. Thích hợp tặng dịp kỷ niệm, chúc mừng hoặc sinh nhật. Hoa theo mùa có thể thay đổi nhẹ, vẫn giữ nguyên tông màu và tinh thần thiết kế."
     },
     {
       "id": 39,
-      "image": "./images/flower-03.webp",
+      "image": "./images/products/product-flower-20.webp",
       "title": "Bó hồng trong mơ",
       "price": 1816000,
       "description": "Thiết kế Flowerflow gồm Hoa hồng, cẩm chướng và baby, phối sắc hồng đào và trắng; bó vừa, khoảng 20–24 cành. Mỗi loài hoa được chọn để gửi gắm niềm vui lãng mạn và sự quan tâm. Thích hợp tặng dịp sinh nhật, kỷ niệm hoặc tặng người thương. Hoa theo mùa có thể thay đổi nhẹ, vẫn giữ nguyên tông màu và tinh thần thiết kế."
     },
     {
       "id": 40,
-      "image": "./images/flower-04.webp",
+      "image": "./images/products/product-flower-20.webp",
       "title": "Bó hồng trong mơ",
       "price": 1946000,
       "description": "Thiết kế Flowerflow gồm Hoa hồng, cẩm chướng và baby, phối sắc hồng đào và trắng; bó vừa, khoảng 20–24 cành. Mỗi loài hoa được chọn để gửi gắm niềm vui lãng mạn và sự quan tâm. Thích hợp tặng dịp sinh nhật, kỷ niệm hoặc tặng người thương. Hoa theo mùa có thể thay đổi nhẹ, vẫn giữ nguyên tông màu và tinh thần thiết kế."
     },
     {
       "id": 41,
-      "image": "./images/flower-05.webp",
+      "image": "./images/products/product-flower-21.webp",
       "title": "Bó hoa trắng tinh khôi",
       "price": 1557000,
       "description": "Thiết kế Flowerflow gồm Hoa hồng trắng và lan, phối sắc trắng và xanh lá; bó vừa, khoảng 18–22 cành. Mỗi loài hoa được chọn để gửi gắm sự chân thành và khởi đầu mới. Thích hợp tặng dịp chúc mừng, cảm ơn hoặc tân gia. Hoa theo mùa có thể thay đổi nhẹ, vẫn giữ nguyên tông màu và tinh thần thiết kế."
     },
     {
       "id": 42,
-      "image": "./images/flower-06.webp",
+      "image": "./images/products/product-flower-21.webp",
       "title": "Bó hoa trắng tinh khôi",
       "price": 1816000,
       "description": "Thiết kế Flowerflow gồm Hoa hồng trắng và lan, phối sắc trắng và xanh lá; bó vừa, khoảng 18–22 cành. Mỗi loài hoa được chọn để gửi gắm sự chân thành và khởi đầu mới. Thích hợp tặng dịp chúc mừng, cảm ơn hoặc tân gia. Hoa theo mùa có thể thay đổi nhẹ, vẫn giữ nguyên tông màu và tinh thần thiết kế."
     },
     {
       "id": 43,
-      "image": "./images/flower-01.webp",
+      "image": "./images/products/product-flower-22.webp",
       "title": "Bó hoa sinh nhật rực rỡ",
       "price": 1816000,
       "description": "Thiết kế Flowerflow gồm Hoa hồng, đồng tiền và cúc, phối sắc cam, vàng và hồng; bó lớn, khoảng 26–30 cành. Mỗi loài hoa được chọn để gửi gắm lời chúc tuổi mới vui tươi. Thích hợp tặng dịp sinh nhật hoặc chúc mừng. Hoa theo mùa có thể thay đổi nhẹ, vẫn giữ nguyên tông màu và tinh thần thiết kế."
     },
     {
       "id": 44,
-      "image": "./images/flower-02.webp",
+      "image": "./images/products/product-flower-22.webp",
       "title": "Bó hoa sinh nhật rực rỡ",
       "price": 1686000,
       "description": "Thiết kế Flowerflow gồm Hoa hồng, đồng tiền và cúc, phối sắc cam, vàng và hồng; bó lớn, khoảng 26–30 cành. Mỗi loài hoa được chọn để gửi gắm lời chúc tuổi mới vui tươi. Thích hợp tặng dịp sinh nhật hoặc chúc mừng. Hoa theo mùa có thể thay đổi nhẹ, vẫn giữ nguyên tông màu và tinh thần thiết kế."
     },
     {
       "id": 45,
-      "image": "./images/flower-03.webp",
+      "image": "./images/products/product-flower-23.webp",
       "title": "Giỏ lan hồ điệp phú quý",
       "price": 1349000,
       "description": "Thiết kế Flowerflow gồm Lan hồ điệp và lá xanh, phối sắc trắng và tím; giỏ lớn, 3–5 cành lan. Mỗi loài hoa được chọn để gửi gắm sự sung túc và lời chúc thành công. Thích hợp tặng dịp khai trương, tân gia hoặc chúc mừng. Hoa theo mùa có thể thay đổi nhẹ, vẫn giữ nguyên tông màu và tinh thần thiết kế."
     },
     {
       "id": 46,
-      "image": "./images/flower-04.webp",
+      "image": "./images/products/product-flower-23.webp",
       "title": "Giỏ lan hồ điệp phú quý",
       "price": 2335000,
       "description": "Thiết kế Flowerflow gồm Lan hồ điệp và lá xanh, phối sắc trắng và tím; giỏ lớn, 3–5 cành lan. Mỗi loài hoa được chọn để gửi gắm sự sung túc và lời chúc thành công. Thích hợp tặng dịp khai trương, tân gia hoặc chúc mừng. Hoa theo mùa có thể thay đổi nhẹ, vẫn giữ nguyên tông màu và tinh thần thiết kế."
     },
     {
       "id": 47,
-      "image": "./images/flower-05.webp",
+      "image": "./images/products/product-flower-24.webp",
       "title": "Bó hoa hoàng hôn lãng mạn",
       "price": 1557000,
       "description": "Thiết kế Flowerflow gồm Hoa hồng, cúc và cẩm chướng, phối sắc cam đào, đỏ và vàng; bó lớn, khoảng 24–28 cành. Mỗi loài hoa được chọn để gửi gắm sự ấm áp và tình cảm nồng nàn. Thích hợp tặng dịp kỷ niệm, sinh nhật hoặc tặng người thương. Hoa theo mùa có thể thay đổi nhẹ, vẫn giữ nguyên tông màu và tinh thần thiết kế."
     },
     {
       "id": 48,
-      "image": "./images/flower-06.webp",
+      "image": "./images/products/product-flower-24.webp",
       "title": "Bó hoa hoàng hôn lãng mạn",
       "price": 1686000,
       "description": "Thiết kế Flowerflow gồm Hoa hồng, cúc và cẩm chướng, phối sắc cam đào, đỏ và vàng; bó lớn, khoảng 24–28 cành. Mỗi loài hoa được chọn để gửi gắm sự ấm áp và tình cảm nồng nàn. Thích hợp tặng dịp kỷ niệm, sinh nhật hoặc tặng người thương. Hoa theo mùa có thể thay đổi nhẹ, vẫn giữ nguyên tông màu và tinh thần thiết kế."
     },
     {
       "id": 57,
-      "image": "./images/flower-01.webp",
+      "image": "./images/products/product-flower-01.webp",
       "title": "Bó hoa xuân dịu dàng",
       "price": 1557000,
       "category": "Giao hoa trong ngày",
@@ -348,7 +348,7 @@
     },
     {
       "id": 58,
-      "image": "./images/flower-02.webp",
+      "image": "./images/products/product-flower-01.webp",
       "title": "Bó hoa xuân dịu dàng",
       "price": 1427000,
       "category": "Giao hoa trong ngày",

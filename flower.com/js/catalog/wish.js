@@ -53,13 +53,13 @@ function renderWishlist() {
 
     card.className = "wishlist-card";
     image.src = product.image || "";
-    image.alt = getVietnameseProductName(product.title || "Sản phẩm hoa");
+    image.alt = product.title || "Sản phẩm hoa";
     image.width = 420;
     image.height = 315;
     image.loading = "lazy";
     image.decoding = "async";
     image.addEventListener("error", () => image.remove(), { once: true });
-    name.textContent = getVietnameseProductName(product.title || "Sản phẩm hoa");
+    name.textContent = product.title || "Sản phẩm hoa";
     price.textContent = formatVnd(product.price);
     stock.className = quantity ? "wishlist-stock" : "wishlist-stock out-of-stock";
     stock.textContent = quantity ? `Còn hàng · ${quantity} sản phẩm` : "Hiện đã hết hàng";

@@ -86,7 +86,7 @@ function updateCatalogStructuredData(catalog) {
     itemListElement: catalog.map((product, index) => ({
       "@type": "ListItem",
       position: index + 1,
-      name: getVietnameseProductName(product.title || "Sản phẩm hoa"),
+      name: product.title || "Sản phẩm hoa",
       url: `https://flower-com-six.vercel.app/product.html?id=${encodeURIComponent(product.id)}`
     }))
   }).replace(/</g, "\\u003c")
@@ -125,7 +125,7 @@ function refreshWishlistButtons() {
     const isWished = isProductWished(product)
     button.classList.toggle("is-wished", isWished)
     button.setAttribute("aria-pressed", String(isWished))
-    button.setAttribute("aria-label", `${isWished ? "Bỏ yêu thích" : "Thêm vào yêu thích"}: ${getVietnameseProductName(product.title)}`)
+    button.setAttribute("aria-label", `${isWished ? "Bỏ yêu thích" : "Thêm vào yêu thích"}: ${product.title}`)
     button.textContent = isWished ? "♥" : "♡"
   })
   if (selectedProduct) updateWishlistButton(document.getElementById("detail-wishlist"), selectedProduct)
@@ -174,7 +174,7 @@ function display(data) {
     const cards = document.createDocumentFragment()
     data.forEach((el, index) => {
 
-        const productName = getVietnameseProductName(el.title || "Sản phẩm hoa")
+        const productName = el.title || "Sản phẩm hoa"
         const box = document.createElement("article")
         const imageFrame = document.createElement("div")
         let img = document.createElement("img")
@@ -281,7 +281,7 @@ function createRelatedFlowerCard(product) {
   const actions = document.createElement("div")
   const detailLink = document.createElement("a")
   const favoriteButton = document.createElement("button")
-  const productName = getVietnameseProductName(product.title || "Sản phẩm hoa")
+  const productName = product.title || "Sản phẩm hoa"
   const isAvailable = Number(product.quantity) > 0
   const productUrl = `./product.html?id=${encodeURIComponent(product.id)}`
 
@@ -595,9 +595,8 @@ function renderProductDetail(product) {
     : ""
   selectedProduct = product
   watchProductReviews(product)
-  const productName = getVietnameseProductName(product.title || "Sản phẩm hoa")
-  const productDescription = getVietnameseProductDescription(product.description)
-    || "Sản phẩm hoa tươi được tuyển chọn và sắp xếp chỉn chu để gửi trao những lời yêu thương."
+  const productName = product.title || "Sản phẩm hoa"
+  const productDescription = product.description || "Sản phẩm hoa tươi được tuyển chọn và sắp xếp chỉn chu để gửi trao những lời yêu thương."
   updateProductStructuredData(product, productName, productDescription)
   const images = getProductImages(product)
   const thumbnails = document.getElementById("detail-thumbnails")
@@ -881,7 +880,7 @@ function getCatalogResults() {
   const query = params.toString()
   window.history.replaceState(null, "", window.location.pathname + (query ? `?${query}` : "") + window.location.hash)
   const candidates = products.filter((product) => FlowerProductCategories.matchesCategory(product, initialCategoryKey))
-  const result = valid ? FlowerCatalogSearch.search(candidates, filters, (product) => getVietnameseProductName(product.title)) : []
+  const result = valid ? FlowerCatalogSearch.search(candidates, filters, (product) => product.title) : []
   document.getElementById("catalog-results-count").textContent = valid
     ? `${result.length} / ${products.length} sản phẩm phù hợp` : "Khoảng giá chưa hợp lệ"
   document.getElementById("catalog-sort-note").textContent = filters.sort === "popular"

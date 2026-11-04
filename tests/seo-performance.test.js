@@ -134,9 +134,17 @@ assert.ok(headerRules.some((rule) => rule.headers.some(
   (header) => header.key === "Cache-Control" && header.value.includes("immutable")
 )));
 
-for (const image of fs.readdirSync(path.join(siteRoot, "images"))) {
-  assert.ok(fs.statSync(path.join(siteRoot, "images", image)).isFile());
+function verifyImageFiles(directory) {
+  for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+    const imagePath = path.join(directory, entry.name);
+    if (entry.isDirectory()) {
+      verifyImageFiles(imagePath);
+      continue;
+    }
+    assert.ok(entry.isFile(), `${imagePath} must be a regular file`);
+  }
 }
+verifyImageFiles(path.join(siteRoot, "images"));
 
 assert.doesNotMatch(productPage, /sweetalert|cdn\.jsdelivr/i);
 assert.doesNotMatch(productPage, /images\.unsplash\.com/i);

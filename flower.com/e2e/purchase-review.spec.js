@@ -4,7 +4,7 @@ import path from "node:path";
 
 const jpeg = readFileSync(path.join(__dirname, "../images/start.jpeg"));
 const reviewId = "b".repeat(40);
-const product = { id: "review-product", title: "Bó hoa hồng", description: "Hoa hồng đỏ", price: 100000, quantity: 5, image: "./images/flower-01.webp" };
+const product = { id: "review-product", title: "Bó hoa hồng", description: "Hoa hồng đỏ", price: 100000, quantity: 5, image: "./images/products/product-flower-01.webp" };
 const order = { id: "review-order", uid: "buyer", customerName: "Người mua", phone: "0908123456", address: "1 Lê Lợi", status: "Đã giao", total: 100000,
   paymentMethod: "cod", paymentStatus: "Đã thanh toán", createdAt: "2026-11-02T01:00:00Z", items: [{ ...product, quantity: 1 }] };
 const pending = { id: reviewId, authorUid: "buyer", productIds: [product.id], productName: product.title, customerName: "Người mua", rating: 2,

@@ -8,7 +8,7 @@ const h = require("./helpers");
 
 let env;
 const original = { id: "test-flower", title: "Hoa thử nghiệm", price: 250000, quantity: 5,
-    image: "./images/flower-01.webp", description: "Hoa tươi", category: "Sinh nhật", status: "active" };
+    image: "./images/products/product-flower-01.webp", description: "Hoa tươi", category: "Sinh nhật", status: "active" };
 
 // Execute the actual inventory store with the real Firestore SDK. Only dependency loading
 // and browser storage are substituted; writes and Security Rules run on the emulator.
@@ -45,10 +45,10 @@ test("store thật: thêm/sửa/ẩn/hiện/xóa lưu bền, API khách cập nh
     await store.saveProducts([original]);
     assert.equal((await h.db().doc("products/test-flower").get()).data().price, 250000);
     const reloaded = inventory(db, [(await h.db().doc("products/test-flower").get()).data()]).api;
-    await reloaded.saveProducts([{ ...original, price: 350000, image: "./images/flower-02.webp" }]);
+    await reloaded.saveProducts([{ ...original, price: 350000, image: "./images/products/product-flower-02.webp" }]);
     let list = await h.callApi("products", { method: "GET" });
     assert.equal(list.body.products[0].price, 350000);
-    assert.equal(list.body.products[0].image, "./images/flower-02.webp");
+    assert.equal(list.body.products[0].image, "./images/products/product-flower-02.webp");
     await h.db().doc("orders/history-test").set({ items: [{ ...original, quantity: 1 }], total: 250000 });
     await reloaded.saveProducts(reloaded.readProducts().map((item) => ({ ...item, status: "hidden" })));
     list = await h.callApi("products", { method: "GET" });

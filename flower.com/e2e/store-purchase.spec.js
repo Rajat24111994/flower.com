@@ -65,7 +65,7 @@ test("customer can browse, add a flower, sign in, and place an order", async ({ 
     const body = route.request().postDataJSON();
     if (body.action === "quote") {
       await route.fulfill({ json: {
-        items: [{ id: 1, title: "Bó hoa xuân dịu dàng", image: "./images/flower-01.webp", price: 250000, quantity: 1, stockQuantity: 10 }],
+        items: [{ id: 1, title: "Bó hoa xuân dịu dàng", image: "./images/products/product-flower-01.webp", price: 250000, quantity: 1, stockQuantity: 10 }],
         totals,
         deliveryZone: { id: "fixture-zone", province: "Test Province", district: "Test District", fee: 0 }
       } });

@@ -81,6 +81,23 @@ assert.strictEqual(
   2
 );
 
+const migratedImages = mergeCatalogProducts(
+  [
+    {
+      ...fullCatalog[0],
+      image: 'https://legacy.example.test/img/p/GEN/lgwt/1103.jpg',
+      images: ['https://legacy.example.test/img/p/GEN/lgwt/1103.jpg', 'https://cdn.example.test/custom-detail.webp'],
+    },
+    { ...fullCatalog[1], image: './images/flower-02.webp' },
+    { ...fullCatalog[2], image: 'https://admin.example.test/custom-flower.webp' },
+  ],
+  fullCatalog
+);
+assert.strictEqual(migratedImages[0].image, fullCatalog[0].image);
+assert.deepStrictEqual(migratedImages[0].images, ['https://cdn.example.test/custom-detail.webp']);
+assert.strictEqual(migratedImages[1].image, fullCatalog[1].image);
+assert.strictEqual(migratedImages[2].image, 'https://admin.example.test/custom-flower.webp');
+
 const imageProducts = [
   { id: 1, image: './images/rose.webp?v=2', images: ['./images/detail.webp'] },
   { id: 2, image: 'https://cdn.example.test/tulip.webp' },

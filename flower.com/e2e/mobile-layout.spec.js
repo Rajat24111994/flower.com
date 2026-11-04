@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 
 const product = { id: "mobile", title: "Bó hoa " + "Hoa".repeat(28), description: "Hoa hồng dịu dàng", price: 100000,
-  image: "./images/flower-01.webp", quantity: 8 };
+  image: "./images/products/product-flower-01.webp", quantity: 8 };
 const cart = [{ ...product, id: "line-mobile", productId: "mobile", size: "large", color: "pink",
   quantity: 2, stockQuantity: 8, price: 130000, cardMessage: "Chúc mừng sinh nhật!", personalNote: "Lưuý".repeat(100) }];
 

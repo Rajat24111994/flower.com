@@ -391,7 +391,7 @@ function renderProductTab() {
                            const statusLabel = status === "hidden" ? "Tạm ẩn" : status === "out-of-stock" ? "Hết hàng" : "Đang bán";
                            const imageUrl = getSafeImageUrl(item.image);
                            const imageSource = String(item.image || "").trim();
-                           const productTitle = getVietnameseProductName(item.title);
+                           const productTitle = item.title;
                            const imageMessage = imageUrl
                                ? ""
                                : imageSource
@@ -406,12 +406,12 @@ function renderProductTab() {
                                        </div>
                                    </td>
                                    <td>
-                                       <div><strong>${escapeHtml(getVietnameseProductName(item.title))}</strong></div>
-                                       <small>${escapeHtml(getVietnameseProductDescription(item.description || ""))}</small>
+                                       <div><strong>${escapeHtml(item.title)}</strong></div>
+                                       <small>${escapeHtml(item.description || "Mô tả chưa được cập nhật.")}</small>
                                    </td>
                                    <td>${escapeHtml(item.category || "Chưa phân loại")}</td>
                                    <td>${formatVnd(item.price)}</td>
-                                   <td><input class="qty-input" data-id="${escapeHtml(item.id)}" type="number" min="0" step="1" value="${quantity}" aria-label="Tồn kho ${escapeHtml(getVietnameseProductName(item.title))}"></td>
+                                   <td><input class="qty-input" data-id="${escapeHtml(item.id)}" type="number" min="0" step="1" value="${quantity}" aria-label="Tồn kho ${escapeHtml(item.title)}"></td>
                                    <td>
                                        <span class="product-state product-state--${status}">${statusLabel}</span>
                                        ${status === "active" && quantity <= 5 ? '<small class="product-low-stock">Sắp hết hàng</small>' : ""}
@@ -436,7 +436,7 @@ function renderProductTab() {
                <form id="add-product-form" class="product-form" novalidate>
                    <p id="product-form-message" class="product-form-message" role="alert" aria-live="assertive"></p>
                    <label class="product-form-field" for="product-title"><span>Tên sản phẩm</span>
-                       <input type="text" id="product-title" value="${escapeHtml(getVietnameseProductName(editingProduct?.title || ""))}" required maxlength="120" autocomplete="off">
+                       <input type="text" id="product-title" value="${escapeHtml(editingProduct?.title || "")}" required maxlength="120" autocomplete="off">
                    </label>
                    <label class="product-form-field" for="product-image"><span>Ảnh đại diện</span>
                        <input type="text" inputmode="url" id="product-image" placeholder="Bấm Tải ảnh lên, hoặc dán link https://..." value="${escapeHtml(editingProduct?.image || "")}" required>
@@ -537,7 +537,7 @@ function renderSharedProductImageNotice(products) {
            <ul>
                ${sharedGroups.map(([image, items]) => `
                    <li><code>${escapeHtml(image)}</code>
-                       <ul>${items.map((item) => `<li>${escapeHtml(getVietnameseProductName(item.title))} (mã ${escapeHtml(item.id)})</li>`).join("")}</ul>
+                       <ul>${items.map((item) => `<li>${escapeHtml(item.title)} (mã ${escapeHtml(item.id)})</li>`).join("")}</ul>
                    </li>
                `).join("")}
            </ul>
@@ -674,7 +674,7 @@ function renderOffersTab() {
                        ${products.map((product) => `
                            <label class="offer-product-option">
                                <input type="checkbox" name="productIds" value="${escapeHtml(product.id)}">
-                               <span>${escapeHtml(getVietnameseProductName(product.title))}</span>
+                               <span>${escapeHtml(product.title)}</span>
                                <small>${formatVnd(product.price)}</small>
                            </label>
                        `).join("") || '<p class="empty-state">Chưa có sản phẩm để áp dụng ưu đãi.</p>'}
@@ -1010,7 +1010,7 @@ function renderActiveOrderSummary(order) {
 
 function renderOrderSummary(order) {
    const itemSummary = (order.items || [])
-       .map((item) => `${escapeHtml(getVietnameseProductName(item.title))} × ${Number(item.quantity) || 0}`)
+       .map((item) => `${escapeHtml(item.title)} × ${Number(item.quantity) || 0}`)
        .join(", ") || "Không có sản phẩm";
    return `
        <article class="record-summary">
@@ -1115,9 +1115,9 @@ function renderOrderCard(order, showCompletionAction = true) {
                    const image = getSafeImageUrl(item.image || product.image) || "./images/flowerflow-logo.png";
                    return `
                        <div class="product-card">
-                           <img src="${escapeHtml(image)}" alt="${escapeHtml(getVietnameseProductName(item.title))}" width="64" height="64" loading="lazy" decoding="async">
+                           <img src="${escapeHtml(image)}" alt="${escapeHtml(item.title)}" width="64" height="64" loading="lazy" decoding="async">
                            <div class="product-card-content">
-                               <strong>${escapeHtml(getVietnameseProductName(item.title))}</strong>
+                               <strong>${escapeHtml(item.title)}</strong>
                                <span>${escapeHtml(FlowerBouquetOptions.summary(item))}</span>
                                <span>Số lượng: ${Number(item.quantity) || 0}</span>
                                <span>Giá: ${moneyFormat(item.price)}</span>
@@ -1272,7 +1272,7 @@ function renderReviewCard(review, showCompletionAction = true) {
            <div class="info-grid two-col">
                <div class="field">
                    <span class="field-label">Sản phẩm</span>
-                   <span class="field-value">${escapeHtml(getVietnameseProductName(review.productName))}</span>
+                   <span class="field-value">${escapeHtml(review.productName)}</span>
                </div>
                <div class="field">
                    <span class="field-label">Xếp hạng</span>
@@ -1311,7 +1311,7 @@ function renderReviewSummary(review) {
    return `
        <article class="record-summary">
            <div class="completed-order-info">
-               <strong>${escapeHtml(review.customerName)} · ${escapeHtml(getVietnameseProductName(review.productName))}</strong>
+               <strong>${escapeHtml(review.customerName)} · ${escapeHtml(review.productName)}</strong>
                <span class="rating-value">${"★".repeat(Number(review.rating || 0))}${"☆".repeat(5 - Number(review.rating || 0))}</span>
                <span>${escapeHtml(({ pending: "Chờ duyệt", approved: "Đã duyệt", hidden: "Đã ẩn" })[review.moderationStatus || "pending"] || "Chờ duyệt")}</span>
                <span class="record-summary-preview"><b>Đánh giá:</b> ${escapeHtml(review.comment || "Không có nhận xét")}</span>
@@ -1572,7 +1572,7 @@ async function addNewProduct(event) {
 
 async function deleteProduct(id) {
    const product = getProductById(id);
-   if (!product || !window.confirm(`Bạn có chắc muốn xóa “${getVietnameseProductName(product.title)}”?`)) return;
+   if (!product || !window.confirm(`Bạn có chắc muốn xóa “${product.title}”?`)) return;
 
    const products = getProducts().filter((item) => String(item.id) !== String(id));
     if (!await saveAdminProducts(products)) return;
@@ -1585,8 +1585,8 @@ async function toggleProductVisibility(id) {
    if (!product) return;
    const status = product.status === "hidden" ? "active" : "hidden";
    const prompt = status === "hidden"
-       ? `Tạm ẩn “${getVietnameseProductName(product.title)}” khỏi cửa hàng khách hàng?`
-       : `Hiện bán lại “${getVietnameseProductName(product.title)}” trên cửa hàng?`;
+       ? `Tạm ẩn “${product.title}” khỏi cửa hàng khách hàng?`
+       : `Hiện bán lại “${product.title}” trên cửa hàng?`;
    if (!window.confirm(prompt)) return;
    const products = getProducts().map((item) =>
        String(item.id) === String(id) ? { ...item, status } : item

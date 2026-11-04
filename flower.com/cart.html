@@ -53,7 +53,6 @@
     <script src="./js/core/store-footer.js?v=4"></script>
     <script src="./js/catalog/bouquet-options.js?v=1"></script>
     <script src="./js/core/currency.js?v=11"></script>
-    <script src="./js/core/product-names.js?v=2"></script>
     <script>
       // Same limit as the order API (api/orders.js MAX_QUANTITY_PER_PRODUCT).
       const MAX_QUANTITY_PER_PRODUCT = 50;
@@ -114,7 +113,7 @@
           const card = document.createElement("article");
           const quantity = document.createElement("span");
           const stockNote = document.createElement("p");
-          const productName = getVietnameseProductName(product.title);
+          const productName = product.title || "Sản phẩm hoa";
 
           card.className = "cart-item";
           info.className = "cart-item-details";

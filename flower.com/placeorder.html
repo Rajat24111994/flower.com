@@ -40,7 +40,6 @@
   <script src="./js/core/store-footer.js?v=4"></script>
   <script src="./js/catalog/bouquet-options.js?v=1"></script>
   <script src="./js/core/currency.js?v=11"></script>
-  <script src="./js/core/product-names.js?v=2"></script>
   <script src="./js/order/order-store.js?v=18"></script>
   <script>
     let CartContainer = document.getElementById("product-container");
@@ -289,7 +288,7 @@
 
         image.src = product.image;
         const productQuantity = Math.max(1, Number(product.quantity) || 1);
-        details.textContent = getVietnameseProductName(product.title) + (FlowerBouquetOptions.summary(product) ? " · " + FlowerBouquetOptions.summary(product) : "");
+        details.textContent = (product.title || "Sản phẩm hoa") + (FlowerBouquetOptions.summary(product) ? " · " + FlowerBouquetOptions.summary(product) : "");
         price.textContent = formatVnd(Number(product.price) * productQuantity);
         quantity.textContent = `${productQuantity} sản phẩm`;
 
