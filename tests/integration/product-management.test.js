@@ -21,8 +21,8 @@ function inventory(db, products = []) {
     };
     const source = fs.readFileSync(path.join(h.ROOT, "js/catalog/product-store.js"), "utf8")
         .replace("async function getFirebaseApi() {", "async function getFirebaseApi() { return __firebase;");
-    new Function("window", "__firebase", "navigator", "CustomEvent", source)(
-        context.window, context.__firebase, context.navigator, context.CustomEvent);
+    new Function("window", "__firebase", "navigator", "CustomEvent", "catalogProducts", source)(
+        context.window, context.__firebase, context.navigator, context.CustomEvent, []);
     return { api: context.window.FlowerInventory, context };
 }
 
@@ -39,15 +39,15 @@ test.beforeEach(async () => {
     await h.db().doc("metadata/productCatalog").set({ catalogSeeded: true });
 });
 
-test("store thật: thêm/sửa/ẩn/hiện/xóa lưu bền, API khách cập nhật, lịch sử đơn giữ nguyên", async () => {
+test("store thật: thêm/sửa thông tin/ẩn/hiện/xóa lưu bền, API khách cập nhật, lịch sử đơn giữ nguyên", async () => {
     const db = env.authenticatedContext("admin-test", { admin: true }).firestore();
     const store = inventory(db).api;
     await store.saveProducts([original]);
     assert.equal((await h.db().doc("products/test-flower").get()).data().price, 250000);
     const reloaded = inventory(db, [(await h.db().doc("products/test-flower").get()).data()]).api;
-    await reloaded.saveProducts([{ ...original, price: 350000, image: "./images/products/product-flower-02.webp" }]);
+    await reloaded.saveProducts([{ ...original, image: "./images/products/product-flower-02.webp" }]);
     let list = await h.callApi("products", { method: "GET" });
-    assert.equal(list.body.products[0].price, 350000);
+    assert.equal(list.body.products[0].price, 250000);
     assert.equal(list.body.products[0].image, "./images/products/product-flower-02.webp");
     await h.db().doc("orders/history-test").set({ items: [{ ...original, quantity: 1 }], total: 250000 });
     await reloaded.saveProducts(reloaded.readProducts().map((item) => ({ ...item, status: "hidden" })));
@@ -60,18 +60,18 @@ test("store thật: thêm/sửa/ẩn/hiện/xóa lưu bền, API khách cập nh
     assert.equal((await h.db().doc("orders/history-test").get()).data().items[0].title, original.title);
 });
 
-test("lưu giá không ghi đè tồn kho mới; xung đột cùng trường và trùng ID không ghi đè", async () => {
+test("sửa thông tin không ghi đè tồn kho mới; xung đột cùng trường và trùng ID không ghi đè", async () => {
     const db = env.authenticatedContext("admin-test", { admin: true }).firestore();
     await h.db().doc("products/test-flower").set(original);
     const store = inventory(db, [original]).api;
     await h.db().doc("products/test-flower").update({ quantity: 2 });
-    await store.saveProducts([{ ...original, price: 300000 }]);
+    await store.saveProducts([{ ...original, description: "Nội dung mới" }]);
     assert.equal(await h.stockOf("test-flower"), 2);
     assert.equal(store.readProducts()[0].quantity, 2);
-    await h.db().doc("products/test-flower").update({ price: 400000 });
-    await assert.rejects(store.saveProducts(store.readProducts().map((item) => ({ ...item, price: 500000 }))), /thay đổi ở nơi khác/);
+    await h.db().doc("products/test-flower").update({ description: "Nội dung cập nhật bên ngoài" });
+    await assert.rejects(store.saveProducts(store.readProducts().map((item) => ({ ...item, description: "Ghi đè nội dung" }))), /thay đổi ở nơi khác/);
     await assert.rejects(inventory(db).api.saveProducts([original]), /thay đổi ở nơi khác/);
-    assert.equal((await h.db().doc("products/test-flower").get()).data().price, 400000);
+    assert.equal((await h.db().doc("products/test-flower").get()).data().price, 250000);
 });
 
 test("mất mạng/thu hồi quyền: không báo lưu thành công, không đổi cache hay Firestore", async () => {

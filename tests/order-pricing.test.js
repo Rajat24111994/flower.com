@@ -52,15 +52,12 @@ test("toVndPrice() giữ giá VND, chỉ đổi giá USD cũ (dưới 1.000)", (
     assert.equal(toVndPrice(-5), 0);
 });
 
-test("giá hoa nguyên liệu cần cập nhật hôm nay; bó làm sẵn luôn dùng giá niêm yết cố định", () => {
+test("giá hoa được duy trì qua nhiều ngày; bó làm sẵn dùng giá niêm yết cố định", () => {
     const now = new Date("2025-03-20T05:30:00.000Z");
     const today = getVietnameseDateTime(now).date;
     const flower = { id: "rose", saleType: "flower", price: 165000, priceUpdatedAt: today };
     assert.equal(getProductPrice(flower, now), 165000);
-    assert.throws(
-        () => getProductPrice({ ...flower, priceUpdatedAt: "2025-03-19" }, now),
-        (error) => error.code === "flower-price-outdated"
-    );
+    assert.equal(getProductPrice({ ...flower, priceUpdatedAt: "2025-03-19" }, now), 165000);
 
     const readyMade = { id: "bouquet", saleType: "ready_made", price: 425000, priceUpdatedAt: "2020-01-01" };
     assert.equal(getProductPrice(readyMade, now), 425000);

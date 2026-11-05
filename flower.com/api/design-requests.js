@@ -322,7 +322,7 @@ module.exports = async function handler(req, res) {
             });
             return res.status(201).json({ request: result, accessToken: referenceToken });
         } catch (error) {
-            if (["product-unavailable", "insufficient-stock", "flower-price-outdated", "delivery-zone-unavailable", "bouquet-wrapping-unavailable"].includes(error.code)) {
+            if (["product-unavailable", "insufficient-stock", "delivery-zone-unavailable", "bouquet-wrapping-unavailable"].includes(error.code)) {
                 return sendError(res, 409, error.code, error.message);
             }
             console.error("Design request create failed:", error.code || error.message);

@@ -242,7 +242,7 @@ test("các cấu hình cùng sản phẩm: giá server, lưu thiệp riêng, tr�
     assert.equal(order.items[0].cardMessage, "Tặng mẹ");
     assert.equal(order.items[1].size, "premium");
     assert.equal(order.items[0].personalNote, "Giấy kraft");
-    assert.equal(order.items[0].price, Math.round((await h.db().doc("products/1").get()).data().price * 1.3));
+    assert.equal(order.items[0].price, (await h.db().doc("products/1").get()).data().price);
     assert.equal(await h.stockOf("1"), 7);
     await orderRef.update({ reservationExpiresAt: Timestamp.fromMillis(Date.now() - 1000) });
     await h.callApi("orders", { method: "GET", query: { action: "expire" }, headers: { authorization: "Bearer test-cron-secret" } });

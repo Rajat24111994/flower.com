@@ -22,7 +22,7 @@ test.beforeEach(async () => {
     await env.clearFirestore();
     await env.withSecurityRulesDisabled(async (context) => {
         const db = context.firestore();
-        await setDoc(doc(db, "products/1"), { id: 1, title: "Hoa", price: 10, quantity: 5 });
+        await setDoc(doc(db, "products/1"), { id: 1, title: "Hoa", price: 10, quantity: 5, saleType: "flower" });
         await setDoc(doc(db, "orders/o1"), {
             uid: "alice", phone: "0908123456", status: "Chờ xác nhận", total: 100,
             paymentMethod: "qr", paymentVerified: false, paymentStatus: "Chờ xác minh thanh toán"
@@ -37,6 +37,7 @@ test.beforeEach(async () => {
         await setDoc(doc(db, "metadata/activePromotions"), { items: [] });
         await setDoc(doc(db, "metadata/productCatalog"), { catalogSeeded: true });
         await setDoc(doc(db, "adminRoles/admin1"), { role: "admin" });
+        await setDoc(doc(db, "adminRoles/owner1"), { role: "owner" });
         await setDoc(doc(db, "messages/m1"), { text: "Xin chào" });
         await setDoc(doc(db, "shoppingCarts/alice"), { cart: [], wish: [] });
     });
@@ -45,6 +46,7 @@ test.beforeEach(async () => {
 const guest = () => env.unauthenticatedContext().firestore();
 const alice = () => env.authenticatedContext("alice").firestore();
 const admin = () => env.authenticatedContext("admin1", { admin: true }).firestore();
+const owner = () => env.authenticatedContext("owner1", { admin: true, role: "owner" }).firestore();
 // Claim still in the token, but the owner already removed the adminRoles document.
 const revokedAdmin = () => env.authenticatedContext("former", { admin: true }).firestore();
 
@@ -57,6 +59,25 @@ test("sản phẩm: ai cũng xem được, chỉ admin sửa được", async ()
     await assertFails(updateDoc(doc(guest(), "products/1"), { status: "hidden" }));
     await assertSucceeds(updateDoc(doc(admin(), "products/1"), { status: "hidden" }));
     await assertFails(updateDoc(doc(admin(), "products/1"), { status: "deleted" }));
+});
+
+test("giá sản phẩm chỉ được thay đổi qua API quản lý giá, không qua Firestore client", async () => {
+    for (const db of [admin(), owner()]) {
+        await assertFails(updateDoc(doc(db, "products/1"), { price: 15000 }));
+        await assertFails(updateDoc(doc(db, "products/1"), { priceUpdatedAt: "2026-11-05" }));
+        await assertFails(updateDoc(doc(db, "products/1"), { priceUpdatedBy: "attacker" }));
+    }
+    await assertFails(getDoc(doc(owner(), "priceHistory/entry")));
+});
+
+test("admin vẫn có thể cập nhật giá bó làm sẵn", async () => {
+    const ref = doc(admin(), "products/ready-made");
+    await assertSucceeds(setDoc(ref, {
+        id: "ready-made", title: "Bó hoa", price: 250000, quantity: 5,
+        image: "./images/products/product-flower-01.webp", description: "Bó làm sẵn",
+        saleType: "ready_made"
+    }));
+    await assertSucceeds(updateDoc(ref, { price: 300000 }));
 });
 
 test("sản phẩm: tồn kho phải là số nguyên không âm", async () => {

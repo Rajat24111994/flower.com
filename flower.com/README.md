@@ -55,8 +55,8 @@ flowchart LR
 | Tiền tệ | `currency.js` | Định dạng giá VND; mọi giá lưu là số nguyên VND (ví dụ `450000`) |
 | Liên hệ | `contact-tools.js/.css` | Thanh liên hệ Facebook và Zalo (ẩn trên trang quản trị) |
 | Quản trị | `admin.html`, `admin.js`, `admin.css` | Sản phẩm, danh mục, ưu đãi, cấu hình khu vực/phí giao và bậc phí gói bó hoa, xử lý yêu cầu thiết kế/báo giá, đơn hàng, xác minh QR và xem audit đối soát, doanh thu, đánh giá, lời nhắn, người dùng |
-| Owner | `owner.html`, `owner.js` | Cấp hoặc gỡ quyền admin |
-| API | `api/admin/users.js`, `api/owner/users.js`, `api/delivery-zones.js`, `api/bouquet-wrapping.js`, `api/design-requests.js`, `api/orders.js`, `lib/firebase-admin.js` | Quản lý khu vực/phí bó, yêu cầu thiết kế và báo giá bằng quyền admin; báo giá/tạo đơn authoritative, tra cứu đơn khách và đối soát thanh toán qua API có xác thực |
+| Owner | `owner.html`, `owner.js`, mục “Quản lý giá hoa” trong `admin.html` | Cấp/gỡ quyền admin; cập nhật giá hoa nguyên liệu và xem lịch sử giá |
+| API | `api/admin/users.js`, `api/owner/users.js`, `api/flower-prices.js`, `api/delivery-zones.js`, `api/bouquet-wrapping.js`, `api/design-requests.js`, `api/orders.js`, `lib/firebase-admin.js` | API giá hoa chỉ Owner dùng, cập nhật giá và lịch sử trong cùng giao dịch; quản lý khu vực/phí bó, yêu cầu thiết kế; báo giá/tạo đơn authoritative, tra cứu đơn khách và đối soát thanh toán |
 
 ## Dữ liệu
 
@@ -70,6 +70,7 @@ flowchart LR
 | Tài khoản Firebase, vai trò | Firebase Authentication (custom claims) | ✅ |
 | Giỏ hàng, yêu thích | `localStorage` (bản cục bộ) và Firestore `shoppingCarts/{uid}` (tài khoản đăng nhập) | ✅ với tài khoản |
 | Đơn hàng mới | `/api/orders` xác minh giá/tồn kho rồi ghi Firestore `orders`; mỗi dòng lưu giá và đơn vị tại thời điểm đặt | ✅ |
+| Giá hoa nguyên liệu | Firestore `products`; Owner cập nhật qua `/api/flower-prices`, lịch sử bất biến lưu trong `priceHistory` | ✅ |
 | Audit đối soát QR | `/api/orders` ghi/đọc `orderPaymentAudit`; Security Rules chặn truy cập từ client | ✅ |
 | Đánh giá trong trang quản trị (phản hồi, hoàn thành) | Firestore `reviews` | ✅ |
 | Lời nhắn của khách và câu trả lời | Trường `orderNote`, `orderNoteReply`, `orderNoteCompletedAt` của đơn trong `orders` | ✅ |
