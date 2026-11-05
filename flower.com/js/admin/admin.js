@@ -537,8 +537,8 @@ function renderProductTab() {
                        </select>
                    </label>
                    <label class="product-form-field" for="product-price"><span>Giá bán (VND)</span>
-                       <input type="number" id="product-price" value="${editingProduct ? escapeHtml(editingProduct.price) : ""}" min="1000" step="1" required inputmode="numeric" ${editingProduct ? "readonly" : ""}>
-                       ${editingProduct ? '<small>Để ghi nhận lịch sử đầy đủ, hãy đổi giá trong mục “Quản lý giá hoa” (Owner).</small>' : ""}
+                       <input type="number" id="product-price" value="${editingProduct ? escapeHtml(editingProduct.price) : ""}" min="1000" step="1" required inputmode="numeric" ${editingProduct?.saleType === "flower" ? "readonly" : ""}>
+                       ${editingProduct?.saleType === "flower" ? '<small id="product-price-hint">Để ghi nhận lịch sử đầy đủ, hãy đổi giá trong mục “Quản lý giá hoa” (Owner).</small>' : ""}
                    </label>
                    <label class="product-form-field" for="product-quantity"><span>Số lượng tồn kho</span>
                        <input type="number" id="product-quantity" value="${editingProduct ? Number(editingProduct.quantity) || 0 : ""}" data-shown-value="${editingProduct ? Number(editingProduct.quantity) || 0 : ""}" min="0" step="1" required inputmode="numeric">
@@ -2464,6 +2464,23 @@ if (dashboardPage) {
 if (productPage) {
    productPage.addEventListener("click", renderProductTab);
 }
+main.addEventListener("change", (event) => {
+   if (event.target?.id !== "product-sale-type") return;
+   const priceInput = document.getElementById("product-price");
+   if (!priceInput || editingProductId === null) return;
+   const originalProduct = getProducts().find((item) => String(item.id) === String(editingProductId));
+   const locked = originalProduct?.saleType === "flower" || event.target.value === "flower";
+   priceInput.readOnly = locked;
+   const hint = document.getElementById("product-price-hint");
+   if (locked && !hint) {
+       const message = document.createElement("small");
+       message.id = "product-price-hint";
+       message.textContent = "Để ghi nhận lịch sử đầy đủ, hãy đổi giá trong mục “Quản lý giá hoa” (Owner).";
+       priceInput.insertAdjacentElement("afterend", message);
+   } else if (!locked) {
+       hint?.remove();
+   }
+});
 
 if (categoriesPage) {
    categoriesPage.addEventListener("click", renderCategoriesTab);

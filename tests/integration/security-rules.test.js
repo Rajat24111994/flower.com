@@ -22,7 +22,7 @@ test.beforeEach(async () => {
     await env.clearFirestore();
     await env.withSecurityRulesDisabled(async (context) => {
         const db = context.firestore();
-        await setDoc(doc(db, "products/1"), { id: 1, title: "Hoa", price: 10, quantity: 5 });
+        await setDoc(doc(db, "products/1"), { id: 1, title: "Hoa", price: 10, quantity: 5, saleType: "flower" });
         await setDoc(doc(db, "orders/o1"), {
             uid: "alice", phone: "0908123456", status: "Chờ xác nhận", total: 100,
             paymentMethod: "qr", paymentVerified: false, paymentStatus: "Chờ xác minh thanh toán"
@@ -68,6 +68,16 @@ test("giá sản phẩm chỉ được thay đổi qua API quản lý giá, khô
         await assertFails(updateDoc(doc(db, "products/1"), { priceUpdatedBy: "attacker" }));
     }
     await assertFails(getDoc(doc(owner(), "priceHistory/entry")));
+});
+
+test("admin vẫn có thể cập nhật giá bó làm sẵn", async () => {
+    const ref = doc(admin(), "products/ready-made");
+    await assertSucceeds(setDoc(ref, {
+        id: "ready-made", title: "Bó hoa", price: 250000, quantity: 5,
+        image: "./images/products/product-flower-01.webp", description: "Bó làm sẵn",
+        saleType: "ready_made"
+    }));
+    await assertSucceeds(updateDoc(ref, { price: 300000 }));
 });
 
 test("sản phẩm: tồn kho phải là số nguyên không âm", async () => {

@@ -21,8 +21,8 @@ function inventory(db, products = []) {
     };
     const source = fs.readFileSync(path.join(h.ROOT, "js/catalog/product-store.js"), "utf8")
         .replace("async function getFirebaseApi() {", "async function getFirebaseApi() { return __firebase;");
-    new Function("window", "__firebase", "navigator", "CustomEvent", source)(
-        context.window, context.__firebase, context.navigator, context.CustomEvent);
+    new Function("window", "__firebase", "navigator", "CustomEvent", "catalogProducts", source)(
+        context.window, context.__firebase, context.navigator, context.CustomEvent, []);
     return { api: context.window.FlowerInventory, context };
 }
 
