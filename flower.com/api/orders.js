@@ -836,7 +836,6 @@ async function createOrder(req, res) {
             const orderData = {
                 orderType: products.some((item) => getProductSaleType(item.data) === "flower") ? "custom_bouquet" : "ready_made",
                 uid: user?.uid || "",
-                email: String(user?.email || "").slice(0, 254),
                 customerName: checkout.customerName,
                 phone: checkout.phone,
                 address: checkout.address,
