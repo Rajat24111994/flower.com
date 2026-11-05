@@ -63,11 +63,10 @@ test("sản phẩm tạm ẩn chỉ hiện trong API quản trị đã xác th�
     assert.equal((await h.callApi("products", { method: "GET", query: { manage: "1" }, token: customer.token })).status, 403);
 });
 
-test("API sửa tên và ảnh catalog cũ trong phản hồi mà không ghi đè Firestore", async () => {
-    const catalogProduct = h.catalog.find((product) => String(product.id) === "10");
+test("API giữ nguyên tên và ảnh sản phẩm động, không ghi đè Firestore", async () => {
     const damagedProduct = {
-        ...catalogProduct,
-        title: "B? hoa h?ng t?m bay b?ng",
+        id: "10",
+        title: "Bó hoa hồng tầm bay bổng",
         image: "./images/flower-04.webp",
         price: 1557000,
         quantity: 1044
@@ -76,8 +75,8 @@ test("API sửa tên và ảnh catalog cũ trong phản hồi mà không ghi đ�
 
     const publicList = await h.callApi("products", { method: "GET" });
     const publicProduct = publicList.body.products.find((product) => String(product.id) === "10");
-    assert.equal(publicProduct.title, catalogProduct.title);
-    assert.equal(publicProduct.image, catalogProduct.image);
+    assert.equal(publicProduct.title, damagedProduct.title);
+    assert.equal(publicProduct.image, damagedProduct.image);
     assert.equal(publicProduct.price, damagedProduct.price);
     assert.equal(publicProduct.quantity, damagedProduct.quantity);
 

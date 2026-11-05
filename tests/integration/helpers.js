@@ -33,17 +33,20 @@ Object.assign(process.env, {
 const { getAdminAuth, getAdminFirestore } = require(path.join(ROOT, "lib/firebase-admin.js"));
 const { Timestamp } = require(require.resolve("firebase-admin/firestore", { paths: [ROOT] }));
 const { syncAdminRole } = require(path.join(ROOT, "lib/admin-roles.js"));
-const catalog = [{
-    id: 1,
-    title: "Bó hoa fixture",
-    description: "Sản phẩm dùng riêng cho integration test",
-    image: "./images/products/product-flower-01.webp",
-    category: "Hoa tươi",
-    price: 250000,
-    quantity: 10,
-    status: "active",
-    saleType: "ready_made"
-}];
+const catalog = Array.from({ length: 10 }, (_, index) => {
+    const id = index + 1;
+    return {
+        id,
+        title: id === 1 ? "Bó hoa fixture" : `Bó hoa fixture ${id}`,
+        description: "Sản phẩm dùng riêng cho integration test",
+        image: "./images/products/product-flower-01.webp",
+        category: "Hoa tươi",
+        price: 250000,
+        quantity: 10,
+        status: "active",
+        saleType: "ready_made"
+    };
+});
 
 const handlers = {
     orders: require(path.join(ROOT, "api/orders.js")),
