@@ -193,7 +193,7 @@ function renderFlowers() {
     title.textContent = flower.title;
     price.textContent = `${formatVnd(flower.price)} / cành`;
     stock.textContent = flower.quantity > 0
-      ? `Còn ${flower.quantity} cành · giá cập nhật hôm nay · màu sẽ được xác nhận`
+      ? `Còn ${flower.quantity} cành · màu sẽ được xác nhận`
       : "Hết hàng · tồn kho hiển thị theo loại hoa";
     input.type = "number";
     input.min = "0";
@@ -509,7 +509,6 @@ async function initializeCustomBouquet() {
       && flower.saleType === "flower"
       && Number.isSafeInteger(flower.price)
       && flower.price > 0
-      && flower.priceUpdatedAt === vietnameseDate()
       && Number.isInteger(flower.quantity)
       && flower.quantity >= 0);
   } else {

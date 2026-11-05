@@ -55,7 +55,8 @@ const handlers = {
     designRequests: require(path.join(ROOT, "api/design-requests.js")),
     products: require(path.join(ROOT, "api/products.js")),
     adminUsers: require(path.join(ROOT, "api/admin/users.js")),
-    ownerUsers: require(path.join(ROOT, "api/owner/users.js"))
+    ownerUsers: require(path.join(ROOT, "api/owner/users.js")),
+    flowerPrices: require(path.join(ROOT, "api/flower-prices.js"))
 };
 
 // Calls a Vercel-style handler in-process and returns { status, body, headers }.

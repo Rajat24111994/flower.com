@@ -82,6 +82,10 @@ async function request(path, options = {}) {
             expect(status === 401, `HTTP ${status} (mong đợi 401)`);
         });
     }
+    await check("API giá hoa bị chặn khi chưa đăng nhập", async () => {
+        const { status } = await request("/api/flower-prices");
+        expect(status === 401, `HTTP ${status} (mong đợi 401)`);
+    });
 
     for (const result of results) {
         console.log(`${result.ok ? "✔" : "✖"} ${result.name} (${result.ms} ms)${result.ok ? "" : ` – ${result.error}`}`);

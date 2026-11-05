@@ -250,7 +250,11 @@
         const amountChanged = previousQuote && ["subtotal", "savings", "tax", "wrappingFee", "shippingFee", "total"].some(
           (key) => Number(previousQuote[key] ?? 0) !== Number(serverQuote.totals[key] ?? 0)
         );
-        if (amountChanged || (!previousQuote && ["qr", "vnpay"].includes(checkoutData?.paymentMethod))) {
+        const previousPrices = new Map((checkoutData?.quotedPrices || [])
+          .map((item) => [String(item.id), Number(item.price)]));
+        const itemPriceChanged = serverQuote.items.some((item) => previousPrices.has(String(item.id))
+          && previousPrices.get(String(item.id)) !== Number(item.price));
+        if (amountChanged || itemPriceChanged || (!previousQuote && ["qr", "vnpay"].includes(checkoutData?.paymentMethod))) {
           const newTotal = formatVnd(serverQuote.totals.total);
           if (!keepNote) {
             paymentNote.textContent = checkoutData?.paymentMethod === "qr"

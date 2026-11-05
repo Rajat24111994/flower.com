@@ -113,11 +113,6 @@ function getProductSaleType(data) {
 }
 
 function getProductPrice(data, now = new Date()) {
-    if (getProductSaleType(data) === "flower" && data.priceUpdatedAt !== getVietnameseDateTime(now).date) {
-        const error = new Error(`Giá hoa “${String(data.title || "Nguyên liệu").slice(0, 120)}” chưa được cập nhật hôm nay. Vui lòng liên hệ cửa hàng.`);
-        error.code = "flower-price-outdated";
-        throw error;
-    }
     return toVndPrice(data.price);
 }
 
@@ -673,7 +668,7 @@ async function quoteOrder(req, res) {
             }))
         });
     } catch (error) {
-        if (["invalid-promotion", "insufficient-stock", "product-unavailable", "delivery-zone-unavailable", "flower-price-outdated", "invalid-custom-bouquet", "bouquet-quantity-limit", "bouquet-wrapping-unavailable"].includes(error.code)) {
+        if (["invalid-promotion", "insufficient-stock", "product-unavailable", "delivery-zone-unavailable", "invalid-custom-bouquet", "bouquet-quantity-limit", "bouquet-wrapping-unavailable"].includes(error.code)) {
             return sendError(res, 409, error.code, error.message);
         }
         console.error("Order quote failed:", error.code || "unknown");
@@ -908,7 +903,7 @@ async function createOrder(req, res) {
         if (String(error.code || "").startsWith("auth/")) {
             return sendError(res, 401, "unauthenticated", "Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại rồi đặt hàng.");
         }
-        if (["invalid-checkout", "invalid-delivery-schedule", "invalid-promotion", "insufficient-stock", "product-unavailable", "price-changed", "idempotency-conflict", "delivery-zone-unavailable", "flower-price-outdated", "invalid-custom-bouquet", "bouquet-quantity-limit", "bouquet-wrapping-unavailable"].includes(error.code)) {
+        if (["invalid-checkout", "invalid-delivery-schedule", "invalid-promotion", "insufficient-stock", "product-unavailable", "price-changed", "idempotency-conflict", "delivery-zone-unavailable", "invalid-custom-bouquet", "bouquet-quantity-limit", "bouquet-wrapping-unavailable"].includes(error.code)) {
             const status = ["invalid-checkout", "invalid-delivery-schedule"].includes(error.code) ? 400 : 409;
             return sendError(res, status, error.code, error.message);
         }

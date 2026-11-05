@@ -15,6 +15,7 @@ let messagesPage = document.getElementById("messages_page");
 let revenuePage = document.getElementById("revenue_page");
 let usersPage = document.getElementById("users_page");
 let logOutPage = document.getElementById("logout_page");
+let flowerPricesPage = null;
 let main = document.querySelector("main");
 let currentUser;
 let currentUserRole = "admin";
@@ -49,6 +50,12 @@ let designRequestsLoaded = false;
 let designRequestsLoadError = "";
 let messagesCache = [];
 let stopMessageSubscription = null;
+let flowerPrices = [];
+let flowerPricesLoaded = false;
+let flowerPricesLoading = false;
+let flowerPricesMessage = "";
+let editingFlowerPriceId = null;
+let flowerPriceHistory = null;
 let reportFilters = { period: "month", month: reportDateKey(new Date()).slice(0, 7), start: "", end: "", lowStock: 5 };
 
 const STORAGE_KEYS = {
@@ -471,7 +478,7 @@ function renderProductTab() {
                                    <td>${escapeHtml(item.category || "Chưa phân loại")}</td>
                                    <td>
                                        ${formatVnd(item.price)} / ${item.saleType === "flower" ? "cành" : "bó"}
-                                       ${item.saleType === "flower" ? `<small>Giá ngày ${escapeHtml(item.priceUpdatedAt || "chưa cập nhật")}</small>` : ""}
+                                       ${item.saleType === "flower" ? `<small>${item.priceUpdatedAt ? `Cập nhật ${escapeHtml(item.priceUpdatedAt)}` : "Giá được duy trì cho đến lần cập nhật tiếp theo"}</small>` : ""}
                                    </td>
                                    <td><input class="qty-input" data-id="${escapeHtml(item.id)}" type="number" min="0" step="1" value="${quantity}" aria-label="Tồn kho ${escapeHtml(item.title)} (${item.saleType === "flower" ? "cành" : "bó"})"></td>
                                    <td>
@@ -526,11 +533,12 @@ function renderProductTab() {
                    <label class="product-form-field" for="product-sale-type"><span>Hình thức bán</span>
                        <select id="product-sale-type">
                            <option value="ready_made" ${editingProduct?.saleType !== "flower" ? "selected" : ""}>Bó làm sẵn · giá cố định</option>
-                           <option value="flower" ${editingProduct?.saleType === "flower" ? "selected" : ""}>Hoa nguyên liệu · giá theo ngày, tính theo cành</option>
+                           <option value="flower" ${editingProduct?.saleType === "flower" ? "selected" : ""}>Hoa nguyên liệu · giá bán theo cành</option>
                        </select>
                    </label>
                    <label class="product-form-field" for="product-price"><span>Giá bán (VND)</span>
-                       <input type="number" id="product-price" value="${editingProduct ? escapeHtml(editingProduct.price) : ""}" min="1000" step="1000" required inputmode="numeric">
+                       <input type="number" id="product-price" value="${editingProduct ? escapeHtml(editingProduct.price) : ""}" min="1000" step="1" required inputmode="numeric" ${editingProduct ? "readonly" : ""}>
+                       ${editingProduct ? '<small>Để ghi nhận lịch sử đầy đủ, hãy đổi giá trong mục “Quản lý giá hoa” (Owner).</small>' : ""}
                    </label>
                    <label class="product-form-field" for="product-quantity"><span>Số lượng tồn kho</span>
                        <input type="number" id="product-quantity" value="${editingProduct ? Number(editingProduct.quantity) || 0 : ""}" data-shown-value="${editingProduct ? Number(editingProduct.quantity) || 0 : ""}" min="0" step="1" required inputmode="numeric">
@@ -1822,9 +1830,6 @@ async function addNewProduct(event) {
    }
    const productData = {
        ...inputProduct,
-       ...(inputProduct.saleType === "flower" ? { priceUpdatedAt: new Intl.DateTimeFormat("en-CA", {
-           timeZone: "Asia/Ho_Chi_Minh", year: "numeric", month: "2-digit", day: "2-digit"
-       }).format(new Date()) } : {}),
        image: getStoredImageUrl(inputProduct.image),
        images: inputProduct.images.map(getStoredImageUrl)
    };
@@ -2211,6 +2216,163 @@ function renderUsersTab() {
    });
 }
 
+function renderFlowerPricesTab() {
+   const rows = flowerPrices.map((flower) => {
+       const isEditing = String(editingFlowerPriceId) === String(flower.flowerId);
+       const image = getSafeImageUrl(flower.image);
+       return `
+           <tr>
+               <td><code>${escapeHtml(flower.flowerId)}</code></td>
+               <td>${image ? `<img src="${escapeHtml(image)}" alt="" width="56" height="56" loading="lazy">` : "—"}</td>
+               <td>${escapeHtml(flower.name || "Hoa")}</td>
+               <td>${escapeHtml(flower.unit || "cành")}</td>
+               <td>${isEditing
+                   ? `<input type="text" inputmode="numeric" pattern="[0-9]*" data-flower-price="${escapeHtml(flower.flowerId)}" value="${escapeHtml(flower.price)}" aria-label="Giá mới của ${escapeHtml(flower.name)}">`
+                   : moneyFormat(flower.price)}</td>
+               <td>${escapeHtml(flower.priceUpdatedAt ? formatUserDate(flower.priceUpdatedAt) : "Chưa ghi nhận")}</td>
+               <td>${escapeHtml(flower.updatedBy || "Chưa ghi nhận")}</td>
+               <td>
+                   ${isEditing
+                       ? `<button class="primary-btn" type="button" data-price-save="${escapeHtml(flower.flowerId)}">Lưu</button>
+                          <button class="secondary-btn" type="button" data-price-cancel>Hủy</button>`
+                       : `<button class="secondary-btn" type="button" data-price-edit="${escapeHtml(flower.flowerId)}">Sửa</button>
+                          <button class="secondary-btn" type="button" data-price-history="${escapeHtml(flower.flowerId)}">Lịch sử giá</button>`}
+               </td>
+           </tr>`;
+   }).join("");
+   const historyFlower = flowerPriceHistory
+       ? flowerPrices.find((flower) => String(flower.flowerId) === String(flowerPriceHistory.flowerId))
+       : null;
+
+   main.innerHTML = `
+       <section class="panel-wrap flower-prices-page">
+           <section class="panel">
+               <div class="users-heading">
+                   <div>
+                       <h2>Quản lý giá hoa</h2>
+                       <p class="users-description">Điều chỉnh giá bán theo cành. Giá đã lưu tiếp tục có hiệu lực cho đến lần cập nhật tiếp theo.</p>
+                   </div>
+                   <button class="secondary-btn" type="button" data-price-refresh ${flowerPricesLoading ? "disabled" : ""}>Tải lại</button>
+               </div>
+               <p class="users-status" role="status" aria-live="polite">${escapeHtml(flowerPricesMessage || (flowerPricesLoading ? "Đang tải giá hoa…" : ""))}</p>
+               ${!flowerPricesLoaded && !flowerPricesLoading
+                   ? '<p class="empty-state">Chưa tải được danh sách giá hoa. Hãy thử tải lại.</p>'
+                   : `<div class="table-wrap">
+                       <table class="users-table">
+                           <thead><tr><th>Mã hoa</th><th>Ảnh</th><th>Tên hoa</th><th>Đơn vị</th><th>Giá bán hiện tại</th><th>Cập nhật gần nhất</th><th>Người cập nhật</th><th>Thao tác</th></tr></thead>
+                           <tbody>${rows || `<tr><td colspan="8" class="empty-state">${flowerPricesLoading ? "Đang tải…" : "Chưa có hoa nguyên liệu trong danh mục."}</td></tr>`}</tbody>
+                       </table>
+                   </div>`}
+           </section>
+           ${flowerPriceHistory && historyFlower ? `
+               <section class="panel">
+                   <div class="users-heading">
+                       <div><h2>Lịch sử giá · ${escapeHtml(historyFlower.name)}</h2><p class="users-description">Các lần thay đổi được sắp xếp từ mới nhất.</p></div>
+                       <button class="secondary-btn" type="button" data-price-history-close>Đóng</button>
+                   </div>
+                   <div class="table-wrap">
+                       <table class="users-table">
+                           <thead><tr><th>Giá cũ</th><th>Giá mới</th><th>Thời điểm</th><th>Người cập nhật</th></tr></thead>
+                           <tbody>${flowerPriceHistory.entries.length
+                               ? flowerPriceHistory.entries.map((entry) => `<tr><td>${moneyFormat(entry.oldPrice)}</td><td>${moneyFormat(entry.newPrice)}</td><td>${escapeHtml(formatUserDate(entry.updatedAt))}</td><td>${escapeHtml(entry.updatedBy || "Không rõ")}</td></tr>`).join("")
+                               : '<tr><td colspan="4" class="empty-state">Chưa có lần thay đổi giá nào được ghi nhận.</td></tr>'}</tbody>
+                       </table>
+                   </div>
+               </section>
+           ` : ""}
+       </section>
+   `;
+}
+
+async function requestFlowerPrices(url, options = {}) {
+   if (!currentUser) throw new Error("Phiên đăng nhập đã hết hạn. Hãy đăng nhập lại.");
+   const idToken = await currentUser.getIdToken();
+   const response = await fetch(url, {
+       ...options,
+       headers: {
+           Authorization: `Bearer ${idToken}`,
+           Accept: "application/json",
+           ...(options.body ? { "Content-Type": "application/json" } : {}),
+           ...options.headers
+       },
+       cache: "no-store"
+   });
+   const result = await response.json();
+   if (!response.ok) {
+       const error = new Error(result.error || "Không thể thực hiện thao tác quản lý giá.");
+       error.code = result.code;
+       throw error;
+   }
+   return result;
+}
+
+async function loadFlowerPrices() {
+   flowerPricesLoading = true;
+   flowerPricesMessage = "";
+   renderFlowerPricesTab();
+   try {
+       const result = await requestFlowerPrices("/api/flower-prices");
+       flowerPrices = result.flowers;
+       flowerPricesLoaded = true;
+   } catch (error) {
+       console.error("Không thể tải danh sách giá hoa:", error);
+       flowerPricesMessage = error.message || "Không thể tải giá hoa. Vui lòng thử lại.";
+   } finally {
+       flowerPricesLoading = false;
+       if (main.querySelector(".flower-prices-page")) renderFlowerPricesTab();
+   }
+}
+
+async function saveFlowerPrice(flowerId) {
+   const input = main.querySelector(`[data-flower-price="${CSS.escape(flowerId)}"]`);
+   const text = input?.value.trim() || "";
+   if (!/^\d+$/.test(text) || !Number.isSafeInteger(Number(text)) || Number(text) < 1000 || Number(text) > 1_000_000_000) {
+       flowerPricesMessage = "Giá bán phải là số nguyên từ 1.000 đến 1.000.000.000 VNĐ, không được để trống.";
+       const status = main.querySelector(".users-status");
+       if (status) status.textContent = flowerPricesMessage;
+       input?.setAttribute("aria-invalid", "true");
+       input?.focus();
+       return;
+   }
+
+   const button = main.querySelector(`[data-price-save="${CSS.escape(flowerId)}"]`);
+   if (button) button.disabled = true;
+   flowerPricesMessage = "Đang lưu giá hoa…";
+   const status = main.querySelector(".users-status");
+   if (status) status.textContent = flowerPricesMessage;
+   try {
+       const result = await requestFlowerPrices("/api/flower-prices", {
+           method: "PATCH",
+           body: JSON.stringify({ flowerId, price: Number(text) })
+       });
+       flowerPrices = flowerPrices.map((flower) => String(flower.flowerId) === String(flowerId)
+           ? result.flower
+           : flower);
+       editingFlowerPriceId = null;
+       flowerPricesMessage = result.changed ? "Đã cập nhật giá bán hoa thành công." : "Giá bán không thay đổi; không tạo lịch sử mới.";
+       renderFlowerPricesTab();
+   } catch (error) {
+       console.error("Không thể cập nhật giá hoa:", error);
+       flowerPricesMessage = error.message || "Chưa thể lưu giá hoa. Giá cũ vẫn được giữ nguyên.";
+       renderFlowerPricesTab();
+   }
+}
+
+async function loadFlowerPriceHistory(flowerId) {
+   flowerPricesMessage = "Đang tải lịch sử giá…";
+   renderFlowerPricesTab();
+   try {
+       const result = await requestFlowerPrices(`/api/flower-prices?flowerId=${encodeURIComponent(flowerId)}`);
+       flowerPriceHistory = { flowerId, entries: result.history };
+       flowerPricesMessage = "";
+   } catch (error) {
+       console.error("Không thể tải lịch sử giá hoa:", error);
+       flowerPriceHistory = null;
+       flowerPricesMessage = error.message || "Chưa thể tải lịch sử giá.";
+   }
+   renderFlowerPricesTab();
+}
+
 function formatUserDate(value) {
    if (!value) return "Chưa có";
    const date = new Date(value);
@@ -2366,6 +2528,18 @@ if (logOutPage) {
 }
 
 if (currentUserRole === "owner") {
+   flowerPricesPage = document.createElement("p");
+   flowerPricesPage.id = "flower_prices_page";
+   flowerPricesPage.textContent = "Quản lý giá hoa";
+   flowerPricesPage.tabIndex = 0;
+   flowerPricesPage.setAttribute("role", "button");
+   flowerPricesPage.addEventListener("click", () => { void loadFlowerPrices(); });
+   flowerPricesPage.addEventListener("keydown", (event) => {
+       if (event.key === "Enter" || event.key === " ") {
+           event.preventDefault();
+           void loadFlowerPrices();
+       }
+   });
    const ownerLink = document.createElement("p");
    ownerLink.id = "owner_page";
    ownerLink.textContent = "Owner · Quản lý quyền";
@@ -2379,9 +2553,37 @@ if (currentUserRole === "owner") {
        }
    });
    logOutPage?.parentElement?.insertBefore(ownerLink, logOutPage);
+   logOutPage?.parentElement?.insertBefore(flowerPricesPage, ownerLink);
 }
 
 main.addEventListener("click", (event) => {
+   const refreshFlowerPrices = event.target.closest("[data-price-refresh]");
+   if (refreshFlowerPrices) { void loadFlowerPrices(); return; }
+   const editFlowerPrice = event.target.closest("[data-price-edit]");
+   if (editFlowerPrice) {
+       editingFlowerPriceId = editFlowerPrice.dataset.priceEdit;
+       flowerPricesMessage = "";
+       renderFlowerPricesTab();
+       main.querySelector(`[data-flower-price="${CSS.escape(editingFlowerPriceId)}"]`)?.focus();
+       return;
+   }
+   const cancelFlowerPrice = event.target.closest("[data-price-cancel]");
+   if (cancelFlowerPrice) {
+       editingFlowerPriceId = null;
+       flowerPricesMessage = "";
+       renderFlowerPricesTab();
+       return;
+   }
+   const saveFlowerPriceButton = event.target.closest("[data-price-save]");
+   if (saveFlowerPriceButton) { void saveFlowerPrice(saveFlowerPriceButton.dataset.priceSave); return; }
+   const showFlowerPriceHistory = event.target.closest("[data-price-history]");
+   if (showFlowerPriceHistory) { void loadFlowerPriceHistory(showFlowerPriceHistory.dataset.priceHistory); return; }
+   const closeFlowerPriceHistory = event.target.closest("[data-price-history-close]");
+   if (closeFlowerPriceHistory) {
+       flowerPriceHistory = null;
+       renderFlowerPricesTab();
+       return;
+   }
    const moderation = event.target.closest("[data-review-moderation]");
    if (moderation) { void moderateReview(moderation.dataset.reviewId, moderation.dataset.reviewModeration); return; }
    const reviewPhotos = event.target.closest("[data-review-photos]");
