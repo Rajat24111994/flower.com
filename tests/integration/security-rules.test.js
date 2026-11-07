@@ -90,7 +90,9 @@ test("đơn hàng: khách chỉ đọc được đơn của mình, không tự t
     await assertSucceeds(getDoc(doc(alice(), "orders/o1")));
     await assertFails(getDoc(doc(alice(), "orders/o2")));
     await assertFails(getDoc(doc(guest(), "orders/o1")));
-    await assertSucceeds(getDocs(query(collection(alice(), "orders"), where("uid", "==", "alice"))));
+    const history = await assertSucceeds(getDocs(query(collection(alice(), "orders"), where("uid", "==", "alice"))));
+    assert.deepEqual(history.docs.map((order) => order.id).sort(), ["cod1", "o1"]);
+    await assertFails(getDocs(query(collection(alice(), "orders"), where("uid", "==", "bob"))));
     await assertFails(getDocs(collection(alice(), "orders")));
     await assertFails(setDoc(doc(alice(), "orders/new"), { uid: "alice", total: 0 }));
     await assertFails(updateDoc(doc(alice(), "orders/o1"), { status: "Đã giao", total: 0 }));

@@ -39,6 +39,7 @@ window.addEventListener("pagehide", clearReviewPhotos);
 const searchForm = document.getElementById("tracking-search");
 const orderIdInput = document.getElementById("tracking-order-id");
 const phoneInput = document.getElementById("tracking-phone");
+const phoneLabel = document.getElementById("tracking-phone-label");
 const message = document.getElementById("tracking-message");
 const results = document.getElementById("tracking-results");
 const reviewPanel = document.getElementById("review-panel");
@@ -468,6 +469,12 @@ function renderMyOrders() {
     myOrdersSection.hidden = !account;
     lookupToggle.hidden = !account;
     searchForm.hidden = Boolean(account) && lookupToggle.getAttribute("aria-expanded") !== "true";
+    const requiresPhone = !account?.uid;
+    phoneInput.required = requiresPhone;
+    phoneInput.hidden = !requiresPhone;
+    phoneLabel.hidden = !requiresPhone;
+    if (account?.uid) lookupToggle.textContent = "Tra cứu đơn hàng khác bằng mã đơn";
+    else lookupToggle.textContent = "Tra cứu đơn hàng khác bằng mã đơn và số điện thoại";
     if (!account) {
         trackingIntro.innerHTML = guestIntro;
         return [];
@@ -506,13 +513,18 @@ function renderMyOrders() {
 async function searchOrder() {
     const orderId = orderIdInput.value.trim().replace(/^#/, "");
     const phone = phoneInput.value.replace(/\D/g, "");
-    if (!orderId || phone.length < 8) {
-        message.textContent = "Nhập mã đơn hàng và số điện thoại đã dùng khi đặt hàng.";
+    const account = getLoggedAccount();
+    if (!orderId || (!account?.uid && phone.length < 8)) {
+        message.textContent = account?.uid
+            ? "Nhập mã đơn hàng."
+            : "Nhập mã đơn hàng và số điện thoại đã dùng khi đặt hàng.";
         return;
     }
 
     let order = accountOrdersCache.find((item) => String(item.id) === orderId
-        && String(item.phone || "").replace(/\D/g, "") === phone);
+        && (account?.uid
+            ? belongsToAccount(item, account)
+            : String(item.phone || "").replace(/\D/g, "") === phone));
     try {
         if (!order) order = await window.FlowerOrderStore.getPublicOrder(orderId, phone);
     } catch (error) {
@@ -521,9 +533,11 @@ async function searchOrder() {
         reviewPanel.hidden = true;
         message.textContent = error.code === "order-not-found"
             ? "Không tìm thấy đơn hàng. Hãy kiểm tra lại mã đơn và số điện thoại đặt hàng."
-            : error.code === "rate-limited"
-                ? "Bạn đã tra cứu quá nhiều lần. Vui lòng đợi một chút rồi thử lại."
-                : "Chưa thể tra cứu đơn hàng dùng chung. Hãy thử lại sau.";
+            : error.code === "unauthenticated"
+                ? "Phiên đăng nhập đã hết hạn. Hãy đăng nhập lại để xem đơn hàng của tài khoản."
+                : error.code === "rate-limited"
+                    ? "Bạn đã tra cứu quá nhiều lần. Vui lòng đợi một chút rồi thử lại."
+                    : "Chưa thể tra cứu đơn hàng dùng chung. Hãy thử lại sau.";
         return;
     }
 
