@@ -263,6 +263,21 @@ function publicTrackingOrder(id, data) {
     };
 }
 
+function accountTrackingOrder(id, data) {
+    return {
+        ...data,
+        id,
+        createdAt: serializeTimestamp(data.createdAt) || data.createdAt || "",
+        reservationExpiresAt: serializeTimestamp(data.reservationExpiresAt) || data.reservationExpiresAt || "",
+        trackingHistory: Array.isArray(data.trackingHistory)
+            ? data.trackingHistory.map((event) => ({
+                ...event,
+                updatedAt: serializeTimestamp(event.updatedAt) || event.updatedAt || ""
+            }))
+            : []
+    };
+}
+
 function awaitsQrTransfer(data) {
     return data.paymentMethod === "qr" && data.paymentVerified !== true
         && ["Chờ xác nhận", "Đang chuẩn bị"].includes(data.status || "Chờ xác nhận");
@@ -1042,14 +1057,42 @@ async function lookupOrder(req, res) {
             return sendError(res, 429, "rate-limited", "Bạn đã tra cứu quá nhiều lần. Vui lòng thử lại sau.");
         }
 
+        const authorization = String(req.headers.authorization || "").trim();
+        let user = null;
+        if (authorization) {
+            if (!/^Bearer\s+\S+$/i.test(authorization)) {
+                return sendError(res, 401, "unauthenticated", "Phiên đăng nhập không hợp lệ.");
+            }
+            try {
+                user = await optionalAuthenticatedUser(req);
+            } catch (error) {
+                if (String(error.code || "").startsWith("auth/")) {
+                    return sendError(res, 401, "unauthenticated", "Phiên đăng nhập đã hết hạn. Hãy đăng nhập lại.");
+                }
+                console.error("Order lookup authentication failed:", error.code || "unknown");
+                return sendError(res, 503, "order-service-unavailable", "Chưa thể xác minh phiên đăng nhập. Vui lòng thử lại.");
+            }
+        }
+
         const id = String(req.body?.id || "").trim().replace(/^#/, "");
         const phone = normalizePhone(req.body?.phone);
-        if (!id || id.length > 128 || id.includes("/") || phone.length < 8 || phone.length > 15) {
+        if (!id || id.length > 128 || id.includes("/")
+            || (!user && (phone.length < 8 || phone.length > 15))) {
             return sendError(res, 400, "invalid-argument", "Mã đơn hàng hoặc số điện thoại không hợp lệ.");
         }
 
         const snapshot = await db.collection("orders").doc(id).get();
-        if (!snapshot.exists || normalizePhone(snapshot.get("phone")) !== phone) {
+        if (!snapshot.exists) {
+            return sendError(res, 404, "order-not-found", "Không tìm thấy đơn hàng. Hãy kiểm tra lại mã đơn và số điện thoại.");
+        }
+        if (user) {
+            const data = snapshot.data();
+            if (data.uid !== user.uid) {
+                return sendError(res, 404, "order-not-found", "Không tìm thấy đơn hàng trong tài khoản.");
+            }
+            return res.status(200).json({ order: accountTrackingOrder(snapshot.id, data) });
+        }
+        if (normalizePhone(snapshot.get("phone")) !== phone) {
             return sendError(res, 404, "order-not-found", "Không tìm thấy đơn hàng. Hãy kiểm tra lại mã đơn và số điện thoại.");
         }
         return res.status(200).json({ order: publicTrackingOrder(snapshot.id, snapshot.data()) });

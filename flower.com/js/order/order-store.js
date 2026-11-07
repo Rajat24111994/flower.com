@@ -533,9 +533,21 @@
   }
 
   async function getPublicOrder(id, phone) {
+    const headers = { "Content-Type": "application/json", Accept: "application/json" };
+    const account = root.FlowerSafeStorage?.readJson("loggedUser", { fallback: null }) || null;
+    if (account?.uid) {
+      const { auth } = await getFirebase();
+      await auth.authStateReady();
+      if (!auth.currentUser || auth.currentUser.uid !== account.uid) {
+        const error = new Error("Phiên đăng nhập đã hết hạn. Hãy đăng nhập lại để xem đơn hàng.");
+        error.code = "unauthenticated";
+        throw error;
+      }
+      headers.Authorization = `Bearer ${await auth.currentUser.getIdToken()}`;
+    }
     const response = await fetch("/api/orders", {
       method: "POST",
-      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      headers,
       body: JSON.stringify({ action: "lookup", id: String(id), phone: String(phone) }),
       cache: "no-store"
     });
