@@ -18,6 +18,10 @@ signed `/api/vnpay-ipn` callback can mark the order paid. Browser redirects are 
    | `PUBLIC_APP_URL` | Public HTTPS origin, for example `https://your-store.example` |
    | `CRON_SECRET` | Random secret used by the existing reservation-expiry cron |
 
+   For local development outside synced folders, put sandbox values in the ignored
+   `flower.com/.env` file (start from `.env.example`); otherwise set process-scoped environment
+   variables. Do not use production merchant credentials for local or preview testing.
+
 3. Configure the VNPay merchant's IPN URL as `https://your-store.example/api/vnpay-ipn`.
    The signed browser return URL is generated as `https://your-store.example/payment-result.html`.
 4. Deploy and test a successful sandbox payment. Verify the order changes to `da_thanh_toan`

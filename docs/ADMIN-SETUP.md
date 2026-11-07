@@ -2,11 +2,17 @@
 
 The admin dashboard lists Firebase Authentication accounts and their sign-in providers. Passwords are never returned by Firebase Authentication's user-list API and are not shown. The admin and Owner APIs use Vercel Functions with the Firebase Admin SDK; they do not require Firebase Cloud Functions or a Firebase Blaze upgrade.
 
+Email/password sign-in is handled by Firebase Authentication. The browser's `loggedUser` snapshot contains profile fields only; the application does not write passwords to browser storage or Firestore.
+
 ## Deployment target
 
 Deploy the `flower.com` directory as the Vercel project root to use the admin account list and Owner role-management page. The `api/` directory contains only request handlers; shared Firebase Admin code is in `lib/` so it is bundled as a library, not exposed as another API route.
 
 For local testing, run Vercel CLI from `flower.com` with `vercel dev` after linking the project and configuring the required environment variables. A plain static HTTP server can serve the pages but cannot run `/api/admin/users` or `/api/owner/users`.
+
+For local Node.js scripts, the npm scripts load `flower.com/.env` when present. Copy `.env.example` there only if the repository is outside any synced folder, and fill only local development values; the file contains plain-text values. In synced folders, use process-scoped environment variables and Google Application Default Credentials instead. `.env` is ignored by Git and must never be committed, synced, or shared. Do not put production credentials or backup passphrases in it. Use Vercel Environment Variables and GitHub Actions secrets for deployed services.
+
+The Firebase Web SDK settings in `js/core/firebase-config.js` (including its API key) are public client configuration, not server credentials. Never put a service-account key, VNPay hash secret, backup passphrase, or cron secret in browser code. Restrict the Firebase API key in Google Cloud and rely on Firebase Authentication and Firestore Security Rules for access control.
 
 ## One-time setup
 

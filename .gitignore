@@ -4,6 +4,7 @@ node_modules/
 
 # Environment variables and Vercel local config
 .env*
+!.env.example
 .vercel/
 
 # Firebase service-account credentials
