@@ -42,6 +42,7 @@ Test tích hợp chạy API thật (`flower.com/api/*.js`) và `firestore.rules`
 | `privacy-policy.test.js` | Nội dung chính sách quyền riêng tư bao quát dữ liệu, mục đích, lưu trữ và yêu cầu xóa |
 | `safe-storage.test.js` | Dữ liệu checkout nhạy cảm chỉ tồn tại trong session storage |
 | `security-config.test.js` | File môi trường cục bộ được bỏ qua; template không chứa thông tin xác thực |
+| `transport-security.test.js` | Yêu cầu HTTPS cho smoke test; xác nhận cấu hình HSTS và CSP |
 | `order-status.test.js` | Trạng thái đơn và trạng thái cũ |
 | `integration/feature-orders.test.js` | Báo giá, tạo đơn, trừ kho, chống đặt trùng, ưu đãi, đơn hết hạn, tra cứu |
 | `integration/feature-accounts.test.js` | Đơn gắn tài khoản, token giả/thu hồi, đánh giá của chủ đơn |
