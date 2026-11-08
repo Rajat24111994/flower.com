@@ -193,3 +193,12 @@ test("bộ sưu tập lạ: mặc định chặn hết", async () => {
     await assertFails(getDoc(doc(admin(), "orderRequests/x")));
     await assertFails(setDoc(doc(alice(), "anything/x"), { a: 1 }));
 });
+
+test("không client nào được đọc, sửa hoặc xóa trạng thái khóa đăng nhập", async () => {
+    for (const db of [guest(), alice(), admin(), owner()]) {
+        const ref = doc(db, "loginProtection/alice");
+        await assertFails(getDoc(ref));
+        await assertFails(setDoc(ref, { failures: 0, lockedUntil: 0, resetRequired: false }));
+        await assertFails(deleteDoc(ref));
+    }
+});

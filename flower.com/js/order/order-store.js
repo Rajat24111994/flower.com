@@ -200,7 +200,7 @@
     // A browser that still shows an account whose Firebase session is gone would otherwise
     // place a guest order that never appears under "Đơn hàng của bạn".
     const storedAccount = root.FlowerSafeStorage?.readJson("loggedUser", { fallback: null }) || null;
-    if (storedAccount?.uid && auth.currentUser?.uid !== storedAccount.uid) {
+    if (storedAccount?.uid && storedAccount.authProvider !== "local" && auth.currentUser?.uid !== storedAccount.uid) {
       root.FlowerSafeStorage.remove("loggedUser");
       const error = new Error("Phiên đăng nhập đã hết hạn. Hãy đăng nhập lại để đơn được lưu vào tài khoản của bạn (giỏ hàng vẫn được giữ).");
       error.code = "session-expired";

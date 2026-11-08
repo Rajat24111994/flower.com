@@ -9,10 +9,10 @@
     <meta name="description" content="Quản lý thông tin tài khoản Flowerflow của bạn.">
     <link rel="icon" type="image/svg+xml" href="./favicon.svg">
     <title>Tài khoản của tôi | Flowerflow</title>
-    <link rel="stylesheet" href="./css/account/account.css?v=1">
+    <link rel="stylesheet" href="./css/account/account.css?v=2">
     <link rel="stylesheet" href="./css/core/accessibility.css?v=1">
     <link rel="stylesheet" href="./css/core/store-footer.css?v=4">
-<link rel="stylesheet" href="./css/core/contact-tools.css?v=3">
+<link rel="stylesheet" href="./css/core/contact-tools.css?v=4">
 </head>
 <body>
     <main class="account-shell">
@@ -28,6 +28,35 @@
                 <div><dt>Số điện thoại</dt><dd id="account-phone"></dd></div>
                 <div><dt>Đăng nhập bằng</dt><dd id="account-provider"></dd></div>
             </dl>
+            <section id="local-security" hidden aria-labelledby="security-title">
+                <h2 id="security-title">Đổi PIN khôi phục</h2>
+                <p id="security-intro">Nhập đầy đủ thông tin tài khoản, mật khẩu hiện tại và PIN cũ để đổi PIN.</p>
+                <form id="security-form">
+                    <label for="security-email">Tên đăng nhập</label>
+                    <input id="security-email" type="email" autocomplete="username" readonly required>
+                    <label for="security-name">Họ tên đã đăng ký</label>
+                    <input id="security-name" type="text" maxlength="120" autocomplete="name" required>
+                    <label for="security-phone">Số điện thoại đã đăng ký</label>
+                    <input id="security-phone" type="tel" maxlength="30" autocomplete="tel" required>
+                    <label for="security-password">Mật khẩu hiện tại</label>
+                    <input id="security-password" type="password" autocomplete="current-password" maxlength="4096" required>
+                    <div id="old-pin-field">
+                        <label for="security-old-pin">PIN cũ</label>
+                        <input id="security-old-pin" type="password" inputmode="numeric" data-pin pattern="[0-9]{4,6}" minlength="4" maxlength="6" title="PIN chỉ gồm 4–6 chữ số (0–9)" autocomplete="off">
+                    </div>
+                    <label for="security-new-pin">PIN mới (4–6 chữ số)</label>
+                    <input id="security-new-pin" type="password" inputmode="numeric" data-pin pattern="[0-9]{4,6}" minlength="4" maxlength="6" title="PIN chỉ gồm 4–6 chữ số (0–9)" autocomplete="off" required>
+                    <label for="security-confirm-pin">Xác nhận PIN mới</label>
+                    <input id="security-confirm-pin" type="password" inputmode="numeric" data-pin pattern="[0-9]{4,6}" minlength="4" maxlength="6" title="PIN chỉ gồm 4–6 chữ số (0–9)" autocomplete="off" required>
+                    <fieldset id="security-setup-questions" hidden disabled>
+                        <legend>Ba câu hỏi khôi phục PIN</legend>
+                        <p>Đặt 3 câu hỏi khác nhau và câu trả lời chỉ mình bạn biết. Cần trả lời đúng cả 3 nếu quên PIN.</p>
+                    </fieldset>
+                    <p id="security-message" role="status" aria-live="polite"></p>
+                    <button id="security-submit" type="submit">Đổi PIN</button>
+                </form>
+                <a class="security-recovery-link" href="./forgot-password.html">Quên PIN? Khôi phục bằng 3 câu hỏi</a>
+            </section>
             <p class="account-message" id="account-message" role="status" aria-live="polite"></p>
             <div class="account-actions">
                 <a class="shop-link" href="./product.html">Tiếp tục mua sắm</a>
@@ -35,7 +64,7 @@
             </div>
         </section>
     </main>
-    <script type="module" src="./js/account/account.js?v=2"></script>
+    <script type="module" src="./js/account/account.js?v=6"></script>
     <script src="./js/core/store-footer.js?v=4"></script>
 <script src="./js/core/contact-tools.js?v=1"></script>
 </body>

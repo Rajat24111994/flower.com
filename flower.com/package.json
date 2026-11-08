@@ -5,16 +5,19 @@
                     "node":  "24.x"
                 },
     "scripts":  {
+                    "dev": "node --env-file-if-exists=.env scripts/dev.js",
                     "set-admin":  "node --env-file-if-exists=.env scripts/set-admin-claim.js",
                     "set-owner":  "node --env-file-if-exists=.env scripts/set-owner-claim.js",
                     "sync-admin-roles":  "node --env-file-if-exists=.env scripts/sync-admin-roles.js",
                     "setup-firestore":  "node --env-file-if-exists=.env scripts/setup-firestore.js",
+                    "check-login-protection": "node --env-file-if-exists=.env scripts/check-login-protection.js",
                     "test": "node --test \"../tests/*.test.js\"",
                     "test:coverage": "node -e \"require('fs').mkdirSync('coverage', { recursive: true })\" && node --test --experimental-test-coverage --test-coverage-exclude=\"../tests/**\" --test-reporter=spec --test-reporter-destination=stdout --test-reporter=lcov --test-reporter-destination=coverage/lcov.info \"../tests/*.test.js\"",
                     "smoke": "node --env-file-if-exists=.env scripts/smoke-test.js",
                     "backup": "node --env-file-if-exists=.env scripts/backup-firestore.js",
                     "restore": "node --env-file-if-exists=.env scripts/restore-firestore.js",
                     "test:e2e": "playwright test",
+                    "test:e2e:local": "playwright test --config playwright.local.config.js",
                     "test:e2e:emulator": "firebase emulators:exec --project web-ban-hoa-9fe0b --only auth,firestore \"npm run test:e2e\""
                 },
     "dependencies":  {

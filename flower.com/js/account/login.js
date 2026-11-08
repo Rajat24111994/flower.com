@@ -1,4 +1,6 @@
 import { firebaseConfig, isFirebaseConfigured, connectFirebaseEmulators } from "../core/firebase-config.js";
+import { isLocalAuth, localAuthRequest, persistLocalAccount } from "./local-auth-client.js";
+import { addQuestionFields, readQuestions, restrictPinInputs } from "./recovery-security.js?v=2";
 
 const signUpButton = document.getElementById("signup");
 const signInButton = document.getElementById("signin");
@@ -7,8 +9,78 @@ const display = document.getElementById("display");
 const signupDisplay = document.getElementById("signup-display");
 const signIn = document.querySelector("#signIn");
 const signUp = document.querySelector("#signUp");
+const loginSubmit = signIn.querySelector('[type="submit"]');
+const loginEmail = document.getElementById("email1");
+signUp.inert = true;
 
 let firebaseAuthApiPromise;
+let loginPending = false;
+let lockedEmail = "";
+let lockedUntil = 0;
+let lockTimer;
+let localSignupPending = false;
+
+if (isLocalAuth) {
+    restrictPinInputs();
+    signUp.querySelector(".form-intro").textContent = "Tên đăng nhập cần có @, ví dụ ban@demo. Không cần email thật.";
+    signIn.querySelector(".form-intro").textContent = "Đăng nhập bằng tài khoản bạn đã tạo trên website chạy thử.";
+    for (const id of ["email", "email1"]) {
+        const input = document.getElementById(id);
+        input.placeholder = "Tên đăng nhập, ví dụ ban@demo";
+        input.setAttribute("aria-label", "Tên đăng nhập");
+        input.autocomplete = "username";
+    }
+    document.querySelectorAll("[data-google-auth], .auth-divider").forEach((element) => { element.hidden = true; });
+    container.classList.add("local-accounts");
+    document.getElementById("phone").required = true;
+    const security = document.getElementById("signup-security");
+    security.hidden = false;
+    security.disabled = false;
+    addQuestionFields(document.getElementById("signup-questions"), "signup");
+}
+
+function updateLoginWait() {
+    const active = lockedEmail === loginEmail.value.trim().toLowerCase();
+    const seconds = active ? Math.max(0, Math.ceil((lockedUntil - Date.now()) / 1000)) : 0;
+    loginSubmit.disabled = loginPending || seconds > 0;
+    loginSubmit.value = loginPending ? "Đang đăng nhập..." : seconds > 0
+        ? `Thử lại sau ${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}` : "Đăng nhập";
+    if (!seconds && lockTimer) {
+        clearInterval(lockTimer);
+        lockTimer = undefined;
+        if (active && lockedUntil) {
+            showMessage("Đã hết thời gian chờ. Bạn có thể thử đăng nhập lại một lần.", false);
+        }
+        lockedUntil = 0;
+    }
+}
+
+function showLoginError(error, email) {
+    if (error.code === "account-locked") {
+        const seconds = Number(error.retryAfter);
+        if (Number.isFinite(seconds) && seconds > 0) {
+            lockedEmail = email;
+            lockedUntil = Date.now() + seconds * 1000;
+            if (lockTimer) clearInterval(lockTimer);
+            lockTimer = setInterval(updateLoginWait, 1000);
+            showMessage(`Đăng nhập tạm thời bị khóa do nhiều lần thất bại. Vui lòng thử lại sau ${Math.ceil(seconds / 60)} phút.`);
+            updateLoginWait();
+            return;
+        }
+    }
+    showMessage(error.message || "Chưa thể đăng nhập lúc này. Vui lòng thử lại sau.");
+}
+
+loginEmail.addEventListener("input", () => {
+    if (lockedEmail && lockedEmail !== loginEmail.value.trim().toLowerCase()) {
+        if (lockTimer) clearInterval(lockTimer);
+        lockTimer = undefined;
+        lockedEmail = "";
+        lockedUntil = 0;
+        showMessage("", false);
+    }
+    updateLoginWait();
+});
 
 function showMessage(message, isError = true) {
     showFormMessage(display, message, isError);
@@ -25,7 +97,7 @@ if (!window.FlowerSafeStorage.remove("usersData")) {
 }
 
 async function getFirebaseAuthApi() {
-    if (!isFirebaseConfigured) {
+    if (isLocalAuth || !isFirebaseConfigured) {
         return null;
     }
 
@@ -128,6 +200,7 @@ async function saveAuthenticatedSession(user, provider) {
 }
 
 async function signInWithGoogle(event) {
+    if (isLocalAuth) return;
     const button = event.currentTarget;
     if (!isFirebaseConfigured) {
         showFormMessage(button.closest("form")?.querySelector('[role="status"]') || display,
@@ -160,7 +233,7 @@ async function signInWithGoogle(event) {
 }
 
 async function completeGoogleRedirect() {
-    if (!isFirebaseConfigured) return;
+    if (isLocalAuth || !isFirebaseConfigured) return;
 
     try {
         const authApi = await getFirebaseAuthApi();
@@ -177,12 +250,16 @@ async function completeGoogleRedirect() {
 if (signUpButton) {
     signUpButton.addEventListener("click", () => {
         container.classList.add("right-panel-active");
+        signUp.inert = false;
+        signIn.inert = true;
     });
 }
 
 if (signInButton) {
     signInButton.addEventListener("click", () => {
         container.classList.remove("right-panel-active");
+        signIn.inert = false;
+        signUp.inert = true;
     });
 }
 
@@ -204,6 +281,26 @@ signUp.addEventListener("submit", async (event) => {
         return;
     }
 
+    if (isLocalAuth) {
+        if (localSignupPending) return;
+        localSignupPending = true;
+        const submit = signUp.querySelector('[type="submit"]');
+        submit.disabled = true;
+        try {
+            const result = await localAuthRequest("register", { email, password, name, phone,
+                pin: document.getElementById("signup-pin").value,
+                confirmPin: document.getElementById("signup-confirm-pin").value, questions: readQuestions("signup") });
+            persistLocalAccount(result.account);
+            window.location.assign("./product.html");
+        } catch (error) {
+            showFormMessage(signupDisplay, error.message);
+        } finally {
+            localSignupPending = false;
+            submit.disabled = false;
+        }
+        return;
+    }
+
     if (isFirebaseConfigured) {
         try {
             const authApi = await getFirebaseAuthApi();
@@ -222,18 +319,69 @@ signUp.addEventListener("submit", async (event) => {
 
 signIn.addEventListener("submit", async (event) => {
     event.preventDefault();
+    if (loginPending) return;
+    if (lockedEmail === loginEmail.value.trim().toLowerCase() && lockedUntil > Date.now()) return;
 
-    const email = document.getElementById("email1").value.trim().toLowerCase();
+    const email = loginEmail.value.trim().toLowerCase();
     const password = document.getElementById("password1").value;
 
+    if (isLocalAuth) {
+        loginPending = true;
+        updateLoginWait();
+        showMessage("Đang đăng nhập...", false);
+        try {
+            const result = await localAuthRequest("login", { email, password });
+            persistLocalAccount(result.account);
+            window.location.assign("./product.html");
+        } catch (error) {
+            showLoginError(error, email);
+        } finally {
+            loginPending = false;
+            updateLoginWait();
+        }
+        return;
+    }
+
     if (isFirebaseConfigured) {
+        loginPending = true;
+        updateLoginWait();
+        showMessage("Đang đăng nhập...", false);
         try {
             const authApi = await getFirebaseAuthApi();
-            const credential = await authApi.signInWithEmailAndPassword(authApi.auth, email, password);
+            const response = await fetch("./api/login", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                credentials: "same-origin",
+                cache: "no-store",
+                body: JSON.stringify({ email, password })
+            });
+            if (response.status === 404 || !response.headers.get("Content-Type")?.includes("application/json")) {
+                const local = ["localhost", "127.0.0.1"].includes(window.location.hostname);
+                const error = new Error(local
+                    ? "Máy chủ hiện tại chưa hỗ trợ API đăng nhập. Hãy chạy npm run dev và mở địa chỉ máy chủ cung cấp thay cho Live Server."
+                    : "Dịch vụ đăng nhập chưa sẵn sàng. Vui lòng thử lại sau.");
+                error.code = "login-api-unavailable";
+                throw error;
+            }
+            const result = await response.json();
+            if (!response.ok) {
+                const error = new Error(result.error || "Chưa thể đăng nhập lúc này. Vui lòng thử lại sau.");
+                error.code = result.code;
+                error.retryAfter = result.retryAfter;
+                throw error;
+            }
+            if (!result.customToken) throw new Error("Chưa thể đăng nhập lúc này. Vui lòng thử lại sau.");
+            const credential = await authApi.signInWithCustomToken(authApi.auth, result.customToken);
             await saveAuthenticatedSession(credential.user, "password");
         } catch (error) {
-            console.error("Đăng nhập Firebase thất bại:", error);
-            showMessage(getFirebaseErrorMessage(error));
+            // Do not print request bodies or authentication tokens to the console.
+            if (error.code?.startsWith("auth/")) showMessage(getFirebaseErrorMessage(error));
+            else if (error instanceof TypeError || error instanceof SyntaxError) {
+                showMessage("Không kết nối được dịch vụ đăng nhập. Vui lòng thử lại sau.");
+            } else showLoginError(error, email);
+        } finally {
+            loginPending = false;
+            updateLoginWait();
         }
         return;
     }
