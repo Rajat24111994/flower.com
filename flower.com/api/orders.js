@@ -550,9 +550,23 @@ function validateQuote(body = {}) {
     return { items, promotionId, deliveryZoneId };
 }
 
+function isValidPromotionDate(value) {
+    if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+    const timestamp = Date.parse(`${value}T00:00:00Z`);
+    return Number.isFinite(timestamp) && new Date(timestamp).toISOString().slice(0, 10) === value;
+}
+
+function vietnameseDate(now = new Date()) {
+    const parts = new Intl.DateTimeFormat("en-CA", {
+        timeZone: "Asia/Ho_Chi_Minh", year: "numeric", month: "2-digit", day: "2-digit"
+    }).formatToParts(now);
+    const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+    return `${values.year}-${values.month}-${values.day}`;
+}
+
 // The active promotion a checkout asked for, or null when it asked for none. Throws
 // "invalid-promotion" for an unknown, inactive or malformed one.
-function findPromotion(promotions, promotionId) {
+function findPromotion(promotions, promotionId, now = new Date()) {
     if (!promotionId) return null;
     const promotion = (Array.isArray(promotions) ? promotions : [])
         .find((item) => String(item.id) === String(promotionId) && item.active === true);
@@ -562,7 +576,15 @@ function findPromotion(promotions, promotionId) {
         throw error;
     }
     const discountPercent = Number(promotion.discountPercent);
-    if (!Number.isFinite(discountPercent) || discountPercent <= 0 || discountPercent > 100) {
+    const today = vietnameseDate(now);
+    const startDate = promotion.startDate || "";
+    const endDate = promotion.endDate || "";
+    if (!Number.isFinite(discountPercent) || discountPercent <= 0 || discountPercent > 100
+        || (startDate && !isValidPromotionDate(startDate))
+        || (endDate && !isValidPromotionDate(endDate))
+        || (startDate && endDate && startDate > endDate)
+        || (startDate && today < startDate)
+        || (endDate && today > endDate)) {
         const error = new Error("Ưu đãi hiện không hợp lệ.");
         error.code = "invalid-promotion";
         throw error;
@@ -1292,6 +1314,8 @@ module.exports.internals = {
     normalizePhone,
     aggregateItems,
     findPromotion,
+    isValidPromotionDate,
+    vietnameseDate,
     priceCart,
     validateCheckout,
     validateQuote,

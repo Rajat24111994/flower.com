@@ -39,11 +39,31 @@ function promotionAppliesToAllProducts(promotion) {
   return promotion.allProducts === true;
 }
 
+function isPromotionDate(value) {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const timestamp = Date.parse(`${value}T00:00:00Z`);
+  return Number.isFinite(timestamp) && new Date(timestamp).toISOString().slice(0, 10) === value;
+}
+
+function isPromotionInDateRange(promotion, now = new Date()) {
+  const startDate = promotion.startDate || "";
+  const endDate = promotion.endDate || "";
+  if ((startDate && !isPromotionDate(startDate)) || (endDate && !isPromotionDate(endDate))
+    || (startDate && endDate && startDate > endDate)) return false;
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Ho_Chi_Minh", year: "numeric", month: "2-digit", day: "2-digit"
+  }).formatToParts(now);
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  const today = `${values.year}-${values.month}-${values.day}`;
+  return (!startDate || today >= startDate) && (!endDate || today <= endDate);
+}
+
 function getAvailableCartPromotions(cart) {
   return trustedPromotions.filter((promotion) => {
     const percent = Number(promotion.discountPercent);
     const appliesToAllProducts = promotionAppliesToAllProducts(promotion);
     return promotion.active
+      && isPromotionInDateRange(promotion)
       && (appliesToAllProducts || Array.isArray(promotion.productIds))
       && Number.isFinite(percent)
       && percent > 0

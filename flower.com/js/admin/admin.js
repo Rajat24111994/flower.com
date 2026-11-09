@@ -810,6 +810,14 @@ function renderOffersTab() {
                        <span class="field-label">Phần trăm giảm (%)</span>
                        <input id="offer-percent" name="percent" type="number" min="0.01" max="100" step="0.01" placeholder="10" required>
                    </label>
+                   <label>
+                       <span class="field-label">Ngày bắt đầu (để trống nếu áp dụng ngay)</span>
+                       <input name="startDate" type="date">
+                   </label>
+                   <label>
+                       <span class="field-label">Ngày kết thúc (để trống nếu không giới hạn)</span>
+                       <input name="endDate" type="date">
+                   </label>
                    <fieldset class="offer-products">
                        <legend>Chọn sản phẩm áp dụng</legend>
                        <button class="secondary-btn offer-select-all" data-offer-select-all type="button" ${products.length ? "" : "disabled"}>Chọn tất cả hoa / bỏ chọn tất cả</button>
@@ -834,6 +842,7 @@ function renderOffersTab() {
                                <div>
                                    <strong>${escapeHtml(offer.name)}</strong>
                                    <span>Giảm ${Number(offer.discountPercent)}% · ${productCount} sản phẩm</span>
+                                   ${offer.startDate || offer.endDate ? `<span>Hiệu lực: ${offer.startDate ? escapeHtml(offer.startDate) : "không giới hạn"} – ${offer.endDate ? escapeHtml(offer.endDate) : "không giới hạn"}</span>` : ""}
                                    ${offer.allProducts === true ? '<span>Áp dụng cho tất cả hoa</span>' : ""}
                                    <span class="offer-status ${offer.active ? "is-active" : "is-inactive"}">${offer.active ? "Đang áp dụng" : "Đã tạm dừng"}</span>
                                </div>
@@ -1137,6 +1146,8 @@ async function addOffer(event) {
    const name = String(formData.get("name") || "").trim();
    const discountPercent = Number(formData.get("percent"));
    const productIds = formData.getAll("productIds").map(String);
+   const startDate = String(formData.get("startDate") || "");
+   const endDate = String(formData.get("endDate") || "");
 
    if (!name || !Number.isFinite(discountPercent) || discountPercent <= 0 || discountPercent > 100) {
        alert("Vui lòng nhập tên ưu đãi và phần trăm giảm lớn hơn 0%, tối đa 100%.");
@@ -1144,6 +1155,13 @@ async function addOffer(event) {
    }
    if (!productIds.length) {
        alert("Vui lòng chọn ít nhất một sản phẩm áp dụng.");
+       return;
+   }
+   const validDate = (value) => !value || (/^\d{4}-\d{2}-\d{2}$/.test(value)
+       && Number.isFinite(Date.parse(`${value}T00:00:00Z`))
+       && new Date(`${value}T00:00:00Z`).toISOString().slice(0, 10) === value);
+   if (!validDate(startDate) || !validDate(endDate) || (startDate && endDate && startDate > endDate)) {
+       alert("Ngày bắt đầu/kết thúc không hợp lệ. Ngày bắt đầu phải trước hoặc bằng ngày kết thúc.");
        return;
    }
 
@@ -1155,6 +1173,8 @@ async function addOffer(event) {
            : String(Date.now()),
        name,
        discountPercent,
+       ...(startDate ? { startDate } : {}),
+       ...(endDate ? { endDate } : {}),
        productIds,
        allProducts: allProductIds.size > 0
            && productIds.length === allProductIds.size
