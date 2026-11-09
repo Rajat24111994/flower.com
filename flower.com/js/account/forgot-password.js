@@ -1,4 +1,5 @@
 import { firebaseConfig, isFirebaseConfigured } from "../core/firebase-config.js";
+import { logAuthError } from "./auth-logging.js";
 
 const form = document.getElementById("recovery-form");
 const emailInput = document.getElementById("recovery-email");
@@ -67,7 +68,7 @@ form.addEventListener("submit", async (event) => {
         await sendFirebaseResetEmail(email);
         showMessage("Đã gửi liên kết đặt lại mật khẩu đến thư điện tử của bạn.", false);
     } catch (error) {
-        console.error("Gửi thư khôi phục mật khẩu thất bại:", error);
+        logAuthError("Gửi thư khôi phục mật khẩu thất bại:", error);
         showMessage(getFirebaseErrorMessage(error));
     } finally {
         submitButton.disabled = false;

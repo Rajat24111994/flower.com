@@ -1,4 +1,5 @@
 import { firebaseConfig } from "../core/firebase-config.js";
+import { logAuthError } from "./auth-logging.js";
 
 function getStoredAccount() {
     try {
@@ -49,7 +50,7 @@ if (account) {
             account = null;
         }
     } catch (error) {
-        console.warn("Chưa kiểm tra được phiên đăng nhập:", error);
+        logAuthError("Chưa kiểm tra được phiên đăng nhập:", error);
     }
 }
 if (!account) {
@@ -59,7 +60,7 @@ if (!account) {
             window.FlowerSafeStorage.writeJson("loggedUser", account);
         }
     } catch (error) {
-        console.error("Không thể khôi phục phiên Firebase:", error);
+        logAuthError("Không thể khôi phục phiên Firebase:", error);
         document.getElementById("account-message").textContent =
             "Không thể xác minh phiên đăng nhập. Vui lòng đăng nhập lại.";
     }
@@ -92,7 +93,7 @@ document.getElementById("logout-button").addEventListener("click", async () => {
             const app = appSdk.getApps().length ? appSdk.getApp() : appSdk.initializeApp(firebaseConfig);
             await authSdk.signOut(authSdk.getAuth(app));
         } catch (error) {
-            console.error("Không thể đăng xuất khỏi Firebase:", error);
+            logAuthError("Không thể đăng xuất khỏi Firebase:", error);
             message.textContent = "Chưa thể đăng xuất do lỗi kết nối. Vui lòng thử lại.";
             return;
         }

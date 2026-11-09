@@ -85,6 +85,8 @@ FlowerFlow là website bán hoa gồm ba lớp:
 | Kiểm thử | `node:assert` có sẵn của Node.js, không cần thư viện ngoài |
 | Hosting | Vercel |
 
+Tài khoản email/mật khẩu được tạo, xác minh và đặt lại hoàn toàn qua Firebase Authentication; Firebase chịu trách nhiệm lưu mật khẩu dưới dạng băm phía máy chủ. Ứng dụng không ghi mật khẩu gốc vào Firestore hoặc bộ nhớ trình duyệt. Bản sao phiên `localStorage.loggedUser` chỉ chứa thông tin hồ sơ cần thiết, còn nhật ký lỗi xác thực chỉ ghi mã lỗi Firebase, không ghi đối tượng lỗi hoặc mật khẩu.
+
 ## Cấu trúc thư mục
 
 ```text
