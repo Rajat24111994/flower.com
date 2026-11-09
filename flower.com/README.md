@@ -46,9 +46,14 @@ flowchart LR
 | --- | --- | --- |
 | Header và footer | `store-header.js/.css`, `store-footer.js/.css` | Chèn header (tìm kiếm, tài khoản, yêu thích, đơn hàng, giỏ hàng, menu mobile) và footer cho các trang cửa hàng |
 | Trang chủ | `index.html`, `homepage.css` | Giới thiệu, danh mục nổi bật, điều hướng |
+<<<<<<< HEAD
+| Catalog | `product-store.js`, `flower.json` | Đồng bộ catalog do cửa hàng quản lý với Firestore, cache vào `localStorage`, lắng nghe thay đổi theo thời gian thực; chỉ thêm danh mục mẫu khi quản trị viên chủ động xác nhận |
+| Tự phối bó | `custom-bouquet.html`, `custom-bouquet.js` | Chọn hoa nguyên liệu và số cành; giá chỉ hợp lệ trong ngày chủ shop cập nhật |
+=======
 | Catalog | `product-store.js`, `flower.json` | Đồng bộ catalog do cửa hàng quản lý với Firestore, cache vào `localStorage`, lắng nghe thay đổi theo thời gian thực; không tự nạp sản phẩm mẫu |
 | Tự phối bó | `custom-bouquet.html`, `custom-bouquet.js` | Chọn loại hoa, số lượng, màu mong muốn, vai trò hoa chính/phụ, bố cục và kiểu gói; xem dự toán, lưu bản nháp hoặc gửi yêu cầu tư vấn |
 | Yêu cầu thiết kế riêng | `design-request.html`, `api/design-requests.js` | Lưu yêu cầu vào Firestore, theo dõi lịch sử, nhận báo giá cửa hàng và chấp nhận/từ chối bằng mã truy cập riêng |
+>>>>>>> 33d0d4bc05c87c9da76a7de6deb458d537ddddd4
 | Danh mục và chi tiết | `product.html`, `product.js`, `product-categories.js`, `related-products.js` | Tìm kiếm, lọc, sắp xếp; trang chi tiết, thư viện ảnh, gợi ý sản phẩm liên quan |
 | Đánh giá | `review-store.js` | Đọc đánh giá công khai và gửi đánh giá mới (yêu cầu đăng nhập) lên Firestore |
 | Giỏ hàng và yêu thích | `shopping-store.js`, `shopping-sync.js`, `cart.html`, `wish.html` | Lưu ngoại tuyến, đồng bộ Firestore theo UID khi đăng nhập; giá/tồn kho vẫn do API đặt hàng xác minh |
@@ -93,7 +98,7 @@ Phản hồi cũ trong `localStorage.flowerMessages` được chuyển sang Fire
 
 ### Cơ chế bán hoa và giá
 
-`flower.json` hiện rỗng; website không tự thêm lại sản phẩm đã xóa. Chủ cửa hàng tạo dữ liệu trong **Quản trị → Sản phẩm**:
+`flower.json` chứa 30 sản phẩm hoa mẫu tiếng Việt. Website không tự nạp hoặc thêm lại sản phẩm đã xóa; trong **Quản trị → Sản phẩm**, quản trị viên có thể chủ động xác nhận thêm các sản phẩm mẫu còn thiếu. Thao tác này không ghi đè sản phẩm đang có trong Firestore. Chủ cửa hàng cũng có thể tự tạo sản phẩm trong **Quản trị → Sản phẩm**:
 
 - **Hoa nguyên liệu**: `saleType: "flower"`, giá VND/cành, tồn kho tính theo cành và ngày cập nhật theo múi giờ Việt Nam. Khách chọn số cành của từng loại để tạo một bó tùy chỉnh; backend từ chối báo giá nếu giá chưa được cập nhật trong ngày.
 - **Bó làm sẵn**: `saleType: "ready_made"` (mặc định cho dữ liệu cũ), bán đúng giá niêm yết, không nhân giá theo cỡ.

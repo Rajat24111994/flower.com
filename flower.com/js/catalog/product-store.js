@@ -145,6 +145,11 @@
         return deduplicateProducts(Array.from(merged.values()));
     }
 
+    function getMissingCatalogProducts() {
+        const existingIds = new Set(readProducts().map((product) => String(product.id)));
+        return catalogProducts.filter((product) => !existingIds.has(String(product.id)));
+    }
+
     function readProducts() {
         try {
             if (typeof window !== "undefined" && window.FlowerSafeStorage?.readJson) {
@@ -483,6 +488,14 @@
         return cacheProducts(saved);
     }
 
+    async function restoreCatalogProducts() {
+        const missingProducts = getMissingCatalogProducts();
+        if (!missingProducts.length) return 0;
+        const products = mergeCatalogProducts(readProducts(), catalogProducts);
+        await saveProducts(products);
+        return missingProducts.length;
+    }
+
     // Load the current catalog from Firestore; repository data never seeds or overwrites it.
     async function synchronizeProducts() {
         const remoteProducts = await readRemoteProducts();
@@ -527,7 +540,7 @@
         initialization = (async () => {
             let catalog = [];
             try {
-                const response = await fetch("./flower.json?v=2");
+                const response = await fetch("./flower.json?v=3");
                 if (response.ok) {
                     const data = await response.json();
                     catalog = Array.isArray(data.flower)
@@ -578,6 +591,8 @@
         areProductsLoaded: () => productsLoaded,
         readProducts,
         saveProducts,
+        getMissingCatalogProducts,
+        restoreCatalogProducts,
         findDuplicateProductImages,
         repairCatalogProducts,
         mergeCatalogProducts,

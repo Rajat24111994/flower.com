@@ -292,9 +292,9 @@ function renderRestoreCatalogNotice() {
    if (!missingCount) return offlineNotice;
    return offlineNotice + `
        <div class="restore-catalog-notice" role="status">
-           <p><strong>Cửa hàng đang thiếu ${missingCount} sản phẩm so với danh mục gốc.</strong>
-           Sản phẩm có thể đã bị xóa do lỗi lưu kho trước đây. Khôi phục sẽ thêm lại các sản phẩm còn thiếu với tồn kho ban đầu; sản phẩm đang có giữ nguyên.</p>
-           <button class="primary-btn" type="button" data-action="restore-catalog">Khôi phục ${missingCount} sản phẩm</button>
+           <p><strong>Có ${missingCount} sản phẩm mẫu chưa có trong kho Firestore.</strong>
+           Thao tác này chỉ thêm sản phẩm còn thiếu; sản phẩm đang có và các chỉnh sửa của cửa hàng được giữ nguyên.</p>
+           <button class="primary-btn" type="button" data-action="restore-catalog">Thêm ${missingCount} sản phẩm</button>
        </div>
    `;
 }
@@ -349,9 +349,9 @@ function showAdminConfirmation({ title, message, confirmLabel, danger = false })
 async function restoreCatalog() {
    const missingCount = FlowerInventory.getMissingCatalogProducts().length;
    if (!missingCount || !await showAdminConfirmation({
-       title: "Khôi phục sản phẩm",
-       message: `Sẽ thêm lại ${missingCount} sản phẩm còn thiếu từ danh mục gốc. Sản phẩm hiện có sẽ được giữ nguyên.`,
-       confirmLabel: `Khôi phục ${missingCount} sản phẩm`
+       title: "Thêm sản phẩm mẫu",
+       message: `Sẽ thêm ${missingCount} sản phẩm đang thiếu vào Firestore. Sản phẩm hiện có và nội dung đã chỉnh sửa sẽ được giữ nguyên.`,
+       confirmLabel: `Thêm ${missingCount} sản phẩm`
    })) return;
    try {
        const restored = await FlowerInventory.restoreCatalogProducts();
