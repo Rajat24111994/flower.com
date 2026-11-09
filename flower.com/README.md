@@ -75,6 +75,7 @@ flowchart LR
 | Đơn hàng mới | `/api/orders` xác minh giá/tồn kho rồi ghi Firestore `orders`; mỗi dòng lưu giá và đơn vị tại thời điểm đặt | ✅ |
 | Giá hoa nguyên liệu | Firestore `products`; Owner cập nhật qua `/api/flower-prices`, lịch sử bất biến lưu trong `priceHistory` | ✅ |
 | Audit đối soát QR | `/api/orders` ghi/đọc `orderPaymentAudit`; Security Rules chặn truy cập từ client | ✅ |
+| Audit thao tác quản trị qua API | `adminAudit`, đọc 100 mục mới nhất qua `/api/admin/audit`; ghi cùng transaction khi đổi khu vực giao, phí gói và giá hoa; ghi sau khi đổi quyền tài khoản | ✅ cho các thao tác này |
 | Đánh giá trong trang quản trị (phản hồi, hoàn thành) | Firestore `reviews` | ✅ |
 | Lời nhắn của khách và câu trả lời | Trường `orderNote`, `orderNoteReply`, `orderNoteCompletedAt` của đơn trong `orders` | ✅ |
 | Phản hồi cũ trên trình duyệt | Firestore `messages` (chuyển khi quản trị đăng nhập) | ✅ |
@@ -122,6 +123,8 @@ Admin có thể chuyển đơn sang các trạng thái giao hàng. Security Rule
 Khu vực giao hàng được quản trị viên cấu hình thủ công trong mục **Giao hàng**; không có danh sách địa bàn hoặc mức phí mẫu. Mỗi khu vực gồm tỉnh/thành, quận/huyện, trạng thái phục vụ và phí VND (mặc định khi thêm là 0 ₫). Khách chỉ chọn được khu vực đang bật. Nếu chưa có khu vực bật, checkout giải thích cấu hình cần thiết và không cho gửi đơn. `/api/orders` đọc khu vực/fee từ Firestore để báo giá và kiểm tra lại trong transaction khi tạo đơn; số phí từ trình duyệt không được tin cậy. Lịch dùng múi giờ `Asia/Ho_Chi_Minh`, nhận giao trong ngày trước 15:00, với các khung 08:00–11:00, 11:00–14:00, 14:00–17:00 và 17:00–20:00.
 
 Đơn QR ở trạng thái chờ xác minh cho đến khi admin đối chiếu số tiền với sao kê, nhập mã giao dịch ngân hàng và bấm xác nhận. Trình duyệt gửi yêu cầu tới API; máy chủ kiểm tra ID token đã thu hồi, quyền admin hiện hành, phương thức QR, trạng thái đơn và số tiền chính xác rồi cập nhật đơn trong transaction. API đồng thời tạo bản ghi trong `orderPaymentAudit`; Security Rules chặn mọi thao tác đọc/ghi trực tiếp lên bộ sưu tập audit và không cho client tự sửa trạng thái thanh toán. Bản ghi lưu người xác nhận, thời điểm, số tiền, nội dung chuyển khoản và mã giao dịch đối soát. Thanh toán đến sau khi đơn bị hủy có thao tác riêng và cũng được audit để cửa hàng xử lý khôi phục hoặc hoàn tiền. Đơn đã xác minh không bị dọn khi hết thời gian giữ hàng và được tính vào doanh thu sau khi giao. Dự án chưa tích hợp API/webhook ngân hàng nên chưa có đối soát tự động.
+
+Các cập nhật khu vực giao hàng, phí gói bó, giá hoa và quyền quản trị cũng được ghi vào `adminAudit`; các mục cấu hình dùng chung transaction với thay đổi tương ứng. Đọc audit cần ID token quản trị qua `GET /api/admin/audit`; client không được đọc hoặc ghi trực tiếp collection này. Những thao tác quản trị còn ghi trực tiếp Firestore từ trình duyệt chưa được đưa qua backend và chưa nằm trong `adminAudit`.
 
 Tra cứu công khai gửi mã đơn và số điện thoại bằng `POST`; backend giới hạn 20 lượt mỗi IP trong 10 phút, lưu khóa IP dưới dạng HMAC và tự xóa bản ghi giới hạn sau 24 giờ. Kết quả công khai chỉ gồm mã đơn, trạng thái, thời gian dự kiến và lịch sử trạng thái; địa chỉ, số điện thoại, người nhận, sản phẩm và thông tin thanh toán chỉ được đọc khi khách đăng nhập đúng tài khoản sở hữu đơn. Mã đơn không khớp và số điện thoại không khớp cùng trả về một lỗi.
 
