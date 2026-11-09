@@ -1,7 +1,7 @@
 import { mountReport } from "./admin-report-view.js?v=2";
 import { dateKey as reportDateKey, isOrderPaid } from "./admin-analytics.js?v=2";
 import { firebaseConfig } from "../core/firebase-config.js";
-import { ORDER_STATUSES, normalizeOrderStatus, orderStatusLabel } from "../order/order-status.js?v=2";
+import { ORDER_STATUSES, canTransitionOrderStatus, normalizeOrderStatus, orderStatusLabel } from "../order/order-status.js?v=3";
 import { preparePhotos } from "../review/review-images.js?v=1";
 
 let productPage = document.getElementById("product_page");
@@ -1462,7 +1462,7 @@ function renderOrderCard(order, showCompletionAction = true) {
                    <label class="field-label">Cập nhật trạng thái</label>
                    <div class="status-row">
                        <select class="status-select" data-order-id="${escapeHtml(order.id)}">
-                           ${ORDER_STATUSES.map((status) => `
+                           ${ORDER_STATUSES.filter((status) => canTransitionOrderStatus(order.status, status)).map((status) => `
                                <option value="${status}" ${status === normalizeOrderStatus(order.status) ? "selected" : ""}>${orderStatusLabel(status)}</option>
                            `).join("")}
                        </select>
@@ -1941,6 +1941,10 @@ async function updateOrderStatus(orderId, status, location, estimatedDelivery) {
    const order = getOrders().find((item) => String(item.id) === String(orderId));
    if (!order) {
        alert("Không tìm thấy đơn hàng trên hệ thống dùng chung.");
+       return;
+   }
+   if (!canTransitionOrderStatus(order.status, status)) {
+       alert(`Không thể chuyển đơn từ “${orderStatusLabel(order.status)}” sang “${orderStatusLabel(status)}”. Hãy cập nhật theo đúng thứ tự.`);
        return;
    }
    // Restoring a cancelled order: do not keep showing "the order expired" as its location.
