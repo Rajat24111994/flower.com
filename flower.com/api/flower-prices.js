@@ -1,6 +1,7 @@
 const { FieldValue } = require("firebase-admin/firestore");
 const { getAdminAuth, getAdminFirestore, sendError, verifyRequest } = require("../lib/firebase-admin");
 const { toVndPrice } = require("../js/catalog/product-store.js");
+const { addAdminAudit } = require("../lib/admin-audit");
 
 const MIN_PRICE = 1000;
 const MAX_PRICE = 1_000_000_000;
@@ -142,6 +143,7 @@ async function updateFlowerPrice(db, token, body) {
             updatedBy: token.uid,
             updatedByEmail: email
         });
+        addAdminAudit(transaction, db, token, "flower-price.update", "flower", flowerId, { oldPrice, newPrice: price });
         return {
             changed: true,
             flower: {

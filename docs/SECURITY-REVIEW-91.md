@@ -1,5 +1,7 @@
 # Rà soát bảo mật — Issue #91
 
+Đây là kết quả trong phạm vi đợt rà soát issue #91. Các kiểm tra bổ sung về khôi phục PIN, chống lạm dụng đặt hàng và danh tính local được ghi riêng trong [báo cáo rà soát bổ sung](security/2026-11-09-application-security-audit.md) và [báo cáo khắc phục](security/2026-11-09-security-remediation.md).
+
 ## Phạm vi
 
 Rà soát các luồng đăng nhập, sản phẩm, giỏ hàng, thanh toán/checkout và đặt/theo dõi đơn hàng, tập trung vào:

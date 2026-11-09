@@ -31,7 +31,10 @@ flowchart LR
     Owner["owner.js"] -->|ID token| OwnerAPI["/api/owner/users"]
     AdminAPI --> FirebaseAdmin[Firebase Admin SDK]
     OwnerAPI --> FirebaseAdmin
-    Login["login.js"] <--> Auth[Firebase Authentication]
+    Login["login.js"] -->|Email và mật khẩu| LoginAPI["/api/login"]
+    LoginAPI <--> Auth[Firebase Authentication]
+    LoginAPI <--> LoginProtection[(Firestore loginProtection<br/>theo UID)]
+    Login <-->|Google / đổi custom token lấy phiên| Auth
     Product["product.js"] --> Reviews["review-store.js"] <--> FsReviews[(Cloud Firestore<br/>reviews)]
 ```
 
@@ -72,6 +75,7 @@ flowchart LR
 | Đơn hàng mới | `/api/orders` xác minh giá/tồn kho rồi ghi Firestore `orders`; mỗi dòng lưu giá và đơn vị tại thời điểm đặt | ✅ |
 | Giá hoa nguyên liệu | Firestore `products`; Owner cập nhật qua `/api/flower-prices`, lịch sử bất biến lưu trong `priceHistory` | ✅ |
 | Audit đối soát QR | `/api/orders` ghi/đọc `orderPaymentAudit`; Security Rules chặn truy cập từ client | ✅ |
+| Audit thao tác quản trị qua API | `adminAudit`, đọc 100 mục mới nhất qua `/api/admin/audit`; ghi cùng transaction khi đổi khu vực giao, phí gói và giá hoa; ghi sau khi đổi quyền tài khoản | ✅ cho các thao tác này |
 | Đánh giá trong trang quản trị (phản hồi, hoàn thành) | Firestore `reviews` | ✅ |
 | Lời nhắn của khách và câu trả lời | Trường `orderNote`, `orderNoteReply`, `orderNoteCompletedAt` của đơn trong `orders` | ✅ |
 | Phản hồi cũ trên trình duyệt | Firestore `messages` (chuyển khi quản trị đăng nhập) | ✅ |
@@ -120,6 +124,8 @@ Khu vực giao hàng được quản trị viên cấu hình thủ công trong m
 
 Đơn QR ở trạng thái chờ xác minh cho đến khi admin đối chiếu số tiền với sao kê, nhập mã giao dịch ngân hàng và bấm xác nhận. Trình duyệt gửi yêu cầu tới API; máy chủ kiểm tra ID token đã thu hồi, quyền admin hiện hành, phương thức QR, trạng thái đơn và số tiền chính xác rồi cập nhật đơn trong transaction. API đồng thời tạo bản ghi trong `orderPaymentAudit`; Security Rules chặn mọi thao tác đọc/ghi trực tiếp lên bộ sưu tập audit và không cho client tự sửa trạng thái thanh toán. Bản ghi lưu người xác nhận, thời điểm, số tiền, nội dung chuyển khoản và mã giao dịch đối soát. Thanh toán đến sau khi đơn bị hủy có thao tác riêng và cũng được audit để cửa hàng xử lý khôi phục hoặc hoàn tiền. Đơn đã xác minh không bị dọn khi hết thời gian giữ hàng và được tính vào doanh thu sau khi giao. Dự án chưa tích hợp API/webhook ngân hàng nên chưa có đối soát tự động.
 
+Các cập nhật khu vực giao hàng, phí gói bó, giá hoa và quyền quản trị cũng được ghi vào `adminAudit`; các mục cấu hình dùng chung transaction với thay đổi tương ứng. Đọc audit cần ID token quản trị qua `GET /api/admin/audit`; client không được đọc hoặc ghi trực tiếp collection này. Những thao tác quản trị còn ghi trực tiếp Firestore từ trình duyệt chưa được đưa qua backend và chưa nằm trong `adminAudit`.
+
 Tra cứu công khai gửi mã đơn và số điện thoại bằng `POST`; backend giới hạn 20 lượt mỗi IP trong 10 phút, lưu khóa IP dưới dạng HMAC và tự xóa bản ghi giới hạn sau 24 giờ. Kết quả công khai chỉ gồm mã đơn, trạng thái, thời gian dự kiến và lịch sử trạng thái; địa chỉ, số điện thoại, người nhận, sản phẩm và thông tin thanh toán chỉ được đọc khi khách đăng nhập đúng tài khoản sở hữu đơn. Mã đơn không khớp và số điện thoại không khớp cùng trả về một lỗi.
 
 ## Bảo mật Firestore
@@ -138,8 +144,9 @@ Triển khai: `firebase deploy --only firestore:rules,firestore:indexes`. Lệnh
 
 ## Xác thực
 
-- **Email/Password và Google** dùng Firebase Authentication. Tài khoản Google luôn được tạo với vai trò khách hàng.
-- Không có chế độ đăng nhập cục bộ. Khi Firebase Authentication chưa cấu hình hoặc không hoạt động, đăng ký/đăng nhập/khôi phục mật khẩu sẽ dừng và báo lỗi; mật khẩu không được lưu trong trình duyệt.
+- Khi chạy `npm run dev`, mặc định **tài khoản tự tạo trên máy**: tên có `@` nhưng không cần email thật, đăng ký/đăng nhập bằng SQLite và cookie phiên. Dùng PIN tự đặt gồm 4–6 chữ số để khôi phục mật khẩu; đổi PIN cần đầy đủ thông tin, mật khẩu và PIN cũ. Quên PIN phải trả lời đúng 3 câu hỏi tự đặt. Các bí mật được băm bằng scrypt. Xem [tài khoản local](docs/local-accounts.md).
+- Chế độ Firebase (`AUTH_MODE=firebase` khi chạy dev, hoặc bản Vercel hiện có) dùng **Email/Password và Google** qua Firebase Authentication. Tài khoản Google luôn được tạo với vai trò khách hàng; khi Firebase chưa sẵn sàng, chế độ này báo lỗi và không chuyển sang một cơ chế xác thực khác.
+- Đăng nhập mật khẩu đi qua `/api/login`, giới hạn theo tài khoản: sai 5 lần khóa 15 phút, sau đó mỗi lần thử sai tăng thời gian khóa lên 30/60/120/240 phút; lần sai thứ 10 bắt buộc hoàn tất đặt lại mật khẩu. Xem [cấu hình key Firebase bắt buộc và kiểm thử](docs/login-protection.md) trước khi triển khai.
 - **Quản trị:** trang `admin.html` kiểm tra claim `admin: true` trên ID token; API phía server kiểm tra lại claim này độc lập với giao diện.
 
 ## Rà soát quyền truy cập

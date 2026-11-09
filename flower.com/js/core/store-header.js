@@ -198,6 +198,20 @@ if (accountNav) {
 // (password reset, account disabled or deleted, token revoked) clear the copy, so pages stop
 // showing the account and new orders are not silently placed as a guest.
 async function verifyStoredSession() {
+    if (["localhost", "127.0.0.1"].includes(window.location.hostname) && window.FlowerAuthMode !== "firebase") {
+        try {
+            const { monitorLocalSession } = await import("../account/session-lifecycle.js?v=1");
+            monitorLocalSession({ onVerified(account) {
+                FlowerSafeStorage.syncShoppingOwner?.();
+                updateShoppingHeaderCounts();
+                const label = document.querySelector(".signin h5");
+                if (label) label.textContent = account.name || account.email;
+            }, onExpired: () => expireStoredSession(true) });
+        } catch {
+            console.warn("Chưa kiểm tra được phiên tài khoản trên máy.");
+        }
+        return;
+    }
     if (!getCurrentAccount()) return;
     let auth;
     let app;
@@ -247,6 +261,10 @@ async function verifyStoredSession() {
         return;
     }
 
+    expireStoredSession();
+}
+
+function expireStoredSession(alreadyCleared = false) {
     try {
         FlowerSafeStorage.remove("loggedUser");
         FlowerSafeStorage.remove("loggedAdmin");
@@ -258,12 +276,13 @@ async function verifyStoredSession() {
     }
     const label = document.querySelector(".signin h5");
     if (label) label.textContent = "Tài khoản";
+    if (document.querySelector(".session-expired-notice")) return;
     const notice = document.createElement("p");
     notice.className = "session-expired-notice";
     notice.setAttribute("role", "status");
     notice.innerHTML = 'Phiên đăng nhập đã hết hạn. <a href="./login.html">Đăng nhập lại</a> để xem đơn hàng và lưu đơn vào tài khoản.';
     document.querySelector("main")?.prepend(notice);
-    window.dispatchEvent(new CustomEvent("flowersessionexpired"));
+    if (!alreadyCleared) window.dispatchEvent(new CustomEvent("flowersessionexpired"));
 }
 
 void verifyStoredSession();

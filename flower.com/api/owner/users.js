@@ -1,5 +1,6 @@
 const { getAdminAuth, getAdminFirestore, sendError, verifyOwnerRequest } = require("../../lib/firebase-admin");
 const { syncAdminRole, syncAdminRoles } = require("../../lib/admin-roles");
+const { recordAdminAudit } = require("../../lib/admin-audit");
 
 function getRole(user) {
     if (user.customClaims && user.customClaims.role === "owner") return "owner";
@@ -106,6 +107,15 @@ module.exports = async function handler(req, res) {
                 "role-updated-session-revoke-failed",
                 "Đã đổi quyền nhưng chưa thể thu hồi phiên đăng nhập cũ. Hãy thu hồi phiên này trong Firebase Console."
             );
+        }
+        try {
+            await recordAdminAudit(db, decodedToken, `owner-user.${body.action}`, "user-role", user.uid, {
+                previousRole: getRole({ customClaims: user.customClaims }),
+                nextRole: body.action === "grant-admin" ? "admin" : "customer"
+            });
+        } catch (error) {
+            console.error("Owner role changed but audit record failed:", error.code || error.message);
+            return sendError(res, 500, "role-updated-audit-failed", "Đã đổi quyền và thu hồi phiên đăng nhập, nhưng chưa ghi được nhật ký kiểm tra.");
         }
         console.info("Owner changed account role:", {
             actorUid: decodedToken.uid,

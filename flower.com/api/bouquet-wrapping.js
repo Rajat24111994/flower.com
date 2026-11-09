@@ -1,6 +1,7 @@
 const { FieldValue } = require("firebase-admin/firestore");
 const { getAdminAuth, getAdminFirestore, sendError, verifyRequest } = require("../lib/firebase-admin");
 const { normalizeTiers } = require("../js/catalog/bouquet-wrapping.js");
+const { addAdminAudit } = require("../lib/admin-audit");
 
 const WRAPPING_DOCUMENT = "bouquetWrapping";
 
@@ -63,9 +64,13 @@ module.exports = async function handler(req, res) {
     }
 
     try {
-        await db.collection("metadata").doc(WRAPPING_DOCUMENT).set({
-            tiers,
-            updatedAt: FieldValue.serverTimestamp()
+        await db.runTransaction(async (transaction) => {
+            const reference = db.collection("metadata").doc(WRAPPING_DOCUMENT);
+            const snapshot = await transaction.get(reference);
+            const previousTiers = readTiers(snapshot.data());
+            transaction.set(reference, { tiers, updatedAt: FieldValue.serverTimestamp() });
+            addAdminAudit(transaction, db, claims, "bouquet-wrapping.update", "bouquet-wrapping", WRAPPING_DOCUMENT,
+                { before: previousTiers, after: tiers });
         });
         return res.status(200).json({ configured: true, tiers });
     } catch (error) {

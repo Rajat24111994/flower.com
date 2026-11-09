@@ -24,7 +24,8 @@ test("khách thường không dùng được API quản trị", async () => {
     assert.equal((await h.callApi("ownerUsers", { token: customer.token, body: { action: "list" } })).status, 403);
     assert.equal((await h.callApi("products", { token: customer.token, body: { action: "restore-catalog" } })).status, 405);
     assert.equal((await h.callApi("products", { method: "GET", query: { manage: "1" }, token: customer.token })).status, 403);
-    assert.equal((await h.callApi("orders", { method: "GET", query: { action: "expire" }, token: customer.token })).status, 401);
+    // The shared admin guard distinguishes an authenticated customer (403) from no session (401).
+    assert.equal((await h.callApi("orders", { method: "GET", query: { action: "expire" }, token: customer.token })).status, 403);
 });
 
 test("claim quản trị đã thu hồi không thể dùng API nội bộ", async () => {

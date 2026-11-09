@@ -8,6 +8,9 @@
       const { url, ...requestOptions } = options;
       const response = await fetch(url || "/api/orders", { ...requestOptions, signal: controller.signal });
       const result = await response.json();
+      if (response.status === 401 && root.FlowerAuthMode === "local") {
+        root.dispatchEvent(new CustomEvent("flowerlocalauthinvalid"));
+      }
       return { response, result };
     } catch (cause) {
       const error = new Error("Không nhận được phản hồi từ API đơn hàng. Kiểm tra kết nối rồi thử lại.");
@@ -195,12 +198,23 @@
   }
 
   async function create(order, expectedTotals) {
-    const { auth } = await getFirebase();
-    await auth.authStateReady();
+    const localMode = root.FlowerAuthMode === "local";
+    const { auth } = localMode ? { auth: { currentUser: null } } : await getFirebase();
+    if (!localMode) await auth.authStateReady();
     // A browser that still shows an account whose Firebase session is gone would otherwise
     // place a guest order that never appears under "Đơn hàng của bạn".
     const storedAccount = root.FlowerSafeStorage?.readJson("loggedUser", { fallback: null }) || null;
-    if (storedAccount?.uid && auth.currentUser?.uid !== storedAccount.uid) {
+    if (localMode && storedAccount?.uid) {
+      const session = await fetch("/api/local-auth/session", { credentials: "same-origin", cache: "no-store" });
+      const result = await session.json();
+      if (!session.ok || result.account?.uid !== storedAccount.uid) {
+        root.dispatchEvent(new CustomEvent("flowerlocalauthinvalid"));
+        const error = new Error("Phiên đăng nhập hết hạn. Hãy đăng nhập lại trước khi đặt hàng.");
+        error.code = "session-expired";
+        throw error;
+      }
+    }
+    if (storedAccount?.uid && storedAccount.authProvider !== "local" && auth.currentUser?.uid !== storedAccount.uid) {
       root.FlowerSafeStorage.remove("loggedUser");
       const error = new Error("Phiên đăng nhập đã hết hạn. Hãy đăng nhập lại để đơn được lưu vào tài khoản của bạn (giỏ hàng vẫn được giữ).");
       error.code = "session-expired";
@@ -516,6 +530,20 @@
   }
 
   async function subscribeAccount(uid, onOrders, onError) {
+    if (root.FlowerAuthMode === "local") {
+      let active = true, timer;
+      const refresh = async () => {
+        try {
+          const { response, result } = await orderRequest({ url: "/api/orders?action=mine", headers: { Accept: "application/json" }, cache: "no-store" });
+          if (!active) return;
+          if (!response.ok || result.accountUid !== uid) throw new Error(result.error || "Phiên đăng nhập không khớp với tài khoản.");
+          onOrders(result.orders || []);
+        } catch (error) { if (active) onError?.(error); }
+        if (active) timer = setTimeout(refresh, 15000);
+      };
+      await refresh();
+      return () => { active = false; clearTimeout(timer); };
+    }
     const { auth, db, firestoreSdk } = await getFirebase();
     await auth.authStateReady();
     if (!auth.currentUser || auth.currentUser.uid !== uid) {
@@ -535,7 +563,7 @@
   async function getPublicOrder(id, phone) {
     const headers = { "Content-Type": "application/json", Accept: "application/json" };
     const account = root.FlowerSafeStorage?.readJson("loggedUser", { fallback: null }) || null;
-    if (account?.uid) {
+    if (account?.uid && root.FlowerAuthMode !== "local") {
       const { auth } = await getFirebase();
       await auth.authStateReady();
       if (!auth.currentUser || auth.currentUser.uid !== account.uid) {
@@ -553,6 +581,7 @@
     });
     const result = await response.json().catch(() => ({}));
     if (!response.ok) {
+      if (response.status === 401 && root.FlowerAuthMode === "local") root.dispatchEvent(new CustomEvent("flowerlocalauthinvalid"));
       const error = new Error(result.error || "Không thể tra cứu đơn hàng.");
       error.code = result.code || "order-lookup-failed";
       throw error;
@@ -675,7 +704,7 @@
           : {}),
         ...(reserveAgain ? {
           reservationExpiresAt: firestoreSdk.Timestamp.fromDate(new Date(Date.now() + (
-            order.paymentMethod === "qr" ? 30 * 60 * 1000 : 24 * 60 * 60 * 1000
+            order.paymentMethod === "vnpay" ? 15 * 60 * 1000 : 30 * 60 * 1000
           ))),
           reservationExpiredAt: firestoreSdk.deleteField()
         } : {}),

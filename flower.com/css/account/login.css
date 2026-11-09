@@ -237,6 +237,13 @@ form input:not([type="submit"]):focus {
 	filter: brightness(1.03);
 }
 
+.submit:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+}
+
+[data-google-auth][hidden], .auth-divider[hidden] { display: none; }
+
 .submit:active,
 button:active {
 	transform: translateY(1px);
@@ -632,3 +639,14 @@ button:active {
 		transition-duration: 0.01ms !important;
 	}
 }
+
+[hidden] { display: none !important; }
+#signup-security { min-width: 0; padding: 16px 0 0; margin: 0 0 12px; border: 0; border-top: 1px solid var(--line); }
+#signup-security legend { font-weight: 700; font-size: 16px; }
+#signup-security p { font-size: 13px; line-height: 1.6; color: var(--muted); }
+#signup-security label { display: block; font-size: 13px; margin-bottom: 7px; }
+@media (min-width: 761px) {
+    .container.local-accounts.right-panel-active .sign-up-container { position: relative; margin-left: 50%; transform: none; height: auto; }
+    .container.local-accounts.right-panel-active #signUp { height: auto; min-height: 760px; }
+}
+body:has(form:focus-within) .contact-dock { display: none; }
