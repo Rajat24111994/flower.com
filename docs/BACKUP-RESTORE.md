@@ -29,11 +29,20 @@ Sau đó vào tab **Actions → Sao lưu Firestore → Run workflow** để ch�
 
 ## Sao lưu bằng tay trên máy
 
-Trong thư mục `flower.com`, đăng nhập Google Cloud một lần (`gcloud auth application-default login`), rồi chạy trên PowerShell:
+Trong thư mục `flower.com`, đăng nhập Google Cloud một lần (`gcloud auth application-default login`). Không lưu `BACKUP_PASSPHRASE` trong `.env` vì file này là văn bản thuần. Nhập mật khẩu ẩn vào biến môi trường của phiên PowerShell, chạy lệnh, rồi xóa biến:
 
 ```powershell
-$env:BACKUP_PASSPHRASE = "mật-khẩu-sao-lưu"
-npm run backup
+$secure = Read-Host "BACKUP_PASSPHRASE" -AsSecureString
+$pointer = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure)
+try {
+    $env:BACKUP_PASSPHRASE = [System.Runtime.InteropServices.Marshal]::PtrToStringBSTR($pointer)
+    npm run backup
+}
+finally {
+    Remove-Item Env:BACKUP_PASSPHRASE -ErrorAction SilentlyContinue
+    [System.Runtime.InteropServices.Marshal]::ZeroFreeBSTR($pointer)
+    $secure.Dispose()
+}
 ```
 
 File mới nằm trong `flower.com/backups/`.
@@ -44,9 +53,20 @@ File mới nằm trong `flower.com/backups/`.
 2. Lấy bản sao lưu gần nhất **trước** thời điểm dữ liệu hỏng: trên GitHub vào **Actions → Sao lưu Firestore**, mở lần chạy phù hợp, tải file `firestore-backup-…` về rồi giải nén. Hoặc dùng file trong `flower.com/backups/`.
 3. Xem trước nội dung (lệnh này **chưa ghi gì** vào Firestore):
 
+   Nhập lại passphrase vào biến môi trường ẩn như trên, thay `npm run backup` bằng lệnh restore:
+
    ```powershell
-   $env:BACKUP_PASSPHRASE = "mật-khẩu-sao-lưu"
-   npm run restore -- "đường-dẫn\flowerflow-....json.enc"
+   $secure = Read-Host "BACKUP_PASSPHRASE" -AsSecureString
+   $pointer = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure)
+   try {
+       $env:BACKUP_PASSPHRASE = [System.Runtime.InteropServices.Marshal]::PtrToStringBSTR($pointer)
+       npm run restore -- "đường-dẫn\flowerflow-....json.enc"
+   }
+   finally {
+       Remove-Item Env:BACKUP_PASSPHRASE -ErrorAction SilentlyContinue
+       [System.Runtime.InteropServices.Marshal]::ZeroFreeBSTR($pointer)
+       $secure.Dispose()
+   }
    ```
 
    Lệnh in ra thời điểm sao lưu và số bản ghi của từng collection. Kiểm tra cho đúng.

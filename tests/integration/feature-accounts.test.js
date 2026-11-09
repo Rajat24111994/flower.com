@@ -14,7 +14,8 @@ test("khách đã đăng nhập đặt đơn thì đơn gắn với tài khoản
     assert.equal(result.status, 201);
     const order = (await h.db().doc(`orders/${result.body.order.id}`).get()).data();
     assert.equal(order.uid, customer.uid);
-    assert.equal(order.email, customer.email);
+    assert.equal(Object.hasOwn(order, "email"), false);
+    assert.equal(Object.hasOwn(result.body.order, "email"), false);
 });
 
 test("mã đăng nhập giả hoặc đã thu hồi thì không đặt được đơn dưới tên người khác", async () => {

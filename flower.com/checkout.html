@@ -16,11 +16,11 @@
   <link rel="stylesheet" href="./css/order/checkout.css?v=6">
   <link rel="stylesheet" href="./css/core/accessibility.css?v=1">
   <link rel="stylesheet" href="./css/core/store-footer.css?v=4">
-<link rel="stylesheet" href="./css/core/contact-tools.css?v=3">
+<link rel="stylesheet" href="./css/core/contact-tools.css?v=4">
 </head>
 
 <body>
-  <script src="./js/core/store-header.js?v=7"></script>
+  <script src="./js/core/store-header.js?v=9"></script>
 
   <main class="checkout-page">
     <header class="checkout-heading">
@@ -187,10 +187,15 @@
           <dl class="checkout-totals">
             <div><dt>Giá gốc</dt><dd id="originalprice">0 ₫</dd></div>
             <div><dt>Tiền giảm</dt><dd id="savings">0 ₫</dd></div>
+            <div><dt>Phí bó hoa tùy chỉnh</dt><dd id="bouquetWrappingCharge">0 ₫</dd></div>
             <div><dt>Phí giao hàng</dt><dd id="deliveryCharge">Chọn khu vực</dd></div>
             <div class="checkout-grand-total"><dt>Tổng tiền <small>(đã gồm VAT)</small></dt><dd id="total">0 ₫</dd></div>
           </dl>
 
+          <div id="price-change-confirmation" class="checkout-message" role="alert" aria-live="assertive" hidden>
+            <p id="price-change-details"></p>
+            <button type="button" id="confirm-price-changes">Xác nhận giá mới</button>
+          </div>
           <button class="checkout-submit" type="submit">Đặt hàng</button>
           <a class="continue-shopping" href="./product.html">Tiếp tục chọn hoa</a>
           <button type="button" id="retry-quote" hidden>Thử lại kiểm tra giá và tồn kho</button>
@@ -202,7 +207,7 @@
   <script src="./js/core/store-footer.js?v=4"></script>
   <script src="./js/catalog/bouquet-options.js?v=1"></script>
   <script src="./js/core/currency.js?v=11"></script>
-  <script src="./js/order/order-store.js?v=19"></script>
+  <script src="./js/order/order-store.js?v=25"></script>
   <script>
   const CartContainer = document.getElementById("product-container");
   const checkoutForm = document.getElementById("checkout-form");
@@ -268,8 +273,11 @@
   });
   // Same limit as the order API (api/orders.js MAX_QUANTITY_PER_PRODUCT).
   const MAX_QUANTITY_PER_PRODUCT = 50;
+  const MAX_BOUQUET_STEMS = 50;
   let serverQuote = null;
   let quoteRequestId = 0;
+  let pendingPriceChanges = [];
+  let priceChangesConfirmed = false;
   const paymentOnlinePanel = document.getElementById("payment-online-panel");
   function createOrderRequestId() {
     if (!window.crypto?.getRandomValues) {
@@ -468,6 +476,22 @@
     }
   }
 
+  function updatePriceChangeConfirmation() {
+    const panel = document.getElementById("price-change-confirmation");
+    const details = document.getElementById("price-change-details");
+    const confirmButton = document.getElementById("confirm-price-changes");
+    const submitButton = checkoutForm.querySelector(".checkout-submit");
+    panel.hidden = pendingPriceChanges.length === 0;
+    if (pendingPriceChanges.length) {
+      details.textContent = priceChangesConfirmed
+        ? "Bạn đã xác nhận mức giá mới cho các sản phẩm trong giỏ."
+        : `Giá bán đã thay đổi: ${pendingPriceChanges.map((item) => `${item.title}: ${formatVnd(item.oldPrice)} → ${formatVnd(item.newPrice)}`).join("; ")}. Vui lòng xác nhận giá mới trước khi đặt hàng.`;
+      confirmButton.hidden = priceChangesConfirmed;
+    }
+    submitButton.disabled = !serverQuote || !selectedDeliveryZoneId || !deliveryZonesLoaded
+      || !deliveryZonesConfigured || (pendingPriceChanges.length > 0 && !priceChangesConfirmed);
+  }
+
   function DisplayProduct({ refreshQuote = true } = {}) {
     CartContainer.innerHTML = "";
     document.getElementById("checkout-item-count").textContent = Cart.reduce(
@@ -475,7 +499,11 @@
       0
     );
 
+    const bouquetNumbers = new Map();
     Cart.forEach((product) => {
+      if (product.customBouquetId && !bouquetNumbers.has(product.customBouquetId)) {
+        bouquetNumbers.set(product.customBouquetId, bouquetNumbers.size + 1);
+      }
       const itemQuantity = Math.max(1, Number(product.quantity) || 1);
       const card = document.createElement("article");
       const image = document.createElement("img");
@@ -491,6 +519,10 @@
       const stock = Number(product.stockQuantity);
       const hasStockLimit = Number.isFinite(stock) && stock >= 0;
       const requestedStock = FlowerBouquetOptions.demand(Cart, product.productId ?? product.id);
+      const requestedBouquetStems = product.customBouquetId
+        ? Cart.filter((item) => item.customBouquetId === product.customBouquetId)
+          .reduce((sum, item) => sum + Math.max(1, Number(item.quantity) || 1), 0)
+        : 0;
       const exceedsStock = hasStockLimit && requestedStock > stock;
 
       card.className = "checkout-item";
@@ -512,7 +544,9 @@
       increase.className = "quantity-button";
       increase.textContent = "+";
       increase.setAttribute("aria-label", `Tăng số lượng ${name.textContent}`);
-      increase.disabled = itemQuantity >= MAX_QUANTITY_PER_PRODUCT || (hasStockLimit && requestedStock >= stock);
+      increase.disabled = itemQuantity >= MAX_QUANTITY_PER_PRODUCT
+        || (hasStockLimit && requestedStock >= stock)
+        || (product.customBouquetId && requestedBouquetStems >= MAX_BOUQUET_STEMS);
       lineTotal.className = "checkout-item-total";
       lineTotal.textContent = formatVnd(Number(product.price) * itemQuantity);
       remove.type = "button";
@@ -525,6 +559,10 @@
           : item));
       });
       increase.addEventListener("click", () => {
+        if (product.customBouquetId && requestedBouquetStems >= MAX_BOUQUET_STEMS) {
+          checkoutMessage.textContent = `Mỗi bó tùy chỉnh tối đa ${MAX_BOUQUET_STEMS} cành.`;
+          return;
+        }
         if (itemQuantity >= MAX_QUANTITY_PER_PRODUCT) {
           checkoutMessage.textContent = `Mỗi lựa chọn bó hoa đặt tối đa ${MAX_QUANTITY_PER_PRODUCT} bó.`;
           return;
@@ -545,7 +583,10 @@
       details.append(name, unitPrice);
       const selectionSummary = document.createElement("p");
       selectionSummary.className = "bouquet-line-summary";
-      selectionSummary.textContent = FlowerBouquetOptions.summary(product);
+      const optionSummary = FlowerBouquetOptions.summary(product);
+      selectionSummary.textContent = product.customBouquetId
+        ? `Bó tùy chỉnh ${bouquetNumbers.get(product.customBouquetId)} · ${optionSummary}`
+        : optionSummary;
       details.append(selectionSummary);
       if (hasStockLimit) {
         const stockMessage = document.createElement("p");
@@ -593,15 +634,43 @@
 
     try {
       const quote = await window.FlowerOrderStore.quote(
-        Cart.map((item) => ({ id: item.id, productId: item.productId, size: item.size, color: item.color, cardMessage: item.cardMessage, personalNote: item.personalNote, quantity: Math.max(1, Number(item.quantity) || 1) })),
+        Cart.map((item) => ({ id: item.id, productId: item.productId, customBouquetId: item.customBouquetId, size: item.size, color: item.color, cardMessage: item.cardMessage, personalNote: item.personalNote, quantity: Math.max(1, Number(item.quantity) || 1) })),
         promotionSelect.value,
         selectedDeliveryZoneId
       );
       if (requestId !== quoteRequestId) return;
       serverQuote = quote;
+      const currentCartIds = new Set(Cart.map((item) => String(item.id)));
+      const changesById = new Map(pendingPriceChanges
+        .filter((item) => currentCartIds.has(item.id))
+        .map((item) => [item.id, item]));
+      let foundNewPriceChange = false;
       quote.items.forEach((quotedItem) => {
         const cartItem = Cart.find((item) => String(item.id) === String(quotedItem.id));
         if (cartItem) {
+          const previousPrice = Number(cartItem.price);
+          const id = String(quotedItem.id);
+          const priorChange = changesById.get(id);
+          if (priorChange) {
+            if (quotedItem.price === priorChange.oldPrice) {
+              changesById.delete(id);
+            } else {
+              if (previousPrice !== quotedItem.price) foundNewPriceChange = true;
+              changesById.set(id, {
+                ...priorChange,
+                title: quotedItem.title || cartItem.title || priorChange.title,
+                newPrice: quotedItem.price
+              });
+            }
+          } else if (Number.isSafeInteger(previousPrice) && previousPrice > 0 && previousPrice !== quotedItem.price) {
+            foundNewPriceChange = true;
+            changesById.set(id, {
+              id,
+              title: quotedItem.title || cartItem.title || "Sản phẩm",
+              oldPrice: previousPrice,
+              newPrice: quotedItem.price
+            });
+          }
           cartItem.price = quotedItem.price;
           cartItem.title = quotedItem.title;
           cartItem.image = quotedItem.image;
@@ -610,10 +679,13 @@
           if (Number.isInteger(quotedItem.stock)) cartItem.stockQuantity = quotedItem.stock;
         }
       });
+      pendingPriceChanges = [...changesById.values()];
+      if (foundNewPriceChange) priceChangesConfirmed = false;
       FlowerSafeStorage.writeJson("cart", Cart);
       const totals = quote.totals;
       document.getElementById("originalprice").textContent = formatVnd(totals.subtotal);
       document.getElementById("savings").textContent = formatVnd(totals.savings);
+      document.getElementById("bouquetWrappingCharge").textContent = formatVnd(totals.wrappingFee || 0);
       document.getElementById("deliveryCharge").textContent = quote.deliveryZone
         ? formatVnd(totals.shippingFee || 0)
         : "Chọn khu vực";
@@ -633,8 +705,10 @@
         const stockMessage = card.querySelector(".checkout-stock");
         if (stockMessage && Number.isInteger(item.stockQuantity)) stockMessage.textContent = `Tồn kho: ${item.stockQuantity}`;
       });
-      checkoutMessage.textContent = "Giá, ưu đãi và tồn kho đã được xác minh từ cửa hàng.";
-      submitButton.disabled = !selectedDeliveryZoneId || !deliveryZonesLoaded || !deliveryZonesConfigured;
+      checkoutMessage.textContent = pendingPriceChanges.length
+        ? "Giá, ưu đãi và tồn kho đã được xác minh. Cần xác nhận thay đổi giá trước khi đặt hàng."
+        : "Giá, ưu đãi và tồn kho đã được xác minh từ cửa hàng.";
+      updatePriceChangeConfirmation();
       updatePaymentOnlinePanel();
     } catch (error) {
       if (requestId !== quoteRequestId) return;
@@ -648,6 +722,12 @@
         FlowerSafeStorage.writeJson("cart", Cart);
         DisplayProduct({ refreshQuote: false });
       }
+
+      document.getElementById("confirm-price-changes").addEventListener("click", () => {
+        if (!pendingPriceChanges.length || !serverQuote) return;
+        priceChangesConfirmed = true;
+        updatePriceChangeConfirmation();
+      });
       checkoutMessage.textContent = error.message || "Không thể xác minh giá và tồn kho. Vui lòng thử lại.";
       renderCartSummary(Cart);
       updatePaymentOnlinePanel();
@@ -737,6 +817,11 @@
       checkoutMessage.textContent = "Chờ xác minh giá và tồn kho từ cửa hàng trước khi đặt hàng.";
       return;
     }
+    if (pendingPriceChanges.length && !priceChangesConfirmed) {
+      checkoutMessage.textContent = "Vui lòng xác nhận giá bán mới trước khi đặt hàng.";
+      updatePriceChangeConfirmation();
+      return;
+    }
     if (!deliveryZonesLoaded || !deliveryZonesConfigured || !selectedDeliveryZoneId) {
       checkoutMessage.textContent = "Chọn khu vực giao hàng đã được cửa hàng cấu hình trước khi đặt hàng.";
       deliveryProvinceInput.focus();
@@ -765,6 +850,7 @@
       idempotencyKey: orderRequestId,
       promotionId: promotionSelect.value,
       quotedTotals: serverQuote.totals,
+      quotedPrices: serverQuote.items.map((item) => ({ id: String(item.id), price: item.price })),
       recipientName: String(formData.get("recipientName") || "").trim(),
       recipientPhone: String(formData.get("recipientPhone") || "").trim(),
       customerIsRecipient: formData.get("customerIsRecipient") === "on",

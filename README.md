@@ -39,7 +39,7 @@
 FlowerFlow là website bán hoa gồm ba lớp:
 
 - **Frontend:** các trang HTML, CSS và JavaScript thuần, không framework, không cần bước build.
-- **Backend:** Vercel Functions (Node.js) dùng Firebase Admin SDK. `/api/orders` tự tính giá, ưu đãi và giữ tồn kho khi tạo đơn, nên khách không thể sửa giá từ trình duyệt; các API khác quản lý tài khoản và quyền.
+- **Backend:** Vercel Functions (Node.js) dùng Firebase Admin SDK. `/api/orders` tự tính giá, ưu đãi và giữ tồn kho khi tạo đơn; `/api/flower-prices` chỉ cho Owner cập nhật giá hoa và ghi lịch sử trong cùng giao dịch.
 - **Cơ sở dữ liệu:** Cloud Firestore lưu sản phẩm, đơn hàng, đánh giá, ưu đãi và phân loại, được bảo vệ bằng Security Rules; Firebase Authentication quản lý tài khoản và phân quyền.
 
 ## Tính năng
@@ -48,7 +48,7 @@ FlowerFlow là website bán hoa gồm ba lớp:
 
 | Tính năng | Mô tả |
 | --- | --- |
-| Hai hình thức bán | Bó làm sẵn bán đúng giá niêm yết; khách tự phối bó từ hoa nguyên liệu có giá theo ngày |
+| Hai hình thức bán | Bó làm sẵn bán đúng giá niêm yết; Owner quản lý giá hoa nguyên liệu, giá được duy trì đến lần cập nhật tiếp theo |
 | Danh mục sản phẩm | Duyệt, tìm kiếm, lọc theo danh mục, sắp xếp bó làm sẵn |
 | Chi tiết sản phẩm | Thư viện ảnh, giá VND, tồn kho, chọn số lượng, gợi ý sản phẩm liên quan |
 | Đánh giá sản phẩm | Khách đã đăng nhập gửi đánh giá 1–5 sao; đánh giá hiển thị công khai trên trang sản phẩm |
@@ -64,7 +64,7 @@ FlowerFlow là website bán hoa gồm ba lớp:
 
 | Tính năng | Mô tả |
 | --- | --- |
-| Sản phẩm và giá hoa | Thêm bó làm sẵn giá cố định hoặc hoa nguyên liệu; nhập giá nguyên liệu theo ngày và quản lý tồn kho theo bó/cành |
+| Sản phẩm và giá hoa | Thêm bó làm sẵn hoặc hoa nguyên liệu; Owner cập nhật giá bán hoa kèm lịch sử thay đổi, tồn kho theo bó/cành |
 | Danh mục và ưu đãi | Quản lý danh mục hoa và chương trình khuyến mãi |
 | Đơn hàng | Xem đơn của mọi khách theo thời gian thực, cập nhật trạng thái (Chờ xác nhận, Đang giao, Đã giao, Đã hủy) |
 | Xác minh thanh toán | Đối chiếu đúng số tiền, nhập mã giao dịch ngân hàng; API kiểm tra quyền và ghi audit người xác nhận/thời gian/thông tin đối soát |
@@ -122,25 +122,40 @@ Mô tả chi tiết kiến trúc và luồng dữ liệu nằm trong [`flower.co
 ### Yêu cầu
 
 - [Node.js](https://nodejs.org/) 24.x (để chạy kiểm thử và script quản trị)
-- Python 3 hoặc bất kỳ máy chủ HTTP tĩnh nào
-- (Tùy chọn) [Vercel CLI](https://vercel.com/docs/cli) để chạy các API quản trị ở máy cục bộ
+- Tài khoản tự tạo trên máy hoạt động ngay với Node.js, không cần Firebase hoặc email thật
+- (Tùy chọn) [Vercel CLI](https://vercel.com/docs/cli) nếu muốn dùng `vercel dev`
 
-### Chạy giao diện cửa hàng
+### Chạy giao diện và API trên máy cục bộ
 
 ```sh
 git clone https://github.com/longg5048/flower.com.git
 cd flower.com/flower.com
-python -m http.server 8000
+npm ci
+npm run dev
 ```
 
-Mở <http://localhost:8000> trong trình duyệt.
+Mở <http://127.0.0.1:3000> hoặc <http://127.0.0.1:3000/login.html> trong trình duyệt.
+Máy chủ Node phục vụ cả giao diện lẫn `/api/*` trên cùng địa chỉ, không cần bật Live Server.
+
+Mặc định `AUTH_MODE=local`: vào **Tạo tài khoản**, dùng tên có `@` như `ban@demo`, chọn mật khẩu
+và tự đặt PIN gồm 4–6 chữ số cùng 3 câu hỏi khôi phục PIN. Tên đăng nhập không cần là email có thật. Tài khoản, mật khẩu băm
+và trạng thái khóa được lưu trên máy trong `.tools/local-auth/accounts.sqlite`; không cần điền
+các key Firebase. Xem [tài khoản chạy thử](flower.com/docs/local-accounts.md).
+
+Nếu muốn dùng Firebase Authentication cho tài khoản, đặt `AUTH_MODE=firebase` rồi cấu hình
+theo [hướng dẫn Firebase](flower.com/docs/login-protection.md). Khởi động lại `npm run dev`
+sau khi sửa `.env`. File `.env` bị Git bỏ qua và máy chủ local không phục vụ file này hoặc mã
+nguồn nội bộ qua HTTP.
 
 > [!NOTE]
 > Không mở trực tiếp file HTML bằng `file://`: trình duyệt cần HTTP để gọi API và Firebase Authentication/Firestore.
 
-### Chạy kèm API quản trị
+Live Server/Python HTTP server chỉ phù hợp xem giao diện tĩnh. Các máy chủ đó không chạy API
+đăng nhập, đặt hàng hoặc quản trị; nút đăng nhập sẽ báo thiếu API thay vì bỏ qua giới hạn bảo mật.
 
-Máy chủ tĩnh không chạy được `/api/*`, bao gồm API tải ảnh sản phẩm `/api/product-images`. Để thử trang quản trị và tải ảnh đầy đủ:
+### Chạy bằng Vercel CLI (tùy chọn)
+
+Một lựa chọn khác để chạy các Vercel Functions ở máy cục bộ:
 
 ```sh
 cd flower.com

@@ -10,7 +10,12 @@ test.beforeEach(async ({ page }) => {
   await page.route("**/order-store.js*", (route) => route.fulfill({ contentType: "text/javascript", body: `
     window.testOrder = ${JSON.stringify(order)};
     window.FlowerOrderStore = {
-      getPublicOrder: async () => ({ ...window.testOrder, privacyLimited: true }),
+      getPublicOrder: async (id) => {
+        if (window.rejectForeignOrderLookup && id !== window.testOrder.id) {
+          throw Object.assign(new Error("Không tìm thấy đơn trong tài khoản."), { code: "order-not-found" });
+        }
+        return { ...window.testOrder, privacyLimited: true };
+      },
       subscribeAccount: async (_uid, callback) => { window.emitOrders = callback; callback([window.testOrder]); return () => {}; }
     };` }));
   await page.route("**/store-header.js*", (route) => route.fulfill({ contentType: "text/javascript",
@@ -63,6 +68,22 @@ test("account history follows the selected order through preparation and complet
   await expect(page.locator("#count-done")).toHaveText("1");
   await expect(page.locator('[data-group="done"]')).toHaveAttribute("aria-selected", "true");
   await expect(page.locator("#order-progress li").nth(2).locator("time")).toHaveCount(0);
+});
+
+test("changing an account tracking URL cannot display another customer's order", async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem("loggedUser", JSON.stringify({ uid: "customer-1", email: "customer@example.test" }));
+    window.rejectForeignOrderLookup = true;
+  });
+  await page.goto("/tracking.html?id=OTHER-CUSTOMER-ORDER");
+  await expect(page.locator("#tracking-order-id")).toHaveValue("OTHER-CUSTOMER-ORDER");
+  await expect(page.locator("#tracking-phone")).toBeHidden();
+  await expect(page.locator(".order-details")).toBeHidden();
+
+  await page.locator("#tracking-lookup-toggle").click();
+  await page.locator('#tracking-search button[type="submit"]').click();
+  await expect(page.locator("#tracking-message")).toContainText("Không tìm thấy đơn hàng");
+  await expect(page.locator(".order-details")).toBeHidden();
 });
 
 test("customer sees a completed refund instead of a pending payment status", async ({ page }) => {

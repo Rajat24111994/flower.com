@@ -22,7 +22,7 @@ test.beforeEach(async () => {
     await env.clearFirestore();
     await env.withSecurityRulesDisabled(async (context) => {
         const db = context.firestore();
-        await setDoc(doc(db, "products/1"), { id: 1, title: "Hoa", price: 10, quantity: 5 });
+        await setDoc(doc(db, "products/1"), { id: 1, title: "Hoa", price: 10, quantity: 5, saleType: "flower" });
         await setDoc(doc(db, "orders/o1"), {
             uid: "alice", phone: "0908123456", status: "Chờ xác nhận", total: 100,
             paymentMethod: "qr", paymentVerified: false, paymentStatus: "Chờ xác minh thanh toán"
@@ -37,6 +37,7 @@ test.beforeEach(async () => {
         await setDoc(doc(db, "metadata/activePromotions"), { items: [] });
         await setDoc(doc(db, "metadata/productCatalog"), { catalogSeeded: true });
         await setDoc(doc(db, "adminRoles/admin1"), { role: "admin" });
+        await setDoc(doc(db, "adminRoles/owner1"), { role: "owner" });
         await setDoc(doc(db, "messages/m1"), { text: "Xin chào" });
         await setDoc(doc(db, "shoppingCarts/alice"), { cart: [], wish: [] });
     });
@@ -45,6 +46,7 @@ test.beforeEach(async () => {
 const guest = () => env.unauthenticatedContext().firestore();
 const alice = () => env.authenticatedContext("alice").firestore();
 const admin = () => env.authenticatedContext("admin1", { admin: true }).firestore();
+const owner = () => env.authenticatedContext("owner1", { admin: true, role: "owner" }).firestore();
 // Claim still in the token, but the owner already removed the adminRoles document.
 const revokedAdmin = () => env.authenticatedContext("former", { admin: true }).firestore();
 
@@ -59,6 +61,25 @@ test("sản phẩm: ai cũng xem được, chỉ admin sửa được", async ()
     await assertFails(updateDoc(doc(admin(), "products/1"), { status: "deleted" }));
 });
 
+test("giá sản phẩm chỉ được thay đổi qua API quản lý giá, không qua Firestore client", async () => {
+    for (const db of [admin(), owner()]) {
+        await assertFails(updateDoc(doc(db, "products/1"), { price: 15000 }));
+        await assertFails(updateDoc(doc(db, "products/1"), { priceUpdatedAt: "2026-11-05" }));
+        await assertFails(updateDoc(doc(db, "products/1"), { priceUpdatedBy: "attacker" }));
+    }
+    await assertFails(getDoc(doc(owner(), "priceHistory/entry")));
+});
+
+test("admin vẫn có thể cập nhật giá bó làm sẵn", async () => {
+    const ref = doc(admin(), "products/ready-made");
+    await assertSucceeds(setDoc(ref, {
+        id: "ready-made", title: "Bó hoa", price: 250000, quantity: 5,
+        image: "./images/products/product-flower-01.webp", description: "Bó làm sẵn",
+        saleType: "ready_made"
+    }));
+    await assertSucceeds(updateDoc(ref, { price: 300000 }));
+});
+
 test("sản phẩm: tồn kho phải là số nguyên không âm", async () => {
     await assertFails(updateDoc(doc(admin(), "products/1"), { quantity: -1 }));
     await assertFails(updateDoc(doc(admin(), "products/1"), { quantity: 2.5 }));
@@ -69,7 +90,9 @@ test("đơn hàng: khách chỉ đọc được đơn của mình, không tự t
     await assertSucceeds(getDoc(doc(alice(), "orders/o1")));
     await assertFails(getDoc(doc(alice(), "orders/o2")));
     await assertFails(getDoc(doc(guest(), "orders/o1")));
-    await assertSucceeds(getDocs(query(collection(alice(), "orders"), where("uid", "==", "alice"))));
+    const history = await assertSucceeds(getDocs(query(collection(alice(), "orders"), where("uid", "==", "alice"))));
+    assert.deepEqual(history.docs.map((order) => order.id).sort(), ["cod1", "o1"]);
+    await assertFails(getDocs(query(collection(alice(), "orders"), where("uid", "==", "bob"))));
     await assertFails(getDocs(collection(alice(), "orders")));
     await assertFails(setDoc(doc(alice(), "orders/new"), { uid: "alice", total: 0 }));
     await assertFails(updateDoc(doc(alice(), "orders/o1"), { status: "Đã giao", total: 0 }));
@@ -78,8 +101,34 @@ test("đơn hàng: khách chỉ đọc được đơn của mình, không tự t
 
 test("đơn hàng: admin xem và cập nhật được, admin đã bị thu hồi thì không", async () => {
     await assertSucceeds(getDocs(collection(admin(), "orders")));
+    await assertSucceeds(updateDoc(doc(admin(), "orders/o1"), { status: "Đang chuẩn bị" }));
     await assertSucceeds(updateDoc(doc(admin(), "orders/o1"), { status: "Đang giao" }));
     await assertFails(getDocs(collection(revokedAdmin(), "orders")));
+});
+
+test("đơn hàng: Rules chặn bỏ qua bước, cho hủy và chỉ khôi phục về chờ xác nhận", async () => {
+    const orderRef = doc(admin(), "orders/o1");
+    await assertFails(updateDoc(orderRef, { status: "Đang giao" }));
+    await assertFails(updateDoc(orderRef, { status: "Đã giao" }));
+    await assertSucceeds(updateDoc(orderRef, { status: "Đã hủy" }));
+    await assertFails(updateDoc(orderRef, { status: "Đang chuẩn bị" }));
+    await assertSucceeds(updateDoc(orderRef, { status: "Chờ xác nhận" }));
+});
+
+test("đơn QR đã thanh toán có thể được hủy nhưng không bị ghi nhầm thành đã hoàn tiền", async () => {
+    await env.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), "orders/paid1"), {
+            uid: "alice", status: "Đang chuẩn bị", paymentMethod: "qr",
+            paymentVerified: true, paymentStatus: "Đã thanh toán", total: 100
+        });
+    });
+    const orderRef = doc(admin(), "orders/paid1");
+    await assertSucceeds(updateDoc(orderRef, { status: "Đã hủy" }));
+    const cancelled = (await getDoc(orderRef)).data();
+    assert.equal(cancelled.status, "Đã hủy");
+    assert.equal(cancelled.paymentVerified, true);
+    assert.equal(cancelled.paymentStatus, "Đã thanh toán");
+    await assertFails(updateDoc(orderRef, { paymentStatus: "Đã hoàn tiền" }));
 });
 
 test("đơn hàng: admin không thể tự xác minh thanh toán hoặc thêm trường tùy ý", async () => {
@@ -169,4 +218,13 @@ test("giỏ và yêu thích đồng bộ riêng tư theo tài khoản, giới h�
 test("bộ sưu tập lạ: mặc định chặn hết", async () => {
     await assertFails(getDoc(doc(admin(), "orderRequests/x")));
     await assertFails(setDoc(doc(alice(), "anything/x"), { a: 1 }));
+});
+
+test("không client nào được đọc, sửa hoặc xóa trạng thái khóa đăng nhập", async () => {
+    for (const db of [guest(), alice(), admin(), owner()]) {
+        const ref = doc(db, "loginProtection/alice");
+        await assertFails(getDoc(ref));
+        await assertFails(setDoc(ref, { failures: 0, lockedUntil: 0, resetRequired: false }));
+        await assertFails(deleteDoc(ref));
+    }
 });

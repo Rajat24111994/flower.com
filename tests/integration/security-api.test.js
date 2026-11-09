@@ -24,7 +24,8 @@ test("khách thường không dùng được API quản trị", async () => {
     assert.equal((await h.callApi("ownerUsers", { token: customer.token, body: { action: "list" } })).status, 403);
     assert.equal((await h.callApi("products", { token: customer.token, body: { action: "restore-catalog" } })).status, 405);
     assert.equal((await h.callApi("products", { method: "GET", query: { manage: "1" }, token: customer.token })).status, 403);
-    assert.equal((await h.callApi("orders", { method: "GET", query: { action: "expire" }, token: customer.token })).status, 401);
+    // The shared admin guard distinguishes an authenticated customer (403) from no session (401).
+    assert.equal((await h.callApi("orders", { method: "GET", query: { action: "expire" }, token: customer.token })).status, 403);
 });
 
 test("claim quản trị đã thu hồi không thể dùng API nội bộ", async () => {
@@ -82,6 +83,32 @@ test("tra cứu đơn: không lộ tên, số điện thoại, địa chỉ; ch�
         })).status;
     }
     assert.equal(status, 429, "phải chặn sau nhiều lần tra cứu");
+});
+
+test("tra cứu đơn đã đăng nhập chỉ trả chi tiết cho đúng chủ tài khoản", async () => {
+    const owner = await h.createUser();
+    const stranger = await h.createUser();
+    const id = (await h.placeOrder({ token: owner.token })).body.order.id;
+    const lookup = (token, phone = "") => h.callApi("orders", {
+        token,
+        body: { action: "lookup", id, phone }
+    });
+
+    const ownOrder = await lookup(owner.token);
+    assert.equal(ownOrder.status, 200);
+    assert.equal(ownOrder.body.order.uid, owner.uid);
+    assert.equal(ownOrder.body.order.address, "147 Lê Lợi, Quận 1");
+    assert.notEqual(ownOrder.body.order.privacyLimited, true);
+
+    const otherAccount = await lookup(stranger.token, "0908123456");
+    assert.equal(otherAccount.status, 404);
+    assert.equal(otherAccount.body.code, "order-not-found");
+    assert.equal((await lookup("invalid-token")).status, 401);
+
+    const guestLookup = await lookup(undefined, "0908123456");
+    assert.equal(guestLookup.status, 200);
+    assert.equal(guestLookup.body.order.privacyLimited, true);
+    assert.equal(guestLookup.body.order.address, undefined);
 });
 
 test("thông tin thẻ không được lưu và dữ liệu thanh toán/giao hàng không lộ qua tra cứu công khai", async () => {

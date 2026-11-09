@@ -31,7 +31,10 @@ flowchart LR
     Owner["owner.js"] -->|ID token| OwnerAPI["/api/owner/users"]
     AdminAPI --> FirebaseAdmin[Firebase Admin SDK]
     OwnerAPI --> FirebaseAdmin
-    Login["login.js"] <--> Auth[Firebase Authentication]
+    Login["login.js"] -->|Email và mật khẩu| LoginAPI["/api/login"]
+    LoginAPI <--> Auth[Firebase Authentication]
+    LoginAPI <--> LoginProtection[(Firestore loginProtection<br/>theo UID)]
+    Login <-->|Google / đổi custom token lấy phiên| Auth
     Product["product.js"] --> Reviews["review-store.js"] <--> FsReviews[(Cloud Firestore<br/>reviews)]
 ```
 
@@ -43,8 +46,14 @@ flowchart LR
 | --- | --- | --- |
 | Header và footer | `store-header.js/.css`, `store-footer.js/.css` | Chèn header (tìm kiếm, tài khoản, yêu thích, đơn hàng, giỏ hàng, menu mobile) và footer cho các trang cửa hàng |
 | Trang chủ | `index.html`, `homepage.css` | Giới thiệu, danh mục nổi bật, điều hướng |
+<<<<<<< HEAD
 | Catalog | `product-store.js`, `flower.json` | Đồng bộ catalog do cửa hàng quản lý với Firestore, cache vào `localStorage`, lắng nghe thay đổi theo thời gian thực; chỉ thêm danh mục mẫu khi quản trị viên chủ động xác nhận |
 | Tự phối bó | `custom-bouquet.html`, `custom-bouquet.js` | Chọn hoa nguyên liệu và số cành; giá chỉ hợp lệ trong ngày chủ shop cập nhật |
+=======
+| Catalog | `product-store.js`, `flower.json` | Đồng bộ catalog do cửa hàng quản lý với Firestore, cache vào `localStorage`, lắng nghe thay đổi theo thời gian thực; không tự nạp sản phẩm mẫu |
+| Tự phối bó | `custom-bouquet.html`, `custom-bouquet.js` | Chọn loại hoa, số lượng, màu mong muốn, vai trò hoa chính/phụ, bố cục và kiểu gói; xem dự toán, lưu bản nháp hoặc gửi yêu cầu tư vấn |
+| Yêu cầu thiết kế riêng | `design-request.html`, `api/design-requests.js` | Lưu yêu cầu vào Firestore, theo dõi lịch sử, nhận báo giá cửa hàng và chấp nhận/từ chối bằng mã truy cập riêng |
+>>>>>>> 33d0d4bc05c87c9da76a7de6deb458d537ddddd4
 | Danh mục và chi tiết | `product.html`, `product.js`, `product-categories.js`, `related-products.js` | Tìm kiếm, lọc, sắp xếp; trang chi tiết, thư viện ảnh, gợi ý sản phẩm liên quan |
 | Đánh giá | `review-store.js` | Đọc đánh giá công khai và gửi đánh giá mới (yêu cầu đăng nhập) lên Firestore |
 | Giỏ hàng và yêu thích | `shopping-store.js`, `shopping-sync.js`, `cart.html`, `wish.html` | Lưu ngoại tuyến, đồng bộ Firestore theo UID khi đăng nhập; giá/tồn kho vẫn do API đặt hàng xác minh |
@@ -53,9 +62,9 @@ flowchart LR
 | Tài khoản | `login.*`, `account.*`, `forgot-password.*` | Đăng ký, đăng nhập, khôi phục mật khẩu, hồ sơ |
 | Tiền tệ | `currency.js` | Định dạng giá VND; mọi giá lưu là số nguyên VND (ví dụ `450000`) |
 | Liên hệ | `contact-tools.js/.css` | Thanh liên hệ Facebook và Zalo (ẩn trên trang quản trị) |
-| Quản trị | `admin.html`, `admin.js`, `admin.css` | Sản phẩm, danh mục, ưu đãi, cấu hình khu vực/phí giao, đơn hàng, xác minh QR và xem audit đối soát, doanh thu, đánh giá, lời nhắn, người dùng |
-| Owner | `owner.html`, `owner.js` | Cấp hoặc gỡ quyền admin |
-| API | `api/admin/users.js`, `api/owner/users.js`, `api/delivery-zones.js`, `api/orders.js`, `lib/firebase-admin.js` | Quản lý khu vực bằng quyền admin, báo giá/tạo đơn authoritative, tra cứu đơn khách và đối soát thanh toán qua API có xác thực |
+| Quản trị | `admin.html`, `admin.js`, `admin.css` | Sản phẩm, danh mục, ưu đãi, cấu hình khu vực/phí giao và bậc phí gói bó hoa, xử lý yêu cầu thiết kế/báo giá, đơn hàng, xác minh QR và xem audit đối soát, doanh thu, đánh giá, lời nhắn, người dùng |
+| Owner | `owner.html`, `owner.js`, mục “Quản lý giá hoa” trong `admin.html` | Cấp/gỡ quyền admin; cập nhật giá hoa nguyên liệu và xem lịch sử giá |
+| API | `api/admin/users.js`, `api/owner/users.js`, `api/flower-prices.js`, `api/delivery-zones.js`, `api/bouquet-wrapping.js`, `api/design-requests.js`, `api/orders.js`, `lib/firebase-admin.js` | API giá hoa chỉ Owner dùng, cập nhật giá và lịch sử trong cùng giao dịch; quản lý khu vực/phí bó, yêu cầu thiết kế; báo giá/tạo đơn authoritative, tra cứu đơn khách và đối soát thanh toán |
 
 ## Dữ liệu
 
@@ -69,13 +78,17 @@ flowchart LR
 | Tài khoản Firebase, vai trò | Firebase Authentication (custom claims) | ✅ |
 | Giỏ hàng, yêu thích | `localStorage` (bản cục bộ) và Firestore `shoppingCarts/{uid}` (tài khoản đăng nhập) | ✅ với tài khoản |
 | Đơn hàng mới | `/api/orders` xác minh giá/tồn kho rồi ghi Firestore `orders`; mỗi dòng lưu giá và đơn vị tại thời điểm đặt | ✅ |
+| Giá hoa nguyên liệu | Firestore `products`; Owner cập nhật qua `/api/flower-prices`, lịch sử bất biến lưu trong `priceHistory` | ✅ |
 | Audit đối soát QR | `/api/orders` ghi/đọc `orderPaymentAudit`; Security Rules chặn truy cập từ client | ✅ |
+| Audit thao tác quản trị qua API | `adminAudit`, đọc 100 mục mới nhất qua `/api/admin/audit`; ghi cùng transaction khi đổi khu vực giao, phí gói và giá hoa; ghi sau khi đổi quyền tài khoản | ✅ cho các thao tác này |
 | Đánh giá trong trang quản trị (phản hồi, hoàn thành) | Firestore `reviews` | ✅ |
 | Lời nhắn của khách và câu trả lời | Trường `orderNote`, `orderNoteReply`, `orderNoteCompletedAt` của đơn trong `orders` | ✅ |
 | Phản hồi cũ trên trình duyệt | Firestore `messages` (chuyển khi quản trị đăng nhập) | ✅ |
 | Phân loại | Firestore `metadata/storeCategories` (bản cache ở `localStorage.flowerCategories`) | ✅ |
 | Ưu đãi | Firestore `metadata/activePromotions` (bản cache ở `localStorage`) | ✅ |
 | Khu vực và phí giao | Firestore `metadata/deliveryZones`, cập nhật qua `/api/delivery-zones` | ✅ |
+| Bậc phí bó hoa | Firestore `metadata/bouquetWrapping`, chủ cửa hàng cấu hình qua `/api/bouquet-wrapping` | ✅ |
+| Yêu cầu thiết kế riêng | Firestore `designRequests`; mã truy cập khách được lưu dạng hash | ✅ |
 | Ảnh sản phẩm tải lên | Firestore `productImages`, tải lên và xem qua `/api/product-images` (chỉ admin được tải lên; ảnh được thu nhỏ còn ≤ 120 KB ngay trên trình duyệt) | ✅ |
 | Phiên đăng nhập | `localStorage.loggedUser` | ❌ |
 
@@ -87,9 +100,13 @@ Phản hồi cũ trong `localStorage.flowerMessages` được chuyển sang Fire
 
 `flower.json` chứa 30 sản phẩm hoa mẫu tiếng Việt. Website không tự nạp hoặc thêm lại sản phẩm đã xóa; trong **Quản trị → Sản phẩm**, quản trị viên có thể chủ động xác nhận thêm các sản phẩm mẫu còn thiếu. Thao tác này không ghi đè sản phẩm đang có trong Firestore. Chủ cửa hàng cũng có thể tự tạo sản phẩm trong **Quản trị → Sản phẩm**:
 
-- **Hoa nguyên liệu**: `saleType: "flower"`, giá VND/cành, tồn kho tính theo cành và ngày cập nhật theo múi giờ Việt Nam. Hoa nguyên liệu chỉ tham gia tạo bó theo yêu cầu; backend từ chối báo giá nếu giá chưa được cập nhật trong ngày.
+- **Hoa nguyên liệu**: `saleType: "flower"`, giá VND/cành, tồn kho tính theo cành và ngày cập nhật theo múi giờ Việt Nam. Khách chọn số cành của từng loại để tạo một bó tùy chỉnh; backend từ chối báo giá nếu giá chưa được cập nhật trong ngày.
 - **Bó làm sẵn**: `saleType: "ready_made"` (mặc định cho dữ liệu cũ), bán đúng giá niêm yết, không nhân giá theo cỡ.
-- Khi khách phối bó, API đọc giá và tồn kho hiện hành từ Firestore, tính lại tổng tiền, giữ tồn kho trong transaction và ghi `orderType`, đơn vị, giá/ngày giá vào ảnh chụp từng dòng trong đơn `orders`. Đổi giá ngày sau không thay đổi đơn cũ.
+- Trong **Quản trị → Giao hàng**, chủ cửa hàng cấu hình các bậc phí gói theo tổng số cành; các mốc phải tăng dần và bậc cuối bao phủ đến 50 cành. Chưa có cấu hình hợp lệ thì khách chưa thể đặt bó tùy chỉnh.
+- API đọc giá, tồn kho và bậc phí hiện hành từ Firestore, tính phí một lần cho mỗi bó, giữ tồn kho trong transaction và lưu số cành, phí gói, nhóm bó, đơn vị, giá/ngày giá vào đơn `orders`. Tổng thanh toán gồm tiền hoa sau giảm giá, phí gói bó và phí giao hàng; đổi giá hoặc bậc phí sau này không thay đổi đơn cũ.
+- Khách có thể gửi yêu cầu thiết kế kèm màu mong muốn, bố cục, sở thích, ngân sách, ghi chú và ảnh tham khảo; cửa hàng xem tồn kho lúc gửi, cập nhật trạng thái và gửi báo giá để khách chấp nhận hoặc từ chối.
+- Tồn kho hiện được quản lý theo loại hoa, chưa tách theo từng màu/biến thể. Phí theo bậc chỉ bao gồm phí gói cơ bản; phụ kiện, lá và chi phí phát sinh được xác nhận trong báo giá cuối. Chưa hỗ trợ nhận tại cửa hàng.
+- Chấp nhận báo giá hiện chuyển yêu cầu sang “Đang thực hiện”; chưa tạo đơn thanh toán thông thường, giữ tồn kho hoặc kích hoạt quy trình thanh toán. Cửa hàng cần theo dõi yêu cầu trong **Quản trị → Yêu cầu thiết kế**.
 
 Firestore vẫn là nguồn dữ liệu chính; `product-store.js` đồng bộ với Firestore, giữ cache `localStorage` khi ngoại tuyến và lắng nghe cập nhật theo thời gian thực. Xóa sản phẩm mẫu khỏi repo không xóa dữ liệu đang có trong Firestore.
 
@@ -112,6 +129,8 @@ Khu vực giao hàng được quản trị viên cấu hình thủ công trong m
 
 Đơn QR ở trạng thái chờ xác minh cho đến khi admin đối chiếu số tiền với sao kê, nhập mã giao dịch ngân hàng và bấm xác nhận. Trình duyệt gửi yêu cầu tới API; máy chủ kiểm tra ID token đã thu hồi, quyền admin hiện hành, phương thức QR, trạng thái đơn và số tiền chính xác rồi cập nhật đơn trong transaction. API đồng thời tạo bản ghi trong `orderPaymentAudit`; Security Rules chặn mọi thao tác đọc/ghi trực tiếp lên bộ sưu tập audit và không cho client tự sửa trạng thái thanh toán. Bản ghi lưu người xác nhận, thời điểm, số tiền, nội dung chuyển khoản và mã giao dịch đối soát. Thanh toán đến sau khi đơn bị hủy có thao tác riêng và cũng được audit để cửa hàng xử lý khôi phục hoặc hoàn tiền. Đơn đã xác minh không bị dọn khi hết thời gian giữ hàng và được tính vào doanh thu sau khi giao. Dự án chưa tích hợp API/webhook ngân hàng nên chưa có đối soát tự động.
 
+Các cập nhật khu vực giao hàng, phí gói bó, giá hoa và quyền quản trị cũng được ghi vào `adminAudit`; các mục cấu hình dùng chung transaction với thay đổi tương ứng. Đọc audit cần ID token quản trị qua `GET /api/admin/audit`; client không được đọc hoặc ghi trực tiếp collection này. Những thao tác quản trị còn ghi trực tiếp Firestore từ trình duyệt chưa được đưa qua backend và chưa nằm trong `adminAudit`.
+
 Tra cứu công khai gửi mã đơn và số điện thoại bằng `POST`; backend giới hạn 20 lượt mỗi IP trong 10 phút, lưu khóa IP dưới dạng HMAC và tự xóa bản ghi giới hạn sau 24 giờ. Kết quả công khai chỉ gồm mã đơn, trạng thái, thời gian dự kiến và lịch sử trạng thái; địa chỉ, số điện thoại, người nhận, sản phẩm và thông tin thanh toán chỉ được đọc khi khách đăng nhập đúng tài khoản sở hữu đơn. Mã đơn không khớp và số điện thoại không khớp cùng trả về một lỗi.
 
 ## Bảo mật Firestore
@@ -130,8 +149,9 @@ Triển khai: `firebase deploy --only firestore:rules,firestore:indexes`. Lệnh
 
 ## Xác thực
 
-- **Email/Password và Google** dùng Firebase Authentication. Tài khoản Google luôn được tạo với vai trò khách hàng.
-- Không có chế độ đăng nhập cục bộ. Khi Firebase Authentication chưa cấu hình hoặc không hoạt động, đăng ký/đăng nhập/khôi phục mật khẩu sẽ dừng và báo lỗi; mật khẩu không được lưu trong trình duyệt.
+- Khi chạy `npm run dev`, mặc định **tài khoản tự tạo trên máy**: tên có `@` nhưng không cần email thật, đăng ký/đăng nhập bằng SQLite và cookie phiên. Dùng PIN tự đặt gồm 4–6 chữ số để khôi phục mật khẩu; đổi PIN cần đầy đủ thông tin, mật khẩu và PIN cũ. Quên PIN phải trả lời đúng 3 câu hỏi tự đặt. Các bí mật được băm bằng scrypt. Xem [tài khoản local](docs/local-accounts.md).
+- Chế độ Firebase (`AUTH_MODE=firebase` khi chạy dev, hoặc bản Vercel hiện có) dùng **Email/Password và Google** qua Firebase Authentication. Tài khoản Google luôn được tạo với vai trò khách hàng; khi Firebase chưa sẵn sàng, chế độ này báo lỗi và không chuyển sang một cơ chế xác thực khác.
+- Đăng nhập mật khẩu đi qua `/api/login`, giới hạn theo tài khoản: sai 5 lần khóa 15 phút, sau đó mỗi lần thử sai tăng thời gian khóa lên 30/60/120/240 phút; lần sai thứ 10 bắt buộc hoàn tất đặt lại mật khẩu. Xem [cấu hình key Firebase bắt buộc và kiểm thử](docs/login-protection.md) trước khi triển khai.
 - **Quản trị:** trang `admin.html` kiểm tra claim `admin: true` trên ID token; API phía server kiểm tra lại claim này độc lập với giao diện.
 
 ## Rà soát quyền truy cập

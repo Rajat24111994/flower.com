@@ -9,11 +9,11 @@
     <meta name="robots" content="noindex, nofollow">
     <meta name="description" content="Đăng nhập hoặc tạo tài khoản để lưu sản phẩm và theo dõi đơn hàng Flowerflow.">
     <link rel="icon" type="image/svg+xml" href="./favicon.svg">
-    <link rel="stylesheet" href="./css/account/login.css?v=4">
+    <link rel="stylesheet" href="./css/account/login.css?v=8">
     <link rel="stylesheet" href="./css/core/accessibility.css?v=1">
     <link rel="stylesheet" href="./css/core/store-footer.css?v=4">
     <title>Đăng nhập</title>
-<link rel="stylesheet" href="./css/core/contact-tools.css?v=3">
+<link rel="stylesheet" href="./css/core/contact-tools.css?v=4">
 </head>
 
 <body>
@@ -35,10 +35,19 @@
                     <input type="text" id="lastName" placeholder="Họ" required />
                     <input type="email" id="email" placeholder="Địa chỉ thư điện tử" required />
                     <input type="tel" id="phone" placeholder="Số điện thoại" autocomplete="tel">
-                    <input type="password" id="password" placeholder="Mật khẩu" required />
-                    <input type="password" id="checkpassword" placeholder="Xác nhận mật khẩu" required />
+                    <input type="password" id="password" placeholder="Mật khẩu" autocomplete="new-password" minlength="6" required />
+                    <input type="password" id="checkpassword" placeholder="Xác nhận mật khẩu" autocomplete="new-password" minlength="6" required />
+                    <fieldset id="signup-security" hidden disabled>
+                        <legend>Khôi phục tài khoản</legend>
+                        <p>Đặt PIN gồm 4–6 chữ số, khác mật khẩu. Nếu quên PIN, bạn cần trả lời đúng cả 3 câu hỏi bên dưới. Chọn câu trả lời chỉ mình bạn biết.</p>
+                        <label for="signup-pin">PIN (4–6 chữ số)</label>
+                        <input id="signup-pin" type="password" inputmode="numeric" data-pin pattern="[0-9]{4,6}" minlength="4" maxlength="6" title="PIN chỉ gồm 4–6 chữ số (0–9)" autocomplete="off" required>
+                        <label for="signup-confirm-pin">Xác nhận PIN</label>
+                        <input id="signup-confirm-pin" type="password" inputmode="numeric" data-pin pattern="[0-9]{4,6}" minlength="4" maxlength="6" title="PIN chỉ gồm 4–6 chữ số (0–9)" autocomplete="off" required>
+                        <div id="signup-questions"></div>
+                    </fieldset>
                     <h4 id="signup-display" role="status" aria-live="polite"></h4>
-                    <input type="submit" class="submit" value="Tạo tài khoản">
+                    <input type="submit" class="submit" value="Tạo tài khoản" disabled>
                     <span class="auth-divider">hoặc</span>
                     <button type="button" class="google-auth" data-google-auth>Tiếp tục bằng Google</button>
                 </form>
@@ -52,7 +61,7 @@
                     <input type="password" id="password1" placeholder="Mật khẩu" autocomplete="current-password" required />
                     <h4 id="display" role="status" aria-live="polite"></h4>
                     <a href="./forgot-password.html" id="forgotPassword" class="forgot-password">Quên mật khẩu?</a>
-                    <input type="submit" class="submit" value="Đăng nhập">
+                    <input type="submit" class="submit" value="Đăng nhập" disabled>
                     <span class="auth-divider">hoặc</span>
                     <button type="button" class="google-auth" data-google-auth>Đăng nhập bằng Google</button>
                 </form>
@@ -84,4 +93,4 @@
 </body>
 
 </html>
-<script type="module" src="./js/account/login.js?v=8"></script>
+<script type="module" src="./js/account/login.js?v=16"></script>

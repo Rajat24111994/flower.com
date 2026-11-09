@@ -12,6 +12,95 @@ test.beforeEach(async () => {
     await h.seedProducts();
 });
 
+test("đặt bó tùy chỉnh gộp nhiều loại hoa và chốt phí theo tổng số cành", async () => {
+    const today = new Intl.DateTimeFormat("en-CA", {
+        timeZone: "Asia/Ho_Chi_Minh",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit"
+    }).format(new Date());
+    await h.db().doc("products/1").update({ saleType: "flower", priceUpdatedAt: today });
+    await h.db().doc("products/2").update({ saleType: "flower", priceUpdatedAt: today });
+    await h.db().doc("metadata/bouquetWrapping").set({
+        tiers: [{ maxStems: 3, fee: 25000 }, { maxStems: 50, fee: 40000 }]
+    });
+    const items = [
+        {
+            id: "rose-line", productId: "1", customBouquetId: "custom-a", quantity: 3,
+            size: "standard", color: "original", cardMessage: "Chúc mừng", personalNote: "Hoa chính, giấy đen"
+        },
+        {
+            id: "tulip-line", productId: "2", customBouquetId: "custom-a", quantity: 2,
+            size: "standard", color: "original", cardMessage: "Chúc mừng", personalNote: "Hoa phụ, giấy đen"
+        }
+    ];
+    const placed = await h.placeOrder({ items });
+
+    assert.equal(placed.status, 201, JSON.stringify(placed.body));
+    assert.equal(placed.quote.body.totals.wrappingFee, 40000);
+    assert.equal(placed.quote.body.totals.total, placed.quote.body.totals.subtotal + 40000);
+    const order = (await h.db().doc(`orders/${placed.body.order.id}`).get()).data();
+    assert.equal(order.orderType, "custom_bouquet");
+    assert.equal(order.wrappingFee, 40000);
+    assert.deepEqual(order.customBouquets, [{ id: "custom-a", stemCount: 5, wrappingFee: 40000 }]);
+    assert.deepEqual(order.items.map((item) => item.customBouquetId), ["custom-a", "custom-a"]);
+    assert.deepEqual(order.items.map((item) => item.personalNote), ["Hoa chính, giấy đen", "Hoa phụ, giấy đen"]);
+    assert.deepEqual(order.items.map((item) => item.cardMessage), ["Chúc mừng", "Chúc mừng"]);
+    assert.equal(await h.stockOf("1"), 7);
+    assert.equal(await h.stockOf("2"), 8);
+});
+
+test("lưu yêu cầu thiết kế, cửa hàng báo giá và khách xác nhận trước khi xử lý", async () => {
+    const today = new Intl.DateTimeFormat("en-CA", {
+        timeZone: "Asia/Ho_Chi_Minh",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit"
+    }).format(new Date());
+    await h.db().doc("products/1").update({ saleType: "flower", priceUpdatedAt: today, colors: ["pink", "white"] });
+    await h.db().doc("metadata/bouquetWrapping").set({ tiers: [{ maxStems: 50, fee: 30000 }] });
+    const customer = await h.createUser();
+    const submitted = await h.callApi("designRequests", {
+        body: {
+            action: "create",
+            customerName: "Khách thiết kế",
+            phone: "0908123456",
+            address: "1 Lê Lợi",
+            deliveryDate: h.deliveryDate(),
+            deliveryTime: "11:00–14:00",
+            deliveryZoneId: "test-zone",
+            stems: [{ productId: "1", quantity: 3, color: "Hồng", role: "main" }],
+            design: { arrangement: "Tự nhiên", size: "Vừa", wrapStyle: "Bó tròn", paperColor: "Kem", budget: 500000 },
+            deliveryNote: "Gọi trước khi giao"
+        },
+        token: customer.token
+    });
+    assert.equal(submitted.status, 201, JSON.stringify(submitted.body));
+    const id = submitted.body.request.id;
+    assert.equal(submitted.body.request.status, "Chờ tư vấn");
+    assert.equal(submitted.body.request.estimatedTotal, h.catalog.find((item) => item.id === 1).price * 3 + 30000);
+    assert.equal(submitted.body.request.accessTokenHash, undefined);
+    const loaded = await h.callApi("designRequests", {
+        method: "GET",
+        query: { id, token: submitted.body.accessToken }
+    });
+    assert.equal(loaded.status, 200);
+    assert.equal(loaded.body.request.stems[0].stock, 10);
+
+    const admin = await h.createUser("admin");
+    const quote = await h.callApi("designRequests", {
+        body: { action: "admin-update", id, status: "Chờ khách xác nhận", quotedTotal: 420000, quoteNote: "Có thể thay giấy nếu hết màu kem." },
+        token: admin.token
+    });
+    assert.equal(quote.status, 200, JSON.stringify(quote.body));
+    const accepted = await h.callApi("designRequests", {
+        body: { action: "respond", id, accessToken: submitted.body.accessToken, response: "accept" }
+    });
+    assert.equal(accepted.status, 200, JSON.stringify(accepted.body));
+    assert.equal(accepted.body.request.status, "Đang thực hiện");
+    assert.equal((await h.db().doc(`designRequests/${id}`).get()).get("history").length, 3);
+});
+
 test("giá hoặc mức giảm đổi sau quote thì từ chối tạo đơn theo tổng cũ", async () => {
     const items = [{ id: "1", quantity: 1 }];
     const quote = await h.callApi("orders", {
@@ -153,7 +242,7 @@ test("các cấu hình cùng sản phẩm: giá server, lưu thiệp riêng, tr�
     assert.equal(order.items[0].cardMessage, "Tặng mẹ");
     assert.equal(order.items[1].size, "premium");
     assert.equal(order.items[0].personalNote, "Giấy kraft");
-    assert.equal(order.items[0].price, Math.round((await h.db().doc("products/1").get()).data().price * 1.3));
+    assert.equal(order.items[0].price, (await h.db().doc("products/1").get()).data().price);
     assert.equal(await h.stockOf("1"), 7);
     await orderRef.update({ reservationExpiresAt: Timestamp.fromMillis(Date.now() - 1000) });
     await h.callApi("orders", { method: "GET", query: { action: "expire" }, headers: { authorization: "Bearer test-cron-secret" } });

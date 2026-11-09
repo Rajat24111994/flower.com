@@ -16,10 +16,10 @@
     <link rel="stylesheet" href="./css/order/tracking.css?v=9">
     <link rel="stylesheet" href="./css/core/accessibility.css?v=1">
     <link rel="stylesheet" href="./css/core/store-footer.css?v=4">
-<link rel="stylesheet" href="./css/core/contact-tools.css?v=3">
+<link rel="stylesheet" href="./css/core/contact-tools.css?v=4">
 </head>
 <body>
-    <script src="./js/core/store-header.js?v=7"></script>
+    <script src="./js/core/store-header.js?v=9"></script>
 
     <main class="tracking-main">
         <section class="tracking-heading">
@@ -45,7 +45,7 @@
         <form class="tracking-search" id="tracking-search">
             <label for="tracking-order-id">Mã đơn hàng</label>
             <input id="tracking-order-id" name="orderId" type="text" inputmode="numeric" autocomplete="off" required>
-            <label for="tracking-phone">Số điện thoại đặt hàng</label>
+            <label id="tracking-phone-label" for="tracking-phone">Số điện thoại đặt hàng</label>
             <input id="tracking-phone" name="phone" type="tel" autocomplete="tel" required>
             <button type="submit">Tra cứu đơn hàng</button>
         </form>
@@ -106,6 +106,7 @@
                         <div><dt>Thiệp chúc mừng</dt><dd id="result-greeting-card"></dd></div>
                         <div><dt>Ẩn tên người gửi trên thiệp</dt><dd id="result-anonymous-greeting"></dd></div>
                         <div><dt>Gói quà</dt><dd id="result-gift-wrap"></dd></div>
+                        <div><dt>Phí gói bó hoa</dt><dd id="result-wrapping-fee"></dd></div>
                         <div><dt>Phí giao hàng</dt><dd id="result-shipping-fee"></dd></div>
                         <div><dt>Tổng tiền</dt><dd id="result-total"></dd></div>
                         <div><dt>Ghi chú</dt><dd id="result-order-note"></dd></div>
@@ -148,9 +149,9 @@
     </main>
 
     <script src="./js/review/review-store.js?v=6"></script>
-    <script src="./js/order/order-store.js?v=19"></script>
+    <script src="./js/order/order-store.js?v=25"></script>
     <script src="./js/catalog/bouquet-options.js?v=1"></script>
-    <script type="module" src="./js/order/tracking.js?v=21"></script>
+    <script type="module" src="./js/order/tracking.js?v=22"></script>
     <script src="./js/core/store-footer.js?v=4"></script>
 <script src="./js/core/contact-tools.js?v=1"></script>
 </body>

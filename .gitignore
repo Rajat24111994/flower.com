@@ -4,6 +4,7 @@ node_modules/
 
 # Environment variables and Vercel local config
 .env*
+!.env.example
 .vercel/
 
 # Firebase service-account credentials
@@ -18,7 +19,9 @@ backups/
 # Test coverage reports
 coverage/
 test-results/
+test-results-local/
 playwright-report/
+playwright-report-local/
 
 # Logs
 *.log

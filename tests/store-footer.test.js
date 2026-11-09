@@ -41,7 +41,7 @@ for (const page of informationPages) {
   assert.match(html, /store-header\.js\?v=\d+/, `${page} should load the shared header`);
   assert.match(html, /store-footer\.css\?v=4/, `${page} should load the current shared footer styles`);
   assert.match(html, /store-footer\.js\?v=4/, `${page} should load the current shared footer markup`);
-  assert.match(html, /information-page\.css\?v=1/, `${page} should load the information page styles`);
+  assert.match(html, /information-page\.css\?v=\d+/, `${page} should load the information page styles`);
   assert.match(html, /<main\b[^>]*id="main-content"/, `${page} should provide a main landmark`);
   assert.match(html, /<title>[^<]+<\/title>/, `${page} should have a descriptive title`);
   assert.match(html, /name="description"/, `${page} should have a meta description`);

@@ -96,6 +96,6 @@ body {
 }
 @media (max-width: 800px) {
   body { padding-bottom: calc(var(--contact-dock-height) + env(safe-area-inset-bottom, 0px)); }
-  body:has(input:focus, textarea:focus, select:focus) .contact-dock { display: none; }
+  body:has(input:focus, textarea:focus, select:focus, form:focus-within) .contact-dock { display: none; }
   .contact-dock { padding-bottom: env(safe-area-inset-bottom, 0px); }
 }

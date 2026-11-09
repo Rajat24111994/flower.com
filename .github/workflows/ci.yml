@@ -113,6 +113,11 @@ jobs:
       - name: Cài Chromium
         working-directory: flower.com
         run: npx playwright install --with-deps chromium
+      - name: Chạy tài khoản tự tạo trên máy
+        working-directory: flower.com
+        run: npm run test:e2e:local
+        env:
+          CI: true
       - name: Chạy Playwright trên Firebase Emulator
         working-directory: flower.com
         run: npm run test:e2e:emulator
@@ -124,6 +129,8 @@ jobs:
           name: browser-test-artifacts
           path: |
             test-results/
+            test-results-local/
             flower.com/playwright-report/
+            flower.com/playwright-report-local/
           if-no-files-found: ignore
           retention-days: 14

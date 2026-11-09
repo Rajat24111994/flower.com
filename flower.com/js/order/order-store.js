@@ -8,6 +8,9 @@
       const { url, ...requestOptions } = options;
       const response = await fetch(url || "/api/orders", { ...requestOptions, signal: controller.signal });
       const result = await response.json();
+      if (response.status === 401 && root.FlowerAuthMode === "local") {
+        root.dispatchEvent(new CustomEvent("flowerlocalauthinvalid"));
+      }
       return { response, result };
     } catch (cause) {
       const error = new Error("Không nhận được phản hồi từ API đơn hàng. Kiểm tra kết nối rồi thử lại.");
@@ -113,6 +116,34 @@
     }
   }
 
+  async function bouquetWrappingRequest(options = {}) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 20000);
+    try {
+      const response = await fetch(options.manage ? "/api/bouquet-wrapping?manage=1" : "/api/bouquet-wrapping", {
+        method: options.method || "GET",
+        headers: options.headers || { Accept: "application/json" },
+        body: options.body,
+        signal: controller.signal
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        const error = new Error(result.error || "Không thể tải cấu hình phí bó hoa.");
+        error.code = result.code || "bouquet-wrapping-unavailable";
+        throw error;
+      }
+      return result;
+    } catch (cause) {
+      if (typeof cause?.code === "string") throw cause;
+      const error = new Error("Không kết nối được với cấu hình phí bó hoa. Vui lòng thử lại.");
+      error.code = "bouquet-wrapping-network-error";
+      error.cause = cause;
+      throw error;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
   async function getFirebase() {
     if (!firebasePromise) {
       firebasePromise = (async () => {
@@ -167,12 +198,23 @@
   }
 
   async function create(order, expectedTotals) {
-    const { auth } = await getFirebase();
-    await auth.authStateReady();
+    const localMode = root.FlowerAuthMode === "local";
+    const { auth } = localMode ? { auth: { currentUser: null } } : await getFirebase();
+    if (!localMode) await auth.authStateReady();
     // A browser that still shows an account whose Firebase session is gone would otherwise
     // place a guest order that never appears under "Đơn hàng của bạn".
     const storedAccount = root.FlowerSafeStorage?.readJson("loggedUser", { fallback: null }) || null;
-    if (storedAccount?.uid && auth.currentUser?.uid !== storedAccount.uid) {
+    if (localMode && storedAccount?.uid) {
+      const session = await fetch("/api/local-auth/session", { credentials: "same-origin", cache: "no-store" });
+      const result = await session.json();
+      if (!session.ok || result.account?.uid !== storedAccount.uid) {
+        root.dispatchEvent(new CustomEvent("flowerlocalauthinvalid"));
+        const error = new Error("Phiên đăng nhập hết hạn. Hãy đăng nhập lại trước khi đặt hàng.");
+        error.code = "session-expired";
+        throw error;
+      }
+    }
+    if (storedAccount?.uid && storedAccount.authProvider !== "local" && auth.currentUser?.uid !== storedAccount.uid) {
       root.FlowerSafeStorage.remove("loggedUser");
       const error = new Error("Phiên đăng nhập đã hết hạn. Hãy đăng nhập lại để đơn được lưu vào tài khoản của bạn (giỏ hàng vẫn được giữ).");
       error.code = "session-expired";
@@ -202,7 +244,7 @@
         promotionId: order.promotionId || "",
         expectedTotals,
         items: (Array.isArray(order.items) ? order.items : []).map((item) => ({
-          id: item.id, productId: item.productId, size: item.size, color: item.color, cardMessage: item.cardMessage, personalNote: item.personalNote,
+          id: item.id, productId: item.productId, customBouquetId: item.customBouquetId, size: item.size, color: item.color, cardMessage: item.cardMessage, personalNote: item.personalNote,
           quantity: item.quantity
         }))
       })
@@ -226,7 +268,7 @@
       headers: { "Content-Type": "application/json", Accept: "application/json" },
       body: JSON.stringify({
         action: "quote",
-        items: (Array.isArray(items) ? items : []).map((item) => ({ id: item.id, productId: item.productId, size: item.size, color: item.color, cardMessage: item.cardMessage, personalNote: item.personalNote, quantity: item.quantity })),
+        items: (Array.isArray(items) ? items : []).map((item) => ({ id: item.id, productId: item.productId, customBouquetId: item.customBouquetId, size: item.size, color: item.color, cardMessage: item.cardMessage, personalNote: item.personalNote, quantity: item.quantity })),
         promotionId: promotionId || "",
         deliveryZoneId: deliveryZoneId || ""
       })
@@ -280,6 +322,119 @@
 
   async function deleteDeliveryZone(id) {
     return updateDeliveryZone("delete", { id });
+  }
+
+  async function getBouquetWrapping(manage = false) {
+    const options = { manage };
+    if (manage) {
+      const { auth } = await getFirebase();
+      await auth.authStateReady();
+      if (!auth.currentUser || (await auth.currentUser.getIdTokenResult()).claims.admin !== true) {
+        throw new Error("Chỉ quản trị viên mới được quản lý phí bó hoa.");
+      }
+      options.headers = {
+        Accept: "application/json",
+        Authorization: `Bearer ${await auth.currentUser.getIdToken()}`
+      };
+    }
+    return bouquetWrappingRequest(options);
+  }
+
+  async function saveBouquetWrapping(tiers) {
+    const { auth } = await getFirebase();
+    await auth.authStateReady();
+    if (!auth.currentUser || (await auth.currentUser.getIdTokenResult()).claims.admin !== true) {
+      throw new Error("Chỉ quản trị viên mới được thay đổi phí bó hoa.");
+    }
+    return bouquetWrappingRequest({
+      method: "POST",
+      manage: true,
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        Authorization: `Bearer ${await auth.currentUser.getIdToken()}`
+      },
+      body: JSON.stringify({ tiers })
+    });
+  }
+
+  async function designRequestApi(options = {}) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 20000);
+    try {
+      const response = await fetch(options.url || "/api/design-requests", {
+        method: options.method || "GET",
+        headers: options.headers || { Accept: "application/json" },
+        ...(options.body ? { body: options.body } : {}),
+        signal: controller.signal
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        const error = new Error(result.error || "Không thể xử lý yêu cầu thiết kế.");
+        error.code = result.code || "design-request-unavailable";
+        throw error;
+      }
+      return result;
+    } catch (cause) {
+      if (typeof cause?.code === "string") throw cause;
+      const error = new Error("Không kết nối được với dịch vụ yêu cầu thiết kế. Vui lòng thử lại.");
+      error.code = "design-request-network-error";
+      error.cause = cause;
+      throw error;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  async function createDesignRequest(payload) {
+    return designRequestApi({
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify({ action: "create", ...payload })
+    });
+  }
+
+  async function getDesignRequest(id, accessToken) {
+    return designRequestApi({
+      url: `/api/design-requests?id=${encodeURIComponent(id)}&token=${encodeURIComponent(accessToken)}`
+    });
+  }
+
+  async function respondToDesignQuote(id, accessToken, response) {
+    return designRequestApi({
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify({ action: "respond", id, accessToken, response })
+    });
+  }
+
+  async function getDesignRequests() {
+    const { auth } = await getFirebase();
+    await auth.authStateReady();
+    if (!auth.currentUser || (await auth.currentUser.getIdTokenResult()).claims.admin !== true) {
+      throw new Error("Chỉ quản trị viên mới được xem yêu cầu thiết kế.");
+    }
+    return designRequestApi({
+      url: "/api/design-requests?manage=1",
+      headers: { Accept: "application/json", Authorization: `Bearer ${await auth.currentUser.getIdToken()}` }
+    });
+  }
+
+  async function updateDesignRequest(payload) {
+    const { auth } = await getFirebase();
+    await auth.authStateReady();
+    if (!auth.currentUser || (await auth.currentUser.getIdTokenResult()).claims.admin !== true) {
+      throw new Error("Chỉ quản trị viên mới được cập nhật yêu cầu thiết kế.");
+    }
+    return designRequestApi({
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        Authorization: `Bearer ${await auth.currentUser.getIdToken()}`
+      },
+      body: JSON.stringify({ action: "admin-update", ...payload })
+    });
   }
 
   async function getPromotions() {
@@ -375,6 +530,20 @@
   }
 
   async function subscribeAccount(uid, onOrders, onError) {
+    if (root.FlowerAuthMode === "local") {
+      let active = true, timer;
+      const refresh = async () => {
+        try {
+          const { response, result } = await orderRequest({ url: "/api/orders?action=mine", headers: { Accept: "application/json" }, cache: "no-store" });
+          if (!active) return;
+          if (!response.ok || result.accountUid !== uid) throw new Error(result.error || "Phiên đăng nhập không khớp với tài khoản.");
+          onOrders(result.orders || []);
+        } catch (error) { if (active) onError?.(error); }
+        if (active) timer = setTimeout(refresh, 15000);
+      };
+      await refresh();
+      return () => { active = false; clearTimeout(timer); };
+    }
     const { auth, db, firestoreSdk } = await getFirebase();
     await auth.authStateReady();
     if (!auth.currentUser || auth.currentUser.uid !== uid) {
@@ -392,14 +561,27 @@
   }
 
   async function getPublicOrder(id, phone) {
+    const headers = { "Content-Type": "application/json", Accept: "application/json" };
+    const account = root.FlowerSafeStorage?.readJson("loggedUser", { fallback: null }) || null;
+    if (account?.uid && root.FlowerAuthMode !== "local") {
+      const { auth } = await getFirebase();
+      await auth.authStateReady();
+      if (!auth.currentUser || auth.currentUser.uid !== account.uid) {
+        const error = new Error("Phiên đăng nhập đã hết hạn. Hãy đăng nhập lại để xem đơn hàng.");
+        error.code = "unauthenticated";
+        throw error;
+      }
+      headers.Authorization = `Bearer ${await auth.currentUser.getIdToken()}`;
+    }
     const response = await fetch("/api/orders", {
       method: "POST",
-      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      headers,
       body: JSON.stringify({ action: "lookup", id: String(id), phone: String(phone) }),
       cache: "no-store"
     });
     const result = await response.json().catch(() => ({}));
     if (!response.ok) {
+      if (response.status === 401 && root.FlowerAuthMode === "local") root.dispatchEvent(new CustomEvent("flowerlocalauthinvalid"));
       const error = new Error(result.error || "Không thể tra cứu đơn hàng.");
       error.code = result.code || "order-lookup-failed";
       throw error;
@@ -522,7 +704,7 @@
           : {}),
         ...(reserveAgain ? {
           reservationExpiresAt: firestoreSdk.Timestamp.fromDate(new Date(Date.now() + (
-            order.paymentMethod === "qr" ? 30 * 60 * 1000 : 24 * 60 * 60 * 1000
+            order.paymentMethod === "vnpay" ? 15 * 60 * 1000 : 30 * 60 * 1000
           ))),
           reservationExpiredAt: firestoreSdk.deleteField()
         } : {}),
@@ -655,6 +837,13 @@
     getDeliveryZones,
     saveDeliveryZone,
     deleteDeliveryZone,
+    getBouquetWrapping,
+    saveBouquetWrapping,
+    createDesignRequest,
+    getDesignRequest,
+    respondToDesignQuote,
+    getDesignRequests,
+    updateDesignRequest,
     savePromotions,
     initializePromotions,
     updatePromotions,
