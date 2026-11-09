@@ -39,7 +39,7 @@
 FlowerFlow là website bán hoa gồm ba lớp:
 
 - **Frontend:** các trang HTML, CSS và JavaScript thuần, không framework, không cần bước build.
-- **Backend:** Vercel Functions (Node.js) dùng Firebase Admin SDK. `/api/orders` tự tính giá, ưu đãi và giữ tồn kho khi tạo đơn, nên khách không thể sửa giá từ trình duyệt; các API khác quản lý tài khoản và quyền.
+- **Backend:** Vercel Functions (Node.js) dùng Firebase Admin SDK. `/api/orders` tự tính giá, ưu đãi và giữ tồn kho khi tạo đơn; `/api/flower-prices` chỉ cho Owner cập nhật giá hoa và ghi lịch sử trong cùng giao dịch.
 - **Cơ sở dữ liệu:** Cloud Firestore lưu sản phẩm, đơn hàng, đánh giá, ưu đãi và phân loại, được bảo vệ bằng Security Rules; Firebase Authentication quản lý tài khoản và phân quyền.
 
 ## Tính năng
@@ -48,7 +48,7 @@ FlowerFlow là website bán hoa gồm ba lớp:
 
 | Tính năng | Mô tả |
 | --- | --- |
-| Hai hình thức bán | Bó làm sẵn bán đúng giá niêm yết; khách tự phối bó từ hoa nguyên liệu có giá theo ngày |
+| Hai hình thức bán | Bó làm sẵn bán đúng giá niêm yết; Owner quản lý giá hoa nguyên liệu, giá được duy trì đến lần cập nhật tiếp theo |
 | Danh mục sản phẩm | Duyệt, tìm kiếm, lọc theo danh mục, sắp xếp bó làm sẵn |
 | Chi tiết sản phẩm | Thư viện ảnh, giá VND, tồn kho, chọn số lượng, gợi ý sản phẩm liên quan |
 | Đánh giá sản phẩm | Khách đã đăng nhập gửi đánh giá 1–5 sao; đánh giá hiển thị công khai trên trang sản phẩm |
@@ -64,7 +64,7 @@ FlowerFlow là website bán hoa gồm ba lớp:
 
 | Tính năng | Mô tả |
 | --- | --- |
-| Sản phẩm và giá hoa | Thêm bó làm sẵn giá cố định hoặc hoa nguyên liệu; nhập giá nguyên liệu theo ngày và quản lý tồn kho theo bó/cành |
+| Sản phẩm và giá hoa | Thêm bó làm sẵn hoặc hoa nguyên liệu; Owner cập nhật giá bán hoa kèm lịch sử thay đổi, tồn kho theo bó/cành |
 | Danh mục và ưu đãi | Quản lý danh mục hoa và chương trình khuyến mãi |
 | Đơn hàng | Xem đơn của mọi khách theo thời gian thực, cập nhật trạng thái (Chờ xác nhận, Đang giao, Đã giao, Đã hủy) |
 | Xác minh thanh toán | Đối chiếu đúng số tiền, nhập mã giao dịch ngân hàng; API kiểm tra quyền và ghi audit người xác nhận/thời gian/thông tin đối soát |

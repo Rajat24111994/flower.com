@@ -35,6 +35,10 @@
             <div id="savings">0</div>
           </div>
           <div class="summary-row">
+            <div><p>Phí gói bó hoa tùy chỉnh</p></div>
+            <div id="bouquetWrappingCharge">Đang xác minh</div>
+          </div>
+          <div class="summary-row">
             <div><p>Phí giao hàng</p></div>
             <div id="deliveryCharge">Miễn phí</div>
           </div>
@@ -52,12 +56,16 @@
 
     <script src="./js/core/store-footer.js?v=4"></script>
     <script src="./js/catalog/bouquet-options.js?v=1"></script>
+    <script src="./js/catalog/bouquet-wrapping.js?v=1"></script>
     <script src="./js/core/currency.js?v=11"></script>
+    <script src="./js/order/order-store.js?v=21"></script>
     <script>
       // Same limit as the order API (api/orders.js MAX_QUANTITY_PER_PRODUCT).
       const MAX_QUANTITY_PER_PRODUCT = 50;
+      const MAX_BOUQUET_STEMS = 50;
       let CartContainer = document.getElementById("product-container");
       const cartActionMessage = document.getElementById("cart-action-message");
+      let cartQuoteVersion = 0;
       let Cart = FlowerSafeStorage.readJson("cart", {
         fallback: [],
         validate: (value) => Array.isArray(value)
@@ -74,6 +82,38 @@
           console.error("Không thể lưu giỏ hàng:", error);
           alert("Chưa thể lưu thay đổi giỏ hàng. Hãy kiểm tra dung lượng hoặc quyền lưu trữ của trình duyệt rồi thử lại.");
           return false;
+        }
+      }
+
+      async function updateWrappingSummary() {
+        const requestVersion = ++cartQuoteVersion;
+        const wrappingElement = document.getElementById("bouquetWrappingCharge");
+        const totalElement = document.getElementById("total");
+        const currentTotal = calculateCartTotals(Cart).total;
+        if (!Cart.some((item) => item.customBouquetId || item.saleType === "flower")) {
+          wrappingElement.textContent = formatVnd(0);
+          totalElement.textContent = formatVnd(currentTotal);
+          return;
+        }
+        wrappingElement.textContent = "Đang xác minh";
+        try {
+          const quote = await FlowerOrderStore.quote(Cart.map((item) => ({
+            id: item.id,
+            productId: item.productId,
+            customBouquetId: item.customBouquetId,
+            quantity: Math.max(1, Number(item.quantity) || 1)
+          })));
+          if (requestVersion !== cartQuoteVersion) return;
+          const wrappingFee = Number(quote.totals?.wrappingFee);
+          if (!Number.isSafeInteger(wrappingFee) || wrappingFee < 0) throw new Error("Máy chủ chưa trả về phí gói hợp lệ.");
+          wrappingElement.textContent = formatVnd(wrappingFee);
+          totalElement.textContent = formatVnd(currentTotal + wrappingFee);
+        } catch (error) {
+          if (requestVersion !== cartQuoteVersion) return;
+          console.error("Không thể xác minh phí bó hoa trong giỏ:", error);
+          wrappingElement.textContent = "Chưa xác minh";
+          cartActionMessage.textContent = error.message || "Chưa thể xác minh phí bó hoa. Phí cuối cùng sẽ được kiểm tra khi thanh toán.";
+          cartActionMessage.hidden = false;
         }
       }
 
@@ -101,7 +141,11 @@
           CartContainer.append(empty);
         }
 
+        const bouquetNumbers = new Map();
         Cart.forEach((product) => {
+          if (product.customBouquetId && !bouquetNumbers.has(product.customBouquetId)) {
+            bouquetNumbers.set(product.customBouquetId, bouquetNumbers.size + 1);
+          }
           const image = document.createElement("img");
           const info = document.createElement("div");
           const details = document.createElement("h3");
@@ -128,7 +172,9 @@
           details.textContent = productName;
           const customization = document.createElement("p");
           customization.className = "cart-item-options";
-          customization.textContent = bouquetSummary;
+          customization.textContent = product.customBouquetId
+            ? `Bó tùy chỉnh ${bouquetNumbers.get(product.customBouquetId)} · ${bouquetSummary}`
+            : bouquetSummary;
           price.textContent = `${formatVnd(product.price)} / ${product.saleType === "flower" ? "cành" : "bó"}`;
           [Decrease, Increase, Remove].forEach((button) => { button.type = "button"; });
           Remove.textContent = "Xóa";
@@ -143,10 +189,15 @@
           const stockQuantity = Number(product.stockQuantity);
           const hasStockLimit = Number.isFinite(stockQuantity) && stockQuantity >= 0;
           const requestedStock = FlowerBouquetOptions.demand(Cart, product.productId ?? product.id);
+          const requestedBouquetStems = product.customBouquetId
+            ? Cart.filter((item) => item.customBouquetId === product.customBouquetId)
+              .reduce((sum, item) => sum + Math.max(1, Number(item.quantity) || 1), 0)
+            : 0;
           quantity.textContent = productQuantity;
           // Stock is shared by every line of the same flower; the 50 limit is per line (as on the server).
           const atOrderLimit = productQuantity >= MAX_QUANTITY_PER_PRODUCT;
-          Increase.disabled = atOrderLimit || (hasStockLimit && requestedStock >= stockQuantity);
+          Increase.disabled = atOrderLimit || (hasStockLimit && requestedStock >= stockQuantity)
+            || (product.customBouquetId && requestedBouquetStems >= MAX_BOUQUET_STEMS);
           stockNote.textContent = productQuantity > MAX_QUANTITY_PER_PRODUCT
             ? `Mỗi lựa chọn bó hoa đặt tối đa ${MAX_QUANTITY_PER_PRODUCT} bó.`
             : hasStockLimit
@@ -164,6 +215,11 @@
           });
           Increase.addEventListener("click", () => {
             if (atOrderLimit || (hasStockLimit && requestedStock >= stockQuantity)) return;
+            if (product.customBouquetId && requestedBouquetStems >= MAX_BOUQUET_STEMS) {
+              cartActionMessage.textContent = `Mỗi bó tùy chỉnh tối đa ${MAX_BOUQUET_STEMS} cành.`;
+              cartActionMessage.hidden = false;
+              return;
+            }
             saveCart(Cart.map((item) => item.id === product.id
               ? { ...item, quantity: productQuantity + 1 }
               : item));
@@ -182,6 +238,7 @@
         });
 
         renderCartSummary(Cart);
+        void updateWrappingSummary();
       }
 
       DisplayProduct();

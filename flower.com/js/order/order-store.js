@@ -113,6 +113,34 @@
     }
   }
 
+  async function bouquetWrappingRequest(options = {}) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 20000);
+    try {
+      const response = await fetch(options.manage ? "/api/bouquet-wrapping?manage=1" : "/api/bouquet-wrapping", {
+        method: options.method || "GET",
+        headers: options.headers || { Accept: "application/json" },
+        body: options.body,
+        signal: controller.signal
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        const error = new Error(result.error || "Không thể tải cấu hình phí bó hoa.");
+        error.code = result.code || "bouquet-wrapping-unavailable";
+        throw error;
+      }
+      return result;
+    } catch (cause) {
+      if (typeof cause?.code === "string") throw cause;
+      const error = new Error("Không kết nối được với cấu hình phí bó hoa. Vui lòng thử lại.");
+      error.code = "bouquet-wrapping-network-error";
+      error.cause = cause;
+      throw error;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
   async function getFirebase() {
     if (!firebasePromise) {
       firebasePromise = (async () => {
@@ -202,7 +230,7 @@
         promotionId: order.promotionId || "",
         expectedTotals,
         items: (Array.isArray(order.items) ? order.items : []).map((item) => ({
-          id: item.id, productId: item.productId, size: item.size, color: item.color, cardMessage: item.cardMessage, personalNote: item.personalNote,
+          id: item.id, productId: item.productId, customBouquetId: item.customBouquetId, size: item.size, color: item.color, cardMessage: item.cardMessage, personalNote: item.personalNote,
           quantity: item.quantity
         }))
       })
@@ -226,7 +254,7 @@
       headers: { "Content-Type": "application/json", Accept: "application/json" },
       body: JSON.stringify({
         action: "quote",
-        items: (Array.isArray(items) ? items : []).map((item) => ({ id: item.id, productId: item.productId, size: item.size, color: item.color, cardMessage: item.cardMessage, personalNote: item.personalNote, quantity: item.quantity })),
+        items: (Array.isArray(items) ? items : []).map((item) => ({ id: item.id, productId: item.productId, customBouquetId: item.customBouquetId, size: item.size, color: item.color, cardMessage: item.cardMessage, personalNote: item.personalNote, quantity: item.quantity })),
         promotionId: promotionId || "",
         deliveryZoneId: deliveryZoneId || ""
       })
@@ -280,6 +308,119 @@
 
   async function deleteDeliveryZone(id) {
     return updateDeliveryZone("delete", { id });
+  }
+
+  async function getBouquetWrapping(manage = false) {
+    const options = { manage };
+    if (manage) {
+      const { auth } = await getFirebase();
+      await auth.authStateReady();
+      if (!auth.currentUser || (await auth.currentUser.getIdTokenResult()).claims.admin !== true) {
+        throw new Error("Chỉ quản trị viên mới được quản lý phí bó hoa.");
+      }
+      options.headers = {
+        Accept: "application/json",
+        Authorization: `Bearer ${await auth.currentUser.getIdToken()}`
+      };
+    }
+    return bouquetWrappingRequest(options);
+  }
+
+  async function saveBouquetWrapping(tiers) {
+    const { auth } = await getFirebase();
+    await auth.authStateReady();
+    if (!auth.currentUser || (await auth.currentUser.getIdTokenResult()).claims.admin !== true) {
+      throw new Error("Chỉ quản trị viên mới được thay đổi phí bó hoa.");
+    }
+    return bouquetWrappingRequest({
+      method: "POST",
+      manage: true,
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        Authorization: `Bearer ${await auth.currentUser.getIdToken()}`
+      },
+      body: JSON.stringify({ tiers })
+    });
+  }
+
+  async function designRequestApi(options = {}) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 20000);
+    try {
+      const response = await fetch(options.url || "/api/design-requests", {
+        method: options.method || "GET",
+        headers: options.headers || { Accept: "application/json" },
+        ...(options.body ? { body: options.body } : {}),
+        signal: controller.signal
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        const error = new Error(result.error || "Không thể xử lý yêu cầu thiết kế.");
+        error.code = result.code || "design-request-unavailable";
+        throw error;
+      }
+      return result;
+    } catch (cause) {
+      if (typeof cause?.code === "string") throw cause;
+      const error = new Error("Không kết nối được với dịch vụ yêu cầu thiết kế. Vui lòng thử lại.");
+      error.code = "design-request-network-error";
+      error.cause = cause;
+      throw error;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  async function createDesignRequest(payload) {
+    return designRequestApi({
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify({ action: "create", ...payload })
+    });
+  }
+
+  async function getDesignRequest(id, accessToken) {
+    return designRequestApi({
+      url: `/api/design-requests?id=${encodeURIComponent(id)}&token=${encodeURIComponent(accessToken)}`
+    });
+  }
+
+  async function respondToDesignQuote(id, accessToken, response) {
+    return designRequestApi({
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify({ action: "respond", id, accessToken, response })
+    });
+  }
+
+  async function getDesignRequests() {
+    const { auth } = await getFirebase();
+    await auth.authStateReady();
+    if (!auth.currentUser || (await auth.currentUser.getIdTokenResult()).claims.admin !== true) {
+      throw new Error("Chỉ quản trị viên mới được xem yêu cầu thiết kế.");
+    }
+    return designRequestApi({
+      url: "/api/design-requests?manage=1",
+      headers: { Accept: "application/json", Authorization: `Bearer ${await auth.currentUser.getIdToken()}` }
+    });
+  }
+
+  async function updateDesignRequest(payload) {
+    const { auth } = await getFirebase();
+    await auth.authStateReady();
+    if (!auth.currentUser || (await auth.currentUser.getIdTokenResult()).claims.admin !== true) {
+      throw new Error("Chỉ quản trị viên mới được cập nhật yêu cầu thiết kế.");
+    }
+    return designRequestApi({
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        Authorization: `Bearer ${await auth.currentUser.getIdToken()}`
+      },
+      body: JSON.stringify({ action: "admin-update", ...payload })
+    });
   }
 
   async function getPromotions() {
@@ -392,9 +533,21 @@
   }
 
   async function getPublicOrder(id, phone) {
+    const headers = { "Content-Type": "application/json", Accept: "application/json" };
+    const account = root.FlowerSafeStorage?.readJson("loggedUser", { fallback: null }) || null;
+    if (account?.uid) {
+      const { auth } = await getFirebase();
+      await auth.authStateReady();
+      if (!auth.currentUser || auth.currentUser.uid !== account.uid) {
+        const error = new Error("Phiên đăng nhập đã hết hạn. Hãy đăng nhập lại để xem đơn hàng.");
+        error.code = "unauthenticated";
+        throw error;
+      }
+      headers.Authorization = `Bearer ${await auth.currentUser.getIdToken()}`;
+    }
     const response = await fetch("/api/orders", {
       method: "POST",
-      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      headers,
       body: JSON.stringify({ action: "lookup", id: String(id), phone: String(phone) }),
       cache: "no-store"
     });
@@ -655,6 +808,13 @@
     getDeliveryZones,
     saveDeliveryZone,
     deleteDeliveryZone,
+    getBouquetWrapping,
+    saveBouquetWrapping,
+    createDesignRequest,
+    getDesignRequest,
+    respondToDesignQuote,
+    getDesignRequests,
+    updateDesignRequest,
     savePromotions,
     initializePromotions,
     updatePromotions,

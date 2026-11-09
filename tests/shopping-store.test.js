@@ -84,6 +84,22 @@ assert.throws(
   (error) => error.code === 'storage-unavailable'
 );
 
+const groupedStorage = createMemoryStorage();
+const groupedStore = createShoppingStore(() => groupedStorage);
+const flower = { id: 'rose', title: 'Hoa hồng', saleType: 'flower', price: 25000, quantity: 20 };
+groupedStore.addToCart(flower, 2, { customBouquetId: 'bouquet-a' });
+groupedStore.addToCart(flower, 3, { customBouquetId: 'bouquet-b' });
+groupedStore.addToCart(flower, 1, { customBouquetId: 'bouquet-a' });
+const groupedCart = groupedStore.readCart();
+assert.equal(groupedCart.length, 2);
+assert.deepStrictEqual(groupedCart.map((item) => item.customBouquetId).sort(), ['bouquet-a', 'bouquet-b']);
+assert.equal(groupedCart.find((item) => item.customBouquetId === 'bouquet-a').quantity, 3);
+assert.equal(groupedCart.find((item) => item.customBouquetId === 'bouquet-a').productId, 'rose');
+assert.throws(
+  () => groupedStore.addToCart(flower, 1, { customBouquetId: '../invalid' }),
+  (error) => error.code === 'invalid-custom-bouquet'
+);
+
 const writeFailingStorage = createMemoryStorage();
 writeFailingStorage.setItem = () => {
   throw new Error('quota exceeded');

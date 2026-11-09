@@ -23,6 +23,7 @@ Làm lần lượt từ trên xuống cho mỗi lần phát hành. Mục nào kh
 ## 3. Triển khai
 
 - [ ] Gộp PR vào `main` (Vercel tự deploy).
+- [ ] Với deployment Vercel, xác nhận chứng chỉ TLS được cấp hợp lệ và truy cập HTTP chuyển hướng sang HTTPS (smoke test ở bước 4 kiểm tra tự động).
 - [ ] Có thay đổi firestore.rules hoặc index thì triển khai lên đúng Firebase project sau khi test và được phê duyệt:
   ```sh
   cd flower.com && firebase deploy --only firestore:rules,firestore:indexes
@@ -39,6 +40,7 @@ Làm lần lượt từ trên xuống cho mỗi lần phát hành. Mục nào kh
   cd flower.com && SMOKE_URL=https://flower-com-six.vercel.app npm run smoke
   ```
   hoặc trên GitHub: **Actions → Smoke test → Run workflow**.
+  Smoke test kiểm tra chứng chỉ TLS còn hạn/đúng hostname, HTTP chuyển hướng sang HTTPS và các header HSTS/CSP.
 - [ ] Kiểm tra tay 5 phút trên điện thoại và máy tính:
   - [ ] Trang chủ và danh sách hoa hiện đủ sản phẩm, có ảnh.
   - [ ] Thêm vào giỏ → thanh toán → báo giá đúng, ưu đãi tự áp dụng.

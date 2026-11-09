@@ -5,6 +5,7 @@ const { FieldValue, Timestamp } = require("firebase-admin/firestore");
 const { getAdminAuth, getAdminFirestore, sendError, verifyRequest, verifyAdminRequest } = require("../lib/firebase-admin");
 // Same price reading as the shop pages (whole VND, old USD prices converted), so both agree.
 const { toVndPrice } = require("../js/catalog/product-store.js");
+const bouquetWrapping = require("../js/catalog/bouquet-wrapping.js");
 
 const MAX_QUANTITY_PER_PRODUCT = 50;
 const QR_RESERVATION_MS = 30 * 60 * 1000;
@@ -76,16 +77,42 @@ function resolveDeliveryZone(data, zoneId) {
     return { zone, shippingFee: zone.fee };
 }
 
+function calculateCustomBouquets(items, tiers) {
+    const groups = new Map();
+    for (const item of items) {
+        const isFlower = getProductSaleType(item.data) === "flower";
+        const bouquetId = item.customBouquetId || "";
+        if (isFlower !== Boolean(bouquetId)) {
+            const error = new Error("Mỗi cành hoa phải thuộc một bó tùy chỉnh riêng; sản phẩm làm sẵn không thể ghép vào bó.");
+            error.code = "invalid-custom-bouquet";
+            throw error;
+        }
+        if (!bouquetId) continue;
+        const group = groups.get(bouquetId) || { id: bouquetId, stemCount: 0 };
+        group.stemCount += item.quantity;
+        if (group.stemCount > bouquetWrapping.MAX_STEMS_PER_BOUQUET) {
+            const error = new Error(`Mỗi bó tùy chỉnh tối đa ${bouquetWrapping.MAX_STEMS_PER_BOUQUET} cành.`);
+            error.code = "bouquet-quantity-limit";
+            throw error;
+        }
+        groups.set(bouquetId, group);
+    }
+    if (groups.size && !bouquetWrapping.normalizeTiers(tiers)) {
+        const error = new Error("Cửa hàng chưa cấu hình bậc phí bó hoa. Vui lòng liên hệ cửa hàng.");
+        error.code = "bouquet-wrapping-unavailable";
+        throw error;
+    }
+    return [...groups.values()].map((group) => ({
+        ...group,
+        wrappingFee: bouquetWrapping.feeForStemCount(tiers, group.stemCount)
+    }));
+}
+
 function getProductSaleType(data) {
     return data.saleType === "flower" ? "flower" : "ready_made";
 }
 
 function getProductPrice(data, now = new Date()) {
-    if (getProductSaleType(data) === "flower" && data.priceUpdatedAt !== getVietnameseDateTime(now).date) {
-        const error = new Error(`Giá hoa “${String(data.title || "Nguyên liệu").slice(0, 120)}” chưa được cập nhật hôm nay. Vui lòng liên hệ cửa hàng.`);
-        error.code = "flower-price-outdated";
-        throw error;
-    }
     return toVndPrice(data.price);
 }
 
@@ -225,6 +252,7 @@ function publicTrackingOrder(id, data) {
             paymentMethod: "qr",
             paymentStatus: data.paymentStatus || "Chờ xác minh thanh toán",
             total: Number(data.total) || 0,
+            wrappingFee: Number(data.wrappingFee) || 0,
             paymentReference: data.paymentReference || "",
             reservationExpiresAt: serializeTimestamp(data.reservationExpiresAt)
         } : data.paymentMethod === "vnpay" ? {
@@ -232,6 +260,21 @@ function publicTrackingOrder(id, data) {
             paymentStatus: data.paymentStatus || "chua_thanh_toan"
         } : {}),
         privacyLimited: true
+    };
+}
+
+function accountTrackingOrder(id, data) {
+    return {
+        ...data,
+        id,
+        createdAt: serializeTimestamp(data.createdAt) || data.createdAt || "",
+        reservationExpiresAt: serializeTimestamp(data.reservationExpiresAt) || data.reservationExpiresAt || "",
+        trackingHistory: Array.isArray(data.trackingHistory)
+            ? data.trackingHistory.map((event) => ({
+                ...event,
+                updatedAt: serializeTimestamp(event.updatedAt) || event.updatedAt || ""
+            }))
+            : []
     };
 }
 
@@ -435,6 +478,8 @@ function validateCheckout(body = {}) {
         || !Array.isArray(items) || items.length < 1 || items.length > 50) {
         return null;
     }
+    if (expectedTotals.wrappingFee !== undefined
+        && (!Number.isSafeInteger(expectedTotals.wrappingFee) || expectedTotals.wrappingFee < 0)) return null;
 
     const normalizedItems = [];
     const seenIds = new Set();
@@ -448,7 +493,9 @@ function validateCheckout(body = {}) {
         seenIds.add(id);
         const options = bouquet.normalize(item);
         if (!options) return null;
-        normalizedItems.push({ id, quantity, ...options });
+        const customBouquetId = String(item?.customBouquetId || "");
+        if (customBouquetId && !/^[A-Za-z0-9_-]{1,80}$/.test(customBouquetId)) return null;
+        normalizedItems.push({ id, quantity, ...(customBouquetId ? { customBouquetId } : {}), ...options });
     }
 
     return {
@@ -495,7 +542,9 @@ function validateQuote(body = {}) {
         seenIds.add(id);
         const options = bouquet.normalize(item);
         if (!options) return null;
-        items.push({ id, quantity, ...options });
+        const customBouquetId = String(item?.customBouquetId || "");
+        if (customBouquetId && !/^[A-Za-z0-9_-]{1,80}$/.test(customBouquetId)) return null;
+        items.push({ id, quantity, ...(customBouquetId ? { customBouquetId } : {}), ...options });
     }
     return { items, promotionId, deliveryZoneId };
 }
@@ -549,10 +598,11 @@ async function quoteOrder(req, res) {
         const db = getAdminFirestore();
         await releaseExpiredReservations(db);
         const productRefs = quote.items.map((item) => db.collection("products").doc(item.productId ?? item.id));
-        const [products, promotionsSnapshot, deliverySnapshot] = await Promise.all([
+        const [products, promotionsSnapshot, deliverySnapshot, wrappingSnapshot] = await Promise.all([
             db.getAll(...productRefs),
             db.collection("metadata").doc("activePromotions").get(),
-            db.collection("metadata").doc("deliveryZones").get()
+            db.collection("metadata").doc("deliveryZones").get(),
+            db.collection("metadata").doc("bouquetWrapping").get()
         ]);
         const { zone, shippingFee } = resolveDeliveryZone(deliverySnapshot.data(), quote.deliveryZoneId);
         // Report every product that cannot be sold in the asked quantity, with what is left, so the
@@ -601,9 +651,12 @@ async function quoteOrder(req, res) {
         }
         const promotions = Array.isArray(promotionsSnapshot.data()?.items) ? promotionsSnapshot.data().items : [];
         const { subtotal, savings } = priceCart(cart, findPromotion(promotions, quote.promotionId));
-        const totals = { subtotal, savings, tax: 0, shippingFee, total: subtotal - savings + shippingFee };
+        const customBouquets = calculateCustomBouquets(cart, wrappingSnapshot.data()?.tiers);
+        const wrappingFee = customBouquets.reduce((sum, item) => sum + item.wrappingFee, 0);
+        const totals = { subtotal, savings, tax: 0, wrappingFee, shippingFee, total: subtotal - savings + wrappingFee + shippingFee };
         return res.status(200).json({
             totals,
+            customBouquets,
             deliveryZone: zone ? {
                 id: zone.id,
                 province: zone.province,
@@ -613,6 +666,7 @@ async function quoteOrder(req, res) {
             deliveryZonesConfigured: getEnabledDeliveryZones(deliverySnapshot.data()).length > 0,
             items: cart.map((item) => ({
                 id: item.id,
+                productId: item.productId ?? item.id,
                 title: String(item.data.title || "Sản phẩm").slice(0, 120),
                 image: String(item.data.image || "").slice(0, 1000),
                 saleType: getProductSaleType(item.data),
@@ -620,11 +674,16 @@ async function quoteOrder(req, res) {
                 priceUpdatedAt: getProductSaleType(item.data) === "flower" ? item.data.priceUpdatedAt : "",
                 quantity: item.quantity,
                 price: item.price,
-                stock: item.stock
+                stock: item.stock,
+                customBouquetId: item.customBouquetId || "",
+                size: item.size || "",
+                color: item.color || "",
+                cardMessage: item.cardMessage || "",
+                personalNote: item.personalNote || ""
             }))
         });
     } catch (error) {
-        if (["invalid-promotion", "insufficient-stock", "product-unavailable", "delivery-zone-unavailable", "flower-price-outdated"].includes(error.code)) {
+        if (["invalid-promotion", "insufficient-stock", "product-unavailable", "delivery-zone-unavailable", "invalid-custom-bouquet", "bouquet-quantity-limit", "bouquet-wrapping-unavailable"].includes(error.code)) {
             return sendError(res, 409, error.code, error.message);
         }
         console.error("Order quote failed:", error.code || "unknown");
@@ -660,6 +719,7 @@ async function createOrder(req, res) {
         const productRefs = checkout.items.map((item) => db.collection("products").doc(item.productId ?? item.id));
         const promotionsRef = db.collection("metadata").doc("activePromotions");
         const deliveryZonesRef = db.collection("metadata").doc("deliveryZones");
+        const bouquetWrappingRef = db.collection("metadata").doc("bouquetWrapping");
         const now = new Date();
         const requestHash = createHash("sha256").update(JSON.stringify({
             ...checkout, orderNote: String(req.body.orderNote || "").trim(), uid: user?.uid || ""
@@ -688,6 +748,7 @@ async function createOrder(req, res) {
                     subtotal: previousData.subtotal,
                     savings: previousData.savings,
                     shippingFee: Number(previousData.shippingFee) || 0,
+                    wrappingFee: Number(previousData.wrappingFee) || 0,
                     total: previousData.total
                 };
             }
@@ -698,10 +759,11 @@ async function createOrder(req, res) {
                 throw error;
             }
 
-            const [productSnapshots, promotionSnapshot, deliveryZonesSnapshot] = await Promise.all([
+            const [productSnapshots, promotionSnapshot, deliveryZonesSnapshot, bouquetWrappingSnapshot] = await Promise.all([
                 transaction.getAll(...productRefs),
                 transaction.get(promotionsRef),
-                transaction.get(deliveryZonesRef)
+                transaction.get(deliveryZonesRef),
+                transaction.get(bouquetWrappingRef)
             ]);
             const { zone: deliveryZone, shippingFee } = resolveDeliveryZone(
                 deliveryZonesSnapshot.data(),
@@ -747,11 +809,14 @@ async function createOrder(req, res) {
                 : [];
             const promotion = findPromotion(promotions, checkout.promotionId);
             const { subtotal, savings } = priceCart(products, promotion);
-            const total = subtotal - savings + shippingFee;
+            const customBouquets = calculateCustomBouquets(products, bouquetWrappingSnapshot.data()?.tiers);
+            const wrappingFee = customBouquets.reduce((sum, item) => sum + item.wrappingFee, 0);
+            const total = subtotal - savings + wrappingFee + shippingFee;
             if (checkout.expectedTotals.subtotal !== subtotal
                 || checkout.expectedTotals.savings !== savings
                 || checkout.expectedTotals.tax !== 0
                 || checkout.expectedTotals.shippingFee !== shippingFee
+                || (checkout.expectedTotals.wrappingFee ?? 0) !== wrappingFee
                 || checkout.expectedTotals.total !== total) {
                 const error = new Error("Giá hoặc ưu đãi vừa thay đổi. Hãy quay lại trang thanh toán để xem tổng tiền mới.");
                 error.code = "price-changed";
@@ -761,6 +826,7 @@ async function createOrder(req, res) {
             const paymentReference = paymentReferenceFor(checkout.idempotencyKey);
             const items = products.map((item) => ({
                 id: item.id,
+                productId: item.productId ?? item.id,
                 title: String(item.data.title || "Sản phẩm").slice(0, 120),
                 image: String(item.data.image || "").slice(0, 1000),
                 saleType: getProductSaleType(item.data),
@@ -768,14 +834,18 @@ async function createOrder(req, res) {
                 priceUpdatedAt: getProductSaleType(item.data) === "flower" ? item.data.priceUpdatedAt : "",
                 quantity: item.quantity,
                 price: item.price,
-                stock: item.stock
+                stock: item.stock,
+                customBouquetId: item.customBouquetId || "",
+                size: item.size || "",
+                color: item.color || "",
+                cardMessage: item.cardMessage || "",
+                personalNote: item.personalNote || ""
             }));
             const initialStatus = "Chờ xác nhận";
             const initialLocation = "Đơn hàng đã được gửi đến cửa hàng";
             const orderData = {
                 orderType: products.some((item) => getProductSaleType(item.data) === "flower") ? "custom_bouquet" : "ready_made",
                 uid: user?.uid || "",
-                email: String(user?.email || "").slice(0, 254),
                 customerName: checkout.customerName,
                 phone: checkout.phone,
                 address: checkout.address,
@@ -798,6 +868,8 @@ async function createOrder(req, res) {
                 subtotal,
                 savings,
                 tax: 0,
+                wrappingFee,
+                customBouquets,
                 shippingFee,
                 total,
                 paymentMethod: checkout.paymentMethod,
@@ -838,6 +910,7 @@ async function createOrder(req, res) {
         return res.status(201).json({ order: { id: order.id, paymentReference: order.paymentReference }, totals: {
             subtotal: order.subtotal,
             savings: order.savings,
+            wrappingFee: order.wrappingFee,
             shippingFee: order.shippingFee,
             total: order.total
         } });
@@ -845,7 +918,7 @@ async function createOrder(req, res) {
         if (String(error.code || "").startsWith("auth/")) {
             return sendError(res, 401, "unauthenticated", "Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại rồi đặt hàng.");
         }
-        if (["invalid-checkout", "invalid-delivery-schedule", "invalid-promotion", "insufficient-stock", "product-unavailable", "price-changed", "idempotency-conflict", "delivery-zone-unavailable", "flower-price-outdated"].includes(error.code)) {
+        if (["invalid-checkout", "invalid-delivery-schedule", "invalid-promotion", "insufficient-stock", "product-unavailable", "price-changed", "idempotency-conflict", "delivery-zone-unavailable", "invalid-custom-bouquet", "bouquet-quantity-limit", "bouquet-wrapping-unavailable"].includes(error.code)) {
             const status = ["invalid-checkout", "invalid-delivery-schedule"].includes(error.code) ? 400 : 409;
             return sendError(res, status, error.code, error.message);
         }
@@ -984,14 +1057,42 @@ async function lookupOrder(req, res) {
             return sendError(res, 429, "rate-limited", "Bạn đã tra cứu quá nhiều lần. Vui lòng thử lại sau.");
         }
 
+        const authorization = String(req.headers.authorization || "").trim();
+        let user = null;
+        if (authorization) {
+            if (!/^Bearer\s+\S+$/i.test(authorization)) {
+                return sendError(res, 401, "unauthenticated", "Phiên đăng nhập không hợp lệ.");
+            }
+            try {
+                user = await optionalAuthenticatedUser(req);
+            } catch (error) {
+                if (String(error.code || "").startsWith("auth/")) {
+                    return sendError(res, 401, "unauthenticated", "Phiên đăng nhập đã hết hạn. Hãy đăng nhập lại.");
+                }
+                console.error("Order lookup authentication failed:", error.code || "unknown");
+                return sendError(res, 503, "order-service-unavailable", "Chưa thể xác minh phiên đăng nhập. Vui lòng thử lại.");
+            }
+        }
+
         const id = String(req.body?.id || "").trim().replace(/^#/, "");
         const phone = normalizePhone(req.body?.phone);
-        if (!id || id.length > 128 || id.includes("/") || phone.length < 8 || phone.length > 15) {
+        if (!id || id.length > 128 || id.includes("/")
+            || (!user && (phone.length < 8 || phone.length > 15))) {
             return sendError(res, 400, "invalid-argument", "Mã đơn hàng hoặc số điện thoại không hợp lệ.");
         }
 
         const snapshot = await db.collection("orders").doc(id).get();
-        if (!snapshot.exists || normalizePhone(snapshot.get("phone")) !== phone) {
+        if (!snapshot.exists) {
+            return sendError(res, 404, "order-not-found", "Không tìm thấy đơn hàng. Hãy kiểm tra lại mã đơn và số điện thoại.");
+        }
+        if (user) {
+            const data = snapshot.data();
+            if (data.uid !== user.uid) {
+                return sendError(res, 404, "order-not-found", "Không tìm thấy đơn hàng trong tài khoản.");
+            }
+            return res.status(200).json({ order: accountTrackingOrder(snapshot.id, data) });
+        }
+        if (normalizePhone(snapshot.get("phone")) !== phone) {
             return sendError(res, 404, "order-not-found", "Không tìm thấy đơn hàng. Hãy kiểm tra lại mã đơn và số điện thoại.");
         }
         return res.status(200).json({ order: publicTrackingOrder(snapshot.id, snapshot.data()) });
@@ -1167,6 +1268,7 @@ module.exports.internals = {
     resolveDeliveryZone,
     getProductPrice,
     getProductSaleType,
+    calculateCustomBouquets,
     DELIVERY_TIME_WINDOWS,
     paymentReferenceFor,
     publicTrackingOrder,

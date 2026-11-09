@@ -52,7 +52,7 @@ async function listProducts(req, res, db) {
     }
 
     const snapshot = await db.collection("products").get();
-    res.setHeader("Cache-Control", "public, max-age=0, s-maxage=15, stale-while-revalidate=60");
+    res.setHeader("Cache-Control", "public, max-age=0, s-maxage=0, must-revalidate");
     const products = snapshot.docs.map(serializeProduct).filter((product) => product.status !== "hidden");
     return res.status(200).json({ products });
 }

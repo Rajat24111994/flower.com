@@ -77,6 +77,7 @@ test("doanh thu bao gồm giao dịch VNPay đã được máy chủ xác nhận
     status: "Đã giao",
     paymentMethod: "vnpay",
     paymentStatus: "da_thanh_toan",
+    paymentVerified: true,
     total: 345000
   }], products, { period: "all", lowStock: 5 });
   assert.equal(report.totalRevenue, 345000);

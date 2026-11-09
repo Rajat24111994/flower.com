@@ -9,11 +9,13 @@ let categoriesPage = document.getElementById("categories_page");
 let offersPage = document.getElementById("offers_page");
 let deliveryPage = document.getElementById("delivery_page");
 let ordersPage = document.getElementById("orders_page");
+let designRequestsPage = document.getElementById("design_requests_page");
 let reviewsPage = document.getElementById("reviews_page");
 let messagesPage = document.getElementById("messages_page");
 let revenuePage = document.getElementById("revenue_page");
 let usersPage = document.getElementById("users_page");
 let logOutPage = document.getElementById("logout_page");
+let flowerPricesPage = null;
 let main = document.querySelector("main");
 let currentUser;
 let currentUserRole = "admin";
@@ -38,8 +40,22 @@ let deliveryZonesCache = [];
 let deliveryZonesLoaded = false;
 let deliveryZonesLoading = false;
 let deliveryZonesLoadError = "";
+let bouquetWrappingTiers = [];
+let bouquetWrappingLoaded = false;
+let bouquetWrappingLoading = false;
+let bouquetWrappingLoadError = "";
+let designRequestsCache = [];
+let designRequestsLoading = false;
+let designRequestsLoaded = false;
+let designRequestsLoadError = "";
 let messagesCache = [];
 let stopMessageSubscription = null;
+let flowerPrices = [];
+let flowerPricesLoaded = false;
+let flowerPricesLoading = false;
+let flowerPricesMessage = "";
+let editingFlowerPriceId = null;
+let flowerPriceHistory = null;
 let reportFilters = { period: "month", month: reportDateKey(new Date()).slice(0, 7), start: "", end: "", lowStock: 5 };
 
 const STORAGE_KEYS = {
@@ -462,7 +478,7 @@ function renderProductTab() {
                                    <td>${escapeHtml(item.category || "Chưa phân loại")}</td>
                                    <td>
                                        ${formatVnd(item.price)} / ${item.saleType === "flower" ? "cành" : "bó"}
-                                       ${item.saleType === "flower" ? `<small>Giá ngày ${escapeHtml(item.priceUpdatedAt || "chưa cập nhật")}</small>` : ""}
+                                       ${item.saleType === "flower" ? `<small>${item.priceUpdatedAt ? `Cập nhật ${escapeHtml(item.priceUpdatedAt)}` : "Giá được duy trì cho đến lần cập nhật tiếp theo"}</small>` : ""}
                                    </td>
                                    <td><input class="qty-input" data-id="${escapeHtml(item.id)}" type="number" min="0" step="1" value="${quantity}" aria-label="Tồn kho ${escapeHtml(item.title)} (${item.saleType === "flower" ? "cành" : "bó"})"></td>
                                    <td>
@@ -517,11 +533,12 @@ function renderProductTab() {
                    <label class="product-form-field" for="product-sale-type"><span>Hình thức bán</span>
                        <select id="product-sale-type">
                            <option value="ready_made" ${editingProduct?.saleType !== "flower" ? "selected" : ""}>Bó làm sẵn · giá cố định</option>
-                           <option value="flower" ${editingProduct?.saleType === "flower" ? "selected" : ""}>Hoa nguyên liệu · giá theo ngày, tính theo cành</option>
+                           <option value="flower" ${editingProduct?.saleType === "flower" ? "selected" : ""}>Hoa nguyên liệu · giá bán theo cành</option>
                        </select>
                    </label>
                    <label class="product-form-field" for="product-price"><span>Giá bán (VND)</span>
-                       <input type="number" id="product-price" value="${editingProduct ? escapeHtml(editingProduct.price) : ""}" min="1000" step="1000" required inputmode="numeric">
+                       <input type="number" id="product-price" value="${editingProduct ? escapeHtml(editingProduct.price) : ""}" min="1000" step="1" required inputmode="numeric" ${editingProduct?.saleType === "flower" ? "readonly" : ""}>
+                       ${editingProduct?.saleType === "flower" ? '<small id="product-price-hint">Để ghi nhận lịch sử đầy đủ, hãy đổi giá trong mục “Quản lý giá hoa” (Owner).</small>' : ""}
                    </label>
                    <label class="product-form-field" for="product-quantity"><span>Số lượng tồn kho</span>
                        <input type="number" id="product-quantity" value="${editingProduct ? Number(editingProduct.quantity) || 0 : ""}" data-shown-value="${editingProduct ? Number(editingProduct.quantity) || 0 : ""}" min="0" step="1" required inputmode="numeric">
@@ -867,9 +884,32 @@ function renderDeliveryZonesTab() {
                    </div>
                ` : `<div class="empty-state">${deliveryZonesLoadError ? escapeHtml(deliveryZonesLoadError) : "Đang tải cấu hình…"}</div>${deliveryZonesLoadError ? '<button class="secondary-btn" data-delivery-zone-reload type="button">Thử tải lại</button>' : ""}`}
            </div>
+           <div class="panel">
+               <h2>Phí gói bó hoa tùy chỉnh</h2>
+               <p class="category-help">Nhập các mốc số cành tăng dần và phí theo VND. Mốc cuối bắt buộc là 50 cành; phí được tính một lần cho mỗi bó, dựa trên tổng số cành của bó.</p>
+               <p class="delivery-zone-admin-message" id="bouquet-wrapping-admin-message" role="status" aria-live="polite">${escapeHtml(bouquetWrappingLoadError || (bouquetWrappingLoaded && !bouquetWrappingTiers.length ? "Chưa cấu hình phí; khách chưa thể đặt bó tùy chỉnh." : bouquetWrappingLoaded ? "" : "Đang tải cấu hình…"))}</p>
+               ${bouquetWrappingLoaded && !bouquetWrappingLoadError ? `
+                   <form id="bouquet-wrapping-form" class="delivery-zone-form">
+                       <div id="bouquet-wrapping-tiers">
+                           ${(bouquetWrappingTiers.length ? bouquetWrappingTiers : [{ maxStems: "", fee: "" }]).map((tier, index) => `
+                               <div class="delivery-zone-row" data-wrapping-tier>
+                                   <label><span class="field-label">Tối đa số cành</span><input name="maxStems" type="number" min="1" max="50" step="1" value="${escapeHtml(tier.maxStems)}" required></label>
+                                   <label><span class="field-label">Phí gói (₫)</span><input name="fee" type="number" min="0" max="1000000000" step="1" value="${escapeHtml(tier.fee)}" required></label>
+                                   <button class="delete-product" data-wrapping-tier-remove type="button" ${index === 0 ? "disabled" : ""}>Xóa bậc</button>
+                               </div>
+                           `).join("")}
+                       </div>
+                       <div class="product-row-actions">
+                           <button class="secondary-btn" data-wrapping-tier-add type="button">Thêm bậc</button>
+                           <button class="submit-btn" type="submit">Lưu phí bó hoa</button>
+                       </div>
+                   </form>
+               ` : `<div class="empty-state">${escapeHtml(bouquetWrappingLoadError || "Đang tải cấu hình…")}</div>${bouquetWrappingLoadError ? '<button class="secondary-btn" data-wrapping-reload type="button">Thử tải lại</button>' : ""}`}
+           </div>
        </section>
    `;
    if (!deliveryZonesLoaded && !deliveryZonesLoading && !deliveryZonesLoadError) void loadDeliveryZones();
+   if (!bouquetWrappingLoaded && !bouquetWrappingLoading && !bouquetWrappingLoadError) void loadBouquetWrapping();
 }
 
 async function loadDeliveryZones() {
@@ -886,6 +926,133 @@ async function loadDeliveryZones() {
    } finally {
        deliveryZonesLoading = false;
        if (main.querySelector(".delivery-zones-page")) renderDeliveryZonesTab();
+   }
+}
+
+async function loadBouquetWrapping() {
+   bouquetWrappingLoading = true;
+   bouquetWrappingLoadError = "";
+   try {
+       const result = await window.FlowerOrderStore.getBouquetWrapping(true);
+       bouquetWrappingTiers = Array.isArray(result.tiers) ? result.tiers : [];
+       bouquetWrappingLoaded = true;
+   } catch (error) {
+       console.error("Không thể tải cấu hình phí bó hoa:", error);
+       bouquetWrappingLoadError = error.message || "Không thể tải cấu hình phí bó hoa.";
+       bouquetWrappingLoaded = false;
+   } finally {
+       bouquetWrappingLoading = false;
+       if (main.querySelector(".delivery-zones-page")) renderDeliveryZonesTab();
+   }
+}
+
+function renderDesignRequestsTab() {
+   const statuses = ["Chờ tư vấn", "Chờ báo giá", "Chờ khách xác nhận", "Đang thực hiện", "Hoàn thành", "Đã hủy"];
+   main.innerHTML = `
+       <section class="panel-wrap design-requests-page">
+           <div class="panel">
+               <h2>Yêu cầu thiết kế riêng</h2>
+               <p class="category-help">Khách nhận mã truy cập riêng để theo dõi. Kiểm tra nguyên liệu trước khi gửi báo giá; khách chỉ có thể chấp nhận hoặc từ chối khi trạng thái là “Chờ khách xác nhận”.</p>
+               ${designRequestsLoadError ? `<p class="delivery-zone-admin-message" role="status">${escapeHtml(designRequestsLoadError)}</p><button class="secondary-btn" data-design-requests-reload type="button">Thử tải lại</button>` : ""}
+               ${designRequestsLoading && !designRequestsLoaded ? '<p>Đang tải yêu cầu thiết kế…</p>' : ""}
+               ${designRequestsLoaded && !designRequestsLoadError ? designRequestsCache.map((request) => `
+                   <article class="design-request-admin-card">
+                       <header>
+                           <div><h3>Yêu cầu #${escapeHtml(request.id)} · ${escapeHtml(request.customerName)}</h3><p>${escapeHtml(request.phone)} · ${escapeHtml(request.createdAt ? new Date(request.createdAt).toLocaleString("vi-VN") : "")}</p></div>
+                           <strong>${escapeHtml(request.status)}</strong>
+                       </header>
+                       <div class="design-request-admin-details">
+                           <p><b>Giao:</b> ${escapeHtml(request.address)} · ${escapeHtml(request.deliveryDistrict || "")}, ${escapeHtml(request.deliveryProvince || "")} · ${escapeHtml(request.deliveryDate)} · ${escapeHtml(request.deliveryTime)}</p>
+                           <p><b>Hoa:</b> ${(request.stems || []).map((item) => `${escapeHtml(item.title)} × ${Number(item.quantity) || 0} (${escapeHtml(item.color)} · ${item.role === "main" ? "hoa chính" : "hoa phụ"} · tồn lúc gửi ${Number(item.stock) || 0})`).join(", ") || "Khách chọn thiết kế bất ngờ theo ngân sách"}</p>
+                           <p><b>Thiết kế:</b> ${escapeHtml([request.design?.arrangement, request.design?.size, request.design?.wrapStyle, request.design?.paperMaterial, request.design?.paperColor, request.design?.bowStyle, request.design?.bowColor, request.design?.theme, request.design?.style, request.design?.palette].filter(Boolean).join(" · "))}</p>
+                           <p><b>Phụ kiện:</b> ${escapeHtml((request.design?.addons || []).join(", ") || "Không yêu cầu")} · <b>Ngân sách:</b> ${request.design?.budget ? moneyFormat(request.design.budget) : "Không giới hạn"}</p>
+                           <p><b>Dự toán:</b> ${moneyFormat(request.estimatedTotal || 0)} · <b>Ghi chú:</b> ${escapeHtml(request.specialRequest || "Không có")}</p>
+                           ${request.design?.excludedFlowers?.length ? `<p><b>Không dùng:</b> ${escapeHtml(request.design.excludedFlowers.join(", "))}</p>` : ""}
+                           ${request.design?.dislikedFlowers?.length ? `<p><b>Không thích:</b> ${escapeHtml(request.design.dislikedFlowers.join(", "))}</p>` : ""}
+                           ${request.deliveryNote ? `<p><b>Lời nhắn giao hàng:</b> ${escapeHtml(request.deliveryNote)}</p>` : ""}
+                           ${request.referenceImage ? `<img class="design-request-reference-image" src="${escapeHtml(request.referenceImage)}" alt="Ảnh mẫu yêu cầu">` : ""}
+                       </div>
+                       <div class="design-request-admin-fields">
+                           <label>Trạng thái<select data-design-status="${escapeHtml(request.id)}">${statuses.map((status) => `<option ${status === request.status ? "selected" : ""}>${status}</option>`).join("")}</select></label>
+                           <label>Báo giá cuối (₫)<input data-design-total="${escapeHtml(request.id)}" type="number" min="0" max="1000000000" step="1" value="${Number(request.quotedTotal) || ""}"></label>
+                           <label>Ghi chú / đề xuất thay hoa<textarea data-design-quote-note="${escapeHtml(request.id)}" maxlength="1000" rows="2">${escapeHtml(request.quoteNote || "")}</textarea></label>
+                           <button class="secondary-btn" data-design-request-save="${escapeHtml(request.id)}" type="button">Lưu và gửi cập nhật</button>
+                       </div>
+                   </article>
+               `).join("") : ""}
+               ${designRequestsLoaded && !designRequestsLoadError && !designRequestsCache.length ? '<p class="empty-state">Chưa có yêu cầu thiết kế nào.</p>' : ""}
+           </div>
+       </section>
+   `;
+   if (!designRequestsLoaded && !designRequestsLoading && !designRequestsLoadError) void loadDesignRequests();
+}
+
+async function loadDesignRequests() {
+   designRequestsLoading = true;
+   designRequestsLoadError = "";
+   try {
+       const result = await window.FlowerOrderStore.getDesignRequests();
+       designRequestsCache = Array.isArray(result.requests) ? result.requests : [];
+       designRequestsLoaded = true;
+   } catch (error) {
+       console.error("Không thể tải yêu cầu thiết kế:", error);
+       designRequestsLoadError = error.message || "Không thể tải yêu cầu thiết kế.";
+   } finally {
+       designRequestsLoading = false;
+       if (main.querySelector(".design-requests-page")) renderDesignRequestsTab();
+   }
+}
+
+async function saveDesignRequest(id) {
+   const status = main.querySelector(`[data-design-status="${CSS.escape(id)}"]`);
+   const total = main.querySelector(`[data-design-total="${CSS.escape(id)}"]`);
+   const note = main.querySelector(`[data-design-quote-note="${CSS.escape(id)}"]`);
+   if (!status || !total || !note) return;
+   const quotedTotal = total.value === "" ? null : Number(total.value);
+   if ((status.value === "Chờ khách xác nhận" && quotedTotal === null)
+       || (quotedTotal !== null && (!Number.isSafeInteger(quotedTotal) || quotedTotal < 0 || quotedTotal > 1000000000))) {
+       alert("Nhập báo giá cuối là số nguyên VND hợp lệ trước khi chờ khách xác nhận.");
+       total.focus();
+       return;
+   }
+   try {
+       const result = await window.FlowerOrderStore.updateDesignRequest({
+           id,
+           status: status.value,
+           quotedTotal,
+           quoteNote: note.value.trim()
+       });
+       designRequestsCache = designRequestsCache.map((request) => request.id === id ? result.request : request);
+       renderDesignRequestsTab();
+   } catch (error) {
+       console.error("Không thể cập nhật yêu cầu thiết kế:", error);
+       alert(error.message || "Chưa thể cập nhật yêu cầu thiết kế.");
+   }
+}
+
+async function saveBouquetWrapping(event) {
+   event.preventDefault();
+   const rows = [...main.querySelectorAll("[data-wrapping-tier]")];
+   const tiers = rows.map((row) => ({
+       maxStems: Number(row.querySelector('[name="maxStems"]').value),
+       fee: Number(row.querySelector('[name="fee"]').value)
+   }));
+   const normalized = window.FlowerBouquetWrapping?.normalizeTiers(tiers);
+   if (!normalized) {
+       const status = document.getElementById("bouquet-wrapping-admin-message");
+       if (status) status.textContent = "Các mốc phải tăng dần từ 1 đến 50 cành; mốc cuối phải là 50 và phí là số nguyên VND không âm.";
+       return;
+   }
+   try {
+       const result = await window.FlowerOrderStore.saveBouquetWrapping(normalized);
+       bouquetWrappingTiers = result.tiers;
+       bouquetWrappingLoaded = true;
+       bouquetWrappingLoadError = "";
+       renderDeliveryZonesTab();
+   } catch (error) {
+       console.error("Không thể lưu cấu hình phí bó hoa:", error);
+       const status = document.getElementById("bouquet-wrapping-admin-message");
+       if (status) status.textContent = error.message || "Chưa thể lưu phí bó hoa. Vui lòng thử lại.";
    }
 }
 
@@ -1206,6 +1373,10 @@ function renderOrderCard(order, showCompletionAction = true) {
                    <span class="field-value">${moneyFormat(order.shippingFee || 0)}</span>
                </div>
                <div class="field">
+                   <span class="field-label">Phí gói bó hoa</span>
+                   <span class="field-value">${moneyFormat(order.wrappingFee || 0)}</span>
+               </div>
+               <div class="field">
                    <span class="field-label">Ẩn tên trên thiệp</span>
                    <span class="field-value">${order.anonymousGreetingCard === true ? "Có" : "Không"}</span>
                </div>
@@ -1244,6 +1415,11 @@ function renderOrderCard(order, showCompletionAction = true) {
            ` : ""}
 
            <div class="section-label">Sản phẩm trong đơn</div>
+           ${(Array.isArray(order.customBouquets) && order.customBouquets.length) ? `
+               <div class="detail-block">
+                   ${order.customBouquets.map((bouquet) => `<p>Bó tùy chỉnh: ${Number(bouquet.stemCount) || 0} cành · phí gói ${moneyFormat(bouquet.wrappingFee || 0)}</p>`).join("")}
+               </div>
+           ` : ""}
            <div class="order-product-list">
                ${items.map((item) => {
                    const product = getProductById(item.productId ?? item.id) || {};
@@ -1654,9 +1830,6 @@ async function addNewProduct(event) {
    }
    const productData = {
        ...inputProduct,
-       ...(inputProduct.saleType === "flower" ? { priceUpdatedAt: new Intl.DateTimeFormat("en-CA", {
-           timeZone: "Asia/Ho_Chi_Minh", year: "numeric", month: "2-digit", day: "2-digit"
-       }).format(new Date()) } : {}),
        image: getStoredImageUrl(inputProduct.image),
        images: inputProduct.images.map(getStoredImageUrl)
    };
@@ -2043,6 +2216,163 @@ function renderUsersTab() {
    });
 }
 
+function renderFlowerPricesTab() {
+   const rows = flowerPrices.map((flower) => {
+       const isEditing = String(editingFlowerPriceId) === String(flower.flowerId);
+       const image = getSafeImageUrl(flower.image);
+       return `
+           <tr>
+               <td><code>${escapeHtml(flower.flowerId)}</code></td>
+               <td>${image ? `<img src="${escapeHtml(image)}" alt="" width="56" height="56" loading="lazy">` : "—"}</td>
+               <td>${escapeHtml(flower.name || "Hoa")}</td>
+               <td>${escapeHtml(flower.unit || "cành")}</td>
+               <td>${isEditing
+                   ? `<input type="text" inputmode="numeric" pattern="[0-9]*" data-flower-price="${escapeHtml(flower.flowerId)}" value="${escapeHtml(flower.price)}" aria-label="Giá mới của ${escapeHtml(flower.name)}">`
+                   : moneyFormat(flower.price)}</td>
+               <td>${escapeHtml(flower.priceUpdatedAt ? formatUserDate(flower.priceUpdatedAt) : "Chưa ghi nhận")}</td>
+               <td>${escapeHtml(flower.updatedBy || "Chưa ghi nhận")}</td>
+               <td>
+                   ${isEditing
+                       ? `<button class="primary-btn" type="button" data-price-save="${escapeHtml(flower.flowerId)}">Lưu</button>
+                          <button class="secondary-btn" type="button" data-price-cancel>Hủy</button>`
+                       : `<button class="secondary-btn" type="button" data-price-edit="${escapeHtml(flower.flowerId)}">Sửa</button>
+                          <button class="secondary-btn" type="button" data-price-history="${escapeHtml(flower.flowerId)}">Lịch sử giá</button>`}
+               </td>
+           </tr>`;
+   }).join("");
+   const historyFlower = flowerPriceHistory
+       ? flowerPrices.find((flower) => String(flower.flowerId) === String(flowerPriceHistory.flowerId))
+       : null;
+
+   main.innerHTML = `
+       <section class="panel-wrap flower-prices-page">
+           <section class="panel">
+               <div class="users-heading">
+                   <div>
+                       <h2>Quản lý giá hoa</h2>
+                       <p class="users-description">Điều chỉnh giá bán theo cành. Giá đã lưu tiếp tục có hiệu lực cho đến lần cập nhật tiếp theo.</p>
+                   </div>
+                   <button class="secondary-btn" type="button" data-price-refresh ${flowerPricesLoading ? "disabled" : ""}>Tải lại</button>
+               </div>
+               <p class="users-status" role="status" aria-live="polite">${escapeHtml(flowerPricesMessage || (flowerPricesLoading ? "Đang tải giá hoa…" : ""))}</p>
+               ${!flowerPricesLoaded && !flowerPricesLoading
+                   ? '<p class="empty-state">Chưa tải được danh sách giá hoa. Hãy thử tải lại.</p>'
+                   : `<div class="table-wrap">
+                       <table class="users-table">
+                           <thead><tr><th>Mã hoa</th><th>Ảnh</th><th>Tên hoa</th><th>Đơn vị</th><th>Giá bán hiện tại</th><th>Cập nhật gần nhất</th><th>Người cập nhật</th><th>Thao tác</th></tr></thead>
+                           <tbody>${rows || `<tr><td colspan="8" class="empty-state">${flowerPricesLoading ? "Đang tải…" : "Chưa có hoa nguyên liệu trong danh mục."}</td></tr>`}</tbody>
+                       </table>
+                   </div>`}
+           </section>
+           ${flowerPriceHistory && historyFlower ? `
+               <section class="panel">
+                   <div class="users-heading">
+                       <div><h2>Lịch sử giá · ${escapeHtml(historyFlower.name)}</h2><p class="users-description">Các lần thay đổi được sắp xếp từ mới nhất.</p></div>
+                       <button class="secondary-btn" type="button" data-price-history-close>Đóng</button>
+                   </div>
+                   <div class="table-wrap">
+                       <table class="users-table">
+                           <thead><tr><th>Giá cũ</th><th>Giá mới</th><th>Thời điểm</th><th>Người cập nhật</th></tr></thead>
+                           <tbody>${flowerPriceHistory.entries.length
+                               ? flowerPriceHistory.entries.map((entry) => `<tr><td>${moneyFormat(entry.oldPrice)}</td><td>${moneyFormat(entry.newPrice)}</td><td>${escapeHtml(formatUserDate(entry.updatedAt))}</td><td>${escapeHtml(entry.updatedBy || "Không rõ")}</td></tr>`).join("")
+                               : '<tr><td colspan="4" class="empty-state">Chưa có lần thay đổi giá nào được ghi nhận.</td></tr>'}</tbody>
+                       </table>
+                   </div>
+               </section>
+           ` : ""}
+       </section>
+   `;
+}
+
+async function requestFlowerPrices(url, options = {}) {
+   if (!currentUser) throw new Error("Phiên đăng nhập đã hết hạn. Hãy đăng nhập lại.");
+   const idToken = await currentUser.getIdToken();
+   const response = await fetch(url, {
+       ...options,
+       headers: {
+           Authorization: `Bearer ${idToken}`,
+           Accept: "application/json",
+           ...(options.body ? { "Content-Type": "application/json" } : {}),
+           ...options.headers
+       },
+       cache: "no-store"
+   });
+   const result = await response.json();
+   if (!response.ok) {
+       const error = new Error(result.error || "Không thể thực hiện thao tác quản lý giá.");
+       error.code = result.code;
+       throw error;
+   }
+   return result;
+}
+
+async function loadFlowerPrices() {
+   flowerPricesLoading = true;
+   flowerPricesMessage = "";
+   renderFlowerPricesTab();
+   try {
+       const result = await requestFlowerPrices("/api/flower-prices");
+       flowerPrices = result.flowers;
+       flowerPricesLoaded = true;
+   } catch (error) {
+       console.error("Không thể tải danh sách giá hoa:", error);
+       flowerPricesMessage = error.message || "Không thể tải giá hoa. Vui lòng thử lại.";
+   } finally {
+       flowerPricesLoading = false;
+       if (main.querySelector(".flower-prices-page")) renderFlowerPricesTab();
+   }
+}
+
+async function saveFlowerPrice(flowerId) {
+   const input = main.querySelector(`[data-flower-price="${CSS.escape(flowerId)}"]`);
+   const text = input?.value.trim() || "";
+   if (!/^\d+$/.test(text) || !Number.isSafeInteger(Number(text)) || Number(text) < 1000 || Number(text) > 1_000_000_000) {
+       flowerPricesMessage = "Giá bán phải là số nguyên từ 1.000 đến 1.000.000.000 VNĐ, không được để trống.";
+       const status = main.querySelector(".users-status");
+       if (status) status.textContent = flowerPricesMessage;
+       input?.setAttribute("aria-invalid", "true");
+       input?.focus();
+       return;
+   }
+
+   const button = main.querySelector(`[data-price-save="${CSS.escape(flowerId)}"]`);
+   if (button) button.disabled = true;
+   flowerPricesMessage = "Đang lưu giá hoa…";
+   const status = main.querySelector(".users-status");
+   if (status) status.textContent = flowerPricesMessage;
+   try {
+       const result = await requestFlowerPrices("/api/flower-prices", {
+           method: "PATCH",
+           body: JSON.stringify({ flowerId, price: Number(text) })
+       });
+       flowerPrices = flowerPrices.map((flower) => String(flower.flowerId) === String(flowerId)
+           ? result.flower
+           : flower);
+       editingFlowerPriceId = null;
+       flowerPricesMessage = result.changed ? "Đã cập nhật giá bán hoa thành công." : "Giá bán không thay đổi; không tạo lịch sử mới.";
+       renderFlowerPricesTab();
+   } catch (error) {
+       console.error("Không thể cập nhật giá hoa:", error);
+       flowerPricesMessage = error.message || "Chưa thể lưu giá hoa. Giá cũ vẫn được giữ nguyên.";
+       renderFlowerPricesTab();
+   }
+}
+
+async function loadFlowerPriceHistory(flowerId) {
+   flowerPricesMessage = "Đang tải lịch sử giá…";
+   renderFlowerPricesTab();
+   try {
+       const result = await requestFlowerPrices(`/api/flower-prices?flowerId=${encodeURIComponent(flowerId)}`);
+       flowerPriceHistory = { flowerId, entries: result.history };
+       flowerPricesMessage = "";
+   } catch (error) {
+       console.error("Không thể tải lịch sử giá hoa:", error);
+       flowerPriceHistory = null;
+       flowerPricesMessage = error.message || "Chưa thể tải lịch sử giá.";
+   }
+   renderFlowerPricesTab();
+}
+
 function formatUserDate(value) {
    if (!value) return "Chưa có";
    const date = new Date(value);
@@ -2134,6 +2464,23 @@ if (dashboardPage) {
 if (productPage) {
    productPage.addEventListener("click", renderProductTab);
 }
+main.addEventListener("change", (event) => {
+   if (event.target?.id !== "product-sale-type") return;
+   const priceInput = document.getElementById("product-price");
+   if (!priceInput || editingProductId === null) return;
+   const originalProduct = getProducts().find((item) => String(item.id) === String(editingProductId));
+   const locked = originalProduct?.saleType === "flower" || event.target.value === "flower";
+   priceInput.readOnly = locked;
+   const hint = document.getElementById("product-price-hint");
+   if (locked && !hint) {
+       const message = document.createElement("small");
+       message.id = "product-price-hint";
+       message.textContent = "Để ghi nhận lịch sử đầy đủ, hãy đổi giá trong mục “Quản lý giá hoa” (Owner).";
+       priceInput.insertAdjacentElement("afterend", message);
+   } else if (!locked) {
+       hint?.remove();
+   }
+});
 
 if (categoriesPage) {
    categoriesPage.addEventListener("click", renderCategoriesTab);
@@ -2155,6 +2502,16 @@ if (deliveryPage) {
 
 if (ordersPage) {
    ordersPage.addEventListener("click", renderOrdersTab);
+}
+
+if (designRequestsPage) {
+   designRequestsPage.addEventListener("click", renderDesignRequestsTab);
+   designRequestsPage.addEventListener("keydown", (event) => {
+       if (event.key === "Enter" || event.key === " ") {
+           event.preventDefault();
+           renderDesignRequestsTab();
+       }
+   });
 }
 
 if (reviewsPage) {
@@ -2188,6 +2545,18 @@ if (logOutPage) {
 }
 
 if (currentUserRole === "owner") {
+   flowerPricesPage = document.createElement("p");
+   flowerPricesPage.id = "flower_prices_page";
+   flowerPricesPage.textContent = "Quản lý giá hoa";
+   flowerPricesPage.tabIndex = 0;
+   flowerPricesPage.setAttribute("role", "button");
+   flowerPricesPage.addEventListener("click", () => { void loadFlowerPrices(); });
+   flowerPricesPage.addEventListener("keydown", (event) => {
+       if (event.key === "Enter" || event.key === " ") {
+           event.preventDefault();
+           void loadFlowerPrices();
+       }
+   });
    const ownerLink = document.createElement("p");
    ownerLink.id = "owner_page";
    ownerLink.textContent = "Owner · Quản lý quyền";
@@ -2201,9 +2570,37 @@ if (currentUserRole === "owner") {
        }
    });
    logOutPage?.parentElement?.insertBefore(ownerLink, logOutPage);
+   logOutPage?.parentElement?.insertBefore(flowerPricesPage, ownerLink);
 }
 
 main.addEventListener("click", (event) => {
+   const refreshFlowerPrices = event.target.closest("[data-price-refresh]");
+   if (refreshFlowerPrices) { void loadFlowerPrices(); return; }
+   const editFlowerPrice = event.target.closest("[data-price-edit]");
+   if (editFlowerPrice) {
+       editingFlowerPriceId = editFlowerPrice.dataset.priceEdit;
+       flowerPricesMessage = "";
+       renderFlowerPricesTab();
+       main.querySelector(`[data-flower-price="${CSS.escape(editingFlowerPriceId)}"]`)?.focus();
+       return;
+   }
+   const cancelFlowerPrice = event.target.closest("[data-price-cancel]");
+   if (cancelFlowerPrice) {
+       editingFlowerPriceId = null;
+       flowerPricesMessage = "";
+       renderFlowerPricesTab();
+       return;
+   }
+   const saveFlowerPriceButton = event.target.closest("[data-price-save]");
+   if (saveFlowerPriceButton) { void saveFlowerPrice(saveFlowerPriceButton.dataset.priceSave); return; }
+   const showFlowerPriceHistory = event.target.closest("[data-price-history]");
+   if (showFlowerPriceHistory) { void loadFlowerPriceHistory(showFlowerPriceHistory.dataset.priceHistory); return; }
+   const closeFlowerPriceHistory = event.target.closest("[data-price-history-close]");
+   if (closeFlowerPriceHistory) {
+       flowerPriceHistory = null;
+       renderFlowerPricesTab();
+       return;
+   }
    const moderation = event.target.closest("[data-review-moderation]");
    if (moderation) { void moderateReview(moderation.dataset.reviewId, moderation.dataset.reviewModeration); return; }
    const reviewPhotos = event.target.closest("[data-review-photos]");
@@ -2213,6 +2610,43 @@ main.addEventListener("click", (event) => {
        deliveryZonesLoadError = "";
        void loadDeliveryZones();
        renderDeliveryZonesTab();
+       return;
+   }
+   const reloadDesignRequests = event.target.closest("[data-design-requests-reload]");
+   if (reloadDesignRequests) {
+       designRequestsLoadError = "";
+       designRequestsLoaded = false;
+       void loadDesignRequests();
+       renderDesignRequestsTab();
+       return;
+   }
+   const saveDesignRequestButton = event.target.closest("[data-design-request-save]");
+   if (saveDesignRequestButton) {
+       void saveDesignRequest(saveDesignRequestButton.dataset.designRequestSave);
+       return;
+   }
+   const reloadBouquetWrapping = event.target.closest("[data-wrapping-reload]");
+   if (reloadBouquetWrapping) {
+       bouquetWrappingLoadError = "";
+       void loadBouquetWrapping();
+       renderDeliveryZonesTab();
+       return;
+   }
+   const addWrappingTier = event.target.closest("[data-wrapping-tier-add]");
+   if (addWrappingTier) {
+       const tiers = document.getElementById("bouquet-wrapping-tiers");
+       if (!tiers || tiers.querySelectorAll("[data-wrapping-tier]").length >= window.FlowerBouquetWrapping.MAX_TIERS) return;
+       const row = document.createElement("div");
+       row.className = "delivery-zone-row";
+       row.dataset.wrappingTier = "";
+       row.innerHTML = '<label><span class="field-label">Tối đa số cành</span><input name="maxStems" type="number" min="1" max="50" step="1" required></label><label><span class="field-label">Phí gói (₫)</span><input name="fee" type="number" min="0" max="1000000000" step="1" required></label><button class="delete-product" data-wrapping-tier-remove type="button">Xóa bậc</button>';
+       tiers.append(row);
+       return;
+   }
+   const removeWrappingTier = event.target.closest("[data-wrapping-tier-remove]");
+   if (removeWrappingTier) {
+       const rows = main.querySelectorAll("[data-wrapping-tier]");
+       if (rows.length > 1) removeWrappingTier.closest("[data-wrapping-tier]").remove();
        return;
    }
 
@@ -2292,6 +2726,10 @@ main.addEventListener("click", (event) => {
        productFilterMaxPrice = "";
        productPriceSort = "";
        renderProductTab();
+       return;
+   }
+   if (actionButton?.dataset.action === "restore-catalog") {
+       void restoreCatalog();
        return;
    }
    if (actionButton?.dataset.action === "delete-all-products") {
@@ -2392,6 +2830,9 @@ main.addEventListener("click", (event) => {
 main.addEventListener("submit", (event) => {
    if (event.target && event.target.id === "add-delivery-zone-form") {
        void addDeliveryZone(event);
+   }
+   if (event.target && event.target.id === "bouquet-wrapping-form") {
+       void saveBouquetWrapping(event);
    }
 
    if (event.target && event.target.id === "product-search-form") {

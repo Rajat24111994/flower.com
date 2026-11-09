@@ -5,7 +5,7 @@
   <script src="./js/core/safe-storage.js?v=3"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#fbf8f3">
-  <meta name="description" content="Thông tin về dữ liệu bạn nhập khi đặt hàng trên website Flowerflow.">
+  <meta name="description" content="Dữ liệu cá nhân Flowerflow xử lý, mục đích sử dụng và cách yêu cầu xem, sửa hoặc xóa thông tin.">
   <link rel="canonical" href="https://flower-com-six.vercel.app/privacy.html">
   <link rel="icon" type="image/svg+xml" href="./favicon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -13,7 +13,7 @@
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="./css/core/store-header.css?v=5">
   <link rel="stylesheet" href="./css/core/accessibility.css?v=1">
-  <link rel="stylesheet" href="./css/core/information-page.css?v=1">
+  <link rel="stylesheet" href="./css/core/information-page.css?v=2">
   <link rel="stylesheet" href="./css/core/store-footer.css?v=4">
   <title>Quyền riêng tư | Flowerflow</title>
 </head>
@@ -26,7 +26,7 @@
         <a href="./index.html">Trang chủ</a><span aria-hidden="true">/</span><span aria-current="page">Quyền riêng tư</span>
       </nav>
       <header class="information-hero">
-        <p class="information-eyebrow">Cập nhật ngày 04/11/2026</p>
+        <p class="information-eyebrow">Cập nhật ngày 05/11/2026</p>
         <h1 class="information-title">Quyền riêng tư</h1>
         <p class="information-lede">Chính sách này giải thích những thông tin Flowerflow xử lý khi bạn duyệt sản phẩm, tạo tài khoản, đặt hàng hoặc gửi đánh giá; mục đích sử dụng, nơi lưu trữ và cách yêu cầu xem, sửa hoặc xóa thông tin.</p>
       </header>
@@ -44,15 +44,72 @@
         <div class="information-content">
           <section class="information-section" id="information-collected">
             <h2>Thông tin được xử lý</h2>
-            <p>Chúng tôi chỉ yêu cầu hoặc sử dụng thông tin phục vụ các chức năng bạn chọn trên website:</p>
-            <ul>
-              <li><strong>Tài khoản:</strong> địa chỉ email, tên hiển thị và mã tài khoản do Firebase Authentication cung cấp; phương thức đăng nhập (email hoặc Google). Số điện thoại chỉ được dùng nếu bạn cung cấp trong hồ sơ hoặc đơn hàng.</li>
-              <li><strong>Đơn hàng:</strong> tên và số điện thoại người đặt; địa chỉ giao hàng; tên và số điện thoại người nhận; ngày, giờ và khu vực giao; sản phẩm, số lượng, giá, phí giao hàng, ưu đãi và trạng thái đơn.</li>
-              <li><strong>Nội dung bạn tự nhập:</strong> lời chúc trên thiệp, ghi chú giao hàng và, nếu bạn gửi đánh giá, nội dung, số sao và tối đa ba ảnh. Đánh giá đã duyệt (gồm nội dung, số sao và ảnh nếu có) có thể hiển thị công khai cùng tên hiển thị.</li>
-              <li><strong>Thanh toán:</strong> phương thức đã chọn, số tiền, mã tham chiếu đơn/chuyển khoản, trạng thái thanh toán và thông tin đối soát cần thiết. Flowerflow không yêu cầu hoặc lưu số thẻ ngân hàng hay mã CVV.</li>
-              <li><strong>Dữ liệu kỹ thuật cần cho an toàn:</strong> khi tra cứu đơn, dịch vụ có thể dùng địa chỉ IP do hạ tầng Vercel cung cấp để giới hạn số lần thử. API lưu mã HMAC thay vì địa chỉ IP thô trong bản ghi giới hạn tra cứu; bản ghi này tự hết hạn sau 24 giờ.</li>
-            </ul>
-            <aside class="information-note">Các trường tên người nhận, số điện thoại người nhận, lời chúc, ảnh đánh giá và ghi chú là tùy chọn nếu biểu mẫu không đánh dấu bắt buộc. Vui lòng không nhập mật khẩu, thông tin thẻ hoặc dữ liệu nhạy cảm vào ghi chú hay nội dung đánh giá.</aside>
+            <p>Bảng dưới đây nêu từng loại dữ liệu, khi nào cần cung cấp và mục đích cụ thể. Trường không cần cho chức năng bạn chọn không được yêu cầu.</p>
+            <div class="information-table-wrap" role="region" aria-label="Dữ liệu cá nhân, tính cần thiết và mục đích sử dụng" tabindex="0">
+              <table class="information-table">
+                <thead>
+                  <tr><th scope="col">Dữ liệu</th><th scope="col">Khi nào cần cung cấp</th><th scope="col">Mục đích sử dụng</th></tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <th scope="row">Email, mã tài khoản và phương thức đăng nhập</th>
+                    <td>Email và phương thức đăng nhập chỉ khi bạn tạo hoặc dùng tài khoản. Mã tài khoản do Firebase Authentication cấp.</td>
+                    <td>Xác thực, khôi phục tài khoản và gắn đơn đã đăng nhập với đúng tài khoản. Đặt hàng không cần đăng nhập không yêu cầu email.</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">Tên người đặt</th>
+                    <td>Bắt buộc khi đặt hàng.</td>
+                    <td>Nhận diện đơn và liên hệ với người đặt khi cần xử lý đơn hàng.</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">Số điện thoại người đặt</th>
+                    <td>Bắt buộc khi đặt hàng; chỉ dùng số trong hồ sơ nếu bạn tự cung cấp.</td>
+                    <td>Liên hệ về đơn hàng và xác minh khi tra cứu trạng thái đơn bằng mã đơn.</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">Địa chỉ giao hàng, tỉnh/thành và quận/huyện</th>
+                    <td>Bắt buộc khi đặt giao hàng.</td>
+                    <td>Xác định tuyến giao, khu vực phục vụ và phí giao; giao hoa tới địa chỉ bạn yêu cầu.</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">Tên và số điện thoại người nhận</th>
+                    <td>Chỉ nhập riêng khi người nhận khác người đặt. Nếu bạn nhận hoa, đơn dùng thông tin người đặt.</td>
+                    <td>Giúp cửa hàng xác định người nhận và phối hợp giao hoa.</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">Ngày, khung giờ và lựa chọn giao hàng</th>
+                    <td>Ngày, giờ và khu vực giao là thông tin bắt buộc của đơn; lời chúc, gói quà và ghi chú là tùy chọn.</td>
+                    <td>Lên lịch giao và thực hiện đúng lựa chọn, hướng dẫn bạn gửi kèm đơn.</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">Sản phẩm và chi tiết đơn hàng</th>
+                    <td>Được ghi nhận khi bạn đặt hàng, gồm sản phẩm, số lượng, giá, phí giao, ưu đãi và trạng thái đơn.</td>
+                    <td>Tính giá, chuẩn bị đơn, quản lý giao dịch và cung cấp lịch sử/trạng thái đơn cho chủ tài khoản.</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">Lời chúc và ghi chú bạn tự nhập</th>
+                    <td>Chỉ khi bạn chọn nhập vào thiệp hoặc ghi chú đơn.</td>
+                    <td>In lời chúc lên thiệp hoặc lưu ý cho cửa hàng khi chuẩn bị và giao hoa.</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">Thông tin thanh toán</th>
+                    <td>Chỉ ghi nhận phương thức bạn chọn, số tiền, mã tham chiếu và trạng thái giao dịch.</td>
+                    <td>Thu và đối chiếu khoản thanh toán. Flowerflow không yêu cầu hoặc lưu số thẻ ngân hàng, mã CVV hay mật khẩu ngân hàng.</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">Tên hiển thị, đánh giá và tối đa ba ảnh</th>
+                    <td>Chỉ khi bạn tự gửi đánh giá; ảnh không bắt buộc.</td>
+                    <td>Duyệt và hiển thị đánh giá sản phẩm. Đánh giá được duyệt có thể hiển thị công khai cùng tên hiển thị.</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">Dữ liệu kỹ thuật cần cho an toàn (IP tra cứu đơn)</th>
+                    <td>Được hạ tầng Vercel cung cấp khi trình duyệt gửi yêu cầu tra cứu.</td>
+                    <td>Ngăn dò mã đơn. API lưu mã HMAC thay cho IP thô trong bản ghi giới hạn tra cứu; bản ghi tự hết hạn sau 24 giờ.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <aside class="information-note">Flowerflow không hỏi ngày sinh, giới tính hoặc giấy tờ tùy thân để đặt hoa. Email không bắt buộc khi đặt hàng không dùng tài khoản; đơn mới chỉ gắn với tài khoản bằng mã tài khoản, không sao chép email vào hồ sơ đơn. Một số đơn cũ có thể còn email đã lưu trước đây. Chỉ cung cấp tên và số điện thoại người nhận khi giao cho người khác; lời chúc, ghi chú và ảnh đánh giá là tùy chọn. Vui lòng không nhập mật khẩu hoặc dữ liệu nhạy cảm vào nội dung tự do.</aside>
           </section>
           <section class="information-section" id="shopping-data">
             <h2>Giỏ hàng và danh sách yêu thích</h2>
@@ -74,7 +131,7 @@
             <h2>Dịch vụ xử lý và bên nhận dữ liệu</h2>
             <p>Một số thông tin cần được xử lý bởi dịch vụ vận hành website:</p>
             <ul>
-              <li><strong>Firebase Authentication và Cloud Firestore (Google):</strong> xác thực tài khoản và lưu dữ liệu tài khoản, đơn hàng, đánh giá để website hoạt động.</li>
+              <li><strong>Firebase Authentication và Cloud Firestore (Google):</strong> Firebase Authentication xác thực tài khoản và quản lý email/phương thức đăng nhập; Cloud Firestore lưu đơn hàng, đánh giá và dữ liệu cần cho website. Đơn mới gắn với tài khoản bằng mã tài khoản.</li>
               <li><strong>Vercel:</strong> lưu trữ website và chạy API xử lý đơn hàng. Hạ tầng này nhận các yêu cầu mạng cần thiết để phục vụ website.</li>
               <li><strong>VNPay:</strong> khi bạn chọn thanh toán VNPay, trình duyệt được chuyển sang dịch vụ của VNPay. Yêu cầu thanh toán gồm số tiền, mã giao dịch và địa chỉ IP cần thiết để tạo giao dịch; thông tin thanh toán tại trang VNPay do VNPay xử lý theo chính sách của họ. Flowerflow không nhận số thẻ hoặc CVV.</li>
               <li><strong>Google Fonts:</strong> website tải phông chữ từ Google Fonts; trình duyệt kết nối tới dịch vụ này để hiển thị trang và có thể gửi dữ liệu kỹ thuật của yêu cầu, như địa chỉ IP và thông tin trình duyệt.</li>

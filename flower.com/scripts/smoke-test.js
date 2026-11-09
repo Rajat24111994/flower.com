@@ -1,12 +1,17 @@
-// Smoke test for a deployed site: checks that pages load and the API answers, without creating
-// orders or changing any data. Run it right after each deploy:
+// Smoke test for a deployed site: verifies HTTPS/TLS, page loads and API responses, without
+// creating orders or changing data. Run it right after each deploy:
 //   SMOKE_URL=https://your-site.vercel.app npm run smoke
+const tls = require("node:tls");
 const baseUrl = String(process.env.SMOKE_URL || process.argv[2] || "").replace(/\/+$/, "");
-if (!/^https?:\/\//.test(baseUrl)) {
-    console.error("Cần địa chỉ trang: SMOKE_URL=https://... npm run smoke");
+let site;
+try {
+    site = new URL(baseUrl);
+    if (site.protocol !== "https:" || site.username || site.password || site.port) throw new Error("invalid URL");
+} catch {
+    console.error("SMOKE_URL phải là địa chỉ HTTPS công khai cổng mặc định, ví dụ: SMOKE_URL=https://your-site.vercel.app npm run smoke");
     process.exit(2);
 }
-
+const secureBaseUrl = site.origin;
 const PAGES = ["/", "/product.html", "/cart.html", "/checkout.html", "/placeorder.html", "/tracking.html",
     "/wish.html", "/login.html", "/account.html", "/admin.html", "/owner.html"];
 const results = [];
@@ -26,7 +31,7 @@ function expect(condition, message) {
 }
 
 async function request(path, options = {}) {
-    const response = await fetch(baseUrl + path, {
+    const response = await fetch(secureBaseUrl + path, {
         ...options,
         headers: { Accept: "application/json", ...(options.body ? { "Content-Type": "application/json" } : {}), ...options.headers },
         signal: AbortSignal.timeout(20000)
@@ -34,16 +39,69 @@ async function request(path, options = {}) {
     const text = await response.text();
     let json = null;
     try { json = JSON.parse(text); } catch { /* HTML page */ }
-    return { status: response.status, text, json };
+    return { status: response.status, text, json, url: response.url, headers: response.headers };
+}
+
+function verifyTlsCertificate(hostname) {
+    return new Promise((resolve, reject) => {
+        const socket = tls.connect({
+            host: hostname,
+            port: 443,
+            servername: hostname,
+            rejectUnauthorized: true
+        });
+        const timeout = setTimeout(() => socket.destroy(new Error("Kết nối TLS quá thời gian chờ.")), 10000);
+        socket.once("secureConnect", () => {
+            clearTimeout(timeout);
+            const certificate = socket.getPeerCertificate();
+            const validFrom = Date.parse(certificate.valid_from);
+            const validTo = Date.parse(certificate.valid_to);
+            socket.end();
+            if (!socket.authorized || !Number.isFinite(validFrom) || !Number.isFinite(validTo)
+                || validFrom > Date.now() || validTo <= Date.now()) {
+                reject(new Error("Chứng chỉ TLS không hợp lệ, chưa có hiệu lực hoặc đã hết hạn."));
+                return;
+            }
+            resolve();
+        });
+        socket.once("error", (error) => {
+            clearTimeout(timeout);
+            reject(new Error(`Không xác minh được chứng chỉ TLS: ${error.message}`));
+        });
+    });
 }
 
 (async () => {
-    console.log(`Smoke test: ${baseUrl}\n`);
+    console.log(`Smoke test HTTPS: ${secureBaseUrl}\n`);
+
+    await check("Chứng chỉ TLS hợp lệ, đúng hostname và còn hạn", () => verifyTlsCertificate(site.hostname));
+    await check("HTTP tự chuyển hướng sang HTTPS", async () => {
+        const insecureUrl = new URL(secureBaseUrl);
+        insecureUrl.protocol = "http:";
+        const response = await fetch(insecureUrl, { redirect: "manual", signal: AbortSignal.timeout(20000) });
+        const destination = new URL(response.headers.get("location") || "", insecureUrl);
+        expect([301, 302, 307, 308].includes(response.status), `HTTP ${response.status}, mong đợi redirect sang HTTPS`);
+        expect(destination.protocol === "https:", `Location không dùng HTTPS: ${destination.href || "(trống)"}`);
+        expect(destination.hostname === site.hostname, `HTTP redirect sang hostname ngoài dự kiến: ${destination.hostname}`);
+    });
+
+    await check("Header HSTS và CSP bắt buộc HTTPS", async () => {
+        const { status, url, headers } = await request("/");
+        expect(status === 200, `HTTP ${status}`);
+        expect(new URL(url).protocol === "https:", `Trang cuối không dùng HTTPS: ${url}`);
+        const hsts = headers.get("strict-transport-security") || "";
+        expect(/(?:^|;)\s*max-age=(\d+)/i.test(hsts) && Number(hsts.match(/(?:^|;)\s*max-age=(\d+)/i)[1]) >= 31536000,
+            `HSTS max-age phải ít nhất một năm: ${hsts || "(thiếu)"}`);
+        expect(/(?:^|;)\s*includesubdomains(?:;|$)/i.test(hsts), "HSTS phải bao gồm includeSubDomains");
+        const csp = headers.get("content-security-policy") || "";
+        expect(/(?:^|;)\s*upgrade-insecure-requests(?:;|$)/i.test(csp), "CSP phải bật upgrade-insecure-requests");
+    });
 
     for (const page of PAGES) {
         await check(`Trang ${page} tải được`, async () => {
-            const { status, text } = await request(page, { headers: { Accept: "text/html" } });
+            const { status, text, url } = await request(page, { headers: { Accept: "text/html" } });
             expect(status === 200, `HTTP ${status}`);
+            expect(new URL(url).protocol === "https:", `Trang cuối không dùng HTTPS: ${url}`);
             expect(/<title>[^<]+<\/title>/i.test(text), "không có <title>");
         });
     }
@@ -82,6 +140,10 @@ async function request(path, options = {}) {
             expect(status === 401, `HTTP ${status} (mong đợi 401)`);
         });
     }
+    await check("API giá hoa bị chặn khi chưa đăng nhập", async () => {
+        const { status } = await request("/api/flower-prices");
+        expect(status === 401, `HTTP ${status} (mong đợi 401)`);
+    });
 
     for (const result of results) {
         console.log(`${result.ok ? "✔" : "✖"} ${result.name} (${result.ms} ms)${result.ok ? "" : ` – ${result.error}`}`);

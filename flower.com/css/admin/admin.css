@@ -1583,3 +1583,11 @@ main { min-width: 0; max-width: 100%; }
 .review-admin-photos { display: flex; flex-wrap: wrap; gap: 12px; margin: 12px 0; }
 .review-admin-photos img { width: 140px; height: 140px; object-fit: contain; border: 1px solid #eee; border-radius: 8px; }
 .review-moderation-reason, #review-moderation-filter { padding: 12px; border: 1px solid #d6c7bd; border-radius: 8px; max-width: 100%; font: inherit; min-height: 44px; }
+.design-request-admin-card { margin: 20px 0; padding: 18px; border: 1px solid #e6ddd6; border-radius: 14px; background: #fffdfa; }
+.design-request-admin-card > header { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; }
+.design-request-admin-card h3 { margin: 0 0 6px; }
+.design-request-admin-details { line-height: 1.6; overflow-wrap: anywhere; }
+.design-request-admin-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 12px; align-items: end; }
+.design-request-admin-fields label { display: grid; gap: 6px; font-weight: 600; }
+.design-request-admin-fields input, .design-request-admin-fields select, .design-request-admin-fields textarea { width: 100%; min-height: 42px; padding: 9px; border: 1px solid #d6c7bd; border-radius: 8px; font: inherit; }
+.design-request-reference-image { display: block; max-width: min(100%, 360px); max-height: 280px; margin: 12px 0; object-fit: contain; border-radius: 10px; }
