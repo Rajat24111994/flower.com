@@ -13,6 +13,8 @@ const CONTENT_TYPES = {
 
 function isPublicFile(pathname) {
     if (pathname.includes("\\") || pathname.split("/").some((part) => part.startsWith("."))) return false;
+    if (["/birthday", "/birthday/", "/birthday/index.html"].includes(pathname)) return true;
+    if (pathname === "/birthday/birthday.js") return true;
     if (/^\/(?:js|css|images)\//.test(pathname)) {
         return /\.(?:js|css|svg|png|webp|jpe?g|gif|ico|woff2?)$/i.test(pathname);
     }
@@ -122,7 +124,8 @@ function createLocalServer({ root, resolveApi, missingLoginConfiguration = [], l
                 res.setHeader("Allow", "GET, HEAD");
                 return fail(405, "method-not-allowed", "Phương thức không được hỗ trợ.");
             }
-            const publicPath = pathname === "/" ? "/index.html" : pathname;
+            const publicPath = pathname === "/" ? "/index.html"
+                : ["/birthday", "/birthday/"].includes(pathname) ? "/birthday/index.html" : pathname;
             if (!isPublicFile(publicPath)) return fail(404, "not-found", "Không tìm thấy nội dung.");
             let filename;
             try { filename = await fs.realpath(path.join(directory, publicPath)); }

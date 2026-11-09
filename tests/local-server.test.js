@@ -50,6 +50,21 @@ test("local server never serves credentials, internal source or configuration fi
     assert.equal(await head.text(), "");
 });
 
+test("local server serves the standalone birthday page without exposing project files", async (t) => {
+    const { base } = await start(t);
+    for (const route of ["/birthday", "/birthday/", "/birthday/index.html"]) {
+        const response = await fetch(`${base}${route}`);
+        assert.equal(response.status, 200, route);
+        assert.match(response.headers.get("content-type"), /text\/html/);
+        assert.match(await response.text(), /chị Yến Anh/i);
+    }
+    const script = await fetch(`${base}/birthday/birthday.js`);
+    assert.equal(script.status, 200);
+    assert.match(script.headers.get("content-type"), /javascript/);
+    assert.match(await script.text(), /addEventListener\("pointermove"/);
+    assert.equal((await fetch(`${base}/birthday/../lib/firebase-admin.js`)).status, 404);
+});
+
 test("bad JSON and oversized login payloads fail before invoking authentication", async (t) => {
     let called = 0;
     const { base } = await start(t, { resolveApi: () => async (req, res) => { called++; res.json({ ok: true }); } });
