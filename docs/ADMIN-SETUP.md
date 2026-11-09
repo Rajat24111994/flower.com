@@ -1,0 +1,90 @@
+# Admin account directory
+
+The admin dashboard lists Firebase Authentication accounts and their sign-in providers. Passwords are never returned by Firebase Authentication's user-list API and are not shown. The admin and Owner APIs use Vercel Functions with the Firebase Admin SDK; they do not require Firebase Cloud Functions or a Firebase Blaze upgrade.
+
+Email/password sign-in is handled by Firebase Authentication. The browser's `loggedUser` snapshot contains profile fields only; the application does not write passwords to browser storage or Firestore.
+
+## Deployment target
+
+Deploy the `flower.com` directory as the Vercel project root to use the admin account list and Owner role-management page. The `api/` directory contains only request handlers; shared Firebase Admin code is in `lib/` so it is bundled as a library, not exposed as another API route.
+
+For local testing, run Vercel CLI from `flower.com` with `vercel dev` after linking the project and configuring the required environment variables. A plain static HTTP server can serve the pages but cannot run `/api/admin/users` or `/api/owner/users`.
+
+For local Node.js scripts, the npm scripts load `flower.com/.env` when present. Copy `.env.example` there only if the repository is outside any synced folder, and fill only local development values; the file contains plain-text values. In synced folders, use process-scoped environment variables and Google Application Default Credentials instead. `.env` is ignored by Git and must never be committed, synced, or shared. Do not put production credentials or backup passphrases in it. Use Vercel Environment Variables and GitHub Actions secrets for deployed services.
+
+The Firebase Web SDK settings in `js/core/firebase-config.js` (including its API key) are public client configuration, not server credentials. Never put a service-account key, VNPay hash secret, backup passphrase, or cron secret in browser code. Restrict the Firebase API key in Google Cloud and rely on Firebase Authentication and Firestore Security Rules for access control.
+
+## One-time setup
+
+1. In Firebase Console, enable the sign-in providers required by the shop and create the admin account in **Authentication → Users**.
+2. Add the Vercel production hostname under **Authentication → Settings → Authorized domains**.
+3. In Google Cloud Console for the same project, create a service account with the **Firebase Authentication Admin** and **Cloud Datastore User** roles. The first role supports account administration; the second lets the order lookup API read Firestore. Create a JSON key and store it only as a Vercel environment variable:
+
+   - Open Vercel → project `flower-com` → **Settings → Environment Variables**.
+   - Add `FIREBASE_SERVICE_ACCOUNT_JSON` with the entire contents of the service-account JSON file. Select **Production** (and Preview too if preview deployments should have access).
+   - Add `FIREBASE_PROJECT_ID` with `web-ban-hoa-9fe0b`.
+   - Never paste the key into source code, commit it, or send it in chat. Restrict/delete the key if it is accidentally exposed.
+
+4. Redeploy the Vercel project after saving those variables. Its Root Directory must remain `flower.com`; the APIs are at `/api/admin/users` and `/api/owner/users`.
+5. Bootstrap the first Owner for the existing Firebase user from a trusted local terminal. Install Google Cloud CLI if needed, then authenticate Application Default Credentials as a project administrator:
+
+   ```powershell
+   gcloud auth application-default login
+   npm install
+   $env:OWNER_EMAIL = "owner@example.com"
+   npm run set-owner
+   Remove-Item Env:OWNER_EMAIL
+   ```
+
+   Run these commands from the `flower.com` directory. The script preserves existing custom claims, revokes the user's refresh tokens, and does not require downloading a service-account key. To identify the account by UID instead, set `OWNER_UID` and leave `OWNER_EMAIL` unset. The account must sign in again.
+6. Deploy the Vercel project. The Owner page is `/owner.html`; it can grant or remove `admin` access, but cannot create or modify Owner accounts. Use the trusted bootstrap process above for Owner changes.
+
+## Admin list in Firestore (`adminRoles`)
+
+Firestore rules accept an admin only when the ID token has `admin: true` **and** the document
+`adminRoles/{uid}` exists. The Owner page creates or deletes that document together with the
+claim, so removing an admin cuts their Firestore access immediately instead of after their ID
+token expires (up to one hour). Clients can neither read nor write `adminRoles`.
+
+When upgrading an existing deployment, keep this order so current admins keep access:
+
+1. Deploy the site (Vercel) so the Owner API and scripts know about `adminRoles`.
+2. From a trusted terminal, create the documents for existing admins and Owners:
+
+   ```sh
+   cd flower.com
+   npm run sync-admin-roles
+   ```
+
+3. Deploy the rules and indexes: `firebase deploy --only firestore:rules,firestore:indexes`.
+
+`npm run set-admin` and `npm run set-owner` also write the document.
+
+## Roles and access
+
+The admin page and Vercel admin APIs require both the Firebase ID token's `admin: true` custom claim and the matching `adminRoles/{uid}` document. Owner accounts have both `role: "owner"` and `admin: true`; the separate Owner API requires `role: "owner"` and verifies token revocation. The Owner page can grant or remove admin access, and each role change revokes the target user's refresh tokens. It does not allow creating Owners or changing the signed-in Owner's role. Admin account listing is paginated in batches of 100.
+
+Do not share one Owner login among a group. Bootstrap one trusted Owner, then let that Owner grant `admin` to each teammate's individual Firebase account.
+
+## Configure delivery areas and fees
+
+After deploying the current site, sign in at `/admin.html` with an Owner or Admin account and open **Giao hàng**. Add only province/city and district names that the shop has confirmed it serves; this project intentionally does not seed an unverified area list or rate table. Each entry starts with a fee of **0 ₫** and can be edited, paused, or removed. Fees are whole VND amounts.
+
+There are no delivery areas preconfigured. Until at least one enabled area is added, checkout explains that setup is incomplete and customers cannot submit orders. The storefront lists only enabled areas. The `/api/delivery-zones` endpoint exposes those configured names and fees to checkout, while changes require a Firebase ID token with the `admin: true` claim. `/api/orders` independently reads the zone and fee from Firestore for quotes and verifies them again when creating an order; a browser-supplied fee is never authoritative. No additional Vercel environment variable is required beyond the Firebase Admin configuration above.
+
+## Expire unpaid reservations on Vercel Hobby
+
+QR reservations expire after 30 minutes and VNPay reservations after 15 minutes. Vercel Hobby cron jobs can run only once per day, so the daily Vercel cron remains a fallback while the repository workflow `.github/workflows/expire-orders.yml` calls the authenticated cleanup API every 15 minutes. Checkout, order creation, and the admin dashboard also run cleanup opportunistically.
+
+Configure both hosting services before relying on scheduled cleanup:
+
+1. In Vercel **Settings → Environment Variables**, set `CRON_SECRET` to a long random value for Production (and Preview if needed). Keep it private.
+2. In GitHub **Settings → Secrets and variables → Actions**, add the repository secret `CRON_SECRET` with the exact same value.
+3. Add the Actions repository variable `FLOWER_APP_URL` with the production origin, for example `https://your-store.vercel.app` (no path required).
+4. Run **Actions → Expire unpaid orders → Run workflow** once and confirm it succeeds. Scheduled runs can be delayed during GitHub Actions load; the workflow retries transient HTTP failures twice.
+
+The endpoint rejects requests without the matching bearer secret. Do not put the secret in the workflow file, a URL, or a committed environment file. If the GitHub workflow is not configured, Hobby's daily cron is not frequent enough to reliably release 15–30-minute holds on time.
+
+## QR payment reconciliation audit
+
+Admins must enter the bank transaction reference and confirm the exact order total when reconciling QR or late payments. The server verifies the current admin role and order state, then writes both the payment update and an `orderPaymentAudit` record atomically. Browser Firestore writes cannot set payment verification fields or read/write audit records. Keep the Firebase Admin service-account environment variable server-side; never expose it to browser code.

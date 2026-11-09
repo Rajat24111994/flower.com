@@ -1,0 +1,183 @@
+@import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap");
+
+:root {
+    --ink: #273a32;
+    --muted: #718078;
+    --rose: #a84e68;
+    --rose-dark: #853c53;
+    --line: #e9e8df;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    min-height: 100vh;
+    margin: 0;
+    padding: 36px 0 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background:
+        radial-gradient(ellipse at 9% 12%, rgba(226, 190, 177, 0.32), transparent 34%),
+        radial-gradient(ellipse at 94% 88%, rgba(193, 210, 191, 0.4), transparent 34%),
+        #f5f3ec;
+    color: var(--ink);
+    font-family: "DM Sans", "Segoe UI", sans-serif;
+}
+
+.account-shell {
+    width: min(calc(100% - 36px), 620px);
+    margin: auto;
+    flex: 0 0 auto;
+}
+
+.brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0 0 18px 6px;
+    color: var(--ink);
+    font-family: "Playfair Display", "Segoe UI", Arial, serif;
+    font-size: 23px;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.brand span,
+.account-icon {
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    background: #ead5cd;
+    color: var(--rose-dark);
+}
+
+.brand span {
+    width: 36px;
+    height: 36px;
+    font-size: 22px;
+}
+
+.account-card {
+    padding: clamp(26px, 6vw, 48px);
+    border: 1px solid rgba(255, 255, 255, 0.8);
+    border-radius: 24px;
+    background: #fffefa;
+    box-shadow: 0 28px 80px rgba(39, 58, 50, 0.14);
+}
+
+.account-icon {
+    width: 54px;
+    height: 54px;
+    margin-bottom: 20px;
+    font-size: 30px;
+}
+
+.eyebrow {
+    margin: 0 0 8px;
+    color: var(--rose);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+}
+
+h1 {
+    margin: 0;
+    font-family: "Playfair Display", "Segoe UI", Arial, serif;
+    font-size: clamp(32px, 6vw, 42px);
+    letter-spacing: -0.04em;
+}
+
+.intro {
+    margin: 10px 0 24px;
+    color: var(--muted);
+    font-size: 14px;
+}
+
+.account-details {
+    margin: 0;
+    border-top: 1px solid var(--line);
+}
+
+.account-details div {
+    display: grid;
+    grid-template-columns: minmax(120px, 0.8fr) 1.5fr;
+    gap: 16px;
+    padding: 15px 0;
+    border-bottom: 1px solid var(--line);
+}
+
+.account-details dt {
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.account-details dd {
+    margin: 0;
+    overflow-wrap: anywhere;
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.account-message {
+    min-height: 18px;
+    margin: 14px 0;
+    color: #b4233b;
+    font-size: 13px;
+}
+
+.account-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.shop-link,
+#logout-button {
+    min-height: 44px;
+    padding: 12px 18px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    text-align: center;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.shop-link {
+    background: #fff;
+    color: var(--ink);
+}
+
+#logout-button {
+    border-color: transparent;
+    background: linear-gradient(135deg, var(--rose), var(--rose-dark));
+    color: white;
+}
+
+@media (max-width: 420px) {
+    .account-details div {
+        grid-template-columns: 1fr;
+        gap: 5px;
+    }
+}
+
+[hidden] { display: none !important; }
+#local-security { margin-top: 28px; padding-top: 12px; border-top: 1px solid var(--line); }
+#local-security p { font-size: 13px; line-height: 1.6; color: var(--muted); }
+#security-form label { display: block; margin-bottom: 7px; font-size: 13px; font-weight: 600; }
+#security-form input { display: block; width: 100%; min-height: 46px; padding: 10px 12px; margin-bottom: 16px; border: 1px solid var(--line); border-radius: 9px; font: inherit; font-size: 14px; }
+#security-form input:focus { outline: 2px solid var(--rose); outline-offset: 2px; }
+#security-form fieldset { min-width: 0; padding: 12px 0; border: 0; }
+#security-submit { width: 100%; min-height: 46px; border: 0; border-radius: 9px; background: var(--rose-dark); color: white; font: inherit; cursor: pointer; }
+#security-submit:disabled { opacity: .65; cursor: wait; }
+#security-message { color: #b4233b !important; min-height: 18px; }
+#security-message.status-success { color: #39714d !important; }
+.security-recovery-link { display: inline-block; font-size: 13px; color: var(--rose-dark); margin: 16px 0; }
+body:has(form:focus-within) .contact-dock { display: none; }
+.account-details[hidden], #local-security[hidden] { display: none; }

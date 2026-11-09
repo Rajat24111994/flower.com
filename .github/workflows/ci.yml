@@ -1,0 +1,136 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit:
+    name: Unit test + coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: flower.com/package-lock.json
+      - name: Cài thư viện
+        working-directory: flower.com
+        run: npm ci
+      - name: Kiểm tra cú pháp các file JavaScript
+        working-directory: flower.com
+        run: |
+          for file in $(git ls-files '*.js' | grep -v '^node_modules/'); do
+            if head -c 200 "$file" | grep -qE '^(import|export) '; then node --check --input-type=module < "$file"; else node --check "$file"; fi
+          done
+      - name: Chạy unit test (có coverage)
+        working-directory: flower.com
+        run: npm run test:coverage
+      - name: Báo cáo coverage
+        if: always()
+        run: |
+          if [ -f flower.com/coverage/lcov.info ]; then
+            node tests/coverage-summary.js flower.com/coverage/lcov.info "Coverage – unit test" --min-lines=50 >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-unit
+          path: flower.com/coverage/lcov.info
+          if-no-files-found: ignore
+
+  integration:
+    name: Feature, system và security test (Firebase Emulator)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            flower.com/package-lock.json
+            tests/package-lock.json
+      - name: Cache Firebase Emulator
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/firebase/emulators
+          key: firebase-emulators-${{ hashFiles('tests/package-lock.json') }}
+      - name: Cài thư viện
+        run: |
+          npm ci --prefix flower.com
+          npm ci --prefix tests
+      - name: Chạy test trên Firebase Emulator (có coverage)
+        working-directory: tests
+        run: npm run integration
+      - name: Báo cáo coverage
+        if: always()
+        run: |
+          if [ -f tests/coverage/lcov.info ]; then
+            node tests/coverage-summary.js tests/coverage/lcov.info "Coverage – test tích hợp (API)" >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-integration
+          path: tests/coverage/lcov.info
+          if-no-files-found: ignore
+
+  browser-e2e:
+    name: Luồng mua hàng trên trình duyệt
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: flower.com/package-lock.json
+      - name: Cài thư viện
+        working-directory: flower.com
+        run: npm ci
+      - name: Cài Chromium
+        working-directory: flower.com
+        run: npx playwright install --with-deps chromium
+      - name: Chạy tài khoản tự tạo trên máy
+        working-directory: flower.com
+        run: npm run test:e2e:local
+        env:
+          CI: true
+      - name: Chạy Playwright trên Firebase Emulator
+        working-directory: flower.com
+        run: npm run test:e2e:emulator
+        env:
+          CI: true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: browser-test-artifacts
+          path: |
+            test-results/
+            test-results-local/
+            flower.com/playwright-report/
+            flower.com/playwright-report-local/
+          if-no-files-found: ignore
+          retention-days: 14

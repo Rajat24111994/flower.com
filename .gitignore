@@ -1,0 +1,38 @@
+# Dependencies
+node_modules/
+.tools/
+
+# Environment variables and Vercel local config
+.env*
+!.env.example
+.vercel/
+
+# Firebase service-account credentials
+serviceAccountKey.json
+*.service-account.json
+*-firebase-adminsdk-*.json
+
+# Firestore backups: never commit them, even encrypted (customer data)
+backups/
+*.json.enc
+
+# Test coverage reports
+coverage/
+test-results/
+test-results-local/
+playwright-report/
+playwright-report-local/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Editor and OS files
+.vscode/*
+!.vscode/settings.json
+.idea/
+.DS_Store
+Thumbs.db
+
+# Bản sao repo khi tải ZIP từ GitHub rồi giải nén vào đây
+flower.com-main/

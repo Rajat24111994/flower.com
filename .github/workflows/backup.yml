@@ -1,0 +1,59 @@
+name: Sao lưu Firestore
+
+# Free daily backup (no paid Blaze plan): exports Firestore, encrypts it with BACKUP_PASSPHRASE
+# and keeps it as a workflow artifact for 30 days. The repository is public, so the file is
+# always encrypted. Needs two repository secrets: FIREBASE_SERVICE_ACCOUNT_JSON (same value as on
+# Vercel) and BACKUP_PASSPHRASE (at least 12 characters, kept somewhere safe).
+on:
+  schedule:
+    - cron: "23 18 * * *" # 01:23 giờ Việt Nam
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: firestore-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Kiểm tra đã cài secret
+        env:
+          FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          missing=""
+          [ -n "$FIREBASE_SERVICE_ACCOUNT_JSON" ] || missing="$missing FIREBASE_SERVICE_ACCOUNT_JSON"
+          [ -n "$BACKUP_PASSPHRASE" ] || missing="$missing BACKUP_PASSPHRASE"
+          if [ -n "$missing" ]; then
+            echo "::error::Chưa cài secret:$missing. Vào Settings → Secrets and variables → Actions của repo để thêm (xem docs/BACKUP-RESTORE.md)."
+            exit 1
+          fi
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: flower.com/package-lock.json
+      - name: Cài thư viện
+        working-directory: flower.com
+        run: npm ci --omit=dev
+      - name: Sao lưu và mã hóa
+        working-directory: flower.com
+        env:
+          FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          stamp=$(date -u +%Y-%m-%dT%H-%M-%SZ)
+          npm run backup -- --out "backups/flowerflow-$stamp.json.enc" | tee backup-log.txt
+          { echo "### Sao lưu Firestore $stamp"; echo '```'; cat backup-log.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: firestore-backup-${{ github.run_id }}
+          path: flower.com/backups/*.json.enc
+          retention-days: 30
+          if-no-files-found: error
