@@ -3,6 +3,7 @@ const { validateReviewPhotos } = require("../lib/review-images");
 const { createHash, createHmac } = require("node:crypto");
 const { FieldValue, Timestamp } = require("firebase-admin/firestore");
 const { getAdminAuth, getAdminFirestore, sendError, verifyRequest } = require("../lib/firebase-admin");
+const { optionalCustomer, LOCAL_IDENTITY } = require("../lib/request-identity");
 // Same price reading as the shop pages (whole VND, old USD prices converted), so both agree.
 const { toVndPrice } = require("../js/catalog/product-store.js");
 const bouquetWrapping = require("../js/catalog/bouquet-wrapping.js");
@@ -10,7 +11,7 @@ const bouquetWrapping = require("../js/catalog/bouquet-wrapping.js");
 const MAX_QUANTITY_PER_PRODUCT = 50;
 const QR_RESERVATION_MS = 30 * 60 * 1000;
 const VNPAY_RESERVATION_MS = 15 * 60 * 1000;
-const COD_RESERVATION_MS = 24 * 60 * 60 * 1000;
+const COD_RESERVATION_MS = 30 * 60 * 1000;
 const ORDER_LOOKUP_WINDOW_MS = 10 * 60 * 1000;
 const ORDER_LOOKUP_MAX_ATTEMPTS = 20;
 const DELIVERY_TIME_WINDOWS = ["08:00–11:00", "11:00–14:00", "14:00–17:00", "17:00–20:00"];
@@ -692,10 +693,17 @@ async function quoteOrder(req, res) {
 }
 
 async function optionalAuthenticatedUser(req) {
-    const authorization = req.headers.authorization || "";
-    const match = authorization.match(/^Bearer\s+(.+)$/i);
-    if (!match) return null;
-    return getAdminAuth().verifyIdToken(match[1], true);
+    return optionalCustomer(req);
+}
+
+// Commit quotas atomically with stock. A repeated idempotency key does not consume a slot.
+function creationLimitRefs(db, req, user, phone) {
+    const ip = String(req.headers["x-forwarded-for"] || "").split(",")[0].trim();
+    const secret = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
+    if (!ip || ip.length > 64 || !secret) throw new Error("Trusted order source unavailable");
+    return [["ip", ip, 5], ["phone", normalizePhone(phone), 3], ...(user ? [["account", user.uid, 5]] : [])]
+        .map(([type, value, maximum]) => ({ maximum, ref: db.collection("orderCreationLimits").doc(
+            createHmac("sha256", secret).update(`${type}:${value}`).digest("hex")) }));
 }
 
 const MAX_ORDER_NOTE_LENGTH = 500;
@@ -715,6 +723,7 @@ async function createOrder(req, res) {
         const user = await optionalAuthenticatedUser(req);
         const db = getAdminFirestore();
         await releaseExpiredReservations(db);
+        const creationLimits = creationLimitRefs(db, req, user, checkout.phone);
         const idempotencyRef = db.collection("orderRequests").doc(checkout.idempotencyKey);
         const productRefs = checkout.items.map((item) => db.collection("products").doc(item.productId ?? item.id));
         const promotionsRef = db.collection("metadata").doc("activePromotions");
@@ -751,6 +760,19 @@ async function createOrder(req, res) {
                     wrappingFee: Number(previousData.wrappingFee) || 0,
                     total: previousData.total
                 };
+            }
+            const limitSnapshots = await transaction.getAll(...creationLimits.map(limit => limit.ref));
+            const limitUpdates = creationLimits.map((limit, index) => {
+                const record = limitSnapshots[index].data() || {};
+                const until = record.expiresAt?.toMillis?.() || 0;
+                const count = until > now.getTime() ? Number(record.count) || 0 : 0;
+                if (count >= limit.maximum) throw Object.assign(new Error("Bạn đã gửi nhiều đơn trong thời gian ngắn. Vui lòng thử lại sau."), {
+                    code: "order-rate-limited", retryAfter: Math.max(1, Math.ceil((until - now.getTime()) / 1000))
+                });
+                return { ref: limit.ref, count: count + 1, expiresAt: Timestamp.fromMillis(until > now.getTime() ? until : now.getTime() + 15 * 60 * 1000) };
+            });
+            if (!user && checkout.items.some(item => bouquet.demand(checkout.items, item.productId ?? item.id) > 5)) {
+                throw Object.assign(new Error("Khách chưa đăng nhập đặt tối đa 5 sản phẩm mỗi loại trong một đơn. Hãy đăng nhập để đặt số lượng lớn hơn."), { code: "guest-quantity-limit" });
             }
             const scheduleError = deliveryScheduleError(checkout.deliveryDate, checkout.deliveryTime);
             if (scheduleError) {
@@ -891,6 +913,7 @@ async function createOrder(req, res) {
             };
 
             const reservedProducts = new Set();
+            for (const limit of limitUpdates) transaction.set(limit.ref, { count: limit.count, expiresAt: limit.expiresAt });
             products.forEach((item) => {
                 const productId = item.productId ?? item.id;
                 if (reservedProducts.has(productId)) return;
@@ -918,6 +941,8 @@ async function createOrder(req, res) {
         if (String(error.code || "").startsWith("auth/")) {
             return sendError(res, 401, "unauthenticated", "Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại rồi đặt hàng.");
         }
+        if (error.code === "order-rate-limited") { res.setHeader("Retry-After", String(error.retryAfter)); return sendError(res, 429, error.code, error.message); }
+        if (error.code === "guest-quantity-limit") return sendError(res, 400, error.code, error.message);
         if (["invalid-checkout", "invalid-delivery-schedule", "invalid-promotion", "insufficient-stock", "product-unavailable", "price-changed", "idempotency-conflict", "delivery-zone-unavailable", "invalid-custom-bouquet", "bouquet-quantity-limit", "bouquet-wrapping-unavailable"].includes(error.code)) {
             const status = ["invalid-checkout", "invalid-delivery-schedule"].includes(error.code) ? 400 : 409;
             return sendError(res, status, error.code, error.message);
@@ -1059,8 +1084,8 @@ async function lookupOrder(req, res) {
 
         const authorization = String(req.headers.authorization || "").trim();
         let user = null;
-        if (authorization) {
-            if (!/^Bearer\s+\S+$/i.test(authorization)) {
+        if (authorization || req[LOCAL_IDENTITY]) {
+            if (authorization && !/^Bearer\s+\S+$/i.test(authorization)) {
                 return sendError(res, 401, "unauthenticated", "Phiên đăng nhập không hợp lệ.");
             }
             try {
@@ -1209,6 +1234,19 @@ async function submitReview(req, res) {
     }
 }
 
+async function accountOrders(req, res) {
+    try {
+        const user = await optionalAuthenticatedUser(req);
+        if (!user) return sendError(res, 401, "unauthenticated", "Đăng nhập để xem đơn hàng.");
+        const snapshot = await getAdminFirestore().collection("orders").where("uid", "==", user.uid)
+            .orderBy("createdAt", "desc").limit(100).get();
+        return res.status(200).json({ accountUid: user.uid, orders: snapshot.docs.map(doc => accountTrackingOrder(doc.id, doc.data())) });
+    } catch (error) {
+        if (String(error.code || "").startsWith("auth/")) return sendError(res, 401, "unauthenticated", "Phiên đăng nhập hết hạn.");
+        return sendError(res, 503, "order-service-unavailable", "Chưa thể tải danh sách đơn hàng.");
+    }
+}
+
 module.exports = async function handler(req, res) {
     res.setHeader("Cache-Control", "no-store");
     if (req.method === "POST") {
@@ -1227,17 +1265,14 @@ module.exports = async function handler(req, res) {
     }
 
     if (req.query?.action === "payment-audit") return getQrPaymentAudit(req, res);
+    if (req.query?.action === "mine") return accountOrders(req, res);
 
     if (req.query?.action === "expire") {
         const match = String(req.headers.authorization || "").match(/^Bearer\s+(.+)$/i);
         let authorized = Boolean(process.env.CRON_SECRET && match?.[1] === process.env.CRON_SECRET);
         if (!authorized && match?.[1]) {
-            try {
-                const claims = await getAdminAuth().verifyIdToken(match[1], true);
-                authorized = claims.admin === true;
-            } catch (error) {
-                console.error("Reservation cleanup authentication failed:", error.code || "unknown");
-            }
+            if (!await authorizeOrderAdmin(req, res)) return;
+            authorized = true;
         }
         if (!authorized) return sendError(res, 401, "unauthenticated", "Quyền dọn đơn hết hạn không hợp lệ.");
         try {

@@ -19,7 +19,9 @@ backups/
 # Test coverage reports
 coverage/
 test-results/
+test-results-local/
 playwright-report/
+playwright-report-local/
 
 # Logs
 *.log

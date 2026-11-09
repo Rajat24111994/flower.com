@@ -166,3 +166,17 @@ h1 {
         gap: 5px;
     }
 }
+
+[hidden] { display: none !important; }
+#local-security { margin-top: 28px; padding-top: 12px; border-top: 1px solid var(--line); }
+#local-security p { font-size: 13px; line-height: 1.6; color: var(--muted); }
+#security-form label { display: block; margin-bottom: 7px; font-size: 13px; font-weight: 600; }
+#security-form input { display: block; width: 100%; min-height: 46px; padding: 10px 12px; margin-bottom: 16px; border: 1px solid var(--line); border-radius: 9px; font: inherit; font-size: 14px; }
+#security-form input:focus { outline: 2px solid var(--rose); outline-offset: 2px; }
+#security-form fieldset { min-width: 0; padding: 12px 0; border: 0; }
+#security-submit { width: 100%; min-height: 46px; border: 0; border-radius: 9px; background: var(--rose-dark); color: white; font: inherit; cursor: pointer; }
+#security-submit:disabled { opacity: .65; cursor: wait; }
+#security-message { color: #b4233b !important; min-height: 18px; }
+#security-message.status-success { color: #39714d !important; }
+.security-recovery-link { display: inline-block; font-size: 13px; color: var(--rose-dark); margin: 16px 0; }
+body:has(form:focus-within) .contact-dock { display: none; }

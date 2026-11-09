@@ -49,6 +49,7 @@ const catalog = Array.from({ length: 10 }, (_, index) => {
 });
 
 const handlers = {
+    login: require(path.join(ROOT, "api/login.js")),
     orders: require(path.join(ROOT, "api/orders.js")),
     payments: require(path.join(ROOT, "api/payments.js")),
     vnpayIpn: require(path.join(ROOT, "api/vnpay-ipn.js")),

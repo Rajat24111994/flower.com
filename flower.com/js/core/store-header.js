@@ -198,6 +198,28 @@ if (accountNav) {
 // (password reset, account disabled or deleted, token revoked) clear the copy, so pages stop
 // showing the account and new orders are not silently placed as a guest.
 async function verifyStoredSession() {
+    if (["localhost", "127.0.0.1"].includes(window.location.hostname) && window.FlowerAuthMode !== "firebase") {
+        const stored = getCurrentAccount();
+        try {
+            const response = await fetch("/api/local-auth/session", { credentials: "same-origin", cache: "no-store" });
+            if (response.status === 401) {
+                if (stored) expireStoredSession();
+                return;
+            }
+            if (!response.ok) return;
+            const { account } = await response.json();
+            if (account) {
+                FlowerSafeStorage.writeJson("loggedUser", account);
+                FlowerSafeStorage.syncShoppingOwner?.();
+                updateShoppingHeaderCounts();
+                const label = document.querySelector(".signin h5");
+                if (label) label.textContent = account.name || account.email;
+            }
+        } catch {
+            console.warn("Chưa kiểm tra được phiên tài khoản trên máy.");
+        }
+        return;
+    }
     if (!getCurrentAccount()) return;
     let auth;
     let app;
@@ -247,6 +269,10 @@ async function verifyStoredSession() {
         return;
     }
 
+    expireStoredSession();
+}
+
+function expireStoredSession() {
     try {
         FlowerSafeStorage.remove("loggedUser");
         FlowerSafeStorage.remove("loggedAdmin");

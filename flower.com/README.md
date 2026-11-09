@@ -31,7 +31,10 @@ flowchart LR
     Owner["owner.js"] -->|ID token| OwnerAPI["/api/owner/users"]
     AdminAPI --> FirebaseAdmin[Firebase Admin SDK]
     OwnerAPI --> FirebaseAdmin
-    Login["login.js"] <--> Auth[Firebase Authentication]
+    Login["login.js"] -->|Email và mật khẩu| LoginAPI["/api/login"]
+    LoginAPI <--> Auth[Firebase Authentication]
+    LoginAPI <--> LoginProtection[(Firestore loginProtection<br/>theo UID)]
+    Login <-->|Google / đổi custom token lấy phiên| Auth
     Product["product.js"] --> Reviews["review-store.js"] <--> FsReviews[(Cloud Firestore<br/>reviews)]
 ```
 
@@ -138,8 +141,9 @@ Triển khai: `firebase deploy --only firestore:rules,firestore:indexes`. Lệnh
 
 ## Xác thực
 
-- **Email/Password và Google** dùng Firebase Authentication. Tài khoản Google luôn được tạo với vai trò khách hàng.
-- Không có chế độ đăng nhập cục bộ. Khi Firebase Authentication chưa cấu hình hoặc không hoạt động, đăng ký/đăng nhập/khôi phục mật khẩu sẽ dừng và báo lỗi; mật khẩu không được lưu trong trình duyệt.
+- Khi chạy `npm run dev`, mặc định **tài khoản tự tạo trên máy**: tên có `@` nhưng không cần email thật, đăng ký/đăng nhập bằng SQLite và cookie phiên. Dùng PIN tự đặt gồm 4–6 chữ số để khôi phục mật khẩu; đổi PIN cần đầy đủ thông tin, mật khẩu và PIN cũ. Quên PIN phải trả lời đúng 3 câu hỏi tự đặt. Các bí mật được băm bằng scrypt. Xem [tài khoản local](docs/local-accounts.md).
+- Chế độ Firebase (`AUTH_MODE=firebase` khi chạy dev, hoặc bản Vercel hiện có) dùng **Email/Password và Google** qua Firebase Authentication. Tài khoản Google luôn được tạo với vai trò khách hàng; khi Firebase chưa sẵn sàng, chế độ này báo lỗi và không chuyển sang một cơ chế xác thực khác.
+- Đăng nhập mật khẩu đi qua `/api/login`, giới hạn theo tài khoản: sai 5 lần khóa 15 phút, sau đó mỗi lần thử sai tăng thời gian khóa lên 30/60/120/240 phút; lần sai thứ 10 bắt buộc hoàn tất đặt lại mật khẩu. Xem [cấu hình key Firebase bắt buộc và kiểm thử](docs/login-protection.md) trước khi triển khai.
 - **Quản trị:** trang `admin.html` kiểm tra claim `admin: true` trên ID token; API phía server kiểm tra lại claim này độc lập với giao diện.
 
 ## Rà soát quyền truy cập

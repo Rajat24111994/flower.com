@@ -14,7 +14,7 @@ test("local environment secrets are ignored and scripts load the local env file"
     assert.equal(localEnv.status, 0, "flower.com/.env must be ignored");
     assert.equal(envTemplate.status, 1, "flower.com/.env.example must remain trackable");
 
-    for (const script of ["set-admin", "set-owner", "sync-admin-roles", "setup-firestore", "smoke", "backup", "restore"]) {
+    for (const script of ["dev", "set-admin", "set-owner", "sync-admin-roles", "setup-firestore", "smoke", "backup", "restore"]) {
         assert.match(packageJson.scripts[script], /^node --env-file-if-exists=\.env /, `${script} must load local environment values`);
     }
 

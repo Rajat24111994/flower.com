@@ -85,7 +85,7 @@ FlowerFlow là website bán hoa gồm ba lớp:
 | Kiểm thử | `node:assert` có sẵn của Node.js, không cần thư viện ngoài |
 | Hosting | Vercel |
 
-Tài khoản email/mật khẩu được tạo, xác minh và đặt lại hoàn toàn qua Firebase Authentication; Firebase chịu trách nhiệm lưu mật khẩu dưới dạng băm phía máy chủ. Ứng dụng không ghi mật khẩu gốc vào Firestore hoặc bộ nhớ trình duyệt. Bản sao phiên `localStorage.loggedUser` chỉ chứa thông tin hồ sơ cần thiết, còn nhật ký lỗi xác thực chỉ ghi mã lỗi Firebase, không ghi đối tượng lỗi hoặc mật khẩu.
+Ở chế độ triển khai, Firebase Authentication quản lý mật khẩu và lưu giá trị băm phía máy chủ; ở chế độ local, máy chủ dùng scrypt với salt riêng và lưu vào SQLite. Cả hai chế độ đều không ghi mật khẩu gốc vào Firestore hoặc bộ nhớ trình duyệt. Bản sao phiên `localStorage.loggedUser` chỉ chứa hồ sơ cần thiết; nhật ký xác thực chỉ ghi mã lỗi đã lọc, không ghi đối tượng lỗi hay mật khẩu.
 
 ## Cấu trúc thư mục
 
@@ -124,25 +124,40 @@ Mô tả chi tiết kiến trúc và luồng dữ liệu nằm trong [`flower.co
 ### Yêu cầu
 
 - [Node.js](https://nodejs.org/) 24.x (để chạy kiểm thử và script quản trị)
-- Python 3 hoặc bất kỳ máy chủ HTTP tĩnh nào
-- (Tùy chọn) [Vercel CLI](https://vercel.com/docs/cli) để chạy các API quản trị ở máy cục bộ
+- Tài khoản tự tạo trên máy hoạt động ngay với Node.js, không cần Firebase hoặc email thật
+- (Tùy chọn) [Vercel CLI](https://vercel.com/docs/cli) nếu muốn dùng `vercel dev`
 
-### Chạy giao diện cửa hàng
+### Chạy giao diện và API trên máy cục bộ
 
 ```sh
 git clone https://github.com/longg5048/flower.com.git
 cd flower.com/flower.com
-python -m http.server 8000
+npm ci
+npm run dev
 ```
 
-Mở <http://localhost:8000> trong trình duyệt.
+Mở <http://127.0.0.1:3000> hoặc <http://127.0.0.1:3000/login.html> trong trình duyệt.
+Máy chủ Node phục vụ cả giao diện lẫn `/api/*` trên cùng địa chỉ, không cần bật Live Server.
+
+Mặc định `AUTH_MODE=local`: vào **Tạo tài khoản**, dùng tên có `@` như `ban@demo`, chọn mật khẩu
+và tự đặt PIN gồm 4–6 chữ số cùng 3 câu hỏi khôi phục PIN. Tên đăng nhập không cần là email có thật. Tài khoản, mật khẩu băm
+và trạng thái khóa được lưu trên máy trong `.tools/local-auth/accounts.sqlite`; không cần điền
+các key Firebase. Xem [tài khoản chạy thử](flower.com/docs/local-accounts.md).
+
+Nếu muốn dùng Firebase Authentication cho tài khoản, đặt `AUTH_MODE=firebase` rồi cấu hình
+theo [hướng dẫn Firebase](flower.com/docs/login-protection.md). Khởi động lại `npm run dev`
+sau khi sửa `.env`. File `.env` bị Git bỏ qua và máy chủ local không phục vụ file này hoặc mã
+nguồn nội bộ qua HTTP.
 
 > [!NOTE]
 > Không mở trực tiếp file HTML bằng `file://`: trình duyệt cần HTTP để gọi API và Firebase Authentication/Firestore.
 
-### Chạy kèm API quản trị
+Live Server/Python HTTP server chỉ phù hợp xem giao diện tĩnh. Các máy chủ đó không chạy API
+đăng nhập, đặt hàng hoặc quản trị; nút đăng nhập sẽ báo thiếu API thay vì bỏ qua giới hạn bảo mật.
 
-Máy chủ tĩnh không chạy được `/api/*`, bao gồm API tải ảnh sản phẩm `/api/product-images`. Để thử trang quản trị và tải ảnh đầy đủ:
+### Chạy bằng Vercel CLI (tùy chọn)
+
+Một lựa chọn khác để chạy các Vercel Functions ở máy cục bộ:
 
 ```sh
 cd flower.com
