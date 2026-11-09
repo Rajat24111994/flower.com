@@ -2,12 +2,8 @@ const bouquet = require("../js/catalog/bouquet-options.js");
 const { validateReviewPhotos } = require("../lib/review-images");
 const { createHash, createHmac } = require("node:crypto");
 const { FieldValue, Timestamp } = require("firebase-admin/firestore");
-<<<<<<< HEAD
-const { getAdminAuth, getAdminFirestore, sendError, verifyRequest, verifyAdminRequest } = require("../lib/firebase-admin");
-=======
 const { getAdminAuth, getAdminFirestore, sendError, verifyRequest } = require("../lib/firebase-admin");
 const { optionalCustomer, LOCAL_IDENTITY } = require("../lib/request-identity");
->>>>>>> 33d0d4bc05c87c9da76a7de6deb458d537ddddd4
 // Same price reading as the shop pages (whole VND, old USD prices converted), so both agree.
 const { toVndPrice } = require("../js/catalog/product-store.js");
 const bouquetWrapping = require("../js/catalog/bouquet-wrapping.js");
@@ -1275,19 +1271,8 @@ module.exports = async function handler(req, res) {
         const match = String(req.headers.authorization || "").match(/^Bearer\s+(.+)$/i);
         let authorized = Boolean(process.env.CRON_SECRET && match?.[1] === process.env.CRON_SECRET);
         if (!authorized && match?.[1]) {
-<<<<<<< HEAD
-            try {
-                const claims = await verifyAdminRequest(req, res, getAdminAuth(), getAdminFirestore());
-                if (!claims) return;
-                authorized = true;
-            } catch (error) {
-                console.error("Reservation cleanup authentication failed:", error.code || "unknown");
-                return sendError(res, 503, "order-service-unavailable", "Chưa thể xác minh quyền dọn đơn hết hạn.");
-            }
-=======
             if (!await authorizeOrderAdmin(req, res)) return;
             authorized = true;
->>>>>>> 33d0d4bc05c87c9da76a7de6deb458d537ddddd4
         }
         if (!authorized) return sendError(res, 401, "unauthenticated", "Quyền dọn đơn hết hạn không hợp lệ.");
         try {

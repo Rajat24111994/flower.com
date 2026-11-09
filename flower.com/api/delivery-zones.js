@@ -1,10 +1,6 @@
 const { FieldValue } = require("firebase-admin/firestore");
-<<<<<<< HEAD
 const { getAdminAuth, getAdminFirestore, sendError, verifyAdminRequest } = require("../lib/firebase-admin");
-=======
-const { getAdminAuth, getAdminFirestore, sendError, verifyRequest } = require("../lib/firebase-admin");
 const { addAdminAudit } = require("../lib/admin-audit");
->>>>>>> 33d0d4bc05c87c9da76a7de6deb458d537ddddd4
 
 const ZONES_DOCUMENT = "deliveryZones";
 

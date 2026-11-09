@@ -96,10 +96,6 @@ module.exports = async function handler(req, res) {
 
         await adminAuth.setCustomUserClaims(user.uid, claims);
         // Removing the adminRoles document cuts Firestore access immediately.
-<<<<<<< HEAD
-=======
-        const db = getAdminFirestore();
->>>>>>> 33d0d4bc05c87c9da76a7de6deb458d537ddddd4
         await syncAdminRole(db, user, body.action === "grant-admin");
         try {
             await adminAuth.revokeRefreshTokens(user.uid);
@@ -121,11 +117,7 @@ module.exports = async function handler(req, res) {
             console.error("Owner role changed but audit record failed:", error.code || error.message);
             return sendError(res, 500, "role-updated-audit-failed", "Đã đổi quyền và thu hồi phiên đăng nhập, nhưng chưa ghi được nhật ký kiểm tra.");
         }
-        console.info("Owner changed account role:", {
-            actorUid: decodedToken.uid,
-            targetUid: user.uid,
-            action: body.action
-        });
+        console.info("Owner changed account role.", { action: body.action });
         return res.status(200).json({
             uid: user.uid,
             role: body.action === "grant-admin" ? "admin" : "customer",

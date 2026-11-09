@@ -18,15 +18,26 @@ test("quản trị viên xem được danh sách tài khoản", async () => {
 test("chủ cửa hàng cấp và thu hồi quyền quản trị (kèm adminRoles cho Security Rules)", async () => {
     const owner = await h.createUser("owner");
     const staff = await h.createUser();
-    const grant = await h.callApi("ownerUsers", { token: owner.token, body: { action: "grant-admin", uid: staff.uid } });
-    assert.equal(grant.status, 200, JSON.stringify(grant.body));
-    assert.equal((await h.auth().getUser(staff.uid)).customClaims.admin, true);
-    assert.ok((await h.db().doc(`adminRoles/${staff.uid}`).get()).exists);
+    const logLines = [];
+    const originalInfo = console.info;
+    console.info = (...args) => logLines.push(args.join(" "));
+    let grant;
+    let remove;
+    try {
+        grant = await h.callApi("ownerUsers", { token: owner.token, body: { action: "grant-admin", uid: staff.uid } });
+        assert.equal(grant.status, 200, JSON.stringify(grant.body));
+        assert.equal((await h.auth().getUser(staff.uid)).customClaims.admin, true);
+        assert.ok((await h.db().doc(`adminRoles/${staff.uid}`).get()).exists);
 
-    const remove = await h.callApi("ownerUsers", { token: owner.token, body: { action: "remove-admin", uid: staff.uid } });
-    assert.equal(remove.status, 200);
-    assert.equal((await h.auth().getUser(staff.uid)).customClaims.admin, undefined);
-    assert.equal((await h.db().doc(`adminRoles/${staff.uid}`).get()).exists, false);
+        remove = await h.callApi("ownerUsers", { token: owner.token, body: { action: "remove-admin", uid: staff.uid } });
+        assert.equal(remove.status, 200);
+        assert.equal((await h.auth().getUser(staff.uid)).customClaims.admin, undefined);
+        assert.equal((await h.db().doc(`adminRoles/${staff.uid}`).get()).exists, false);
+    } finally {
+        console.info = originalInfo;
+    }
+    const consoleLog = logLines.join(" ");
+    for (const privateValue of [owner.uid, staff.uid, owner.token]) assert.equal(consoleLog.includes(privateValue), false);
 });
 
 test("chủ cửa hàng không tự hạ quyền mình và không đổi quyền chủ khác", async () => {
