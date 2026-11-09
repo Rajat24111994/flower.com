@@ -180,3 +180,4 @@ h1 {
 #security-message.status-success { color: #39714d !important; }
 .security-recovery-link { display: inline-block; font-size: 13px; color: var(--rose-dark); margin: 16px 0; }
 body:has(form:focus-within) .contact-dock { display: none; }
+.account-details[hidden], #local-security[hidden] { display: none; }

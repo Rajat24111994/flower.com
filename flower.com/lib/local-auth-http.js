@@ -1,4 +1,4 @@
-const COOKIE = "flower_local_session";
+const { sessionCookie, sessionCookies, setSessionCookie } = require("./local-session");
 const MESSAGES = {
     "invalid-credential": "Tên đăng nhập hoặc mật khẩu không chính xác.",
     "local-rate-limited": "Bạn đã gửi quá nhiều yêu cầu trong thời gian ngắn. Vui lòng chờ rồi thử lại.",
@@ -21,12 +21,11 @@ function createLocalAuthHandler(accounts) {
     const limit = require("./local-rate-limit").createLocalRateLimit();
     return async (action, req, res) => {
         res.setHeader("Cache-Control", "no-store");
-        const cookie = String(req.headers.cookie || "").split(";").map((part) => part.trim())
-            .find((part) => part.startsWith(`${COOKIE}=`))?.slice(COOKIE.length + 1);
-        const setSession = (token = "") => res.setHeader("Set-Cookie",
-            `${COOKIE}=${token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${token ? 43200 : 0}`);
+        const cookie = sessionCookie(req);
+        const setSession = (token = "") => setSessionCookie(req, res, token);
         const sendResult = (result) => {
             if (result.retryAfter) res.setHeader("Retry-After", String(result.retryAfter));
+            if (result.status === 401 && result.code === "session-required") setSession();
             if (result.status !== 200) return res.status(result.status).json({ code: result.code,
                 error: MESSAGES[result.code] || "Chưa xử lý được yêu cầu.",
                 ...(Number.isInteger(result.attemptsRemaining) ? { attemptsRemaining: result.attemptsRemaining } : {}),
@@ -50,27 +49,28 @@ function createLocalAuthHandler(accounts) {
                 const retryAfter = limit(`${req.socket?.remoteAddress || "local"}:${bucket}`, bucket === "register" ? 5 : 60, bucket === "register" ? 600000 : 900000);
                 if (retryAfter) return sendResult({ status: 429, code: "local-rate-limited", retryAfter });
             }
-            if (action === "register") return sendResult({ status: 200, ...await accounts.register(req.body) });
-            if (action === "login") return sendResult(await accounts.login(req.body));
+            if (action === "register") return sendResult({ status: 200, ...await accounts.register(req.body, sessionCookies(req)) });
+            if (action === "login") return sendResult(await accounts.login(req.body, sessionCookies(req)));
             if (action === "questions") return sendResult(await accounts.questions(req.body));
             if (action === "change-pin") return sendResult(await accounts.changePin(req.body, cookie));
             if (action === "setup-security") return sendResult(await accounts.setupSecurity(req.body, cookie));
             if (action === "recover-pin") {
-                const result = await accounts.recoverPin(req.body);
+                const result = await accounts.recoverPin(req.body, sessionCookies(req));
                 if (result.status === 200) setSession();
                 return sendResult(result);
             }
             if (action === "reset") {
-                const result = await accounts.reset(req.body);
+                const result = await accounts.reset(req.body, sessionCookies(req));
                 if (result.status === 200) setSession();
                 return sendResult(result);
             }
             if (action === "logout") {
-                await accounts.logout(cookie);
+                await accounts.logout(sessionCookies(req));
                 setSession();
                 return res.status(200).json({ ok: true });
             }
             const account = await accounts.session(cookie);
+            if (!account && cookie !== undefined) setSession();
             return account ? res.status(200).json({ account })
                 : res.status(401).json({ code: "session-required", error: "Vui lòng đăng nhập lại." });
         } catch (error) {
