@@ -30,13 +30,12 @@ async function mockFirebaseAuth(page) {
       export const getAuth = () => auth;
       export const setPersistence = async () => {};
       export const browserLocalPersistence = {};
-      export const signInWithEmailAndPassword = async (_auth, email, password) => {
-        const accounts = JSON.parse(localStorage.getItem("authFixtureAccounts") || "[]");
-        const user = accounts.find((item) => item.email === email && item.password === password);
-        if (!user) throw { code: "auth/invalid-credential" };
-        const { password: _password, ...safeUser } = user;
-        localStorage.setItem("firebaseFixtureUser", JSON.stringify(safeUser));
-        return { user: { ...safeUser, getIdTokenResult: async () => ({ claims: {} }) } };
+      export const signInWithCustomToken = async (_auth, token) => {
+        if (token !== "fixture-token") throw { code: "auth/invalid-custom-token" };
+        const user = JSON.parse(localStorage.getItem("authFixtureUser") || "null");
+        if (!user) throw { code: "auth/user-not-found" };
+        localStorage.setItem("firebaseFixtureUser", JSON.stringify(user));
+        return { user: { ...user, getIdTokenResult: async () => ({ claims: {} }) } };
       };
       export const createUserWithEmailAndPassword = async (_auth, email, password) => {
         const accounts = JSON.parse(localStorage.getItem("authFixtureAccounts") || "[]");
@@ -72,15 +71,31 @@ async function mockFirebaseAuth(page) {
 test("valid login succeeds while invalid email or password cannot create a session", async ({ page }) => {
   await mockFirebaseAuth(page);
   await page.addInitScript(() => {
-    localStorage.setItem("authFixtureAccounts", JSON.stringify([{
+    localStorage.setItem("authFixtureUser", JSON.stringify({
       uid: "customer-1",
       email: "customer@example.test",
-      password: "Flowerflow-Password-1!",
       displayName: "Khách hàng",
       phoneNumber: ""
-    }]));
+    }));
+  });
+  await page.route("**/api/login", async (route) => {
+    const { email, password } = route.request().postDataJSON();
+    if (email === "customer@example.test" && password === "Flowerflow-Password-1!") {
+      await route.fulfill({ json: { customToken: "fixture-token" } });
+      return;
+    }
+    await route.fulfill({ status: 401, json: {
+      code: "invalid-credential",
+      error: "Email hoặc mật khẩu không chính xác."
+    } });
   });
   await page.goto("/login.html");
+
+  await page.locator("#email1").fill("missing@example.test");
+  await page.locator("#password1").fill("Flowerflow-Password-1!");
+  await page.locator("#signIn .submit").click();
+  await expect(page.locator("#display")).toContainText("không chính xác");
+  expect(await page.evaluate(() => localStorage.getItem("loggedUser"))).toBeNull();
 
   await page.locator("#email1").fill("customer@example.test");
   await page.locator("#password1").fill("wrong-password");
@@ -102,14 +117,16 @@ test("registration validates names, email, password length and confirmation befo
 
   await page.locator("#name").fill("   ");
   await page.locator("#lastName").fill("Nguyễn");
-  await page.locator("#email").fill("new@example.test");
+  await page.locator("#email").fill("not-an-email");
   await page.locator("#password").fill("short");
   await page.locator("#checkpassword").fill("short");
   await page.locator("#signUp .submit").click();
+  await expect(page.locator("#email")).toHaveJSProperty("validity.typeMismatch", true);
   await expect(page.locator("#password")).toHaveJSProperty("validity.tooShort", true);
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem("authFixtureAccounts") || "[]"))).toHaveLength(0);
 
   await page.locator("#name").fill("An");
+  await page.locator("#email").fill("new@example.test");
   await page.locator("#password").fill("Flowerflow-Password-1!");
   await page.locator("#checkpassword").fill("different-password");
   await page.locator("#signUp .submit").click();
@@ -126,14 +143,16 @@ test("registration validates names, email, password length and confirmation befo
 test("logout ends the Firebase session and clears the browser account", async ({ page }) => {
   await mockFirebaseAuth(page);
   await page.addInitScript(() => {
-    const user = {
-      uid: "customer-logout",
-      email: "logout@example.test",
-      displayName: "Khách đăng xuất",
-      phoneNumber: ""
-    };
-    localStorage.setItem("firebaseFixtureUser", JSON.stringify(user));
-    localStorage.setItem("loggedUser", JSON.stringify({ ...user, role: "customer", authProvider: "password" }));
+    if (location.pathname === "/account.html") {
+      const user = {
+        uid: "customer-logout",
+        email: "logout@example.test",
+        displayName: "Khách đăng xuất",
+        phoneNumber: ""
+      };
+      localStorage.setItem("firebaseFixtureUser", JSON.stringify(user));
+      localStorage.setItem("loggedUser", JSON.stringify({ ...user, role: "customer", authProvider: "password" }));
+    }
   });
   await page.goto("/account.html");
   await expect(page.locator("#account-email")).toHaveText("logout@example.test");
