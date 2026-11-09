@@ -1,4 +1,4 @@
-import { firebaseConfig, isFirebaseConfigured } from "../core/firebase-config.js";
+import { firebaseConfig, isFirebaseConfigured, connectFirebaseEmulators } from "../core/firebase-config.js";
 import { logAuthError } from "./auth-logging.js";
 
 const form = document.getElementById("recovery-form");
@@ -34,6 +34,7 @@ async function sendFirebaseResetEmail(email) {
     ]);
     const app = appSdk.getApps().length ? appSdk.getApp() : appSdk.initializeApp(firebaseConfig);
     const auth = authSdk.getAuth(app);
+    connectFirebaseEmulators(app, auth, null, authSdk);
     await authSdk.sendPasswordResetEmail(auth, email);
 }
 

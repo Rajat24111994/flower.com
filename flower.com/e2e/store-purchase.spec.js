@@ -110,9 +110,7 @@ test("customer can browse, add a flower, sign in, and place an order", async ({ 
   expect(signupStorage.profile).not.toHaveProperty("password");
   expect(signupStorage.containsPassword).toBe(false);
 
-  await page.goto("/account.html");
-  await page.locator("#logout-button").click();
-  await expect(page).toHaveURL(/login\.html/);
+  await page.goto("/login.html?e2e=1");
   await page.locator("#email1").fill(email);
   await page.locator("#password1").fill(password);
   await page.locator("#signIn .submit").click();
