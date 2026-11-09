@@ -1,4 +1,4 @@
-import { firebaseConfig } from "../core/firebase-config.js";
+import { firebaseConfig, connectFirebaseEmulators } from "../core/firebase-config.js";
 import { logAuthError } from "./auth-logging.js";
 
 function getStoredAccount() {
@@ -21,6 +21,7 @@ async function restoreFirebaseAccount() {
     ]);
     const app = appSdk.getApps().length ? appSdk.getApp() : appSdk.initializeApp(firebaseConfig);
     const auth = authSdk.getAuth(app);
+    connectFirebaseEmulators(app, auth, null, authSdk);
     await auth.authStateReady();
 
     const user = auth.currentUser;
