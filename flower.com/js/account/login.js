@@ -1,6 +1,6 @@
 import { firebaseConfig, isFirebaseConfigured, connectFirebaseEmulators } from "../core/firebase-config.js";
 import { getFirebaseErrorMessage } from "./login-errors.js";
-import { isLocalAuth, localAuthRequest, persistLocalAccount } from "./local-auth-client.js";
+import { isLocalAuth, localAuthRequest, persistLocalAccount } from "./local-auth-client.js?v=2";
 import { addQuestionFields, readQuestions, restrictPinInputs } from "./recovery-security.js?v=3";
 
 const signUpButton = document.getElementById("signup");
@@ -384,4 +384,7 @@ document.getElementById("forgotPassword").addEventListener("click", (event) => {
 // Keep native form submission disabled until the async module and handlers are ready.
 signUp.querySelector('[type="submit"]').disabled = false;
 updateLoginWait();
+const sessionNotice = new URLSearchParams(window.location.search).get("session");
+if (sessionNotice === "expired") showMessage("Phiên đăng nhập đã hết hạn hoặc đã đăng xuất. Vui lòng đăng nhập lại.");
+if (sessionNotice === "unavailable") showMessage("Không thể xác minh phiên đăng nhập. Vui lòng kiểm tra kết nối và đăng nhập lại.");
 completeGoogleRedirect();
