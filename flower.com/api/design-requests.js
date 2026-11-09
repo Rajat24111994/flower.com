@@ -1,6 +1,6 @@
 const { createHash, randomBytes, timingSafeEqual } = require("node:crypto");
 const { FieldValue } = require("firebase-admin/firestore");
-const { getAdminAuth, getAdminFirestore, sendError, verifyRequest } = require("../lib/firebase-admin");
+const { getAdminAuth, getAdminFirestore, sendError, verifyRequest, verifyAdminRequest } = require("../lib/firebase-admin");
 const { internals: orderRules } = require("./orders");
 const bouquetWrapping = require("../js/catalog/bouquet-wrapping.js");
 
@@ -172,9 +172,8 @@ module.exports = async function handler(req, res) {
                 console.error("Design request authentication configuration error:", error.code || error.message);
                 return sendError(res, 503, "admin-api-not-configured", "API quản trị yêu cầu thiết kế chưa được thiết lập.");
             }
-            const claims = await verifyRequest(req, res, auth);
+            const claims = await verifyAdminRequest(req, res, auth, db);
             if (!claims) return;
-            if (claims.admin !== true) return sendError(res, 403, "permission-denied", "Bạn cần quyền quản trị để xem yêu cầu thiết kế.");
             try {
                 const snapshot = await db.collection("designRequests").orderBy("createdAt", "desc").limit(100).get();
                 return res.status(200).json({ requests: snapshot.docs.map((doc) => publicRequest(doc.id, doc.data())) });
@@ -379,9 +378,8 @@ module.exports = async function handler(req, res) {
             console.error("Design request authentication configuration error:", error.code || error.message);
             return sendError(res, 503, "admin-api-not-configured", "API quản trị yêu cầu thiết kế chưa được thiết lập.");
         }
-        const claims = await verifyRequest(req, res, auth);
+        const claims = await verifyAdminRequest(req, res, auth, db);
         if (!claims) return;
-        if (claims.admin !== true) return sendError(res, 403, "permission-denied", "Bạn cần quyền quản trị để xử lý yêu cầu thiết kế.");
         const id = String(req.body?.id || "");
         const status = String(req.body?.status || "");
         const quotedTotal = req.body?.quotedTotal === "" || req.body?.quotedTotal == null ? null : Number(req.body.quotedTotal);

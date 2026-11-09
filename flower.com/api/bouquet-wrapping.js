@@ -1,5 +1,5 @@
 const { FieldValue } = require("firebase-admin/firestore");
-const { getAdminAuth, getAdminFirestore, sendError, verifyRequest } = require("../lib/firebase-admin");
+const { getAdminAuth, getAdminFirestore, sendError, verifyAdminRequest } = require("../lib/firebase-admin");
 const { normalizeTiers } = require("../js/catalog/bouquet-wrapping.js");
 const { addAdminAudit } = require("../lib/admin-audit");
 
@@ -29,9 +29,8 @@ module.exports = async function handler(req, res) {
                 console.error("Bouquet wrapping authentication configuration error:", error.code || error.message);
                 return sendError(res, 503, "admin-api-not-configured", "API quản trị phí bó hoa chưa được thiết lập.");
             }
-            const claims = await verifyRequest(req, res, adminAuth);
+            const claims = await verifyAdminRequest(req, res, adminAuth, db);
             if (!claims) return;
-            if (claims.admin !== true) return sendError(res, 403, "permission-denied", "Bạn cần quyền quản trị để xem cấu hình phí bó hoa.");
         }
         try {
             const snapshot = await db.collection("metadata").doc(WRAPPING_DOCUMENT).get();
@@ -55,9 +54,8 @@ module.exports = async function handler(req, res) {
         console.error("Bouquet wrapping authentication configuration error:", error.code || error.message);
         return sendError(res, 503, "admin-api-not-configured", "API quản trị phí bó hoa chưa được thiết lập.");
     }
-    const claims = await verifyRequest(req, res, adminAuth);
+    const claims = await verifyAdminRequest(req, res, adminAuth, db);
     if (!claims) return;
-    if (claims.admin !== true) return sendError(res, 403, "permission-denied", "Bạn cần quyền quản trị để thay đổi phí bó hoa.");
     const tiers = normalizeTiers(req.body?.tiers);
     if (!tiers) {
         return sendError(res, 400, "invalid-bouquet-wrapping", "Bậc phí phải tăng dần theo số cành, mức cuối phải áp dụng đến 50 cành; phí là số nguyên VND không âm.");

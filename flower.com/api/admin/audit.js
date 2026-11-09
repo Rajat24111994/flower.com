@@ -1,4 +1,4 @@
-const { getAdminAuth, getAdminFirestore, sendError, verifyRequest } = require("../../lib/firebase-admin");
+const { getAdminAuth, getAdminFirestore, sendError, verifyAdminRequest } = require("../../lib/firebase-admin");
 
 module.exports = async function handler(req, res) {
     res.setHeader("Cache-Control", "private, no-store");
@@ -17,11 +17,8 @@ module.exports = async function handler(req, res) {
         return sendError(res, 503, "admin-api-not-configured", "API nhật ký quản trị chưa được cấu hình.");
     }
 
-    const actor = await verifyRequest(req, res, auth);
+    const actor = await verifyAdminRequest(req, res, auth, db);
     if (!actor) return;
-    if (actor.admin !== true) {
-        return sendError(res, 403, "permission-denied", "Bạn cần quyền quản trị để xem nhật ký thao tác.");
-    }
 
     try {
         const snapshot = await db.collection("adminAudit").orderBy("createdAt", "desc").limit(100).get();
