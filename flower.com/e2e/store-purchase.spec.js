@@ -121,7 +121,7 @@ test("customer can browse, add a flower, sign in, and place an order", async ({ 
   await page.goto("/forgot-password.html");
   await page.locator("#recovery-email").fill(email);
   await page.locator("#recovery-submit").click();
-  await expect(page.locator("#recovery-message")).toContainText("Đã gửi liên kết đặt lại mật khẩu");
+  await expect(page.locator("#recovery-message")).toContainText("Nếu email này đã được đăng ký");
 
   await page.goto("/checkout.html");
   // The page loads delivery zones and promotions first; filling the form before that is done
