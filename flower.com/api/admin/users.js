@@ -1,4 +1,4 @@
-const { getAdminAuth, sendError, verifyRequest } = require("../../lib/firebase-admin");
+const { getAdminAuth, getAdminFirestore, sendError, verifyAdminRequest } = require("../../lib/firebase-admin");
 
 module.exports = async function handler(req, res) {
     res.setHeader("Cache-Control", "no-store");
@@ -9,8 +9,10 @@ module.exports = async function handler(req, res) {
     }
 
     let adminAuth;
+    let db;
     try {
         adminAuth = getAdminAuth();
+        db = getAdminFirestore();
     } catch (error) {
         console.error("Firebase Admin API configuration error:", error.message);
         return sendError(
@@ -21,12 +23,8 @@ module.exports = async function handler(req, res) {
         );
     }
 
-    const decodedToken = await verifyRequest(req, res, adminAuth);
+    const decodedToken = await verifyAdminRequest(req, res, adminAuth, db);
     if (!decodedToken) return;
-
-    if (decodedToken.admin !== true) {
-        return sendError(res, 403, "permission-denied", "Bạn cần quyền quản trị viên để xem danh sách tài khoản.");
-    }
 
     const pageToken = req.body && req.body.pageToken;
     if (pageToken !== undefined && pageToken !== null &&

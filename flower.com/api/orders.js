@@ -2,7 +2,7 @@ const bouquet = require("../js/catalog/bouquet-options.js");
 const { validateReviewPhotos } = require("../lib/review-images");
 const { createHash, createHmac } = require("node:crypto");
 const { FieldValue, Timestamp } = require("firebase-admin/firestore");
-const { getAdminAuth, getAdminFirestore, sendError, verifyRequest } = require("../lib/firebase-admin");
+const { getAdminAuth, getAdminFirestore, sendError, verifyRequest, verifyAdminRequest } = require("../lib/firebase-admin");
 // Same price reading as the shop pages (whole VND, old USD prices converted), so both agree.
 const { toVndPrice } = require("../js/catalog/product-store.js");
 
@@ -1132,10 +1132,12 @@ module.exports = async function handler(req, res) {
         let authorized = Boolean(process.env.CRON_SECRET && match?.[1] === process.env.CRON_SECRET);
         if (!authorized && match?.[1]) {
             try {
-                const claims = await getAdminAuth().verifyIdToken(match[1], true);
-                authorized = claims.admin === true;
+                const claims = await verifyAdminRequest(req, res, getAdminAuth(), getAdminFirestore());
+                if (!claims) return;
+                authorized = true;
             } catch (error) {
                 console.error("Reservation cleanup authentication failed:", error.code || "unknown");
+                return sendError(res, 503, "order-service-unavailable", "Chưa thể xác minh quyền dọn đơn hết hạn.");
             }
         }
         if (!authorized) return sendError(res, 401, "unauthenticated", "Quyền dọn đơn hết hạn không hợp lệ.");

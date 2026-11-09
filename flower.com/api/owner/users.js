@@ -1,4 +1,4 @@
-const { getAdminAuth, getAdminFirestore, sendError, verifyRequest } = require("../../lib/firebase-admin");
+const { getAdminAuth, getAdminFirestore, sendError, verifyOwnerRequest } = require("../../lib/firebase-admin");
 const { syncAdminRole, syncAdminRoles } = require("../../lib/admin-roles");
 
 function getRole(user) {
@@ -15,8 +15,10 @@ module.exports = async function handler(req, res) {
     }
 
     let adminAuth;
+    let db;
     try {
         adminAuth = getAdminAuth();
+        db = getAdminFirestore();
     } catch (error) {
         console.error("Firebase Admin API configuration error:", error.message);
         return sendError(
@@ -27,12 +29,8 @@ module.exports = async function handler(req, res) {
         );
     }
 
-    const decodedToken = await verifyRequest(req, res, adminAuth);
+    const decodedToken = await verifyOwnerRequest(req, res, adminAuth, db);
     if (!decodedToken) return;
-
-    if (decodedToken.role !== "owner") {
-        return sendError(res, 403, "permission-denied", "Chỉ chủ cửa hàng mới được quản lý quyền tài khoản.");
-    }
 
     const body = req.body || {};
     if (body.action === "list") {
@@ -46,7 +44,7 @@ module.exports = async function handler(req, res) {
             // Backfill adminRoles for admins created before it existed (see lib/admin-roles.js).
             if (result.users.length) {
                 try {
-                    await syncAdminRoles(getAdminFirestore(), result.users);
+                    await syncAdminRoles(db, result.users);
                 } catch (error) {
                     console.error("adminRoles backfill failed:", error.code || error.message);
                 }
@@ -97,7 +95,7 @@ module.exports = async function handler(req, res) {
 
         await adminAuth.setCustomUserClaims(user.uid, claims);
         // Removing the adminRoles document cuts Firestore access immediately.
-        await syncAdminRole(getAdminFirestore(), user, body.action === "grant-admin");
+        await syncAdminRole(db, user, body.action === "grant-admin");
         try {
             await adminAuth.revokeRefreshTokens(user.uid);
         } catch (error) {

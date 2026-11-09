@@ -1,5 +1,5 @@
 const { FieldValue } = require("firebase-admin/firestore");
-const { getAdminAuth, getAdminFirestore, sendError, verifyRequest } = require("../lib/firebase-admin");
+const { getAdminAuth, getAdminFirestore, sendError, verifyAdminRequest } = require("../lib/firebase-admin");
 
 const ZONES_DOCUMENT = "deliveryZones";
 
@@ -49,9 +49,8 @@ module.exports = async function handler(req, res) {
                 console.error("Delivery-zone authentication configuration error:", error.code || error.message);
                 return sendError(res, 503, "admin-api-not-configured", "API quản trị dữ liệu giao hàng chưa được cấu hình.");
             }
-            const claims = await verifyRequest(req, res, adminAuth);
+            const claims = await verifyAdminRequest(req, res, adminAuth, db);
             if (!claims) return;
-            if (claims.admin !== true) return sendError(res, 403, "permission-denied", "Bạn cần quyền quản trị để quản lý khu vực giao hàng.");
         }
 
         try {
@@ -82,9 +81,8 @@ module.exports = async function handler(req, res) {
         console.error("Delivery-zone authentication configuration error:", error.code || error.message);
         return sendError(res, 503, "admin-api-not-configured", "API quản trị dữ liệu giao hàng chưa được cấu hình.");
     }
-    const claims = await verifyRequest(req, res, adminAuth);
+    const claims = await verifyAdminRequest(req, res, adminAuth, db);
     if (!claims) return;
-    if (claims.admin !== true) return sendError(res, 403, "permission-denied", "Bạn cần quyền quản trị để thay đổi khu vực giao hàng.");
 
     const action = req.body?.action;
     if (action !== "upsert" && action !== "delete") {

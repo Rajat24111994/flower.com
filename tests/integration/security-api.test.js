@@ -27,6 +27,34 @@ test("khách thường không dùng được API quản trị", async () => {
     assert.equal((await h.callApi("orders", { method: "GET", query: { action: "expire" }, token: customer.token })).status, 401);
 });
 
+test("claim quản trị đã thu hồi không thể dùng API nội bộ", async () => {
+    const admin = await h.createUser("admin");
+    await h.db().doc(`adminRoles/${admin.uid}`).delete();
+
+    assert.equal((await h.callApi("adminUsers", { token: admin.token, body: {} })).status, 403);
+    assert.equal((await h.callApi("deliveryZones", { method: "GET", query: { manage: "1" }, token: admin.token })).status, 403);
+    assert.equal((await h.callApi("deliveryZones", {
+        method: "POST",
+        token: admin.token,
+        body: { action: "delete", id: "unused" }
+    })).status, 403);
+    assert.equal((await h.callApi("orders", {
+        method: "GET",
+        query: { action: "expire" },
+        token: admin.token
+    })).status, 403);
+});
+
+test("chủ cửa hàng đã thu hồi không thể quản lý tài khoản", async () => {
+    const owner = await h.createUser("owner");
+    await h.db().doc(`adminRoles/${owner.uid}`).delete();
+
+    assert.equal((await h.callApi("ownerUsers", {
+        token: owner.token,
+        body: { action: "list" }
+    })).status, 403);
+});
+
 test("admin thường không cấp được quyền (chỉ chủ cửa hàng)", async () => {
     const admin = await h.createUser("admin");
     const customer = await h.createUser();
