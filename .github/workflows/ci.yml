@@ -28,6 +28,9 @@ jobs:
       - name: Cài thư viện
         working-directory: flower.com
         run: npm ci
+      - name: Build kiểm tra dữ liệu SEO và CSP
+        working-directory: flower.com
+        run: npm run build
       - name: Kiểm tra cú pháp các file JavaScript
         working-directory: flower.com
         run: |
