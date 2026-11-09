@@ -126,6 +126,11 @@ service cloud.firestore {
       allow delete: if isOwner();
     }
 
+    // Administrative audit entries are written through the trusted backend only.
+    match /adminAudit/{entryId} {
+      allow read, write: if false;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

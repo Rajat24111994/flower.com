@@ -1,5 +1,6 @@
 const { FieldValue } = require("firebase-admin/firestore");
 const { getAdminAuth, getAdminFirestore, sendError, verifyRequest } = require("../lib/firebase-admin");
+const { addAdminAudit } = require("../lib/admin-audit");
 
 const ZONES_DOCUMENT = "deliveryZones";
 
@@ -112,6 +113,9 @@ module.exports = async function handler(req, res) {
                 throw error;
             }
             transaction.set(reference, { zones: next, updatedAt: FieldValue.serverTimestamp() });
+            const before = current.find((item) => item.id === zoneId) || null;
+            const after = next.find((item) => item.id === zoneId) || null;
+            addAdminAudit(transaction, db, claims, `delivery-zone.${action}`, "delivery-zone", zoneId, { before, after });
             return next;
         });
         return res.status(200).json({
