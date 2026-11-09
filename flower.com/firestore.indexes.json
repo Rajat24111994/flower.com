@@ -1,6 +1,14 @@
 {
   "indexes": [
     {
+      "collectionGroup": "orders",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "uid", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "reviews",
       "queryScope": "COLLECTION",
       "fields": [
@@ -18,6 +26,7 @@
     }
   ],
   "fieldOverrides": [
+    { "collectionGroup": "orderCreationLimits", "fieldPath": "expiresAt", "ttl": true, "indexes": [] },
     { "collectionGroup": "reviewImages", "fieldPath": "bytes", "indexes": [] },
     {
       "collectionGroup": "orderLookupLimits",

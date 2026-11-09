@@ -1,6 +1,6 @@
 import { firebaseConfig, isFirebaseConfigured, connectFirebaseEmulators } from "../core/firebase-config.js";
 import { isLocalAuth, localAuthRequest, persistLocalAccount } from "./local-auth-client.js";
-import { addQuestionFields, readQuestions, restrictPinInputs } from "./recovery-security.js?v=2";
+import { addQuestionFields, readQuestions, restrictPinInputs } from "./recovery-security.js?v=3";
 
 const signUpButton = document.getElementById("signup");
 const signInButton = document.getElementById("signin");
@@ -398,4 +398,7 @@ document.getElementById("forgotPassword").addEventListener("click", (event) => {
     window.location.assign(recoveryUrl.href);
 });
 
+// Keep native form submission disabled until the async module and handlers are ready.
+signUp.querySelector('[type="submit"]').disabled = false;
+updateLoginWait();
 completeGoogleRedirect();

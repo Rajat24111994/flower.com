@@ -18,7 +18,7 @@ async function fixture(t) {
     const request = (action, body, cookie) => fetch(`${base}/api/local-auth/${action}`, {
         method: action === "session" ? "GET" : "POST",
         headers: { "Content-Type": "application/json", Origin: base, ...(cookie ? { Cookie: cookie } : {}) },
-        ...(body ? { body: JSON.stringify(body) } : {})
+        ...(body ? { body: JSON.stringify({ name: profile().name, phone: profile().phone, ...body }) } : {})
     });
     return { accounts, base, request, advance(ms) { time += ms; } };
 }

@@ -1,6 +1,6 @@
 import { firebaseConfig, isFirebaseConfigured, connectFirebaseEmulators } from "../core/firebase-config.js";
 import { isLocalAuth, localAuthRequest } from "./local-auth-client.js";
-import { recoveryError, restrictPinInputs } from "./recovery-security.js?v=2";
+import { recoveryError, restrictPinInputs } from "./recovery-security.js?v=3";
 
 const form = document.getElementById("recovery-form");
 const emailInput = document.getElementById("recovery-email");
@@ -43,12 +43,12 @@ async function sendFirebaseResetEmail(email) {
 if (isLocalAuth) {
     restrictPinInputs();
     document.getElementById("recovery-intro").textContent =
-        "Nhập tên đăng nhập và PIN của bạn để đặt mật khẩu mới. Không cần email thật.";
+        "Nhập tên đăng nhập, họ tên, số điện thoại đã đăng ký và PIN để đặt mật khẩu mới. Không cần email thật.";
     document.querySelector('label[for="recovery-email"]').textContent = "Tên đăng nhập";
     emailInput.placeholder = "Ví dụ ban@demo";
     emailInput.autocomplete = "username";
     document.getElementById("local-recovery-fields").hidden = false;
-    for (const id of ["recovery-pin", "recovery-new-password", "recovery-confirm-password"]) {
+    for (const id of ["recovery-name", "recovery-phone", "recovery-pin", "recovery-new-password", "recovery-confirm-password"]) {
         document.getElementById(id).required = true;
     }
     submitButton.textContent = "Đặt lại mật khẩu";
@@ -60,6 +60,16 @@ if (isLocalAuth) {
 const emailFromLogin = new URLSearchParams(window.location.search).get("email");
 if (emailFromLogin) {
     emailInput.value = emailFromLogin.trim().toLowerCase();
+}
+if (isLocalAuth) {
+    try {
+        const { account } = await localAuthRequest("session");
+        if (account && (!emailInput.value || account.email === emailInput.value)) {
+            emailInput.value = account.email;
+            for (const [id, value] of [["recovery-name", account.name], ["recovery-phone", account.phone],
+                ["pin-profile-name", account.name], ["pin-profile-phone", account.phone]]) document.getElementById(id).value = value || "";
+        }
+    } catch { /* A forgotten-password flow also works without a login session. */ }
 }
 
 form.addEventListener("submit", async (event) => {
@@ -82,7 +92,8 @@ form.addEventListener("submit", async (event) => {
         try {
             const legacy = document.getElementById("use-legacy-code").checked;
             await localAuthRequest("reset", {
-                email, newPassword, ...(legacy ? { recoveryCode: document.getElementById("recovery-code").value }
+                email, newPassword, name: document.getElementById("recovery-name").value, phone: document.getElementById("recovery-phone").value,
+                ...(legacy ? { recoveryCode: document.getElementById("recovery-code").value }
                     : { pin: document.getElementById("recovery-pin").value })
             });
             window.FlowerSafeStorage.remove("loggedUser");
@@ -157,12 +168,16 @@ if (isLocalAuth) {
         recoveryEmail = "";
         pinStatus("");
         pinEmail.value = emailInput.value;
+        document.getElementById("pin-profile-name").value = document.getElementById("recovery-name").value;
+        document.getElementById("pin-profile-phone").value = document.getElementById("recovery-phone").value;
         pinEmail.focus();
     });
     backButton.addEventListener("click", () => {
         pinSection.hidden = true;
         form.hidden = false;
         emailInput.value = pinEmail.value;
+        document.getElementById("recovery-name").value = document.getElementById("pin-profile-name").value;
+        document.getElementById("recovery-phone").value = document.getElementById("pin-profile-phone").value;
         pinForm.reset();
         emailInput.focus();
     });
@@ -180,7 +195,8 @@ if (isLocalAuth) {
         pinForm.reset();
         try {
             const email = pinEmail.value.trim().toLowerCase();
-            const result = await localAuthRequest("questions", { email });
+            const result = await localAuthRequest("questions", { email,
+                name: document.getElementById("pin-profile-name").value, phone: document.getElementById("pin-profile-phone").value });
             if (pinEmail.value.trim().toLowerCase() !== email) return;
             requiredMessage = result.pinResetReason === "pin-format-update-required" ? formatMessage : failedMessage;
             setMandatory(Boolean(result.pinResetRequired));
@@ -212,6 +228,8 @@ if (isLocalAuth) {
         pinForm.reset();
         recoveryEmail = "";
         pinEmail.value = email;
+        document.getElementById("pin-profile-name").value = document.getElementById("recovery-name").value;
+        document.getElementById("pin-profile-phone").value = document.getElementById("recovery-phone").value;
         setMandatory(true);
         requiredMessage = genericMessage;
         pinStatus(requiredMessage);
@@ -219,7 +237,8 @@ if (isLocalAuth) {
         url.searchParams.set("email", email);
         url.searchParams.set("recoverPin", "1");
         window.history.replaceState(null, "", url);
-        await loadQuestions();
+        if (document.getElementById("pin-profile-name").value && document.getElementById("pin-profile-phone").value) await loadQuestions();
+        else pinStatus("Nhập họ tên và số điện thoại đã đăng ký để xem câu hỏi và đặt PIN mới.");
     };
     pinForm.addEventListener("submit", async event => {
         event.preventDefault();
@@ -231,6 +250,7 @@ if (isLocalAuth) {
         questionsButton.disabled = true;
         try {
             await localAuthRequest("recover-pin", { email,
+                name: document.getElementById("pin-profile-name").value, phone: document.getElementById("pin-profile-phone").value,
                 answers: [1, 2, 3].map(index => document.getElementById(`pin-answer-${index}`).value),
                 newPin: document.getElementById("forgot-new-pin").value,
                 confirmPin: document.getElementById("forgot-confirm-pin").value });
@@ -250,7 +270,9 @@ if (isLocalAuth) {
         } catch (error) { pinStatus(recoveryError(error)); }
         finally { button.disabled = false; questionsButton.disabled = false; }
     });
+    for (const button of pinSection.querySelectorAll('button[type="submit"]')) button.disabled = false;
     if (emailInput.value && new URLSearchParams(window.location.search).get("recoverPin") === "1") {
         await openRequiredPinRecovery(emailInput.value);
     }
 }
+submitButton.disabled = false;

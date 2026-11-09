@@ -1,5 +1,21 @@
-import { test, expect } from "@playwright/test";
+import { test as base, expect } from "@playwright/test";
 import { randomUUID } from "node:crypto";
+import { createLocalAccountWorker } from "../lib/local-account-worker";
+import { createLocalServer } from "../lib/local-server";
+
+// Each test gets a real account worker and its own rate budgets/database.
+const test = base.extend({ baseURL: async ({}, use) => {
+  const accounts = createLocalAccountWorker();
+  const server = createLocalServer({ root: process.cwd(), localAccounts: accounts });
+  await new Promise(resolve => server.listen(0, "127.0.0.1", resolve));
+  try { await use(`http://127.0.0.1:${server.address().port}`); }
+  finally { await new Promise(resolve => { server.close(resolve); server.closeAllConnections(); }); await accounts.close(); }
+} });
+
+async function fillRecoveryProfile(page, input) {
+  await page.locator("#recovery-name").fill(input.name);
+  await page.locator("#recovery-phone").fill(input.phone);
+}
 
 const pin = "938405";
 const questions = [
@@ -83,6 +99,7 @@ test("five wrong passwords survive reload and a valid PIN resets the password lo
   await expect(submit).toBeDisabled();
   await page.locator("#forgotPassword").click();
   await expect(page.locator("#recovery-email")).toHaveValue(input.email);
+  await fillRecoveryProfile(page, input);
   await page.locator("#recovery-pin").fill("123456");
   await page.locator("#recovery-new-password").fill(newPassword);
   await page.locator("#recovery-confirm-password").fill(newPassword);
@@ -124,6 +141,7 @@ test("change PIN verifies full account information, current password and old PIN
   await expect(page.locator("#security-message")).toContainText("Đã đổi PIN");
   await expect(page.locator("#security-new-pin")).toHaveValue("");
   await page.goto(`/forgot-password.html?email=${encodeURIComponent(input.email)}`);
+  await fillRecoveryProfile(page, input);
   await page.locator("#recovery-new-password").fill("New-password");
   await page.locator("#recovery-confirm-password").fill("New-password");
   await page.locator("#recovery-pin").fill(input.pin);
@@ -139,6 +157,7 @@ test("forgotten PIN requires all three custom answers before a new PIN can reset
   await register(page, input);
   await page.request.post("/api/local-auth/logout");
   await page.goto(`/forgot-password.html?email=${encodeURIComponent(input.email)}`);
+  await fillRecoveryProfile(page, input);
   await page.locator("#forgot-pin").click();
   await expect(page.locator("#pin-email")).toHaveValue(input.email);
   await page.locator("#pin-questions-form button").click();

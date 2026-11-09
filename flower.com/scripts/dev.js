@@ -11,7 +11,7 @@ if (!Number.isInteger(port) || port < 1 || port > 65535) {
         console.error("AUTH_MODE phải là local hoặc firebase.");
         process.exit(1);
     }
-    const localAccounts = mode === "local" ? require("../lib/local-accounts").createLocalAccounts({
+    const localAccounts = mode === "local" ? require("../lib/local-account-worker").createLocalAccountWorker({
         filename: path.join(__dirname, "../.tools/local-auth/accounts.sqlite")
     }) : null;
     const missing = mode === "firebase" ? ["FIREBASE_SERVICE_ACCOUNT_JSON", "FIREBASE_AUTH_PUBLIC_API_KEY", "FIREBASE_AUTH_SERVER_API_KEY"]
@@ -19,6 +19,7 @@ if (!Number.isInteger(port) || port < 1 || port > 65535) {
     const server = createLocalServer({ root: path.join(__dirname, ".."), missingLoginConfiguration: missing, localAccounts, authMode: mode });
     server.once("close", () => localAccounts?.close());
     server.once("error", (error) => {
+        void localAccounts?.close();
         console.error(error.code === "EADDRINUSE"
             ? `Cổng ${port} đang được sử dụng. Đổi PORT trong .env rồi chạy lại.`
             : "Không thể khởi động máy chủ local.");

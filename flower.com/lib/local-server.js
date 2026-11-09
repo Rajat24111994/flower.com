@@ -50,6 +50,8 @@ async function jsonBody(req, limit) {
 function createLocalServer({ root, resolveApi, missingLoginConfiguration = [], localAccounts = null, authMode = null } = {}) {
     const directory = path.resolve(root || path.join(__dirname, ".."));
     const realRoot = fs.realpath(directory);
+    const policy = require("../vercel.json").headers[0].headers.find(header => header.key === "Content-Security-Policy").value;
+    const contentSecurityPolicy = require("./content-security").withScriptHashes(policy, directory);
     const localAuth = localAccounts ? require("./local-auth-http").createLocalAuthHandler(localAccounts) : null;
     const runtimeMode = localAuth ? "local" : authMode === "firebase" ? "firebase" : null;
     const findApi = resolveApi || (async (route) => {
@@ -64,6 +66,8 @@ function createLocalServer({ root, resolveApi, missingLoginConfiguration = [], l
         res.setHeader("X-Content-Type-Options", "nosniff");
         res.setHeader("X-Frame-Options", "DENY");
         res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+        res.setHeader("Content-Security-Policy", contentSecurityPolicy.replace(/;?\s*upgrade-insecure-requests/g, "")
+            .replace("connect-src 'self'", "connect-src 'self' http://127.0.0.1:8080 http://127.0.0.1:9099 http://localhost:8080 http://localhost:9099"));
         res.status = (status) => { res.statusCode = status; return res; };
         res.json = (data) => {
             res.setHeader("Content-Type", "application/json; charset=utf-8");
@@ -106,6 +110,11 @@ function createLocalServer({ root, resolveApi, missingLoginConfiguration = [], l
                 }
                 // Local requests have no trusted reverse proxy.
                 req.headers["x-forwarded-for"] = req.socket.remoteAddress;
+                if (localAccounts && !route.startsWith("local-auth/") && route !== "login") {
+                    const { LOCAL_IDENTITY, sessionCookie } = require("./request-identity");
+                    const token = sessionCookie(req);
+                    req[LOCAL_IDENTITY] = { account: token ? await localAccounts.session(token) : null, presented: token !== undefined };
+                }
                 await handler(req, res);
                 return;
             }
@@ -136,6 +145,7 @@ function createLocalServer({ root, resolveApi, missingLoginConfiguration = [], l
             if (res.headersSent) { res.destroy(); return; }
             if ([400, 413, 415].includes(error.status)) return fail(error.status, error.code, error.message);
             if (error instanceof URIError) return fail(400, "invalid-url", "Địa chỉ không hợp lệ.");
+            if (error.status === 429) { res.setHeader("Retry-After", "5"); return fail(429, "local-auth-busy", "Máy chủ bận. Vui lòng thử lại sau."); }
             // Never expose exception text: it can contain credentials or request data.
             return fail(500, "local-server-error", "Máy chủ chưa xử lý được yêu cầu. Vui lòng thử lại.");
         }

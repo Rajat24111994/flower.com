@@ -42,16 +42,22 @@ function profile(input) {
     if (!name || name.length > 120 || !phone || phone.length > 30) invalid("invalid-profile", "Vui lòng nhập đầy đủ họ tên và số điện thoại (tối đa 120 và 30 ký tự).");
     return { name, phone };
 }
-function securityQuestions(input) {
+function securityQuestions(input, account = {}) {
     if (!Array.isArray(input) || input.length !== 3) invalid("invalid-security-questions", "Hãy đặt 3 câu hỏi khác nhau và trả lời đủ cả 3 câu.");
-    const titles = [], answers = [];
+    const titles = [], answers = [], normalizedAnswers = [];
     for (const item of input) {
         const title = typeof item?.question === "string" ? item.question.trim() : "";
         const answer = typeof item?.answer === "string" ? normalize(item.answer) : "";
-        if (title.length < 5 || title.length > 160 || answer.length < 2 || answer.length > 200 || titles.some(other => normalize(other) === normalize(title))) {
-            invalid("invalid-security-questions", "Đặt 3 câu hỏi khác nhau (5–160 ký tự), mỗi câu trả lời từ 2–200 ký tự.");
+        if (title.length < 5 || title.length > 160 || answer.length < 6 || answer.length > 200
+            || titles.some(other => normalize(other) === normalize(title)) || normalizedAnswers.includes(answer)
+            || [account.email, account.name, account.phone, account.password, account.pin, account.newPin].some(value => typeof value === "string" && normalize(value) === answer)
+            || /^(.)\1+$|^(?:123456\d*|abcdef\w*|qwerty\w*|password\w*|mat khau|mật khẩu|khong biet|không biết|khong co|không có|\d+)$/u.test(answer)) {
+            invalid("invalid-security-questions", "Đặt 3 câu hỏi khác nhau; đáp án cần 6–200 ký tự, khó đoán, không chỉ gồm số và không trùng nhau.");
         }
         titles.push(title);
+        normalizedAnswers.push(answer);
+    }
+    for (const answer of normalizedAnswers) {
         const salt = randomBytes(16);
         answers.push({ salt: salt.toString("hex"), hash: secretHash(answer, salt).toString("hex") });
     }
@@ -141,7 +147,8 @@ function createLocalAccounts({ filename = ":memory:", now = Date.now } = {}) {
     }
     function register(input = {}) {
         const email = username(input.email), secret = password(input.password), details = profile(input);
-        const value = newPin(input), questions = securityQuestions(input.questions);
+        if (userByName.get(email)) invalid("account-exists", "Tên đăng nhập này đã được sử dụng.", 409);
+        const value = newPin(input), questions = securityQuestions(input.questions, input);
         return transaction(() => {
             if (userByName.get(email)) invalid("account-exists", "Tên đăng nhập này đã được sử dụng.", 409);
             const salt = randomBytes(16), pinSalt = randomBytes(16), id = `local-${randomUUID()}`;
@@ -170,13 +177,21 @@ function createLocalAccounts({ filename = ":memory:", now = Date.now } = {}) {
             return { status: 200, account: publicAccount(user), sessionToken: newSession(user, now()) };
         });
     }
+    // A username alone must never reveal questions or consume another person's PIN budget.
+    // Profile details are an extra barrier, not a replacement for the PIN/three answers.
+    function recoveryUser(input) {
+        const user = userByName.get(username(input.email));
+        const name = typeof input.name === "string" && input.name.length <= 120 ? normalize(input.name) : "";
+        const phone = typeof input.phone === "string" && input.phone.length <= 30 ? input.phone.trim() : "";
+        return user && name && phone && name === normalize(user.name) && phone === user.phone ? user : null;
+    }
     function reset(input = {}) {
         const email = username(input.email), secret = password(input.newPassword);
         const hasPin = input.pin !== undefined;
         if (hasPin) pin(input.pin);
         else if (typeof input.recoveryCode !== "string" || !input.recoveryCode || input.recoveryCode.length > 128) invalid("invalid-pin", "Vui lòng nhập PIN của tài khoản.");
         return transaction(() => {
-            const user = userByName.get(email);
+            const user = recoveryUser(input);
             if (!user) return { status: 401, code: "invalid-recovery" };
             const pinStop = pinRestriction(user); if (pinStop) return pinStop;
             const stop = blocked(user); if (stop) return stop;
@@ -195,7 +210,7 @@ function createLocalAccounts({ filename = ":memory:", now = Date.now } = {}) {
         });
     }
     function questions(input = {}) {
-        const user = userByName.get(username(input.email));
+        const user = recoveryUser(input);
         if (!user) return { status: 401, code: "invalid-recovery" };
         if (!user.security_questions) return { status: 409, code: "security-setup-required" };
         return blocked(user, "answer") || { status: 200, questions: JSON.parse(user.security_questions),
@@ -207,7 +222,7 @@ function createLocalAccounts({ filename = ":memory:", now = Date.now } = {}) {
             invalid("invalid-answers", "Vui lòng trả lời đủ cả 3 câu hỏi (2–200 ký tự mỗi câu).");
         }
         return transaction(() => {
-            const user = userByName.get(email);
+            const user = recoveryUser(input);
             if (!user) return { status: 401, code: "invalid-recovery" };
             if (!user.security_answers) return { status: 409, code: "security-setup-required" };
             const stop = blocked(user, "answer"); if (stop) return stop;
@@ -251,7 +266,7 @@ function createLocalAccounts({ filename = ":memory:", now = Date.now } = {}) {
             if (user.pin_hash) return { status: 409, code: "security-already-configured" };
             const stop = blocked(user); if (stop) return stop;
             if (!same(passwordHash(secret, user.salt), user.password_hash)) return failed(user, "invalid-security-proof");
-            const questions = securityQuestions(input.questions), salt = randomBytes(16);
+            const questions = securityQuestions(input.questions, input), salt = randomBytes(16);
             db.prepare(`UPDATE local_users SET name = ?, phone = ?, pin_hash = ?, pin_salt = ?, recovery_hash = '',
                 security_questions = ?, security_answers = ?, recovery_failures = 0, recovery_locked_until = 0, pin_format_version = 2 WHERE id = ?`)
                 .run(details.name, details.phone, secretHash(value, salt), salt, questions.titles, questions.answers, user.id);

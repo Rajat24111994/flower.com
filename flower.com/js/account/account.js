@@ -1,6 +1,6 @@
 import { firebaseConfig } from "../core/firebase-config.js";
 import { isLocalAuth, localAuthRequest, persistLocalAccount } from "./local-auth-client.js";
-import { addQuestionFields, readQuestions, recoveryError, restrictPinInputs } from "./recovery-security.js?v=2";
+import { addQuestionFields, readQuestions, recoveryError, restrictPinInputs } from "./recovery-security.js?v=3";
 
 function getStoredAccount() {
     try {

@@ -5,6 +5,8 @@
                     "node":  "24.x"
                 },
     "scripts":  {
+                    "update:csp": "node scripts/update-csp.js",
+                    "build": "node scripts/update-csp.js",
                     "dev": "node --env-file-if-exists=.env scripts/dev.js",
                     "set-admin":  "node --env-file-if-exists=.env scripts/set-admin-claim.js",
                     "set-owner":  "node --env-file-if-exists=.env scripts/set-owner-claim.js",

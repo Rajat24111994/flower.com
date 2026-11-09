@@ -16,7 +16,8 @@ export function addQuestionFields(container, prefix) {
             label.textContent = kind === "question" ? `Câu hỏi tự đặt ${index}` : `Câu trả lời ${index}`;
             const input = document.createElement("input");
             Object.assign(input, { id, type: kind === "answer" ? "password" : "text", required: true,
-                minLength: kind === "answer" ? 2 : 5, maxLength: kind === "answer" ? 200 : 160, autocomplete: "off" });
+                minLength: kind === "answer" ? 6 : 5, maxLength: kind === "answer" ? 200 : 160, autocomplete: "off" });
+            if (kind === "answer") input.placeholder = "6–200 ký tự, khó đoán và khác hai đáp án còn lại";
             container.append(label, input);
         }
     }

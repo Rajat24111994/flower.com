@@ -30,11 +30,11 @@ test("registration accepts only four to six ASCII digits and three distinct ques
     assert.throws(() => accounts.register({ ...profile(), email: "missing-at" }), { code: "invalid-username" });
     const withZero = { ...profile(), email: "zero@demo", pin: "0123", confirmPin: "0123" };
     accounts.register(withZero);
-    assert.equal(accounts.reset({ email: withZero.email, pin: "0123", newPassword: "Another-password" }).status, 200);
+    assert.equal(accounts.reset({ name: withZero.name, phone: withZero.phone, email: withZero.email, pin: "0123", newPassword: "Another-password" }).status, 200);
 });
 test("five failures, five increasing lockouts, then mandatory password recovery", (t) => {
     const { accounts, input, advance } = fixture(t);
-    const login = (password = "wrong") => accounts.login({ email: input.email, password });
+    const login = (password = "wrong") => accounts.login({ name: input.name, phone: input.phone, email: input.email, password });
     for (let i = 0; i < 4; i++) assert.equal(login().status, 401);
     for (const minutes of [15, 30, 60, 120, 240]) {
         assert.equal(login().retryAfter, minutes * 60); advance(minutes * 60_000 - 1);
@@ -53,7 +53,7 @@ test("successful login clears failure history and client roles are ignored", (t)
 });
 test("password reset verifies the PIN, revokes sessions and preserves the PIN", (t) => {
     const { accounts, input, user } = fixture(t);
-    const reset = (pin, newPassword = "Mat-khau-moi-456") => accounts.reset({ email: input.email, pin, newPassword });
+    const reset = (pin, newPassword = "Mat-khau-moi-456") => accounts.reset({ name: input.name, phone: input.phone, email: input.email, pin, newPassword });
     const wrong = reset("123456");
     assert.equal(wrong.status, 401); assert.equal(wrong.attemptsRemaining, 4);
     assert.equal(reset(input.pin).status, 200);
@@ -65,7 +65,7 @@ test("password reset verifies the PIN, revokes sessions and preserves the PIN", 
 });
 test("five incorrect PINs require a new PIN and never unlock with time or the correct old PIN", (t) => {
     const { accounts, input, advance } = fixture(t);
-    const reset = (pin) => accounts.reset({ email: input.email, pin, newPassword: "New-password" });
+    const reset = (pin) => accounts.reset({ name: input.name, phone: input.phone, email: input.email, pin, newPassword: "New-password" });
     for (let remaining = 4; remaining >= 1; remaining--) {
         const result = reset("123456");
         assert.equal(result.status, 401); assert.equal(result.attemptsRemaining, remaining);
@@ -75,7 +75,7 @@ test("five incorrect PINs require a new PIN and never unlock with time or the co
     advance(365 * 24 * 60 * 60_000);
     assert.equal(reset(input.pin).code, "pin-reset-required");
     assert.equal(accounts.questions(input).pinResetRequired, true);
-    const recovered = accounts.recoverPin({ email: input.email, answers: input.questions.map(item => item.answer), newPin: "6273", confirmPin: "6273" });
+    const recovered = accounts.recoverPin({ name: input.name, phone: input.phone, email: input.email, answers: input.questions.map(item => item.answer), newPin: "6273", confirmPin: "6273" });
     assert.equal(recovered.status, 200);
     assert.equal(reset(input.pin).attemptsRemaining, 4);
     assert.equal(reset("6273").status, 200);
@@ -86,14 +86,14 @@ test("PIN attempts share one budget across password reset and PIN change", t => 
     const change = { ...input, oldPin: "123456", newPin: "84710", confirmPin: "84710" };
     for (let remaining = 4; remaining >= 1; remaining--) {
         const result = remaining % 2 ? accounts.changePin(change, user.sessionToken)
-            : accounts.reset({ email: input.email, pin: "123456", newPassword: "New-password" });
+            : accounts.reset({ name: input.name, phone: input.phone, email: input.email, pin: "123456", newPassword: "New-password" });
         assert.equal(result.attemptsRemaining, remaining);
     }
     assert.equal(accounts.changePin(change, user.sessionToken).code, "pin-reset-required");
     assert.equal(accounts.changePin({ ...change, oldPin: input.pin }, user.sessionToken).code, "pin-reset-required");
     assert.equal(accounts.setupSecurity(input, user.sessionToken).code, "security-already-configured");
     assert.equal(accounts.session(user.sessionToken).pinResetRequired, true);
-    assert.throws(() => accounts.recoverPin({ email: input.email, answers: input.questions.map(item => item.answer), newPin: input.pin, confirmPin: input.pin }), { code: "pin-unchanged" });
+    assert.throws(() => accounts.recoverPin({ name: input.name, phone: input.phone, email: input.email, answers: input.questions.map(item => item.answer), newPin: input.pin, confirmPin: input.pin }), { code: "pin-unchanged" });
     assert.equal(accounts.session(user.sessionToken).pinResetRequired, true);
 });
 test("PIN changes require session, full profile, password and old PIN", (t) => {
@@ -109,24 +109,24 @@ test("PIN changes require session, full profile, password and old PIN", (t) => {
     assert.equal(changed.status, 200); assert.equal(accounts.session(user.sessionToken), null);
     assert.equal(accounts.session(changed.sessionToken).uid, user.account.uid);
     assert.equal(accounts.setupSecurity(input, changed.sessionToken).code, "security-already-configured");
-    assert.equal(accounts.reset({ email: input.email, pin: input.pin, newPassword: "New-password" }).status, 401);
-    assert.equal(accounts.reset({ email: input.email, pin: body.newPin, newPassword: "New-password" }).status, 200);
+    assert.equal(accounts.reset({ name: input.name, phone: input.phone, email: input.email, pin: input.pin, newPassword: "New-password" }).status, 401);
+    assert.equal(accounts.reset({ name: input.name, phone: input.phone, email: input.email, pin: body.newPin, newPassword: "New-password" }).status, 200);
 });
 test("forgotten PIN requires all three answers and does not bypass password locks", (t) => {
     const { accounts, input, user } = fixture(t);
-    assert.deepEqual(accounts.questions({ email: input.email }).questions, input.questions.map(item => item.question));
+    assert.deepEqual(accounts.questions({ name: input.name, phone: input.phone, email: input.email }).questions, input.questions.map(item => item.question));
     const answers = input.questions.map(item => item.answer);
-    const body = { email: input.email, answers, newPin: "6273", confirmPin: "6273" };
+    const body = { name: input.name, phone: input.phone, email: input.email, answers, newPin: "6273", confirmPin: "6273" };
     assert.equal(accounts.recoverPin({ ...body, answers: [answers[0], "Sai", answers[2]] }).status, 401);
-    for (let i = 0; i < 5; i++) accounts.login({ email: input.email, password: "wrong" });
+    for (let i = 0; i < 5; i++) accounts.login({ name: input.name, phone: input.phone, email: input.email, password: "wrong" });
     assert.equal(accounts.recoverPin({ ...body, answers: answers.map(answer => "  " + answer.toUpperCase() + "  ") }).status, 200);
     assert.equal(accounts.session(user.sessionToken), null); assert.equal(accounts.login(input).code, "account-locked");
-    assert.equal(accounts.reset({ email: input.email, pin: body.newPin, newPassword: "New-password" }).status, 200);
-    assert.equal(accounts.login({ email: input.email, password: "New-password" }).status, 200);
+    assert.equal(accounts.reset({ name: input.name, phone: input.phone, email: input.email, pin: body.newPin, newPassword: "New-password" }).status, 200);
+    assert.equal(accounts.login({ name: input.name, phone: input.phone, email: input.email, password: "New-password" }).status, 200);
 });
 test("five wrong sets of answers lock PIN recovery for fifteen minutes", (t) => {
     const { accounts, input, advance } = fixture(t);
-    const body = { email: input.email, answers: ["Sai một", "Sai hai", "Sai ba"], newPin: "6273", confirmPin: "6273" };
+    const body = { name: input.name, phone: input.phone, email: input.email, answers: ["Sai một", "Sai hai", "Sai ba"], newPin: "6273", confirmPin: "6273" };
     for (let remaining = 4; remaining >= 1; remaining--) {
         const result = accounts.recoverPin(body);
         assert.equal(result.status, 401); assert.equal(result.attemptsRemaining, remaining);
@@ -149,7 +149,7 @@ test("accounts, secret hashes and lockouts persist across restarts", (t) => {
     const first = createLocalAccounts({ filename }); const input = profile(); const user = first.register(input);
     for (let i = 0; i < 5; i++) {
         first.login({ ...input, password: "wrong" });
-        first.reset({ email: input.email, pin: "123456", newPassword: "New-password" });
+        first.reset({ name: input.name, phone: input.phone, email: input.email, pin: "123456", newPassword: "New-password" });
     }
     first.close();
     const bytes = fs.readFileSync(filename).toString("utf8");
@@ -158,7 +158,7 @@ test("accounts, secret hashes and lockouts persist across restarts", (t) => {
     assert.equal(reopened.login(input).code, "account-locked");
     assert.equal(reopened.session(user.sessionToken).securityConfigured, true);
     assert.equal(reopened.session(user.sessionToken).pinResetRequired, true);
-    assert.equal(reopened.reset({ email: input.email, pin: input.pin, newPassword: "New-password" }).code, "pin-reset-required");
+    assert.equal(reopened.reset({ name: input.name, phone: input.phone, email: input.email, pin: input.pin, newPassword: "New-password" }).code, "pin-reset-required");
 });
 
 test("legacy schema preserves accounts and locks; enrolling a PIN disables the old recovery code", t => {
@@ -191,9 +191,9 @@ test("legacy schema preserves accounts and locks; enrolling a PIN disables the o
     assert.equal(enrolled.account.securityConfigured, true);
     assert.equal(accounts.session(token), null);
     assert.equal(accounts.login(input).code, "account-locked");
-    assert.equal(accounts.reset({ email: input.email, recoveryCode: code, newPassword: "New-password" }).status, 401);
-    assert.equal(accounts.reset({ email: input.email, pin: input.pin, newPassword: "New-password" }).status, 200);
-    const legacyReset = { email: "oldcode@demo", recoveryCode: code, newPassword: "New-password" };
+    assert.equal(accounts.reset({ name: input.name, phone: input.phone, email: input.email, recoveryCode: code, newPassword: "New-password" }).status, 401);
+    assert.equal(accounts.reset({ name: input.name, phone: input.phone, email: input.email, pin: input.pin, newPassword: "New-password" }).status, 200);
+    const legacyReset = { name: input.name, phone: input.phone, email: "oldcode@demo", recoveryCode: code, newPassword: "New-password" };
     assert.equal(accounts.reset(legacyReset).status, 200);
     assert.equal(accounts.reset({ ...legacyReset, newPassword: "Next-password" }).status, 401);
     const recovered = accounts.login({ email: legacyReset.email, password: legacyReset.newPassword });
@@ -216,8 +216,8 @@ test("migration preserves previous PIN failure budgets and promotes prior fifth 
     db.prepare("UPDATE local_users SET recovery_failures = 5, recovery_locked_until = ? WHERE id = ?").run(Date.now() + 900_000, other.account.uid);
     db.close();
     const migrated = createLocalAccounts({ filename }); t.after(() => migrated.close());
-    assert.equal(migrated.reset({ email: input.email, pin: "123456", newPassword: "New-password" }).code, "pin-reset-required");
-    assert.equal(migrated.reset({ email: "blocked@demo", pin: input.pin, newPassword: "New-password" }).code, "pin-reset-required");
+    assert.equal(migrated.reset({ name: input.name, phone: input.phone, email: input.email, pin: "123456", newPassword: "New-password" }).code, "pin-reset-required");
+    assert.equal(migrated.reset({ name: input.name, phone: input.phone, email: "blocked@demo", pin: input.pin, newPassword: "New-password" }).code, "pin-reset-required");
     assert.equal(migrated.session(user.sessionToken).pinResetRequired, true);
     const logged = migrated.login(input);
     assert.equal(logged.status, 200); assert.equal(logged.account.pinResetRequired, true);
@@ -236,12 +236,12 @@ test("accounts with an old long PIN must answer their questions to adopt a numer
     const migrated = createLocalAccounts({ filename }); t.after(() => migrated.close());
     assert.equal(migrated.session(user.sessionToken).pinResetRequired, true);
     assert.equal(migrated.questions(input).pinResetReason, "pin-format-update-required");
-    assert.equal(migrated.reset({ email: input.email, pin: "1234", newPassword: "New-password" }).code, "pin-format-update-required");
+    assert.equal(migrated.reset({ name: input.name, phone: input.phone, email: input.email, pin: "1234", newPassword: "New-password" }).code, "pin-format-update-required");
     assert.equal(migrated.changePin({ ...input, oldPin: "1234", newPin: "84710", confirmPin: "84710" }, user.sessionToken).code, "pin-format-update-required");
     const answers = input.questions.map(item => item.answer);
-    assert.equal(migrated.recoverPin({ email: input.email, answers: ["Sai một", "Sai hai", "Sai ba"], newPin: "0123", confirmPin: "0123" }).status, 401);
-    assert.equal(migrated.recoverPin({ email: input.email, answers, newPin: "0123", confirmPin: "0123" }).status, 200);
+    assert.equal(migrated.recoverPin({ name: input.name, phone: input.phone, email: input.email, answers: ["Sai một", "Sai hai", "Sai ba"], newPin: "0123", confirmPin: "0123" }).status, 401);
+    assert.equal(migrated.recoverPin({ name: input.name, phone: input.phone, email: input.email, answers, newPin: "0123", confirmPin: "0123" }).status, 200);
     assert.equal(migrated.session(user.sessionToken), null);
     assert.equal(migrated.login(input).account.pinResetRequired, false);
-    assert.equal(migrated.reset({ email: input.email, pin: "0123", newPassword: "New-password" }).status, 200);
+    assert.equal(migrated.reset({ name: input.name, phone: input.phone, email: input.email, pin: "0123", newPassword: "New-password" }).status, 200);
 });
