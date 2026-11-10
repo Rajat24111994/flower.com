@@ -14,6 +14,17 @@ const loginSubmit = signIn.querySelector('[type="submit"]');
 const loginEmail = document.getElementById("email1");
 signUp.inert = true;
 
+const loginPassword = document.getElementById("password1");
+const toggleLoginPassword = document.getElementById("toggle-login-password");
+
+toggleLoginPassword.addEventListener("click", () => {
+    const showPassword = loginPassword.type === "password";
+    loginPassword.type = showPassword ? "text" : "password";
+    const label = showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu";
+    toggleLoginPassword.setAttribute("aria-label", label);
+    toggleLoginPassword.title = label;
+});
+
 let firebaseAuthApiPromise;
 let loginPending = false;
 let lockedEmail = "";

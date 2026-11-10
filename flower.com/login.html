@@ -9,7 +9,7 @@
     <meta name="robots" content="noindex, nofollow">
     <meta name="description" content="Đăng nhập hoặc tạo tài khoản để lưu sản phẩm và theo dõi đơn hàng Flowerflow.">
     <link rel="icon" type="image/svg+xml" href="./favicon.svg">
-    <link rel="stylesheet" href="./css/account/login.css?v=8">
+    <link rel="stylesheet" href="./css/account/login.css?v=9">
     <link rel="stylesheet" href="./css/core/accessibility.css?v=1">
     <link rel="stylesheet" href="./css/core/store-footer.css?v=4">
     <title>Đăng nhập</title>
@@ -58,7 +58,15 @@
                     <h1>Đăng nhập</h1>
                     <p class="form-intro">Đăng nhập để tiếp tục khám phá thế giới hoa tươi.</p>
                     <input type="email" id="email1" placeholder="Địa chỉ thư điện tử" autocomplete="email" required />
-                    <input type="password" id="password1" placeholder="Mật khẩu" autocomplete="current-password" required />
+                    <div class="password-field">
+                        <input type="password" id="password1" placeholder="Mật khẩu" autocomplete="current-password" required />
+                        <button type="button" id="toggle-login-password" class="password-toggle" aria-controls="password1" aria-label="Hiện mật khẩu" title="Hiện mật khẩu">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                                <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" />
+                                <circle cx="12" cy="12" r="3" />
+                            </svg>
+                        </button>
+                    </div>
                     <h4 id="display" role="status" aria-live="polite"></h4>
                     <a href="./forgot-password.html" id="forgotPassword" class="forgot-password">Quên mật khẩu?</a>
                     <input type="submit" class="submit" value="Đăng nhập" disabled>
@@ -93,4 +101,4 @@
 </body>
 
 </html>
-<script type="module" src="./js/account/login.js?v=16"></script>
+<script type="module" src="./js/account/login.js?v=17"></script>

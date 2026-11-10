@@ -201,6 +201,46 @@ form input:not([type="submit"]):focus {
 	box-shadow: 0 0 0 4px rgba(168, 78, 104, 0.1);
 }
 
+.password-field {
+	position: relative;
+	margin-bottom: 12px;
+}
+
+form .password-field input {
+	margin-bottom: 0;
+	padding-right: 52px;
+}
+
+.password-toggle {
+	position: absolute;
+	top: 2px;
+	right: 2px;
+	display: grid;
+	width: 44px;
+	height: 44px;
+	place-items: center;
+	padding: 0;
+	border: 0;
+	border-radius: 9px;
+	background: transparent;
+	color: var(--sage);
+	cursor: pointer;
+}
+
+.password-toggle:hover {
+	background: var(--rose-pale);
+	color: var(--rose-dark);
+}
+
+.password-toggle:focus-visible {
+	outline: 2px solid var(--rose-dark);
+	outline-offset: -3px;
+}
+
+.password-toggle:active {
+	transform: none;
+}
+
 .forgot-password {
 	align-self: flex-end;
 	margin: -1px 0 16px;
