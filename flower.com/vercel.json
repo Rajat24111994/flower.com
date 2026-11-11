@@ -62,5 +62,11 @@
       "path": "/api/orders?action=expire",
       "schedule": "7 19 * * *"
     }
+  ],
+  "rewrites": [
+    {
+      "source": "/api/admin/audit",
+      "destination": "/api/admin/users?route=audit"
+    }
   ]
 }

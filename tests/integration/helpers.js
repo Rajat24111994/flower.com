@@ -48,6 +48,12 @@ const catalog = Array.from({ length: 10 }, (_, index) => {
     };
 });
 
+// API đã gộp: gọi qua hàm gộp kèm ?route giống rewrite trong vercel.json.
+function viaRoute(file, route) {
+    const handler = require(path.join(ROOT, file));
+    return (req, res) => handler({ ...req, query: { ...req.query, route } }, res);
+}
+
 const handlers = {
     login: require(path.join(ROOT, "api/login.js")),
     orders: require(path.join(ROOT, "api/orders.js")),
@@ -61,7 +67,7 @@ const handlers = {
     adminUsers: require(path.join(ROOT, "api/admin/users.js")),
     ownerUsers: require(path.join(ROOT, "api/owner/users.js")),
     flowerPrices: require(path.join(ROOT, "api/flower-prices.js")),
-    adminAudit: require(path.join(ROOT, "api/admin/audit.js")),
+    adminAudit: viaRoute("api/admin/users.js", "audit"),
     bouquetWrapping: require(path.join(ROOT, "api/bouquet-wrapping.js"))
 };
 

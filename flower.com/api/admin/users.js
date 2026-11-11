@@ -1,6 +1,8 @@
 const { getAdminAuth, getAdminFirestore, sendError, verifyAdminRequest } = require("../../lib/firebase-admin");
+const { withRoutes } = require("../../lib/api-routes");
+const adminAudit = require("../../lib/routes/admin-audit");
 
-module.exports = async function handler(req, res) {
+async function listUsers(req, res) {
     res.setHeader("Cache-Control", "no-store");
 
     if (req.method !== "POST") {
@@ -55,4 +57,7 @@ module.exports = async function handler(req, res) {
         console.error("Firebase user listing failed:", error.code || error.message);
         return sendError(res, 500, "user-list-failed", "Chưa thể tải danh sách tài khoản Firebase.");
     }
-};
+}
+
+// /api/admin/audit được vercel.json chuyển tới đây với ?route=audit.
+module.exports = withRoutes(listUsers, { audit: adminAudit });
