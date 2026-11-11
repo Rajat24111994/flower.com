@@ -12,6 +12,8 @@
 
 ## 🛍️ Chức năng cho khách hàng
 
+Xem [ma trận truy vết KH/QT/NF](Traceability-Matrix.md) để đối chiếu từng yêu cầu với user story, issue, mã nguồn, test và kết quả CI. Trạng thái có chức năng không thay thế bằng chứng nghiệm thu môi trường thật.
+
 ![Chức năng cho khách hàng](https://raw.githubusercontent.com/Longg5048/flower.com/main/docs/wiki/chuc-nang-khach-hang.png)
 
 | Mã | Chức năng | Mô tả | Trạng thái |

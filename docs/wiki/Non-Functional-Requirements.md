@@ -13,6 +13,8 @@
 Mỗi yêu cầu có cột **Hiện trạng** cho biết hệ thống hiện tại đã đáp ứng tới đâu:
 ✅ Đạt · ⚠️ Đạt một phần · ❌ Chưa đạt
 
+Xem [ma trận truy vết KH/QT/NF](Traceability-Matrix.md) để biết test nào thực sự kiểm tra từng chỉ tiêu và những bằng chứng còn thiếu. Test chức năng/CI xanh không tự chứng minh các ngưỡng uptime, tải hoặc độ trễ trong bảng dưới.
+
 ## 🟢 Sẵn sàng và tin cậy
 
 | Mã | Yêu cầu | Chỉ tiêu | Hiện trạng |
