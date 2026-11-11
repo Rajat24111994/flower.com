@@ -64,3 +64,6 @@ FlowerFlow giúp khách hàng **tìm, chọn và đặt hoa trong vài phút**, 
 | 📋 [Yêu cầu chức năng](Functional-Requirements) | Danh sách chức năng cho khách hàng và quản trị |
 | ⚡ [Yêu cầu phi chức năng](Non‐Functional-Requirements) | Hiệu năng, bảo mật, sao lưu, kiểm thử |
 | 🏛️ [Kiến trúc phần mềm](Software-Architecture-Document) | Thành phần hệ thống, dữ liệu, triển khai |
+| 🔗 [Ma trận truy vết](Traceability-Matrix) | Mỗi yêu cầu nối tới issue, Pull Request và test |
+| 🗂️ [Project charter](https://github.com/Longg5048/flower.com/blob/main/docs/product/PROJECT-CHARTER.md) | Mục tiêu, phạm vi, phân công, Definition of Done, rủi ro |
+| 👥 [Persona](https://github.com/Longg5048/flower.com/blob/main/docs/product/PERSONAS.md) · [Kế hoạch nghiên cứu người dùng](https://github.com/Longg5048/flower.com/blob/main/docs/product/USER-RESEARCH-PLAN.md) | Người dùng mục tiêu (giả định) và cách kiểm chứng |
