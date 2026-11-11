@@ -18,7 +18,7 @@ async function expectMasked(page) {
     await expect(button).toHaveAttribute("aria-label", label);
     if (await button.isVisible()) await expect(button).toHaveAccessibleName(label);
     await expect(button).toHaveAttribute("title", label);
-    await expect(button.locator("[data-password-slash]")).toHaveAttribute("hidden", "");
+    await expect(button.locator(".eye-slash")).toHaveCSS("opacity", "1");
   }
 }
 
@@ -57,7 +57,7 @@ for (const form of ["login", "signup"]) {
     const id = shownIds[0];
     const button = page.locator(`button[aria-controls="${id}"]`);
     await button.click();
-    await expect(button.locator("[data-password-slash]")).not.toHaveAttribute("hidden");
+    await expect(button.locator(".eye-slash")).toHaveCSS("opacity", "0");
     await page.clock.runFor(2999);
     await expect(page.locator(`#${id}`)).toHaveAttribute("type", "text");
     await page.clock.runFor(1);
