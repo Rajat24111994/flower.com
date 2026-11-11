@@ -20,7 +20,7 @@ Xem [ma trận truy vết KH/QT/NF](Traceability-Matrix.md) để biết test n�
 | Mã | Yêu cầu | Chỉ tiêu | Hiện trạng |
 | --- | --- | --- | --- |
 | NF‑01 | Hoạt động liên tục | Chạy 24/7, uptime ≥ 99,9% | ⚠️ Chạy trên Vercel và Firebase; chưa có công cụ đo uptime |
-| NF‑02 | Chịu tải dịp lễ | Ổn định khi lượng truy cập tăng 10–20 lần (14/2, 8/3, 20/10) | ❌ Chưa kiểm thử tải |
+| NF‑02 | Chịu tải dịp lễ | Ổn định khi lượng truy cập tăng 10–20 lần (14/2, 8/3, 20/10) | ⚠️ Load test trên emulator: đọc/báo giá > 700 yêu cầu/giây, p95 < 45 ms; nhưng ≥ 100 khách cùng mua một sản phẩm có thể bị lỗi 503 dù còn hàng ([báo cáo](https://github.com/Longg5048/flower.com/blob/main/docs/test-reports/2026-11-11-load-test.md)) |
 | NF‑03 | Sao lưu tự động | Sao lưu dữ liệu mỗi ngày | ⚠️ Đã có, cần chủ repo thêm 2 secret trên GitHub để bắt đầu chạy |
 | NF‑04 | Khôi phục dữ liệu | Khôi phục được từ bản sao lưu | ✅ Có lệnh khôi phục và test tự động |
 
@@ -67,7 +67,7 @@ Chưa bật MFA trong issue này. Luồng đăng nhập mật khẩu hiện đi 
 | Kiểm thử | Hiện trạng |
 | --- | --- |
 | Khôi phục dữ liệu từ bản sao lưu | ✅ Test tự động trên emulator |
-| Tải tăng 10–20 lần | ❌ Chưa có |
+| Tải tăng 10–20 lần | ⚠️ Có kịch bản `cd tests && npm run load` trên emulator; phát hiện lỗi khi nhiều người cùng mua một sản phẩm |
 | Đo thời gian tải trang và thanh toán | ⚠️ Đã đo Lighthouse; chưa đo thanh toán |
-| Nhiều người cùng mua sản phẩm cuối cùng | ⚠️ Có test chống bán vượt kho; chưa test nhiều người cùng lúc |
+| Nhiều người cùng mua sản phẩm cuối cùng | ✅ Không bán vượt kho với 5–200 người cùng mua (load test); ⚠️ có thể báo lỗi 503 oan khi ≥ 100 người |
 | Quyền của khách, quản lý, chủ cửa hàng | ✅ Có test tự động |

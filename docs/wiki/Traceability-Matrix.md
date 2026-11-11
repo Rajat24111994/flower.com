@@ -72,6 +72,18 @@ Các dòng chưa có test chỉ tiêu hoặc chỉ được kiểm tra một ph�
 
 Theo dõi ưu tiên kiểm thử ở [#125][i125], đo hiệu năng/vận hành ở [#126][i126]/[#118][i118]/[#119][i119]; không tự coi các gap này đã được giải quyết bởi việc tạo ma trận. Phạm vi #124 là truy vết đủ yêu cầu và ghi đúng trạng thái bằng chứng, không yêu cầu mọi chức năng đều đã nghiệm thu.
 
+## Bằng chứng bổ sung sau mốc [M]
+
+Các dòng dưới đây ghi bằng chứng mới thêm sau commit snapshot [M]. Bảng chính ở trên giữ nguyên theo mốc đã đối chiếu; khi chốt mốc mới, chuyển các dòng này vào bảng chính.
+
+| Mã | Bằng chứng mới | Kết quả |
+| --- | --- | --- |
+| NF-02 | Kịch bản [`tests/load/load-test.js`](https://github.com/Longg5048/flower.com/blob/main/tests/load/load-test.js) (`cd tests && npm run load`, Firebase Emulator) và [báo cáo 11/11/2026](https://github.com/Longg5048/flower.com/blob/main/docs/test-reports/2026-11-11-load-test.md): xem danh mục 1.120 yêu cầu/giây (p95 31 ms), báo giá 708 yêu cầu/giây (p95 40 ms), 0% lỗi với 20 khách đồng thời | Một phần: đo trên emulator, chưa đo trên môi trường thật; khi ≥ 100 khách cùng mua một sản phẩm có lần gần hết nhận 503 dù kho còn hàng |
+| NF-08 | Cùng báo cáo: 5–200 khách tranh mua 10 bó, không lần nào bán vượt kho hay kho âm | Có test (load test thủ công, chưa chạy trong CI) |
+| KH-08, KH-10, NF-08, NF-10 | Unit [`api-orders.test.js`](https://github.com/Longg5048/flower.com/blob/main/tests/api-orders.test.js) với Firestore giả: báo giá có khuyến mãi và phí giao, thiếu hàng, tạo đơn trừ kho và lưu giá lúc đặt, chống đặt trùng, giá đổi trả 409, tra cứu công khai không lộ địa chỉ, giới hạn 20 lượt/IP, dọn đơn hết hạn không hoàn kho hai lần | Có test, chạy trong CI (job Unit test + coverage) |
+| QT-04, QT-10, NF-12 | Unit [`api-handlers.test.js`](https://github.com/Longg5048/flower.com/blob/main/tests/api-handlers.test.js) và [`helper-modules.test.js`](https://github.com/Longg5048/flower.com/blob/main/tests/helper-modules.test.js): khu vực giao, phí gói bó, giá hoa chỉ owner, tài khoản và nhật ký quản trị, quyền admin/owner bị thu hồi | Có test, chạy trong CI |
+| NF-15 | Unit tăng từ 181 lên 204 test; coverage dòng unit 57,45% → 77,41%. Sau khi gộp thêm test #125 của DoThai207 trên main: 231 test, coverage dòng 83,80%; CI yêu cầu tối thiểu 70% và 50% cho 6 module rủi ro cao (#125) | Có test, chạy trong CI |
+
 ## Cập nhật ma trận
 
 Khi sửa một yêu cầu: giữ nguyên mã KH/QT/NF, cập nhật user story/issue, mốc commit có mã và test, rồi gắn link run/job đúng SHA. Nếu CI đang chạy/thất bại/bị hủy, ghi đúng trạng thái; nếu thay bằng kết quả mới thì giữ ngày và SHA để có thể kiểm toán. Không thay chỉ tiêu định lượng bằng test chức năng. Các file trong `docs/wiki/` là nguồn phiên bản trong repository; việc đồng bộ sang GitHub Wiki thực hiện theo [hướng dẫn wiki](README.md).

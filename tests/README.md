@@ -11,8 +11,9 @@
 | Loại | Lệnh | Nội dung |
 |---|---|---|
 | Unit test | `cd flower.com && npm test` | Tính giá, ưu đãi, dữ liệu đơn hàng, trạng thái đơn, giỏ hàng, danh mục, sản phẩm |
-| Unit test + coverage | `cd flower.com && npm run test:coverage` | Như trên, kèm tỉ lệ dòng/nhánh/hàm; CI yêu cầu tối thiểu 60% coverage dòng |
+| Unit test + coverage | `cd flower.com && npm run test:coverage` | Như trên, kèm tỉ lệ dòng/nhánh/hàm; CI yêu cầu tối thiểu 70% coverage dòng |
 | Feature, system, security | `cd tests && npm ci && npm run integration` | Đặt hàng, đăng nhập, quản lý, luồng xuyên hệ thống, Firestore rules và quyền API |
+| Kiểm thử tải (emulator) | `cd tests && npm ci && npm run load` | Xem danh mục, báo giá và nhiều khách tranh mua hàng cuối; in p50/p95/p99, tỉ lệ lỗi, kiểm tra không bán vượt kho. Chỉnh bằng `LOAD_DURATION`, `LOAD_CONCURRENCY`, `LOAD_BUYERS`, `LOAD_STOCK` |
 | Smoke test sau khi deploy | `cd flower.com && SMOKE_URL=https://... npm run smoke` | Trang và API còn chạy, không tạo đơn, không đổi dữ liệu |
 
 Trên Windows, nếu PowerShell chặn `npm` (execution policy), dùng `npm.cmd` thay cho `npm`.
@@ -60,6 +61,9 @@ Các test `firebase-admin.test.js`, `delivery-zones-api.test.js`, `design-reques
 | `security-config.test.js` | File môi trường cục bộ được bỏ qua; template không chứa thông tin xác thực |
 | `transport-security.test.js` | Yêu cầu HTTPS cho smoke test; xác nhận cấu hình HSTS và CSP |
 | `order-status.test.js` | Trạng thái đơn và trạng thái cũ |
+| `api-handlers.test.js` | Thân các API khu vực giao hàng, phí gói bó, giá hoa, sản phẩm, tài khoản/nhật ký quản trị và yêu cầu thiết kế với Firestore giả (`helpers/fake-firestore.js`): quyền, nhánh lỗi, dữ liệu ghi xuống và audit |
+| `api-orders.test.js` | Luồng đơn hàng với Firestore giả: báo giá, khuyến mãi, thiếu hàng, tạo đơn trừ kho, chống đặt trùng, giá thay đổi, tra cứu công khai/theo tài khoản, giới hạn tra cứu, dọn đơn hết hạn |
+| `helper-modules.test.js` | Kiểm tra/nén ảnh đánh giá, lỗi cấu hình Firebase Admin, kiểm tra quyền admin/owner, gợi ý chính sách mật khẩu |
 | `integration/feature-orders.test.js` | Báo giá, tạo đơn, trừ kho, chống đặt trùng, ưu đãi, đơn hết hạn, tra cứu |
 | `integration/feature-accounts.test.js` | Đơn gắn tài khoản, token giả/thu hồi, đánh giá của chủ đơn |
 | `login-protection.test.js`, `password-auth.test.js` | Giới hạn theo tài khoản, chu kỳ khóa, đồng thời, lỗi dịch vụ và chặn đường gọi Firebase trực tiếp |

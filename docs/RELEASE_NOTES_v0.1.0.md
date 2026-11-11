@@ -1,6 +1,6 @@
 ﻿# Release notes v0.1.0
 
-Ngày phát hành: chưa phát hành
+Ngày phát hành: 14/10/2026 ([GitHub release v0.1.0](https://github.com/Longg5048/flower.com/releases/tag/v0.1.0))
 
 ## Tính năng
 

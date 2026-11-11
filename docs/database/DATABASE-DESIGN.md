@@ -219,7 +219,7 @@ sequenceDiagram
 - **Giữ hàng** (`usp_ReserveStock`) dùng `UPDATE … WHERE Stock >= @Quantity`, trừ kho và kiểm tra trong cùng một câu lệnh. Hai khách cùng đặt món cuối cùng thì chỉ một người thành công.
 - **Hoàn kho** (`usp_ReleaseOrderStock`) chỉ chạy khi `InventoryState = 'reserved'`, nên gọi lại nhiều lần cũng chỉ hoàn kho một lần. Job dọn đơn hết hạn dùng index `IX_Orders_Reservation` để tìm đơn quá `ReservationExpiresAt`.
 - **Nhập hàng:** `StockReceipts` và `StockReceiptItems` lưu giá vốn (`UnitCost`), giúp tính lợi nhuận sau này.
-- Thời gian giữ hàng giữ như hiện tại: QR/VNPay 30 phút, COD 24 giờ.
+- Thời gian giữ hàng giữ như hiện tại trong `api/orders.js`: VNPay 15 phút, COD 30 phút (đơn QR cũ 30 phút).
 
 ## 6. Thanh toán và hoàn tiền
 
