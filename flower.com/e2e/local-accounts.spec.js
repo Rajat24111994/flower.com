@@ -142,8 +142,8 @@ test("change PIN verifies full account information, current password and old PIN
   await expect(page.locator("#security-new-pin")).toHaveValue("");
   await page.goto(`/forgot-password.html?email=${encodeURIComponent(input.email)}`);
   await fillRecoveryProfile(page, input);
-  await page.locator("#recovery-new-password").fill("New-password");
-  await page.locator("#recovery-confirm-password").fill("New-password");
+  await page.locator("#recovery-new-password").fill("New-password-789");
+  await page.locator("#recovery-confirm-password").fill("New-password-789");
   await page.locator("#recovery-pin").fill(input.pin);
   await page.locator("#recovery-submit").click();
   await expect(page.locator("#recovery-message")).toContainText("không chính xác");
@@ -182,8 +182,8 @@ test("forgotten PIN requires all three custom answers before a new PIN can reset
   await expect(page.locator("#pin-message")).toContainText("Đã đặt lại PIN");
   await page.locator("#back-to-password").click();
   await page.locator("#recovery-pin").fill(nextPin);
-  await page.locator("#recovery-new-password").fill("New-password");
-  await page.locator("#recovery-confirm-password").fill("New-password");
+  await page.locator("#recovery-new-password").fill("New-password-789");
+  await page.locator("#recovery-confirm-password").fill("New-password-789");
   await page.locator("#recovery-submit").click();
   await expect(page.locator("#local-reset-result")).toBeVisible();
 });
@@ -193,8 +193,8 @@ test("fifth wrong PIN shows questions automatically, survives reload and require
   await register(page, input);
   await page.goto(`/forgot-password.html?email=${encodeURIComponent(input.email)}`);
   await page.locator("#recovery-pin").fill("123456");
-  await page.locator("#recovery-new-password").fill("New-password");
-  await page.locator("#recovery-confirm-password").fill("New-password");
+  await page.locator("#recovery-new-password").fill("New-password-789");
+  await page.locator("#recovery-confirm-password").fill("New-password-789");
   for (let remaining = 4; remaining >= 1; remaining--) {
     await page.locator("#recovery-submit").click();
     await expect(page.locator("#recovery-message")).toContainText(`Bạn còn ${remaining} lượt thử`);
@@ -219,8 +219,8 @@ test("fifth wrong PIN shows questions automatically, survives reload and require
   await expect(page.locator("#pin-message")).toContainText("Đã đặt lại PIN");
   await page.locator("#back-to-password").click();
   await page.locator("#recovery-pin").fill(nextPin);
-  await page.locator("#recovery-new-password").fill("New-password");
-  await page.locator("#recovery-confirm-password").fill("New-password");
+  await page.locator("#recovery-new-password").fill("New-password-789");
+  await page.locator("#recovery-confirm-password").fill("New-password-789");
   await page.locator("#recovery-submit").click();
   await expect(page.locator("#local-reset-result")).toBeVisible();
 });

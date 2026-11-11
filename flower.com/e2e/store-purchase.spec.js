@@ -59,12 +59,6 @@ test("customer can browse, add a flower, sign in, and place an order", async ({ 
   });
   await page.addInitScript(() => sessionStorage.setItem("flowerflowE2e", "true"));
 
-  const signup = await request.post(
-    "http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1/accounts:signUp?key=fake-api-key",
-    { data: { email, password, returnSecureToken: true } }
-  );
-  expect(signup.ok(), `Firebase Auth Emulator account setup failed: ${await signup.text()}`).toBeTruthy();
-
   // The static test server has no API: answer the catalog request the way api/products.js does.
   await page.route("**/api/products", (route) => route.fulfill({
     json: { products: catalog.map((product) => ({ ...product, quantity: product.quantity ?? 10 })) }
@@ -97,12 +91,37 @@ test("customer can browse, add a flower, sign in, and place an order", async ({ 
   await page.screenshot({ path: testInfo.outputPath("screenshots/02-cart.png"), fullPage: true });
 
   await page.goto("/login.html?e2e=1");
+  await page.locator("#signup").click();
+  await page.locator("#name").fill("Khách hàng");
+  await page.locator("#lastName").fill("kiểm thử");
+  await page.locator("#email").fill(email);
+  await page.locator("#phone").fill("0912345678");
+  await page.locator("#password").fill(password);
+  await page.locator("#checkpassword").fill(password);
+  await page.locator("#signUp .submit").click();
+  await expect(page).toHaveURL(/product\.html/);
+  const signupStorage = await page.evaluate((secret) => ({
+    profile: JSON.parse(localStorage.getItem("loggedUser") || "null"),
+    containsPassword: [localStorage, sessionStorage].some((storage) =>
+      Array.from({ length: storage.length }, (_, index) => storage.getItem(storage.key(index)))
+        .some((value) => value?.includes(secret))
+    )
+  }), password);
+  expect(signupStorage.profile).not.toHaveProperty("password");
+  expect(signupStorage.containsPassword).toBe(false);
+
+  await page.goto("/login.html?e2e=1");
   await page.locator("#email1").fill(email);
   await page.locator("#password1").fill(password);
   await page.locator("#signIn .submit").click();
   await expect(page).toHaveURL(/product\.html/);
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem("loggedUser") || "null")?.email)).toBe(email);
   await page.screenshot({ path: testInfo.outputPath("screenshots/03-signed-in.png"), fullPage: true });
+
+  await page.goto("/forgot-password.html");
+  await page.locator("#recovery-email").fill(email);
+  await page.locator("#recovery-submit").click();
+  await expect(page.locator("#recovery-message")).toContainText("Nếu email này đã được đăng ký");
 
   await page.goto("/checkout.html");
   // The page loads delivery zones and promotions first; filling the form before that is done

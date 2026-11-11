@@ -50,6 +50,9 @@ test("signup password fields toggle independently without submitting", async ({ 
   for (const [index, field] of [password, confirmation].entries()) {
     await expect(field).toHaveValue(value);
     expect(await field.evaluate(constraintsOf)).toEqual(constraints[index]);
+    await expect(field).toHaveAttribute("required", "");
+    await expect(field).toHaveAttribute("minlength", "8");
+    await expect(field).toHaveAttribute("autocomplete", "new-password");
   }
   expect(await page.locator("#signUp").evaluate(form => form.checkValidity())).toBe(true);
   expect(await page.evaluate(() => window.visibilitySubmits)).toEqual({ signIn: 0, signUp: 0 });

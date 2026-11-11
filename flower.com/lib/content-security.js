@@ -15,6 +15,23 @@ function inlineScriptHashes(root) {
     return [...hashes].sort();
 }
 function withScriptHashes(policy, root) {
-    return policy.replace(/script-src\s+[^;]+/, `script-src 'self' https://www.gstatic.com https://apis.google.com ${inlineScriptHashes(root).join(" ")}`);
+    return setDirective(policy, "script-src", ["'self'", "https://www.gstatic.com", "https://apis.google.com", ...inlineScriptHashes(root)]);
 }
-module.exports = { inlineScriptHashes, withScriptHashes };
+function setDirective(policy, name, sources) {
+    const value = `${name} ${sources.join(" ")}`;
+    const rules = policy.split(";").map(rule => rule.trim()).filter(Boolean);
+    const other = rules.filter(rule => rule.split(/\s+/)[0] !== name);
+    const index = rules.findIndex(rule => rule.split(/\s+/)[0] === name);
+    other.splice(index < 0 ? other.length : index, 0, value);
+    return other.join("; ");
+}
+function withSecurityPolicy(policy, root) {
+    policy = withScriptHashes(policy, root);
+    policy = setDirective(policy, "script-src-attr", ["'none'"]);
+    policy = setDirective(policy, "style-src", ["'self'", "https://fonts.googleapis.com"]);
+    policy = setDirective(policy, "style-src-attr", ["'none'"]);
+    return setDirective(policy, "img-src", ["'self'", "data:", "blob:",
+        "https://firebasestorage.googleapis.com", "https://storage.googleapis.com",
+        "https://*.googleusercontent.com", "https://img.vietqr.io"]);
+}
+module.exports = { inlineScriptHashes, withScriptHashes, withSecurityPolicy };

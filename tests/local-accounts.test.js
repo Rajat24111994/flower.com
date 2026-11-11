@@ -1,7 +1,10 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
+const os = require("node:os");
 const path = require("node:path");
+const { DatabaseSync } = require("node:sqlite");
+const { randomUUID } = require("node:crypto");
 const { createLocalAccounts } = require("../flower.com/lib/local-accounts");
 const profile = () => ({ email: "ban@demo", password: "Mat-khau-thu-123", name: "Người thử", phone: "0900000000", pin: "938405", confirmPin: "938405", questions: [
     { question: "Tên con vật trong truyện tôi thích?", answer: "Cáo xanh" },
@@ -15,6 +18,41 @@ function fixture(t) {
     const input = profile();
     return { accounts, input, user: accounts.register(input), advance(ms) { time += ms; } };
 }
+test("stored passwords are salted hashes and reset verifies only the replacement password", (t) => {
+    const directory = fs.mkdtempSync(path.join(os.tmpdir(), `flowerflow-password-${randomUUID()}-`));
+    const filename = path.join(directory, "accounts.sqlite");
+    const accounts = createLocalAccounts({ filename });
+    const inspector = new DatabaseSync(filename);
+    t.after(() => {
+        inspector.close();
+        accounts.close();
+        fs.rmSync(directory, { recursive: true, force: true });
+    });
+
+    const input = profile();
+    const user = accounts.register(input);
+    const readStoredHash = () => inspector.prepare("SELECT password_hash, salt FROM local_users WHERE username = ?").get(input.email);
+    const original = readStoredHash();
+    assert.equal(original.password_hash.length, 32);
+    assert.equal(original.salt.length, 16);
+    assert.notEqual(original.password_hash.toString("utf8"), input.password);
+    assert.equal(accounts.login(input).status, 200);
+
+    const replacement = "Mat-khau-moi-456";
+    assert.equal(accounts.reset({
+        name: input.name,
+        phone: input.phone,
+        email: input.email,
+        pin: input.pin,
+        newPassword: replacement
+    }).status, 200);
+    const updated = readStoredHash();
+    assert.notDeepEqual(updated.password_hash, original.password_hash);
+    assert.notEqual(updated.password_hash.toString("utf8"), replacement);
+    assert.equal(accounts.session(user.sessionToken), null);
+    assert.equal(accounts.login(input).status, 401);
+    assert.equal(accounts.login({ ...input, password: replacement }).status, 200);
+});
 test("registration accepts only four to six ASCII digits and three distinct questions", (t) => {
     const accounts = createLocalAccounts(); t.after(() => accounts.close());
     for (const pin of ["", "123", "1234567", "9384051726", "12a4", "12 4", "12-4", "1e03", "1.23", "１２３４", "١٢٣٤", "1234\n", 1234]) {

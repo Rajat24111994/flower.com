@@ -56,7 +56,7 @@ function createLocalServer({ root, resolveApi, missingLoginConfiguration = [], l
     const apiRewrites = new Map((vercelConfig.rewrites || [])
         .filter(rule => rule.source.startsWith("/api/") && !/[:*(]/.test(rule.source))
         .map(rule => [rule.source, new URL(rule.destination, "http://local.invalid")]));
-    const contentSecurityPolicy = require("./content-security").withScriptHashes(policy, directory);
+    const contentSecurityPolicy = require("./content-security").withSecurityPolicy(policy, directory);
     const localAuth = localAccounts ? require("./local-auth-http").createLocalAuthHandler(localAccounts) : null;
     const runtimeMode = localAuth ? "local" : authMode === "firebase" ? "firebase" : null;
     const findApi = resolveApi || (async (route) => {
@@ -72,7 +72,8 @@ function createLocalServer({ root, resolveApi, missingLoginConfiguration = [], l
         res.setHeader("X-Frame-Options", "DENY");
         res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
         res.setHeader("Content-Security-Policy", contentSecurityPolicy.replace(/;?\s*upgrade-insecure-requests/g, "")
-            .replace("connect-src 'self'", "connect-src 'self' http://127.0.0.1:8080 http://127.0.0.1:9099 http://localhost:8080 http://localhost:9099"));
+            .replace("connect-src 'self'", "connect-src 'self' http://127.0.0.1:8080 http://127.0.0.1:9099 http://localhost:8080 http://localhost:9099")
+            .replace("frame-src ", "frame-src http://127.0.0.1:9099 http://localhost:9099 "));
         res.status = (status) => { res.statusCode = status; return res; };
         res.json = (data) => {
             res.setHeader("Content-Type", "application/json; charset=utf-8");
