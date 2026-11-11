@@ -33,6 +33,7 @@
 - [Hạn chế đã biết](#hạn-chế-đã-biết)
 - [Lộ trình](#lộ-trình)
 - [Đóng góp](#đóng-góp)
+- [Nguồn gốc và bản quyền](#nguồn-gốc-và-bản-quyền)
 
 ## Giới thiệu
 
@@ -267,7 +268,11 @@ Bản **v0.1.0** đã phát hành ngày 14/10/2026 ([release](https://github.com
 
 ## Đóng góp
 
-Mọi thay đổi đi qua Pull Request, viết test trước (Red → Green → Refactor), CI xanh và có ít nhất 1 người review mới được gộp vào `main`. Chi tiết trong [`CONTRIBUTING.md`](CONTRIBUTING.md).
+Mọi thay đổi đi qua Pull Request, viết test trước (Red → Green → Refactor), CI xanh và có ít nhất 1 người review mới được gộp vào `main`. Chi tiết trong [`CONTRIBUTING.md`](CONTRIBUTING.md). Phần việc có dùng AI được ghi trong [`docs/AI-USAGE-LOG.md`](docs/AI-USAGE-LOG.md).
+
+## Nguồn gốc và bản quyền
+
+Repository được fork từ [Rajat24111994/flower.com](https://github.com/Rajat24111994/flower.com), một dự án HTML/CSS/JS tĩnh năm 2023. Trên `main` hiện chỉ còn 77/43.530 dòng (≈ 0,18%) có nguồn gốc từ repo đó, đều là mẫu chung (dấu ngoặc, CSS reset, phần đầu HTML); ảnh gốc đã được thay hết bằng ảnh có giấy phép ([`docs/product-image-credits.md`](docs/product-image-credits.md)). Repo gốc không khai báo giấy phép nên repo này **chưa có file `LICENSE`**; phân tích chi tiết và hai hướng xử lý ở [`docs/PROVENANCE.md`](docs/PROVENANCE.md).
 
 ---
 
