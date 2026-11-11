@@ -17,12 +17,32 @@ signUp.inert = true;
 document.querySelectorAll(".password-toggle").forEach((button) => {
     const password = document.getElementById(button.getAttribute("aria-controls"));
     const passwordLabel = button.dataset.passwordLabel || "mật khẩu";
-    button.addEventListener("click", () => {
+    button.addEventListener("click", (event) => {
+        let selection;
+        try {
+            const { selectionStart, selectionEnd, selectionDirection } = password;
+            if (typeof selectionStart === "number" && typeof selectionEnd === "number") {
+                selection = [selectionStart, selectionEnd, selectionDirection || "none"];
+            }
+        } catch {
+            // Selection APIs are not available in every browser.
+        }
         const showPassword = password.type === "password";
         password.type = showPassword ? "text" : "password";
         const label = `${showPassword ? "Ẩn" : "Hiện"} ${passwordLabel}`;
         button.setAttribute("aria-label", label);
         button.title = label;
+        // Keyboard activation leaves focus on the button for Enter, Space and Tab.
+        if (event.detail > 0 || event.pointerType) {
+            password.focus({ preventScroll: true });
+        }
+        if (selection) {
+            try {
+                password.setSelectionRange(...selection);
+            } catch {
+                // Unsupported selection restoration must not interrupt toggling.
+            }
+        }
     });
 });
 
