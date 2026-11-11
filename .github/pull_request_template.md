@@ -11,6 +11,9 @@
 
 ## Checklist
 
+- [ ] Đã mời một thành viên khác review; trước khi merge cần ít nhất 1 **Approve** trên thay đổi mới nhất và CI xanh
+- [ ] Đã giải quyết các thảo luận review; comment góp ý không thay thế approval bắt buộc
+- [ ] Nếu thêm thành viên/alias commit: đã cập nhật `docs/TEAM.md` với thông tin được người đó đồng ý công khai
 - [ ] Có test cho hành vi mới hoặc lỗi được sửa
 - [ ] Đổi `firestore.rules` có test bảo mật đi kèm
 - [ ] Đổi file JS/CSS đã tăng `?v=` trong các trang `.html`
