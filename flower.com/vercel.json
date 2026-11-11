@@ -67,6 +67,10 @@
     {
       "source": "/api/admin/audit",
       "destination": "/api/admin/users?route=audit"
+    },
+    {
+      "source": "/api/bouquet-wrapping",
+      "destination": "/api/delivery-zones?route=bouquet-wrapping"
     }
   ]
 }
