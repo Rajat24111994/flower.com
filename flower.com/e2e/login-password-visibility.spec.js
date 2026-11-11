@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 
 test("login password toggles with mouse, Enter and Space without submitting", async ({ page }) => {
   const password = page.locator("#password1");
-  const toggle = page.locator("#signIn").getByRole("button", { name: "Hiện mật khẩu", exact: true });
+  const toggle = page.locator("#toggle-login-password");
   const value = randomUUID();
   await page.locator("#email1").fill("visibility@example.test");
   await password.fill(value);
@@ -12,8 +12,11 @@ test("login password toggles with mouse, Enter and Space without submitting", as
   await expect(toggle).toHaveAttribute("type", "button");
   await expect(toggle).toHaveAttribute("aria-controls", "password1");
   await expect(password).toHaveAttribute("type", "password");
-  const passwordSlash = toggle.locator("[data-password-slash]");
-  await expect(passwordSlash).toHaveAttribute("hidden", "");
+  await expect(toggle).not.toHaveClass(/is-visible/);
+  const slash = toggle.locator(".eye-slash");
+  await expect(slash).toHaveCSS("opacity", "1");
+  expect(await slash.evaluate(element => getComputedStyle(element).transitionDuration)).not.toBe("0s");
+  const icon = await toggle.locator("svg").evaluate(svg => svg.outerHTML);
   const fieldBox = await password.boundingBox();
   const buttonBox = await toggle.boundingBox();
   expect(buttonBox.x).toBeGreaterThan(fieldBox.x + fieldBox.width / 2);
@@ -22,31 +25,32 @@ test("login password toggles with mouse, Enter and Space without submitting", as
   expect(buttonBox.y + buttonBox.height).toBeLessThanOrEqual(fieldBox.y + fieldBox.height);
 
   await toggle.click();
-  const button = page.locator("#toggle-login-password");
   await expect(password).toHaveAttribute("type", "text");
   await expect(password).toHaveValue(value);
-  await expect(button).toHaveAccessibleName("Ẩn mật khẩu");
-  await expect(button).toHaveAttribute("title", "Ẩn mật khẩu");
-  await expect(button.locator("[data-password-slash]")).toBeVisible();
+  await expect(toggle).toHaveAccessibleName("Ẩn mật khẩu");
+  await expect(toggle).toHaveAttribute("title", "Ẩn mật khẩu");
+  await expect(toggle).toHaveClass(/is-visible/);
+  await expect(slash).toHaveCSS("opacity", "0");
 
   // Reach the native button in tab order, then activate it with both keys.
   await password.focus();
   await page.keyboard.press("Tab");
-  await expect(button).toBeFocused();
-  expect(await button.evaluate(element => getComputedStyle(element).outlineStyle)).not.toBe("none");
+  await expect(toggle).toBeFocused();
+  expect(await toggle.evaluate(element => getComputedStyle(element).outlineStyle)).not.toBe("none");
   await page.keyboard.press("Enter");
   await expect(password).toHaveAttribute("type", "password");
-  await expect(button).toHaveAccessibleName("Hiện mật khẩu");
-  await expect(button).toHaveAttribute("title", "Hiện mật khẩu");
-  await expect(passwordSlash).toBeHidden();
+  await expect(toggle).toHaveAccessibleName("Hiện mật khẩu");
+  await expect(toggle).toHaveAttribute("title", "Hiện mật khẩu");
+  await expect(toggle).not.toHaveClass(/is-visible/);
+  await expect(slash).toHaveCSS("opacity", "1");
   await page.keyboard.press("Space");
   await expect(password).toHaveAttribute("type", "text");
-  await expect(button).toHaveAccessibleName("Ẩn mật khẩu");
-  await expect(button).toHaveAttribute("title", "Ẩn mật khẩu");
+  await expect(toggle).toHaveAccessibleName("Ẩn mật khẩu");
+  await expect(toggle).toHaveAttribute("title", "Ẩn mật khẩu");
   await expect(password).toHaveValue(value);
   await expect(password).toHaveAttribute("autocomplete", "current-password");
   await expect(password).toHaveAttribute("required", "");
-  await expect(button.locator("[data-password-slash]")).toBeVisible();
+  expect(await toggle.locator("svg").evaluate(svg => svg.outerHTML)).toBe(icon);
   expect(await page.evaluate(() => window.visibilitySubmits)).toEqual({ signIn: 0, signUp: 0 });
   await expect(page.locator("#password")).toHaveAttribute("type", "password");
   await expect(page.locator("#checkpassword")).toHaveAttribute("type", "password");

@@ -240,6 +240,47 @@ form .password-field input::placeholder {
 	transition: background-color 160ms ease, color 160ms ease, box-shadow 160ms ease;
 }
 
+.password-toggle svg > path:first-child,
+.password-toggle svg > circle {
+	transform-box: fill-box;
+	transform-origin: center;
+	transition: transform 180ms ease;
+}
+
+.password-toggle .eye-slash {
+	stroke-dasharray: 30;
+	stroke-dashoffset: 0;
+	transform-box: fill-box;
+	transform-origin: center;
+	transition: stroke-dashoffset 220ms ease, opacity 180ms ease, transform 220ms ease;
+}
+
+.password-toggle.is-visible .eye-slash {
+	opacity: 0;
+	stroke-dashoffset: 30;
+	transform: scale(.85);
+}
+
+.password-toggle.is-visible svg > path:first-child {
+	transform: scale(1.04);
+}
+
+.password-toggle.is-visible svg > circle {
+	transform: scale(1.2);
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.password-toggle {
+		transition: none;
+	}
+
+	.password-toggle svg > path:first-child,
+	.password-toggle svg > circle,
+	.password-toggle .eye-slash {
+		transition: none;
+	}
+}
+
 @media (hover: hover) {
 	.password-toggle:hover {
 		background: var(--rose-pale);
@@ -250,8 +291,6 @@ form .password-field input::placeholder {
 .password-toggle:focus-visible {
 	outline: 3px solid var(--rose-dark);
 	outline-offset: -3px;
-	background: var(--rose-pale);
-	color: var(--rose-dark);
 }
 
 .password-toggle:active {
@@ -269,16 +308,6 @@ form .password-field input::placeholder {
 .password-field:has(input[type="text"]) .password-toggle svg {
 	opacity: 1;
 	transform: scale(0.94);
-}
-
-.password-toggle [data-password-slash]:not([hidden]) {
-	stroke-dasharray: 26;
-	animation: password-slash-reveal 160ms ease-out;
-}
-
-@keyframes password-slash-reveal {
-	from { stroke-dashoffset: 26; }
-	to { stroke-dashoffset: 0; }
 }
 
 .forgot-password {

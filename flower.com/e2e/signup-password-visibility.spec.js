@@ -23,10 +23,13 @@ test("signup password fields toggle independently without submitting", async ({ 
   await expect(confirmationToggle).toHaveAttribute("type", "button");
   await expect(passwordToggle).toHaveAccessibleName("Hiện mật khẩu");
   await expect(confirmationToggle).toHaveAccessibleName("Hiện mật khẩu xác nhận");
+  await expect(passwordToggle.locator(".eye-slash")).toHaveCSS("opacity", "1");
+  await expect(confirmationToggle.locator(".eye-slash")).toHaveCSS("opacity", "1");
   await passwordToggle.click();
   await expect(password).toHaveAttribute("type", "text");
   await expect(confirmation).toHaveAttribute("type", "password");
   await expect(passwordToggle).toHaveAccessibleName("Ẩn mật khẩu");
+  await expect(passwordToggle.locator(".eye-slash")).toHaveCSS("opacity", "0");
   await expect(confirmationToggle).toHaveAccessibleName("Hiện mật khẩu xác nhận");
 
   await confirmation.focus();
@@ -36,6 +39,7 @@ test("signup password fields toggle independently without submitting", async ({ 
   await expect(confirmation).toHaveAttribute("type", "text");
   await expect(password).toHaveAttribute("type", "text");
   await expect(confirmationToggle).toHaveAccessibleName("Ẩn mật khẩu xác nhận");
+  await expect(confirmationToggle.locator(".eye-slash")).toHaveCSS("opacity", "0");
   await expect(confirmationToggle).toHaveAttribute("title", "Ẩn mật khẩu xác nhận");
   await expect(confirmationToggle).toBeFocused();
   await page.keyboard.press("Space");
@@ -44,6 +48,7 @@ test("signup password fields toggle independently without submitting", async ({ 
   await expect(confirmationToggle).toHaveAccessibleName("Hiện mật khẩu xác nhận");
   await expect(confirmationToggle).toHaveAttribute("title", "Hiện mật khẩu xác nhận");
   await expect(confirmationToggle).toBeFocused();
+  await expect(confirmationToggle.locator(".eye-slash")).toHaveCSS("opacity", "1");
   await passwordToggle.click();
   await expect(password).toHaveAttribute("type", "password");
 

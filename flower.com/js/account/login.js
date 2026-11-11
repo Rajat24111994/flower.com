@@ -22,7 +22,6 @@ signUp.inert = true;
 const passwordConcealers = Array.from(document.querySelectorAll(".password-toggle"), (button) => {
     const password = document.getElementById(button.getAttribute("aria-controls"));
     const passwordLabel = button.dataset.passwordLabel || "mật khẩu";
-    const passwordSlash = button.querySelector("[data-password-slash]");
     let hideTimer;
 
     function setPasswordVisibility(showPassword, focusInput = false) {
@@ -36,10 +35,10 @@ const passwordConcealers = Array.from(document.querySelectorAll(".password-toggl
             // Selection APIs are not available in every browser.
         }
         password.type = showPassword ? "text" : "password";
+        button.classList.toggle("is-visible", showPassword);
         const label = `${showPassword ? "Ẩn" : "Hiện"} ${passwordLabel}`;
         button.setAttribute("aria-label", label);
         button.title = label;
-        passwordSlash.toggleAttribute("hidden", !showPassword);
         // Only pointer activation returns focus to the input.
         if (focusInput) {
             password.focus({ preventScroll: true });
