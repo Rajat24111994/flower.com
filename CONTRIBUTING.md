@@ -10,7 +10,7 @@
    cd ../tests && npm run integration   # khi đổi API, firestore.rules hoặc luồng đơn hàng
    ```
 4. Push nhánh và mở Pull Request vào `main`, điền đủ mẫu PR.
-5. Chờ CI xanh và ít nhất **1 người review đồng ý** rồi mới gộp. Không push thẳng lên `main`.
+5. Mời một thành viên khác review, chờ CI xanh và ít nhất **1 review Approve** rồi mới gộp. Comment góp ý có nội dung là một phần của review nhưng không thay thế approval bắt buộc. Không tự duyệt PR của mình và không push thẳng lên `main`.
 
 ## Test-driven development: Red → Green → Refactor
 
@@ -48,6 +48,8 @@ Muốn hàm trong API test được thì đưa nó vào `module.exports.internal
 Người mở PR:
 - PR nhỏ, một mục đích. Mô tả **vì sao** đổi và **cách đã kiểm tra**.
 - Tự đọc lại diff trước khi nhờ review.
+- Chọn reviewer khác tác giả; không dùng tài khoản phụ của chính mình để duyệt. Nếu tác giả là Code Owner, mời một thành viên khác có quyền review.
+- Khi thêm thành viên hoặc dùng alias commit mới, cập nhật [danh sách thành viên](docs/TEAM.md) sau khi người đó xác nhận thông tin được phép công khai.
 
 Người review kiểm tra:
 - [ ] Code làm đúng điều PR mô tả; có test cho hành vi mới hoặc lỗi được sửa.
@@ -69,6 +71,8 @@ Góp ý cụ thể, kèm lý do. Chỉ "Approve" khi đã chạy hoặc đọc k
 | Không còn góp ý chưa giải quyết | GitHub branch protection |
 
 ### Bật bảo vệ nhánh `main` (chủ repo làm một lần)
+
+Xem cấu hình có thể áp dụng và cách kiểm tra tại [bảo vệ nhánh main](docs/branch-protection.md). Cấu hình trong Git chỉ là đầu vào; cần áp dụng trên GitHub để có hiệu lực.
 
 GitHub → repo → **Settings → Branches → Add branch ruleset** (hoặc *Add rule*) cho `main`:
 - ✅ Require a pull request before merging → *Required approvals: 1*, ✅ Dismiss stale approvals, ✅ Require review from Code Owners

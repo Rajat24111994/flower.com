@@ -9,7 +9,7 @@
     <meta name="description" content="Quản lý thông tin tài khoản Flowerflow của bạn.">
     <link rel="icon" type="image/svg+xml" href="./favicon.svg">
     <title>Tài khoản của tôi | Flowerflow</title>
-    <link rel="stylesheet" href="./css/account/account.css?v=2">
+    <link rel="stylesheet" href="./css/account/account.css?v=3">
     <link rel="stylesheet" href="./css/core/accessibility.css?v=1">
     <link rel="stylesheet" href="./css/core/store-footer.css?v=4">
 <link rel="stylesheet" href="./css/core/contact-tools.css?v=4">
@@ -22,7 +22,7 @@
             <p class="eyebrow">HỒ SƠ CỦA BẠN</p>
             <h1 id="account-title">Tài khoản của tôi</h1>
             <p class="intro">Thông tin tài khoản đang đăng nhập.</p>
-            <dl class="account-details">
+            <dl class="account-details" hidden>
                 <div><dt>Họ tên</dt><dd id="account-name"></dd></div>
                 <div><dt>Thư điện tử</dt><dd id="account-email"></dd></div>
                 <div><dt>Số điện thoại</dt><dd id="account-phone"></dd></div>
@@ -57,14 +57,14 @@
                 </form>
                 <a class="security-recovery-link" href="./forgot-password.html">Quên PIN? Khôi phục bằng 3 câu hỏi</a>
             </section>
-            <p class="account-message" id="account-message" role="status" aria-live="polite"></p>
+            <p class="account-message" id="account-message" role="status" aria-live="polite">Đang xác minh phiên đăng nhập…</p>
             <div class="account-actions">
                 <a class="shop-link" href="./product.html">Tiếp tục mua sắm</a>
-                <button id="logout-button" type="button">Đăng xuất</button>
+                <button id="logout-button" type="button" disabled>Đăng xuất</button>
             </div>
         </section>
     </main>
-    <script type="module" src="./js/account/account.js?v=8"></script>
+    <script type="module" src="./js/account/account.js?v=9"></script>
     <script src="./js/core/store-footer.js?v=4"></script>
 <script src="./js/core/contact-tools.js?v=1"></script>
 </body>

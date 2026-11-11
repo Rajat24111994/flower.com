@@ -1,8 +1,5 @@
 const LOCAL_IDENTITY = Symbol("server-verified-local-identity");
-function sessionCookie(req) {
-    return String(req.headers.cookie || "").split(";").map(value => value.trim())
-        .find(value => value.startsWith("flower_local_session="))?.slice("flower_local_session=".length);
-}
+const { sessionCookie } = require("./local-session");
 async function optionalCustomer(req) {
     if (req[LOCAL_IDENTITY]) {
         const { account, presented } = req[LOCAL_IDENTITY];

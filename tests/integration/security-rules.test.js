@@ -101,8 +101,34 @@ test("đơn hàng: khách chỉ đọc được đơn của mình, không tự t
 
 test("đơn hàng: admin xem và cập nhật được, admin đã bị thu hồi thì không", async () => {
     await assertSucceeds(getDocs(collection(admin(), "orders")));
+    await assertSucceeds(updateDoc(doc(admin(), "orders/o1"), { status: "Đang chuẩn bị" }));
     await assertSucceeds(updateDoc(doc(admin(), "orders/o1"), { status: "Đang giao" }));
     await assertFails(getDocs(collection(revokedAdmin(), "orders")));
+});
+
+test("đơn hàng: Rules chặn bỏ qua bước, cho hủy và chỉ khôi phục về chờ xác nhận", async () => {
+    const orderRef = doc(admin(), "orders/o1");
+    await assertFails(updateDoc(orderRef, { status: "Đang giao" }));
+    await assertFails(updateDoc(orderRef, { status: "Đã giao" }));
+    await assertSucceeds(updateDoc(orderRef, { status: "Đã hủy" }));
+    await assertFails(updateDoc(orderRef, { status: "Đang chuẩn bị" }));
+    await assertSucceeds(updateDoc(orderRef, { status: "Chờ xác nhận" }));
+});
+
+test("đơn QR đã thanh toán có thể được hủy nhưng không bị ghi nhầm thành đã hoàn tiền", async () => {
+    await env.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), "orders/paid1"), {
+            uid: "alice", status: "Đang chuẩn bị", paymentMethod: "qr",
+            paymentVerified: true, paymentStatus: "Đã thanh toán", total: 100
+        });
+    });
+    const orderRef = doc(admin(), "orders/paid1");
+    await assertSucceeds(updateDoc(orderRef, { status: "Đã hủy" }));
+    const cancelled = (await getDoc(orderRef)).data();
+    assert.equal(cancelled.status, "Đã hủy");
+    assert.equal(cancelled.paymentVerified, true);
+    assert.equal(cancelled.paymentStatus, "Đã thanh toán");
+    await assertFails(updateDoc(orderRef, { paymentStatus: "Đã hoàn tiền" }));
 });
 
 test("đơn hàng: admin không thể tự xác minh thanh toán hoặc thêm trường tùy ý", async () => {

@@ -1,5 +1,6 @@
-const { getAdminAuth, getAdminFirestore, sendError, verifyRequest } = require("../../lib/firebase-admin");
+const { getAdminAuth, getAdminFirestore, sendError, verifyOwnerRequest } = require("../../lib/firebase-admin");
 const { syncAdminRole, syncAdminRoles } = require("../../lib/admin-roles");
+const { recordAdminAudit } = require("../../lib/admin-audit");
 
 function getRole(user) {
     if (user.customClaims && user.customClaims.role === "owner") return "owner";
@@ -15,8 +16,10 @@ module.exports = async function handler(req, res) {
     }
 
     let adminAuth;
+    let db;
     try {
         adminAuth = getAdminAuth();
+        db = getAdminFirestore();
     } catch (error) {
         console.error("Firebase Admin API configuration error:", error.message);
         return sendError(
@@ -27,12 +30,8 @@ module.exports = async function handler(req, res) {
         );
     }
 
-    const decodedToken = await verifyRequest(req, res, adminAuth);
+    const decodedToken = await verifyOwnerRequest(req, res, adminAuth, db);
     if (!decodedToken) return;
-
-    if (decodedToken.role !== "owner") {
-        return sendError(res, 403, "permission-denied", "Chỉ chủ cửa hàng mới được quản lý quyền tài khoản.");
-    }
 
     const body = req.body || {};
     if (body.action === "list") {
@@ -46,7 +45,7 @@ module.exports = async function handler(req, res) {
             // Backfill adminRoles for admins created before it existed (see lib/admin-roles.js).
             if (result.users.length) {
                 try {
-                    await syncAdminRoles(getAdminFirestore(), result.users);
+                    await syncAdminRoles(db, result.users);
                 } catch (error) {
                     console.error("adminRoles backfill failed:", error.code || error.message);
                 }
@@ -97,7 +96,7 @@ module.exports = async function handler(req, res) {
 
         await adminAuth.setCustomUserClaims(user.uid, claims);
         // Removing the adminRoles document cuts Firestore access immediately.
-        await syncAdminRole(getAdminFirestore(), user, body.action === "grant-admin");
+        await syncAdminRole(db, user, body.action === "grant-admin");
         try {
             await adminAuth.revokeRefreshTokens(user.uid);
         } catch (error) {
@@ -109,11 +108,16 @@ module.exports = async function handler(req, res) {
                 "Đã đổi quyền nhưng chưa thể thu hồi phiên đăng nhập cũ. Hãy thu hồi phiên này trong Firebase Console."
             );
         }
-        console.info("Owner changed account role:", {
-            actorUid: decodedToken.uid,
-            targetUid: user.uid,
-            action: body.action
-        });
+        try {
+            await recordAdminAudit(db, decodedToken, `owner-user.${body.action}`, "user-role", user.uid, {
+                previousRole: getRole({ customClaims: user.customClaims }),
+                nextRole: body.action === "grant-admin" ? "admin" : "customer"
+            });
+        } catch (error) {
+            console.error("Owner role changed but audit record failed:", error.code || error.message);
+            return sendError(res, 500, "role-updated-audit-failed", "Đã đổi quyền và thu hồi phiên đăng nhập, nhưng chưa ghi được nhật ký kiểm tra.");
+        }
+        console.info("Owner changed account role.", { action: body.action });
         return res.status(200).json({
             uid: user.uid,
             role: body.action === "grant-admin" ? "admin" : "customer",

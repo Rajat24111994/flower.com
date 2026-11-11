@@ -19,7 +19,8 @@ const publicPages = new Set([
   "custom-bouquet.html"
 ]);
 const socialMetadataPages = new Set(["index.html", "product.html"]);
-const productIds = require("../flower.com/flower.json").flower.map((product) => String(product.id));
+const catalogProducts = require("../flower.com/flower.json").flower;
+const productIds = catalogProducts.map((product) => String(product.id));
 const titles = new Set();
 const descriptions = new Set();
 
@@ -86,6 +87,10 @@ assert.equal(staticCatalogData.itemListElement.length, productIds.length);
 assert.deepEqual(
   new Set(staticCatalogData.itemListElement.map((item) => new URL(item.url).searchParams.get("id"))),
   new Set(productIds)
+);
+assert.deepEqual(
+  staticCatalogData.itemListElement.map((item) => [new URL(item.url).searchParams.get("id"), item.name]),
+  catalogProducts.map((product) => [String(product.id), product.title])
 );
 assert.match(productPage, /class="skip-link"\s+href="#main-content"/);
 assert.match(productScript, /"@type": "ItemList"/);

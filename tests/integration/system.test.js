@@ -51,6 +51,7 @@ test("khách đặt hàng → admin giao hàng → khách theo dõi và đánh g
         }
     });
     assert.equal(reconciled.status, 200, JSON.stringify(reconciled.body));
+    await updateDoc(doc(adminDb, "orders", id), { status: "Đang chuẩn bị", currentLocation: "Đơn đang được chuẩn bị" });
     await updateDoc(doc(adminDb, "orders", id), { status: "Đang giao", currentLocation: "Quận 1" });
 
     // 4. Người chỉ có mã đơn + số điện thoại tra cứu được tiến độ nhưng không thấy địa chỉ.

@@ -1,6 +1,6 @@
 import { firebaseConfig, isFirebaseConfigured, connectFirebaseEmulators } from "../core/firebase-config.js";
 import { logAuthError } from "./auth-logging.js";
-import { isLocalAuth, localAuthRequest } from "./local-auth-client.js";
+import { isLocalAuth, localAuthRequest } from "./local-auth-client.js?v=2";
 import { recoveryError, restrictPinInputs } from "./recovery-security.js?v=3";
 
 const form = document.getElementById("recovery-form");

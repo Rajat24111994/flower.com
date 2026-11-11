@@ -1,7 +1,7 @@
 import { mountReport } from "./admin-report-view.js?v=2";
 import { dateKey as reportDateKey, isOrderPaid } from "./admin-analytics.js?v=2";
 import { firebaseConfig } from "../core/firebase-config.js";
-import { ORDER_STATUSES, normalizeOrderStatus, orderStatusLabel } from "../order/order-status.js?v=2";
+import { ORDER_STATUSES, canTransitionOrderStatus, normalizeOrderStatus, orderStatusLabel } from "../order/order-status.js?v=3";
 import { preparePhotos } from "../review/review-images.js?v=1";
 
 let productPage = document.getElementById("product_page");
@@ -292,9 +292,9 @@ function renderRestoreCatalogNotice() {
    if (!missingCount) return offlineNotice;
    return offlineNotice + `
        <div class="restore-catalog-notice" role="status">
-           <p><strong>Cửa hàng đang thiếu ${missingCount} sản phẩm so với danh mục gốc.</strong>
-           Sản phẩm có thể đã bị xóa do lỗi lưu kho trước đây. Khôi phục sẽ thêm lại các sản phẩm còn thiếu với tồn kho ban đầu; sản phẩm đang có giữ nguyên.</p>
-           <button class="primary-btn" type="button" data-action="restore-catalog">Khôi phục ${missingCount} sản phẩm</button>
+           <p><strong>Có ${missingCount} sản phẩm mẫu chưa có trong kho Firestore.</strong>
+           Thao tác này chỉ thêm sản phẩm còn thiếu; sản phẩm đang có và các chỉnh sửa của cửa hàng được giữ nguyên.</p>
+           <button class="primary-btn" type="button" data-action="restore-catalog">Thêm ${missingCount} sản phẩm</button>
        </div>
    `;
 }
@@ -349,9 +349,9 @@ function showAdminConfirmation({ title, message, confirmLabel, danger = false })
 async function restoreCatalog() {
    const missingCount = FlowerInventory.getMissingCatalogProducts().length;
    if (!missingCount || !await showAdminConfirmation({
-       title: "Khôi phục sản phẩm",
-       message: `Sẽ thêm lại ${missingCount} sản phẩm còn thiếu từ danh mục gốc. Sản phẩm hiện có sẽ được giữ nguyên.`,
-       confirmLabel: `Khôi phục ${missingCount} sản phẩm`
+       title: "Thêm sản phẩm mẫu",
+       message: `Sẽ thêm ${missingCount} sản phẩm đang thiếu vào Firestore. Sản phẩm hiện có và nội dung đã chỉnh sửa sẽ được giữ nguyên.`,
+       confirmLabel: `Thêm ${missingCount} sản phẩm`
    })) return;
    try {
        const restored = await FlowerInventory.restoreCatalogProducts();
@@ -810,6 +810,14 @@ function renderOffersTab() {
                        <span class="field-label">Phần trăm giảm (%)</span>
                        <input id="offer-percent" name="percent" type="number" min="0.01" max="100" step="0.01" placeholder="10" required>
                    </label>
+                   <label>
+                       <span class="field-label">Ngày bắt đầu (để trống nếu áp dụng ngay)</span>
+                       <input name="startDate" type="date">
+                   </label>
+                   <label>
+                       <span class="field-label">Ngày kết thúc (để trống nếu không giới hạn)</span>
+                       <input name="endDate" type="date">
+                   </label>
                    <fieldset class="offer-products">
                        <legend>Chọn sản phẩm áp dụng</legend>
                        <button class="secondary-btn offer-select-all" data-offer-select-all type="button" ${products.length ? "" : "disabled"}>Chọn tất cả hoa / bỏ chọn tất cả</button>
@@ -834,6 +842,7 @@ function renderOffersTab() {
                                <div>
                                    <strong>${escapeHtml(offer.name)}</strong>
                                    <span>Giảm ${Number(offer.discountPercent)}% · ${productCount} sản phẩm</span>
+                                   ${offer.startDate || offer.endDate ? `<span>Hiệu lực: ${offer.startDate ? escapeHtml(offer.startDate) : "không giới hạn"} – ${offer.endDate ? escapeHtml(offer.endDate) : "không giới hạn"}</span>` : ""}
                                    ${offer.allProducts === true ? '<span>Áp dụng cho tất cả hoa</span>' : ""}
                                    <span class="offer-status ${offer.active ? "is-active" : "is-inactive"}">${offer.active ? "Đang áp dụng" : "Đã tạm dừng"}</span>
                                </div>
@@ -1137,6 +1146,8 @@ async function addOffer(event) {
    const name = String(formData.get("name") || "").trim();
    const discountPercent = Number(formData.get("percent"));
    const productIds = formData.getAll("productIds").map(String);
+   const startDate = String(formData.get("startDate") || "");
+   const endDate = String(formData.get("endDate") || "");
 
    if (!name || !Number.isFinite(discountPercent) || discountPercent <= 0 || discountPercent > 100) {
        alert("Vui lòng nhập tên ưu đãi và phần trăm giảm lớn hơn 0%, tối đa 100%.");
@@ -1144,6 +1155,13 @@ async function addOffer(event) {
    }
    if (!productIds.length) {
        alert("Vui lòng chọn ít nhất một sản phẩm áp dụng.");
+       return;
+   }
+   const validDate = (value) => !value || (/^\d{4}-\d{2}-\d{2}$/.test(value)
+       && Number.isFinite(Date.parse(`${value}T00:00:00Z`))
+       && new Date(`${value}T00:00:00Z`).toISOString().slice(0, 10) === value);
+   if (!validDate(startDate) || !validDate(endDate) || (startDate && endDate && startDate > endDate)) {
+       alert("Ngày bắt đầu/kết thúc không hợp lệ. Ngày bắt đầu phải trước hoặc bằng ngày kết thúc.");
        return;
    }
 
@@ -1155,6 +1173,8 @@ async function addOffer(event) {
            : String(Date.now()),
        name,
        discountPercent,
+       ...(startDate ? { startDate } : {}),
+       ...(endDate ? { endDate } : {}),
        productIds,
        allProducts: allProductIds.size > 0
            && productIds.length === allProductIds.size
@@ -1462,7 +1482,7 @@ function renderOrderCard(order, showCompletionAction = true) {
                    <label class="field-label">Cập nhật trạng thái</label>
                    <div class="status-row">
                        <select class="status-select" data-order-id="${escapeHtml(order.id)}">
-                           ${ORDER_STATUSES.map((status) => `
+                           ${ORDER_STATUSES.filter((status) => canTransitionOrderStatus(order.status, status)).map((status) => `
                                <option value="${status}" ${status === normalizeOrderStatus(order.status) ? "selected" : ""}>${orderStatusLabel(status)}</option>
                            `).join("")}
                        </select>
@@ -1941,6 +1961,10 @@ async function updateOrderStatus(orderId, status, location, estimatedDelivery) {
    const order = getOrders().find((item) => String(item.id) === String(orderId));
    if (!order) {
        alert("Không tìm thấy đơn hàng trên hệ thống dùng chung.");
+       return;
+   }
+   if (!canTransitionOrderStatus(order.status, status)) {
+       alert(`Không thể chuyển đơn từ “${orderStatusLabel(order.status)}” sang “${orderStatusLabel(status)}”. Hãy cập nhật theo đúng thứ tự.`);
        return;
    }
    // Restoring a cancelled order: do not keep showing "the order expired" as its location.

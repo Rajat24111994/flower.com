@@ -199,22 +199,14 @@ if (accountNav) {
 // showing the account and new orders are not silently placed as a guest.
 async function verifyStoredSession() {
     if (["localhost", "127.0.0.1"].includes(window.location.hostname) && window.FlowerAuthMode !== "firebase") {
-        const stored = getCurrentAccount();
         try {
-            const response = await fetch("/api/local-auth/session", { credentials: "same-origin", cache: "no-store" });
-            if (response.status === 401) {
-                if (stored) expireStoredSession();
-                return;
-            }
-            if (!response.ok) return;
-            const { account } = await response.json();
-            if (account) {
-                FlowerSafeStorage.writeJson("loggedUser", account);
+            const { monitorLocalSession } = await import("../account/session-lifecycle.js?v=1");
+            monitorLocalSession({ onVerified(account) {
                 FlowerSafeStorage.syncShoppingOwner?.();
                 updateShoppingHeaderCounts();
                 const label = document.querySelector(".signin h5");
                 if (label) label.textContent = account.name || account.email;
-            }
+            }, onExpired: () => expireStoredSession(true) });
         } catch {
             console.warn("Chưa kiểm tra được phiên tài khoản trên máy.");
         }
@@ -272,7 +264,7 @@ async function verifyStoredSession() {
     expireStoredSession();
 }
 
-function expireStoredSession() {
+function expireStoredSession(alreadyCleared = false) {
     try {
         FlowerSafeStorage.remove("loggedUser");
         FlowerSafeStorage.remove("loggedAdmin");
@@ -284,12 +276,13 @@ function expireStoredSession() {
     }
     const label = document.querySelector(".signin h5");
     if (label) label.textContent = "Tài khoản";
+    if (document.querySelector(".session-expired-notice")) return;
     const notice = document.createElement("p");
     notice.className = "session-expired-notice";
     notice.setAttribute("role", "status");
     notice.innerHTML = 'Phiên đăng nhập đã hết hạn. <a href="./login.html">Đăng nhập lại</a> để xem đơn hàng và lưu đơn vào tài khoản.';
     document.querySelector("main")?.prepend(notice);
-    window.dispatchEvent(new CustomEvent("flowersessionexpired"));
+    if (!alreadyCleared) window.dispatchEvent(new CustomEvent("flowersessionexpired"));
 }
 
 void verifyStoredSession();

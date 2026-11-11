@@ -253,6 +253,22 @@ test("các cấu hình cùng sản phẩm: giá server, lưu thiệp riêng, tr�
     assert.equal(shortage.body.items.length, 2);
 });
 
+test("báo giá mới tự dọn reservation hết hạn dù cron chưa chạy", async () => {
+    const placed = await h.placeOrder({ items: [{ id: "3", quantity: 2 }], paymentMethod: "cod" });
+    const orderRef = h.db().doc(`orders/${placed.body.order.id}`);
+    assert.equal(await h.stockOf("3"), 8);
+    await orderRef.update({ reservationExpiresAt: Timestamp.fromMillis(Date.now() - 1000) });
+
+    const quote = await h.callApi("orders", { body: { action: "quote", items: [{ id: "3", quantity: 2 }] } });
+
+    assert.equal(quote.status, 200, JSON.stringify(quote.body));
+    assert.equal(await h.stockOf("3"), 10);
+    const expired = (await orderRef.get()).data();
+    assert.equal(expired.status, "Đã hủy");
+    assert.equal(expired.inventoryReserved, false);
+    assert.equal(expired.inventoryState, "released");
+});
+
 test("ghi chú quá 500 ký tự bị từ chối, không bị cắt", async () => {
     const result = await h.placeOrder({ overrides: { orderNote: "a".repeat(501) } });
     assert.equal(result.status, 400);

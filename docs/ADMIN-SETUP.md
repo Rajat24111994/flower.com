@@ -49,8 +49,7 @@ token expires (up to one hour). Clients can neither read nor write `adminRoles`.
 When upgrading an existing deployment, keep this order so current admins keep access:
 
 1. Deploy the site (Vercel) so the Owner API and scripts know about `adminRoles`.
-2. Create the documents for existing admins, either by opening `/owner.html` as the Owner (the
-   user list backfills `adminRoles` for every listed account) or from a trusted terminal:
+2. From a trusted terminal, create the documents for existing admins and Owners:
 
    ```sh
    cd flower.com
@@ -63,7 +62,7 @@ When upgrading an existing deployment, keep this order so current admins keep ac
 
 ## Roles and access
 
-The admin page and Vercel admin API require the Firebase ID token's `admin: true` custom claim. Owner accounts have both `role: "owner"` and `admin: true`; the separate Owner API requires `role: "owner"` and verifies token revocation. The Owner page can grant or remove admin access, and each role change revokes the target user's refresh tokens. It does not allow creating Owners or changing the signed-in Owner's role. Admin account listing is paginated in batches of 100.
+The admin page and Vercel admin APIs require both the Firebase ID token's `admin: true` custom claim and the matching `adminRoles/{uid}` document. Owner accounts have both `role: "owner"` and `admin: true`; the separate Owner API requires `role: "owner"` and verifies token revocation. The Owner page can grant or remove admin access, and each role change revokes the target user's refresh tokens. It does not allow creating Owners or changing the signed-in Owner's role. Admin account listing is paginated in batches of 100.
 
 Do not share one Owner login among a group. Bootstrap one trusted Owner, then let that Owner grant `admin` to each teammate's individual Firebase account.
 

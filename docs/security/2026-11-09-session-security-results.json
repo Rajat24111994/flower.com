@@ -1,0 +1,61 @@
+{
+  "date": "2026-11-09",
+  "timezone": "Asia/Bangkok",
+  "baselineRevision": "d338499b25d77d4e18755f7b1c1b60e15a44e747",
+  "sourceState": "uncommitted session hardening",
+  "scope": "AUTH_MODE=local",
+  "policy": {
+    "absoluteLifetimeHours": 12,
+    "slidingExpiration": false,
+    "logoutScope": "presented browser session cookies; independent devices keep their sessions",
+    "cookie": {
+      "httpOnly": true,
+      "sameSite": "Strict",
+      "path": "/",
+      "maxAgeSeconds": 43200,
+      "expires": true,
+      "domainAttribute": false,
+      "secure": "enabled for a trusted TLS socket; omitted for the loopback HTTP development server"
+    }
+  },
+  "unit": {
+    "tests": 169,
+    "pass": 169,
+    "fail": 0,
+    "cancelled": 0,
+    "skipped": 0,
+    "duration_ms": 70313.517,
+    "coverage": {
+      "lines": 58.86,
+      "branches": 80.85,
+      "functions": 82.11
+    },
+    "log": "session-unit-final.log"
+  },
+  "localBrowser": {
+    "passed": 24,
+    "failed": 0,
+    "log": "session-browser-final.log"
+  },
+  "firebaseCompatibility": {
+    "passed": 12,
+    "failed": 0,
+    "log": "session-firebase-compatibility.log",
+    "mode": "SDK/API fixtures only; no real Firebase session revocation tested"
+  },
+  "verified": [
+    "Exact 12-hour server boundary; repeated reads do not renew the session",
+    "Copied expired/logged-out cookies rejected at protected HTTP endpoints",
+    "Successful re-login revokes the presented old cookie while failed login does not",
+    "Logout rejects GET/cross-origin attempts, is idempotent and survives database restart",
+    "Ambiguous cookies rejected for authentication and all their presented tokens revoked on logout",
+    "Password/PIN recovery revokes the target sessions and the different account cookie being cleared",
+    "HTTPS issue/delete Secure attributes and rejection of forged forwarded-proto as proof of TLS",
+    "Multiple tabs, back/forward restoration, unavailable verification and failed logout UI"
+  ],
+  "limitations": [
+    "Secure branch tested at handler level using an encrypted-socket fixture; browser tests use localhost HTTP",
+    "The absolute 12-hour policy and server-cookie revocation apply to local accounts; optional Firebase SDK mode is outside the new policy",
+    "UI notices server-side revocation on focus/visibility/pageshow or a visible-tab poll; all subsequent protected requests validate the server session"
+  ]
+}

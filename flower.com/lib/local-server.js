@@ -50,7 +50,12 @@ async function jsonBody(req, limit) {
 function createLocalServer({ root, resolveApi, missingLoginConfiguration = [], localAccounts = null, authMode = null } = {}) {
     const directory = path.resolve(root || path.join(__dirname, ".."));
     const realRoot = fs.realpath(directory);
-    const policy = require("../vercel.json").headers[0].headers.find(header => header.key === "Content-Security-Policy").value;
+    const vercelConfig = require("../vercel.json");
+    const policy = vercelConfig.headers[0].headers.find(header => header.key === "Content-Security-Policy").value;
+    // Giống Vercel: URL API cũ được chuyển sang hàm đã gộp (xem lib/api-routes.js).
+    const apiRewrites = new Map((vercelConfig.rewrites || [])
+        .filter(rule => rule.source.startsWith("/api/") && !/[:*(]/.test(rule.source))
+        .map(rule => [rule.source, new URL(rule.destination, "http://local.invalid")]));
     const contentSecurityPolicy = require("./content-security").withScriptHashes(policy, directory);
     const localAuth = localAccounts ? require("./local-auth-http").createLocalAuthHandler(localAccounts) : null;
     const runtimeMode = localAuth ? "local" : authMode === "firebase" ? "firebase" : null;
@@ -82,6 +87,11 @@ function createLocalServer({ root, resolveApi, missingLoginConfiguration = [], l
                 return fail(403, "local-host-required", "Máy chủ này chỉ hỗ trợ địa chỉ localhost.");
             }
             const url = new URL(req.url, `http://${host}`);
+            const rewrite = apiRewrites.get(url.pathname);
+            if (rewrite) {
+                url.pathname = rewrite.pathname;
+                for (const [key, value] of rewrite.searchParams) url.searchParams.set(key, value);
+            }
             const pathname = decodeURIComponent(url.pathname);
             if (pathname.includes("\\") || pathname.includes("\0")) {
                 return fail(404, "not-found", "Không tìm thấy nội dung.");

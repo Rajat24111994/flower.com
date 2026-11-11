@@ -38,7 +38,7 @@ assert.match(productScript, /img\.loading = index === 0 \? "eager" : "lazy"/);
 assert.match(productScript, /img\.fetchPriority = "high"/);
 assert.match(productScript, /new IntersectionObserver/);
 
-assert.deepEqual(catalog, []);
+assert.equal(catalog.length, 30);
 assert.match(productPage, /custom-bouquet\.html/);
 const fixtureCatalog = Array.from({ length: 5 }, (_, index) => ({
   id: index + 1,

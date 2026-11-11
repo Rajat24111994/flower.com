@@ -34,7 +34,7 @@ const promo20All = { id: "p20", name: "Giảm 20%", discountPercent: 20, active:
 const promo30One = { id: "p30", name: "Giảm 30% hoa 1", discountPercent: 30, active: true, productIds: ["1"] };
 
 test("giá trong flower.json là số nguyên VND, làm tròn tới 1.000 ₫", () => {
-    assert.deepEqual(catalog, []);
+    assert.equal(catalog.length, 30);
     for (const product of catalog) {
         assert.ok(Number.isSafeInteger(product.price), `id ${product.id}: ${product.price}`);
         assert.equal(product.price % 1000, 0, `id ${product.id}: ${product.price}`);

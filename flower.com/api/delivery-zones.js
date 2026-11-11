@@ -1,5 +1,8 @@
 const { FieldValue } = require("firebase-admin/firestore");
-const { getAdminAuth, getAdminFirestore, sendError, verifyRequest } = require("../lib/firebase-admin");
+const { getAdminAuth, getAdminFirestore, sendError, verifyAdminRequest } = require("../lib/firebase-admin");
+const { addAdminAudit } = require("../lib/admin-audit");
+const { withRoutes } = require("../lib/api-routes");
+const bouquetWrapping = require("../lib/routes/bouquet-wrapping");
 
 const ZONES_DOCUMENT = "deliveryZones";
 
@@ -27,7 +30,7 @@ function hasDuplicateAreas(zones) {
     return false;
 }
 
-module.exports = async function handler(req, res) {
+async function deliveryZones(req, res) {
     res.setHeader("Cache-Control", "no-store");
     const db = (() => {
         try {
@@ -49,9 +52,8 @@ module.exports = async function handler(req, res) {
                 console.error("Delivery-zone authentication configuration error:", error.code || error.message);
                 return sendError(res, 503, "admin-api-not-configured", "API quản trị dữ liệu giao hàng chưa được cấu hình.");
             }
-            const claims = await verifyRequest(req, res, adminAuth);
+            const claims = await verifyAdminRequest(req, res, adminAuth, db);
             if (!claims) return;
-            if (claims.admin !== true) return sendError(res, 403, "permission-denied", "Bạn cần quyền quản trị để quản lý khu vực giao hàng.");
         }
 
         try {
@@ -82,9 +84,8 @@ module.exports = async function handler(req, res) {
         console.error("Delivery-zone authentication configuration error:", error.code || error.message);
         return sendError(res, 503, "admin-api-not-configured", "API quản trị dữ liệu giao hàng chưa được cấu hình.");
     }
-    const claims = await verifyRequest(req, res, adminAuth);
+    const claims = await verifyAdminRequest(req, res, adminAuth, db);
     if (!claims) return;
-    if (claims.admin !== true) return sendError(res, 403, "permission-denied", "Bạn cần quyền quản trị để thay đổi khu vực giao hàng.");
 
     const action = req.body?.action;
     if (action !== "upsert" && action !== "delete") {
@@ -112,6 +113,9 @@ module.exports = async function handler(req, res) {
                 throw error;
             }
             transaction.set(reference, { zones: next, updatedAt: FieldValue.serverTimestamp() });
+            const before = current.find((item) => item.id === zoneId) || null;
+            const after = next.find((item) => item.id === zoneId) || null;
+            addAdminAudit(transaction, db, claims, `delivery-zone.${action}`, "delivery-zone", zoneId, { before, after });
             return next;
         });
         return res.status(200).json({
@@ -125,6 +129,8 @@ module.exports = async function handler(req, res) {
         console.error("Delivery-zone update failed:", error.code || error.message);
         return sendError(res, 503, "delivery-zone-service-unavailable", "Chưa thể lưu khu vực giao hàng. Vui lòng thử lại.");
     }
-};
+}
 
+// /api/bouquet-wrapping được vercel.json chuyển tới đây với ?route=bouquet-wrapping.
+module.exports = withRoutes(deliveryZones, { "bouquet-wrapping": bouquetWrapping });
 module.exports.internals = { validZone, hasDuplicateAreas };

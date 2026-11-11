@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { internals } = require("../flower.com/api/flower-prices.js");
+const { internals } = require("../flower.com/lib/routes/flower-prices.js");
 
 const { validFlowerId, validPrice, updateFlowerPrice } = internals;
 
@@ -8,11 +8,15 @@ function fakeDatabase(product) {
     const writes = { updates: [], creates: [] };
     const productRef = { collection: "products", id: "rose" };
     const historyRef = { collection: "priceHistory", id: "history-entry" };
+    const auditRef = { collection: "adminAudit", id: "audit-entry" };
     const db = {
         collection(name) {
             return {
                 doc(id) {
-                    if (id === undefined) return historyRef;
+                    if (id === undefined) {
+                        assert.ok(["priceHistory", "adminAudit"].includes(name));
+                        return name === "priceHistory" ? historyRef : auditRef;
+                    }
                     assert.equal(name, "products");
                     return { ...productRef, id };
                 }
@@ -44,7 +48,7 @@ test("mã hoa chỉ nhận ID hợp lệ và giá là số nguyên VND trong gi�
     }
 });
 
-test("đổi giá hoa cập nhật sản phẩm và tạo lịch sử trong cùng transaction", async () => {
+test("đổi giá hoa cập nhật sản phẩm, lịch sử giá và audit trong cùng transaction", async () => {
     const { db, writes } = fakeDatabase({
         title: "Hoa hồng đỏ",
         saleType: "flower",
@@ -60,11 +64,21 @@ test("đổi giá hoa cập nhật sản phẩm và tạo lịch sử trong cùn
     assert.equal(writes.updates.length, 1);
     assert.equal(writes.updates[0].data.price, 15000);
     assert.equal(writes.updates[0].data.priceUpdatedBy, "owner-1");
-    assert.equal(writes.creates.length, 1);
-    assert.equal(writes.creates[0].data.flowerId, "rose");
-    assert.equal(writes.creates[0].data.oldPrice, 12000);
-    assert.equal(writes.creates[0].data.newPrice, 15000);
-    assert.equal(writes.creates[0].data.updatedBy, "owner-1");
+    assert.equal(writes.creates.length, 2);
+    const history = writes.creates.filter(write => write.reference.collection === "priceHistory");
+    const audits = writes.creates.filter(write => write.reference.collection === "adminAudit");
+    assert.equal(history.length, 1); assert.equal(audits.length, 1);
+    assert.equal(history[0].data.flowerId, "rose");
+    assert.equal(history[0].data.oldPrice, 12000);
+    assert.equal(history[0].data.newPrice, 15000);
+    assert.equal(history[0].data.updatedBy, "owner-1");
+    assert.equal(audits[0].data.actorUid, "owner-1");
+    assert.equal(audits[0].data.actorEmail, "owner@example.test");
+    assert.equal(audits[0].data.action, "flower-price.update");
+    assert.equal(audits[0].data.resourceType, "flower");
+    assert.equal(audits[0].data.resourceId, "rose");
+    assert.deepEqual(audits[0].data.details, { oldPrice: 12000, newPrice: 15000 });
+    assert.ok(audits[0].data.createdAt);
 });
 
 test("lưu cùng mức giá không cập nhật sản phẩm hoặc ghi thêm lịch sử", async () => {
@@ -90,7 +104,7 @@ test("giá USD cũ được chuẩn hóa sang VND trước khi ghi lịch sử",
         price: 73.99
     });
     await updateFlowerPrice(db, { uid: "owner-1" }, { flowerId: "rose", price: 2_000_000 });
-    assert.equal(writes.creates[0].data.oldPrice, 1_920_000);
+    assert.equal(writes.creates.find(write => write.reference.collection === "priceHistory").data.oldPrice, 1_920_000);
 });
 
 test("không cập nhật nếu hoa không tồn tại hoặc dữ liệu không hợp lệ", async () => {

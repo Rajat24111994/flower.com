@@ -8,6 +8,9 @@
       const { url, ...requestOptions } = options;
       const response = await fetch(url || "/api/orders", { ...requestOptions, signal: controller.signal });
       const result = await response.json();
+      if (response.status === 401 && root.FlowerAuthMode === "local") {
+        root.dispatchEvent(new CustomEvent("flowerlocalauthinvalid"));
+      }
       return { response, result };
     } catch (cause) {
       const error = new Error("Không nhận được phản hồi từ API đơn hàng. Kiểm tra kết nối rồi thử lại.");
@@ -205,6 +208,7 @@
       const session = await fetch("/api/local-auth/session", { credentials: "same-origin", cache: "no-store" });
       const result = await session.json();
       if (!session.ok || result.account?.uid !== storedAccount.uid) {
+        root.dispatchEvent(new CustomEvent("flowerlocalauthinvalid"));
         const error = new Error("Phiên đăng nhập hết hạn. Hãy đăng nhập lại trước khi đặt hàng.");
         error.code = "session-expired";
         throw error;
@@ -577,6 +581,7 @@
     });
     const result = await response.json().catch(() => ({}));
     if (!response.ok) {
+      if (response.status === 401 && root.FlowerAuthMode === "local") root.dispatchEvent(new CustomEvent("flowerlocalauthinvalid"));
       const error = new Error(result.error || "Không thể tra cứu đơn hàng.");
       error.code = result.code || "order-lookup-failed";
       throw error;

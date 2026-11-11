@@ -57,4 +57,43 @@ async function verifyRequest(req, res, adminAuth) {
     }
 }
 
-module.exports = { getAdminAuth, getAdminFirestore, sendError, verifyRequest };
+async function verifyRoleRequest(req, res, adminAuth, db, requiredRole) {
+    const decodedToken = await verifyRequest(req, res, adminAuth);
+    if (!decodedToken) return null;
+    if (decodedToken.admin !== true) {
+        sendError(res, 403, "permission-denied", "Bạn cần quyền quản trị viên để thực hiện thao tác này.");
+        return null;
+    }
+
+    let role;
+    try {
+        role = await db.collection("adminRoles").doc(decodedToken.uid).get();
+    } catch (error) {
+        console.error("Firebase admin role verification failed:", error.code || error.message);
+        sendError(res, 503, "authorization-service-unavailable", "Chưa thể xác minh quyền quản trị.");
+        return null;
+    }
+    if (!role.exists || (requiredRole === "owner"
+        && (decodedToken.role !== "owner" || role.data().role !== "owner"))) {
+        sendError(res, 403, "permission-denied", "Quyền quản trị viên đã bị thu hồi.");
+        return null;
+    }
+    return decodedToken;
+}
+
+function verifyAdminRequest(req, res, adminAuth, db) {
+    return verifyRoleRequest(req, res, adminAuth, db, "admin");
+}
+
+function verifyOwnerRequest(req, res, adminAuth, db) {
+    return verifyRoleRequest(req, res, adminAuth, db, "owner");
+}
+
+module.exports = {
+    getAdminAuth,
+    getAdminFirestore,
+    sendError,
+    verifyRequest,
+    verifyAdminRequest,
+    verifyOwnerRequest
+};

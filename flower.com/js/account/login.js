@@ -1,7 +1,7 @@
 import { firebaseConfig, isFirebaseConfigured, connectFirebaseEmulators } from "../core/firebase-config.js";
 import { logAuthError } from "./auth-logging.js";
 import { getFirebaseErrorMessage } from "./login-errors.js";
-import { isLocalAuth, localAuthRequest, persistLocalAccount } from "./local-auth-client.js";
+import { isLocalAuth, localAuthRequest, persistLocalAccount } from "./local-auth-client.js?v=2";
 import { addQuestionFields, readQuestions, restrictPinInputs } from "./recovery-security.js?v=3";
 
 const signUpButton = document.getElementById("signup");
@@ -14,6 +14,38 @@ const signUp = document.querySelector("#signUp");
 const loginSubmit = signIn.querySelector('[type="submit"]');
 const loginEmail = document.getElementById("email1");
 signUp.inert = true;
+
+document.querySelectorAll(".password-toggle").forEach((button) => {
+    const password = document.getElementById(button.getAttribute("aria-controls"));
+    const passwordLabel = button.dataset.passwordLabel || "mật khẩu";
+    button.addEventListener("click", (event) => {
+        let selection;
+        try {
+            const { selectionStart, selectionEnd, selectionDirection } = password;
+            if (typeof selectionStart === "number" && typeof selectionEnd === "number") {
+                selection = [selectionStart, selectionEnd, selectionDirection || "none"];
+            }
+        } catch {
+            // Selection APIs are not available in every browser.
+        }
+        const showPassword = password.type === "password";
+        password.type = showPassword ? "text" : "password";
+        const label = `${showPassword ? "Ẩn" : "Hiện"} ${passwordLabel}`;
+        button.setAttribute("aria-label", label);
+        button.title = label;
+        // Keyboard activation leaves focus on the button for Enter, Space and Tab.
+        if (event.detail > 0 || event.pointerType) {
+            password.focus({ preventScroll: true });
+        }
+        if (selection) {
+            try {
+                password.setSelectionRange(...selection);
+            } catch {
+                // Unsupported selection restoration must not interrupt toggling.
+            }
+        }
+    });
+});
 
 let firebaseAuthApiPromise;
 let loginPending = false;
@@ -387,4 +419,7 @@ document.getElementById("forgotPassword").addEventListener("click", (event) => {
 // Keep native form submission disabled until the async module and handlers are ready.
 signUp.querySelector('[type="submit"]').disabled = false;
 updateLoginWait();
+const sessionNotice = new URLSearchParams(window.location.search).get("session");
+if (sessionNotice === "expired") showMessage("Phiên đăng nhập đã hết hạn hoặc đã đăng xuất. Vui lòng đăng nhập lại.");
+if (sessionNotice === "unavailable") showMessage("Không thể xác minh phiên đăng nhập. Vui lòng kiểm tra kết nối và đăng nhập lại.");
 completeGoogleRedirect();

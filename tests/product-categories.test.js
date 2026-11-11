@@ -4,7 +4,9 @@ const { getCategory, matchesCategory } = require("../flower.com/js/catalog/produ
 const catalog = require("../flower.com/flower.json").flower;
 assert.equal(getCategory("birthday").title, "Hoa tặng sinh nhật");
 assert.equal(getCategory("not-a-category"), null);
-assert.deepEqual(catalog, []);
+assert.equal(catalog.length, 30);
+assert.ok(catalog.every((product) => matchesCategory(product, "flowers")));
+assert.ok(catalog.some((product) => matchesCategory(product, "birthday")));
 assert.equal(matchesCategory({ title: "Hoa tươi", quantity: 0 }, "delivery"), false);
 assert.equal(matchesCategory({ title: "Hoa tươi", sameDayDelivery: true }, "delivery"), true);
 assert.equal(matchesCategory({ title: "Hoa tươi", onSale: true }, "sale"), true);

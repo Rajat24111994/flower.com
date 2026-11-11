@@ -1,6 +1,8 @@
-const { getAdminAuth, sendError, verifyRequest } = require("../../lib/firebase-admin");
+const { getAdminAuth, getAdminFirestore, sendError, verifyAdminRequest } = require("../../lib/firebase-admin");
+const { withRoutes } = require("../../lib/api-routes");
+const adminAudit = require("../../lib/routes/admin-audit");
 
-module.exports = async function handler(req, res) {
+async function listUsers(req, res) {
     res.setHeader("Cache-Control", "no-store");
 
     if (req.method !== "POST") {
@@ -9,8 +11,10 @@ module.exports = async function handler(req, res) {
     }
 
     let adminAuth;
+    let db;
     try {
         adminAuth = getAdminAuth();
+        db = getAdminFirestore();
     } catch (error) {
         console.error("Firebase Admin API configuration error:", error.message);
         return sendError(
@@ -21,12 +25,8 @@ module.exports = async function handler(req, res) {
         );
     }
 
-    const decodedToken = await verifyRequest(req, res, adminAuth);
+    const decodedToken = await verifyAdminRequest(req, res, adminAuth, db);
     if (!decodedToken) return;
-
-    if (decodedToken.admin !== true) {
-        return sendError(res, 403, "permission-denied", "Bạn cần quyền quản trị viên để xem danh sách tài khoản.");
-    }
 
     const pageToken = req.body && req.body.pageToken;
     if (pageToken !== undefined && pageToken !== null &&
@@ -57,4 +57,7 @@ module.exports = async function handler(req, res) {
         console.error("Firebase user listing failed:", error.code || error.message);
         return sendError(res, 500, "user-list-failed", "Chưa thể tải danh sách tài khoản Firebase.");
     }
-};
+}
+
+// /api/admin/audit được vercel.json chuyển tới đây với ?route=audit.
+module.exports = withRoutes(listUsers, { audit: adminAudit });

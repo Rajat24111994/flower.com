@@ -3,8 +3,8 @@ const { randomBytes, randomUUID, scryptSync, timingSafeEqual, createHash } = req
 const fs = require("node:fs");
 const path = require("node:path");
 const { failureState, restriction } = require("./login-protection");
+const { SESSION_MS } = require("./local-session");
 
-const SESSION_MS = 12 * 60 * 60_000;
 const PASSWORD_OPTIONS = { N: 32768, r: 8, p: 1, maxmem: 64 * 1024 * 1024 };
 const SECRET_OPTIONS = { ...PASSWORD_OPTIONS, p: 3 };
 const digest = value => createHash("sha256").update(String(value)).digest("hex");
@@ -66,7 +66,8 @@ function securityQuestions(input, account = {}) {
 function publicAccount(row) {
     return { uid: row.id, email: row.username, name: row.name || "Khách hàng", phone: row.phone,
         role: "customer", authProvider: "local", securityConfigured: Boolean(row.pin_hash && row.security_answers),
-        pinResetRequired: Boolean(row.pin_reset_required || (row.pin_hash && row.pin_format_version < 2)) };
+        pinResetRequired: Boolean(row.pin_reset_required || (row.pin_hash && row.pin_format_version < 2)),
+        sessionExpiresAt: Number(row.session_expires_at) };
 }
 function createLocalAccounts({ filename = ":memory:", now = Date.now } = {}) {
     if (filename !== ":memory:") fs.mkdirSync(path.dirname(filename), { recursive: true, mode: 0o700 });
@@ -106,15 +107,28 @@ function createLocalAccounts({ filename = ":memory:", now = Date.now } = {}) {
         try { const result = action(); db.exec("COMMIT"); return result; }
         catch (error) { db.exec("ROLLBACK"); throw error; }
     }
-    function newSession(user, time) {
+    function removePresentedSessions(token) {
+        for (const value of new Set(Array.isArray(token) ? token : [token])) {
+            if (typeof value === "string" && /^[A-Za-z0-9_-]{43}$/.test(value)) {
+                db.prepare("DELETE FROM local_sessions WHERE token_hash = ?").run(digest(value));
+            }
+        }
+    }
+    function newSession(user, time, previousToken) {
         const token = randomBytes(32).toString("base64url");
         db.prepare("DELETE FROM local_sessions WHERE expires_at <= ?").run(time);
+        removePresentedSessions(previousToken);
         db.prepare("INSERT INTO local_sessions VALUES (?, ?, ?)").run(digest(token), user.id, time + SESSION_MS);
         return token;
     }
+    function authenticated(user, previousToken) {
+        const time = now();
+        return { status: 200, account: publicAccount({ ...user, session_expires_at: time + SESSION_MS }),
+            sessionToken: newSession(user, time, previousToken) };
+    }
     function sessionUser(token) {
         if (typeof token !== "string" || !/^[A-Za-z0-9_-]{43}$/.test(token)) return null;
-        return db.prepare(`SELECT u.* FROM local_sessions s JOIN local_users u ON u.id = s.user_id
+        return db.prepare(`SELECT u.*, s.expires_at AS session_expires_at FROM local_sessions s JOIN local_users u ON u.id = s.user_id
             WHERE s.token_hash = ? AND s.expires_at > ?`).get(digest(token), now());
     }
     function blocked(user, kind = "recovery") {
@@ -143,9 +157,9 @@ function createLocalAccounts({ filename = ":memory:", now = Date.now } = {}) {
     const verifyPin = (user, value) => same(secretHash(value, user.pin_salt), user.pin_hash);
     function rotateSession(user) {
         db.prepare("DELETE FROM local_sessions WHERE user_id = ?").run(user.id);
-        return { status: 200, account: publicAccount(user), sessionToken: newSession(user, now()) };
+        return authenticated(user);
     }
-    function register(input = {}) {
+    function register(input = {}, previousToken) {
         const email = username(input.email), secret = password(input.password), details = profile(input);
         if (userByName.get(email)) invalid("account-exists", "Tên đăng nhập này đã được sử dụng.", 409);
         const value = newPin(input), questions = securityQuestions(input.questions, input);
@@ -156,10 +170,10 @@ function createLocalAccounts({ filename = ":memory:", now = Date.now } = {}) {
                 pin_hash, pin_salt, security_questions, security_answers, pin_format_version) VALUES (?, ?, ?, ?, ?, ?, '', ?, ?, ?, ?, 2)`)
                 .run(id, email, details.name, details.phone, passwordHash(secret, salt), salt, secretHash(value, pinSalt), pinSalt, questions.titles, questions.answers);
             const user = userByName.get(email);
-            return { account: publicAccount(user), sessionToken: newSession(user, now()) };
+            return authenticated(user, previousToken);
         });
     }
-    function login(input = {}) {
+    function login(input = {}, previousToken) {
         const email = username(input.email), secret = password(input.password, 1);
         return transaction(() => {
             const user = userByName.get(email);
@@ -174,7 +188,7 @@ function createLocalAccounts({ filename = ":memory:", now = Date.now } = {}) {
                 return restriction(next, now()) || { status: 401, code: "invalid-credential" };
             }
             db.prepare("UPDATE local_users SET failures = 0, locked_until = 0, reset_required = 0 WHERE id = ?").run(user.id);
-            return { status: 200, account: publicAccount(user), sessionToken: newSession(user, now()) };
+            return authenticated(user, previousToken);
         });
     }
     // A username alone must never reveal questions or consume another person's PIN budget.
@@ -185,7 +199,7 @@ function createLocalAccounts({ filename = ":memory:", now = Date.now } = {}) {
         const phone = typeof input.phone === "string" && input.phone.length <= 30 ? input.phone.trim() : "";
         return user && name && phone && name === normalize(user.name) && phone === user.phone ? user : null;
     }
-    function reset(input = {}) {
+    function reset(input = {}, previousToken) {
         const email = username(input.email), secret = password(input.newPassword);
         const hasPin = input.pin !== undefined;
         if (hasPin) pin(input.pin);
@@ -206,6 +220,7 @@ function createLocalAccounts({ filename = ":memory:", now = Date.now } = {}) {
                 locked_until = 0, reset_required = 0, recovery_failures = 0, recovery_locked_until = 0, pin_failures = 0 WHERE id = ?`)
                 .run(passwordHash(secret, salt), salt, user.id);
             db.prepare("DELETE FROM local_sessions WHERE user_id = ?").run(user.id);
+            removePresentedSessions(previousToken);
             return { status: 200 };
         });
     }
@@ -216,7 +231,7 @@ function createLocalAccounts({ filename = ":memory:", now = Date.now } = {}) {
         return blocked(user, "answer") || { status: 200, questions: JSON.parse(user.security_questions),
             ...(pinRestriction(user) ? { pinResetRequired: true, pinResetReason: pinRestriction(user).code } : {}) };
     }
-    function recoverPin(input = {}) {
+    function recoverPin(input = {}, previousToken) {
         const email = username(input.email), value = newPin(input);
         if (!Array.isArray(input.answers) || input.answers.length !== 3 || input.answers.some(answer => typeof answer !== "string" || normalize(answer).length < 2 || answer.length > 200)) {
             invalid("invalid-answers", "Vui lòng trả lời đủ cả 3 câu hỏi (2–200 ký tự mỗi câu).");
@@ -237,6 +252,7 @@ function createLocalAccounts({ filename = ":memory:", now = Date.now } = {}) {
                 recovery_locked_until = 0, answer_failures = 0, answer_locked_until = 0,
                 pin_failures = 0, pin_reset_required = 0, pin_format_version = 2 WHERE id = ?`).run(secretHash(value, salt), salt, user.id);
             db.prepare("DELETE FROM local_sessions WHERE user_id = ?").run(user.id);
+            removePresentedSessions(previousToken);
             return { status: 200 };
         });
     }
@@ -274,7 +290,9 @@ function createLocalAccounts({ filename = ":memory:", now = Date.now } = {}) {
         });
     }
     function session(token) { const user = sessionUser(token); return user ? publicAccount(user) : null; }
-    function logout(token) { db.prepare("DELETE FROM local_sessions WHERE token_hash = ?").run(digest(token || "")); }
+    function logout(token) {
+        transaction(() => removePresentedSessions(token));
+    }
     return { register, login, reset, questions, recoverPin, changePin, setupSecurity, session, logout, close: () => db.close() };
 }
 module.exports = { createLocalAccounts };

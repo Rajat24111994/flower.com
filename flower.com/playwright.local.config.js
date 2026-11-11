@@ -7,7 +7,7 @@ export default defineConfig({
   workers: 1,
   timeout: 60_000,
   expect: { timeout: 15_000 },
-  testMatch: "local-accounts.spec.js",
+  testMatch: ["local-accounts.spec.js", "local-session.spec.js"],
   testIgnore: [],
   outputDir: "../test-results-local",
   reporter: process.env.CI ? [["list"], ["html", { outputFolder: "playwright-report-local", open: "never" }]] : "list",
