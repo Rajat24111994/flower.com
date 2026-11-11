@@ -218,7 +218,7 @@ firebase deploy --only firestore:rules,firestore:indexes
 4. Deploy, sau đó gán quyền Owner đầu tiên bằng script `npm run set-owner`.
 5. Triển khai Firestore Security Rules và composite indexes bằng `firebase deploy --only firestore:rules,firestore:indexes` (chọn đúng Firebase project trước khi chạy).
 
-Hướng dẫn từng bước, bao gồm cách gán quyền Owner bằng Application Default Credentials mà không cần tải key, có trong [`docs/ADMIN-SETUP.md`](docs/ADMIN-SETUP.md).
+Hướng dẫn từng bước, bao gồm cách gán quyền Owner bằng Application Default Credentials mà không cần tải key, có trong [`docs/ADMIN-SETUP.md`](docs/ADMIN-SETUP.md). URL chính thức là `https://flower-com-six.vercel.app`; kết quả kiểm tra bản đang chạy và các bằng chứng còn thiếu (Firestore Rules, VNPay sandbox, Lighthouse) ghi trong [`docs/issue-119-deployment.md`](docs/issue-119-deployment.md).
 
 ## Kiểm thử
 
