@@ -40,7 +40,7 @@ async function mockFirebaseAuth(page) {
       export const createUserWithEmailAndPassword = async (_auth, email, password) => {
         const accounts = JSON.parse(localStorage.getItem("authFixtureAccounts") || "[]");
         if (accounts.some((item) => item.email === email)) throw { code: "auth/email-already-in-use" };
-        if (password.length < 6) throw { code: "auth/weak-password" };
+        if (password.length < 8 || !/[a-z]/.test(password) || !/[0-9]/.test(password)) throw { code: "auth/weak-password" };
         const user = { uid: "customer-new", email, displayName: "", phoneNumber: "" };
         accounts.push({ ...user, password });
         localStorage.setItem("authFixtureAccounts", JSON.stringify(accounts));

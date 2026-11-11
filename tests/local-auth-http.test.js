@@ -49,7 +49,7 @@ test("local pages announce local mode and register/login use an HttpOnly session
 
 test("parallel attempts share one account budget and cannot multiply the failure count", async (t) => {
     const { request, advance } = await fixture(t);
-    await request("register", profile({ email: "target@demo", password: "Correct-test-password" }));
+    await request("register", profile({ email: "target@demo", password: "Correct-test-password1" }));
     const body = { email: "target@demo", password: "wrong" };
     for (let i = 0; i < 4; i++) assert.equal((await request("login", body)).status, 401);
     const results = await Promise.all(Array.from({ length: 20 }, () => request("login", body)));
@@ -58,13 +58,13 @@ test("parallel attempts share one account budget and cannot multiply the failure
     const second = await request("login", body);
     assert.equal(second.status, 429);
     assert.equal((await second.json()).retryAfter, 1800);
-    await request("register", profile({ email: "other@demo", password: "Other-test-password" }));
-    assert.equal((await request("login", { email: "other@demo", password: "Other-test-password" })).status, 200);
+    await request("register", profile({ email: "other@demo", password: "Other-test-password1" }));
+    assert.equal((await request("login", { email: "other@demo", password: "Other-test-password1" })).status, 200);
 });
 
 test("mandatory password reset cannot be bypassed by knowing the username", async (t) => {
     const { request, advance } = await fixture(t);
-    const registered = await request("register", profile({ email: "locked@demo", password: "Old-test-password" }));
+    const registered = await request("register", profile({ email: "locked@demo", password: "Old-test-password1" }));
     const cookie = registered.headers.get("set-cookie").split(";")[0];
     const login = (password) => request("login", { email: "locked@demo", password });
     for (let i = 0; i < 4; i++) await login("wrong");
@@ -72,12 +72,12 @@ test("mandatory password reset cannot be bypassed by knowing the username", asyn
     const forced = await login("wrong");
     assert.equal(forced.status, 403);
     assert.equal((await forced.json()).code, "password-reset-required");
-    assert.equal((await request("reset", { email: "locked@demo", newPassword: "New-test-password", pin: "123456" })).status, 401);
-    assert.equal((await login("Old-test-password")).status, 403);
-    assert.equal((await request("reset", { email: "locked@demo", newPassword: "New-test-password", pin: profile().pin })).status, 200);
+    assert.equal((await request("reset", { email: "locked@demo", newPassword: "New-test-password1", pin: "123456" })).status, 401);
+    assert.equal((await login("Old-test-password1")).status, 403);
+    assert.equal((await request("reset", { email: "locked@demo", newPassword: "New-test-password1", pin: profile().pin })).status, 200);
     assert.equal((await request("session", null, cookie)).status, 401);
-    assert.equal((await login("Old-test-password")).status, 401);
-    assert.equal((await login("New-test-password")).status, 200);
+    assert.equal((await login("Old-test-password1")).status, 401);
+    assert.equal((await login("New-test-password1")).status, 200);
 });
 
 test("PIN API protects secrets, rotates cookies and verifies all three answers", async t => {
@@ -104,7 +104,7 @@ test("PIN API protects secrets, rotates cookies and verifies all three answers",
     assert.equal(recovered.status, 200);
     assert.match(recovered.headers.get("set-cookie"), /Max-Age=0/);
     assert.equal((await request("session", null, newCookie)).status, 401);
-    assert.equal((await request("reset", { email: input.email, pin: recover.newPin, newPassword: "New-password" })).status, 200);
+    assert.equal((await request("reset", { email: input.email, pin: recover.newPin, newPassword: "New-password1" })).status, 200);
 });
 
 test("five wrong PINs force recovery across endpoints; answers have a separate cooldown", async t => {
@@ -113,7 +113,7 @@ test("five wrong PINs force recovery across endpoints; answers have a separate c
     const registered = await request("register", input);
     const cookie = registered.headers.get("set-cookie").split(";")[0];
     for (let remaining = 4; remaining >= 1; remaining--) {
-        const response = await request("reset", { email: input.email, pin: "123456", newPassword: "New-password" });
+        const response = await request("reset", { email: input.email, pin: "123456", newPassword: "New-password1" });
         assert.equal(response.status, 401); assert.equal((await response.json()).attemptsRemaining, remaining);
     }
     const change = { ...input, oldPin: "123456", newPin: "84710", confirmPin: "84710" };
@@ -121,9 +121,9 @@ test("five wrong PINs force recovery across endpoints; answers have a separate c
     assert.equal(blocked.status, 403); assert.equal(blocked.headers.get("retry-after"), null);
     const blockedBody = await blocked.json();
     assert.equal(blockedBody.code, "pin-reset-required"); assert.equal(blockedBody.attemptsRemaining, 0);
-    assert.equal((await request("reset", { email: input.email, pin: input.pin, newPassword: "New-password" })).status, 403);
+    assert.equal((await request("reset", { email: input.email, pin: input.pin, newPassword: "New-password1" })).status, 403);
     const parallel = await Promise.all(Array.from({ length: 10 }, () => request("reset", {
-        email: input.email, pin: input.pin, newPassword: "New-password"
+        email: input.email, pin: input.pin, newPassword: "New-password1"
     })));
     assert.ok(parallel.every(response => response.status === 403));
     const titles = await (await request("questions", { email: input.email })).json();
@@ -136,5 +136,5 @@ test("five wrong PINs force recovery across endpoints; answers have a separate c
     assert.equal((await request("questions", { email: input.email })).status, 429);
     advance(15 * 60_000);
     assert.equal((await request("recover-pin", { ...recover, answers: input.questions.map(item => item.answer) })).status, 200);
-    assert.equal((await request("reset", { email: input.email, pin: recover.newPin, newPassword: "New-password" })).status, 200);
+    assert.equal((await request("reset", { email: input.email, pin: recover.newPin, newPassword: "New-password1" })).status, 200);
 });

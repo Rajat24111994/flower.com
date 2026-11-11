@@ -32,10 +32,10 @@ test("username-only probes neither expose questions nor consume the PIN budget",
     const input = profile(); accounts.register(input);
     assert.deepEqual(accounts.questions({ email: input.email }), accounts.questions({ email: "missing@demo" }));
     for (let i = 0; i < 10; i++) {
-        assert.equal(accounts.reset({ email: input.email, pin: "0000", newPassword: "Changed-password" }).code, "invalid-recovery");
+        assert.equal(accounts.reset({ email: input.email, pin: "0000", newPassword: "Changed-password1" }).code, "invalid-recovery");
     }
-    assert.equal(accounts.reset({ ...input, pin: "0000", newPassword: "Changed-password" }).attemptsRemaining, 4);
-    assert.equal(accounts.reset({ ...input, newPassword: "Changed-password" }).status, 200);
+    assert.equal(accounts.reset({ ...input, pin: "0000", newPassword: "Changed-password1" }).attemptsRemaining, 4);
+    assert.equal(accounts.reset({ ...input, newPassword: "Changed-password1" }).status, 200);
 });
 
 test("crypto in the default account worker does not block serving static pages", async t => {

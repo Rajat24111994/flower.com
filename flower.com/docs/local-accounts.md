@@ -3,7 +3,7 @@
 Trong `flower.com`, chạy `npm run dev` rồi mở `http://127.0.0.1:3000/login.html`.
 Mặc định `AUTH_MODE=local`, không cần Firebase, service account hoặc email thật.
 Tên đăng nhập cần có `@`, ví dụ `ban@demo`. Ứng dụng không gửi thư hoặc xác minh hộp thư.
-Mật khẩu cần ít nhất 6 ký tự; đăng ký phải có họ tên và số điện thoại.
+Mật khẩu mới cần 8–4096 ký tự, có chữ thường (a–z) và số (0–9); đăng ký phải có họ tên và số điện thoại. Chính sách mới không chặn đăng nhập bằng mật khẩu cũ.
 
 ## PIN và câu hỏi khôi phục
 

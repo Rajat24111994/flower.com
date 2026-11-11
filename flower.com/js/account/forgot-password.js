@@ -1,6 +1,10 @@
+import "../core/password-policy.js?v=1";
 import { firebaseConfig, isFirebaseConfigured, connectFirebaseEmulators } from "../core/firebase-config.js";
 import { isLocalAuth, localAuthRequest } from "./local-auth-client.js?v=2";
 import { recoveryError, restrictPinInputs } from "./recovery-security.js?v=3";
+
+const passwordPolicy = globalThis.FlowerPasswordPolicy;
+passwordPolicy.bindPasswordHint(document.getElementById("recovery-new-password"), document.getElementById("recovery-password-hint"));
 
 const form = document.getElementById("recovery-form");
 const emailInput = document.getElementById("recovery-email");
@@ -84,6 +88,7 @@ form.addEventListener("submit", async (event) => {
     if (isLocalAuth) {
         if (submitButton.disabled) return;
         const newPassword = document.getElementById("recovery-new-password").value;
+        if (!passwordPolicy.isStrongPassword(newPassword)) { showMessage(passwordPolicy.message); return; }
         if (newPassword !== document.getElementById("recovery-confirm-password").value) {
             showMessage("Mật khẩu xác nhận không khớp.");
             return;

@@ -35,8 +35,9 @@
                     <input type="text" id="lastName" placeholder="Họ" required />
                     <input type="email" id="email" placeholder="Địa chỉ thư điện tử" required />
                     <input type="tel" id="phone" placeholder="Số điện thoại" autocomplete="tel">
+                    <p id="password-policy-hint" role="status">Mật khẩu cần ít nhất 8 ký tự, có chữ thường (a–z) và số (0–9).</p>
                     <div class="password-field">
-                        <input type="password" id="password" placeholder="Mật khẩu" autocomplete="new-password" minlength="6" required />
+                        <input type="password" id="password" aria-describedby="password-policy-hint" placeholder="Mật khẩu" autocomplete="new-password" minlength="8" maxlength="4096" required />
                         <button type="button" class="password-toggle" aria-controls="password" aria-label="Hiện mật khẩu" title="Hiện mật khẩu">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
                                 <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" />
@@ -46,7 +47,7 @@
                         </button>
                     </div>
                     <div class="password-field">
-                        <input type="password" id="checkpassword" placeholder="Xác nhận mật khẩu" autocomplete="new-password" minlength="6" required />
+                        <input type="password" id="checkpassword" placeholder="Xác nhận mật khẩu" autocomplete="new-password" minlength="8" maxlength="4096" required />
                         <button type="button" class="password-toggle" aria-controls="checkpassword" data-password-label="mật khẩu xác nhận" aria-label="Hiện mật khẩu xác nhận" title="Hiện mật khẩu xác nhận">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
                                 <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" />

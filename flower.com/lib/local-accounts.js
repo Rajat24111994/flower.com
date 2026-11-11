@@ -3,6 +3,7 @@ const { randomBytes, randomUUID, scryptSync, timingSafeEqual, createHash } = req
 const fs = require("node:fs");
 const path = require("node:path");
 const { failureState, restriction } = require("./login-protection");
+const { isStrongPassword, message: passwordPolicyMessage } = require("../js/core/password-policy");
 const { SESSION_MS } = require("./local-session");
 
 const PASSWORD_OPTIONS = { N: 32768, r: 8, p: 1, maxmem: 64 * 1024 * 1024 };
@@ -19,10 +20,11 @@ function username(value) {
     if (result.length > 254 || !/^[^\s@]+@[^\s@]+$/.test(result)) invalid("invalid-username", "Tên đăng nhập cần có @, ví dụ ban@demo.");
     return result;
 }
-function password(value, minimum = 6) {
+function password(value, minimum = 8) {
     if (typeof value !== "string" || value.length < minimum || value.length > 4096) {
-        invalid("invalid-password", minimum === 6 ? "Mật khẩu cần từ 6 đến 4096 ký tự." : "Vui lòng nhập mật khẩu.");
+        invalid("invalid-password", minimum === 8 ? passwordPolicyMessage : "Vui lòng nhập mật khẩu.");
     }
+    if (minimum === 8 && !isStrongPassword(value)) invalid("invalid-password", passwordPolicyMessage);
     return value;
 }
 function pin(value, confirm) {
