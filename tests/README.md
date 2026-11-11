@@ -11,7 +11,7 @@
 | Loại | Lệnh | Nội dung |
 |---|---|---|
 | Unit test | `cd flower.com && npm test` | Tính giá, ưu đãi, dữ liệu đơn hàng, trạng thái đơn, giỏ hàng, danh mục, sản phẩm |
-| Unit test + coverage | `cd flower.com && npm run test:coverage` | Như trên, kèm tỉ lệ dòng/nhánh/hàm; CI yêu cầu tối thiểu 50% coverage dòng |
+| Unit test + coverage | `cd flower.com && npm run test:coverage` | Như trên, kèm tỉ lệ dòng/nhánh/hàm; CI yêu cầu tối thiểu 60% coverage dòng |
 | Feature, system, security | `cd tests && npm ci && npm run integration` | Đặt hàng, đăng nhập, quản lý, luồng xuyên hệ thống, Firestore rules và quyền API |
 | Smoke test sau khi deploy | `cd flower.com && SMOKE_URL=https://... npm run smoke` | Trang và API còn chạy, không tạo đơn, không đổi dữ liệu |
 
@@ -26,6 +26,22 @@ node --test ../tests/product-page.test.js
 Test tích hợp chạy API thật (`flower.com/api/*.js`) và `firestore.rules` thật trên **Firebase Emulator** với project `demo-flowerflow`, nên không đụng tới dữ liệu thật. CI trên GitHub Actions chạy cả unit test và test tích hợp cho mọi Pull Request.
 
 ## Các phạm vi đang được kiểm thử
+
+### Coverage các module rủi ro cao (#125)
+
+Job **Critical module coverage** tải artifact unit và integration trong cùng lần CI, rồi kiểm tra sáu module được #125 nêu: `api/delivery-zones.js`, `api/orders.js`, `api/design-requests.js`, `js/catalog/product-store.js`, `lib/firebase-admin.js`, `js/review/review-images.js`. Mỗi module cần ít nhất **50% dòng trong unit hoặc integration**. Chọn kết quả tốt hơn của hai bộ; không cộng phần trăm hoặc cộng số dòng đã chạy giữa các báo cáo. Thiếu module/báo cáo hoặc dữ liệu LCOV lỗi làm gate thất bại.
+
+Sau khi tạo cả hai báo cáo, chạy từ gốc repository:
+
+```sh
+node tests/coverage-targets.js flower.com/coverage/lcov.info tests/coverage/lcov.info --min-lines=50
+```
+
+Các test `firebase-admin.test.js`, `delivery-zones-api.test.js`, `design-requests-api.test.js` dùng module thật với dependency được cô lập để đưa lỗi cấu hình, xác thực và dịch vụ vào đúng nhánh xử lý. Fixture transaction trong `helpers/api-fixture.js` không mô phỏng Security Rules hay tính đồng thời của Firestore; các tính chất đó vẫn được kiểm tra trên Firebase Emulator.
+
+`product-store-runtime.test.js` chạy mã nguồn catalog thật trong browser context giả lập để kiểm tra cache/fallback/offline, không sửa chuỗi nguồn để bỏ qua hàm cần đo. `review-image-processing.test.js` kiểm tra vòng nén ảnh và thu hồi blob URL. `order-promotion-boundaries.test.js` kiểm tra lịch ưu đãi theo giờ Việt Nam và làm tròn tiền. Luồng offline còn có E2E `product-store-offline.spec.js` trên desktop/mobile.
+
+### Danh sách bộ kiểm thử
 
 | File | Phạm vi |
 | --- | --- |
