@@ -44,7 +44,7 @@ jobs:
         if: always()
         run: |
           if [ -f flower.com/coverage/lcov.info ]; then
-            node tests/coverage-summary.js flower.com/coverage/lcov.info "Coverage – unit test" --min-lines=50 >> "$GITHUB_STEP_SUMMARY"
+            node tests/coverage-summary.js flower.com/coverage/lcov.info "Coverage – unit test" --min-lines=60 >> "$GITHUB_STEP_SUMMARY"
           fi
       - uses: actions/upload-artifact@v4
         if: always()
@@ -137,3 +137,24 @@ jobs:
             flower.com/playwright-report-local/
           if-no-files-found: ignore
           retention-days: 14
+
+  critical-module-coverage:
+    name: Critical module coverage
+    needs: [unit, integration]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: actions/download-artifact@v4
+        with:
+          name: coverage-unit
+          path: coverage-unit
+      - uses: actions/download-artifact@v4
+        with:
+          name: coverage-integration
+          path: coverage-integration
+      - name: Enforce coverage for the six high-risk modules
+        run: node tests/coverage-targets.js coverage-unit/lcov.info coverage-integration/lcov.info --min-lines=50 >> "$GITHUB_STEP_SUMMARY"
