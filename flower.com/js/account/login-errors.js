@@ -10,7 +10,8 @@ const firebaseAuthErrorMessages = {
     "auth/popup-blocked": "Trình duyệt đã chặn cửa sổ đăng nhập. Hãy cho phép cửa sổ bật lên rồi thử lại.",
     "auth/too-many-requests": "Hệ thống tạm thời giới hạn đăng nhập do có quá nhiều lần thử. Vui lòng đợi một lúc rồi thử lại.",
     "auth/unauthorized-domain": "Tên miền trang web chưa được cấp phép. Trong Firebase Console, vào Xác thực → Cài đặt → Tên miền được phép và thêm tên miền hiện tại (ví dụ: localhost hoặc tên miền triển khai; không nhập http:// hay đường dẫn).",
-    "auth/weak-password": "Mật khẩu cần có ít nhất 6 ký tự."
+    "auth/password-does-not-meet-requirements": "Mật khẩu cần ít nhất 8 ký tự, có chữ thường (a–z) và số (0–9).",
+    "auth/weak-password": "Mật khẩu cần ít nhất 8 ký tự, có chữ thường (a–z) và số (0–9)."
 };
 
 export function getFirebaseErrorMessage(error) {

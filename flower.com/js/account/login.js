@@ -1,8 +1,12 @@
+import "../core/password-policy.js?v=1";
 import { firebaseConfig, isFirebaseConfigured, connectFirebaseEmulators } from "../core/firebase-config.js";
 import { logAuthError } from "./auth-logging.js";
-import { getFirebaseErrorMessage } from "./login-errors.js";
+import { getFirebaseErrorMessage } from "./login-errors.js?v=1";
 import { isLocalAuth, localAuthRequest, persistLocalAccount } from "./local-auth-client.js?v=2";
 import { addQuestionFields, readQuestions, restrictPinInputs } from "./recovery-security.js?v=3";
+
+const passwordPolicy = globalThis.FlowerPasswordPolicy;
+passwordPolicy.bindPasswordHint(document.getElementById("password"), document.getElementById("password-policy-hint"));
 
 const signUpButton = document.getElementById("signup");
 const signInButton = document.getElementById("signin");
@@ -18,7 +22,9 @@ signUp.inert = true;
 document.querySelectorAll(".password-toggle").forEach((button) => {
     const password = document.getElementById(button.getAttribute("aria-controls"));
     const passwordLabel = button.dataset.passwordLabel || "mật khẩu";
-    button.addEventListener("click", (event) => {
+    let hideTimer;
+
+    function setPasswordVisibility(showPassword, focusInput = false) {
         let selection;
         try {
             const { selectionStart, selectionEnd, selectionDirection } = password;
@@ -28,13 +34,12 @@ document.querySelectorAll(".password-toggle").forEach((button) => {
         } catch {
             // Selection APIs are not available in every browser.
         }
-        const showPassword = password.type === "password";
         password.type = showPassword ? "text" : "password";
         const label = `${showPassword ? "Ẩn" : "Hiện"} ${passwordLabel}`;
         button.setAttribute("aria-label", label);
         button.title = label;
-        // Keyboard activation leaves focus on the button for Enter, Space and Tab.
-        if (event.detail > 0 || event.pointerType) {
+        // Only pointer activation returns focus to the input.
+        if (focusInput) {
             password.focus({ preventScroll: true });
         }
         if (selection) {
@@ -44,7 +49,24 @@ document.querySelectorAll(".password-toggle").forEach((button) => {
                 // Unsupported selection restoration must not interrupt toggling.
             }
         }
+    }
+
+    function resetHideTimer() {
+        clearTimeout(hideTimer);
+        hideTimer = undefined;
+        if (password.type === "text") {
+            hideTimer = setTimeout(() => {
+                hideTimer = undefined;
+                setPasswordVisibility(false);
+            }, 3000);
+        }
+    }
+
+    button.addEventListener("click", (event) => {
+        setPasswordVisibility(password.type === "password", event.detail > 0 || Boolean(event.pointerType));
+        resetHideTimer();
     });
+    password.addEventListener("input", resetHideTimer);
 });
 
 let firebaseAuthApiPromise;
@@ -292,6 +314,7 @@ signUp.addEventListener("submit", async (event) => {
     const name = `${document.getElementById("name").value.trim()} ${document.getElementById("lastName").value.trim()}`.trim();
     const phone = document.getElementById("phone").value.trim();
 
+    if (!passwordPolicy.isStrongPassword(password)) { showFormMessage(signupDisplay, passwordPolicy.message); return; }
     if (password !== confirmPassword) {
         showFormMessage(signupDisplay, "Mật khẩu xác nhận không khớp!");
         return;
