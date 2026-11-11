@@ -13,6 +13,7 @@
 | Unit test | `cd flower.com && npm test` | Tính giá, ưu đãi, dữ liệu đơn hàng, trạng thái đơn, giỏ hàng, danh mục, sản phẩm |
 | Unit test + coverage | `cd flower.com && npm run test:coverage` | Như trên, kèm tỉ lệ dòng/nhánh/hàm; CI yêu cầu tối thiểu 70% coverage dòng |
 | Feature, system, security | `cd tests && npm ci && npm run integration` | Đặt hàng, đăng nhập, quản lý, luồng xuyên hệ thống, Firestore rules và quyền API |
+| Kiểm thử tải (emulator) | `cd tests && npm ci && npm run load` | Xem danh mục, báo giá và nhiều khách tranh mua hàng cuối; in p50/p95/p99, tỉ lệ lỗi, kiểm tra không bán vượt kho. Chỉnh bằng `LOAD_DURATION`, `LOAD_CONCURRENCY`, `LOAD_BUYERS`, `LOAD_STOCK` |
 | Smoke test sau khi deploy | `cd flower.com && SMOKE_URL=https://... npm run smoke` | Trang và API còn chạy, không tạo đơn, không đổi dữ liệu |
 
 Trên Windows, nếu PowerShell chặn `npm` (execution policy), dùng `npm.cmd` thay cho `npm`.
