@@ -2,7 +2,7 @@
 
 ## Cấu hình
 
-File [main-branch-protection.json](../.github/main-branch-protection.json) yêu cầu PR, một approval, review từ Code Owner, hủy approval cũ khi thay đổi code, approval của người khác sau lần push mới nhất, giải quyết thảo luận và cả ba job CI xanh. Áp dụng cả với admin; cấm force push và xóa nhánh. Tên status check lấy từ `.github/workflows/ci.yml`.
+File [main-branch-protection.json](../.github/main-branch-protection.json) yêu cầu PR, một approval, review từ Code Owner, hủy approval cũ khi thay đổi code, approval của người khác sau lần push mới nhất, giải quyết thảo luận và cả bốn job CI xanh (unit, integration, trình duyệt và **Critical module coverage** được thêm ở #125). Áp dụng cả với admin; cấm force push và xóa nhánh. Tên status check lấy từ `.github/workflows/ci.yml`.
 
 Comment review cần có góp ý thực chất từ thành viên khác; comment không thỏa điều kiện một approval của branch protection. GitHub không tự đánh giá chất lượng góp ý, nên reviewer vẫn phải kiểm tra theo `CONTRIBUTING.md`.
 
@@ -24,7 +24,7 @@ Nếu thao tác bằng giao diện, vào Settings → Branches → Branch protec
 ## Kiểm tra hoàn thành
 
 - GET protection trả về các điều kiện trong file JSON; không coi việc commit file cấu hình là đã bật bảo vệ.
-- Trên PR thật tiếp theo, kiểm tra merge bị chặn khi thiếu approval hoặc một trong ba check chưa xanh; không merge thử chỉ để kiểm tra.
+- Trên PR thật tiếp theo, kiểm tra merge bị chặn khi thiếu approval hoặc một trong bốn check chưa xanh; không merge thử chỉ để kiểm tra.
 - Có review của thành viên khác, ít nhất một approval hợp lệ trên thay đổi mới nhất và mọi thảo luận đã giải quyết trước khi merge.
 - Hoàn thành đối chiếu danh tính trong [TEAM.md](TEAM.md).
 
