@@ -14,9 +14,10 @@ const loginSubmit = signIn.querySelector('[type="submit"]');
 const loginEmail = document.getElementById("email1");
 signUp.inert = true;
 
-document.querySelectorAll(".password-toggle").forEach((button) => {
+const passwordConcealers = Array.from(document.querySelectorAll(".password-toggle"), (button) => {
     const password = document.getElementById(button.getAttribute("aria-controls"));
     const passwordLabel = button.dataset.passwordLabel || "mật khẩu";
+    const passwordSlash = button.querySelector("[data-password-slash]");
     let hideTimer;
 
     function setPasswordVisibility(showPassword, focusInput = false) {
@@ -33,6 +34,7 @@ document.querySelectorAll(".password-toggle").forEach((button) => {
         const label = `${showPassword ? "Ẩn" : "Hiện"} ${passwordLabel}`;
         button.setAttribute("aria-label", label);
         button.title = label;
+        passwordSlash.toggleAttribute("hidden", !showPassword);
         // Only pointer activation returns focus to the input.
         if (focusInput) {
             password.focus({ preventScroll: true });
@@ -62,6 +64,18 @@ document.querySelectorAll(".password-toggle").forEach((button) => {
         resetHideTimer();
     });
     password.addEventListener("input", resetHideTimer);
+    return () => {
+        setPasswordVisibility(false);
+        resetHideTimer();
+    };
+});
+
+function concealAllPasswords() {
+    passwordConcealers.forEach(conceal => conceal());
+}
+
+document.addEventListener("visibilitychange", () => {
+    if (document.hidden) concealAllPasswords();
 });
 
 let firebaseAuthApiPromise;
@@ -282,6 +296,7 @@ async function completeGoogleRedirect() {
 
 if (signUpButton) {
     signUpButton.addEventListener("click", () => {
+        concealAllPasswords();
         container.classList.add("right-panel-active");
         signUp.inert = false;
         signIn.inert = true;
@@ -290,6 +305,7 @@ if (signUpButton) {
 
 if (signInButton) {
     signInButton.addEventListener("click", () => {
+        concealAllPasswords();
         container.classList.remove("right-panel-active");
         signIn.inert = false;
         signUp.inert = true;
