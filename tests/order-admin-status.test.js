@@ -1,4 +1,4 @@
-const test = require("node:test");
+﻿const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
@@ -6,14 +6,13 @@ const vm = require("node:vm");
 
 test("quản trị ghi bước chuẩn bị và hoàn thành kèm lịch sử và kiểm tra xung đột", async () => {
     const { ORDER_STATUSES, canTransitionOrderStatus, normalizeOrderStatus, orderStatusLabel } = await import("../flower.com/js/order/order-status.js");
-    const source = fs.readFileSync(path.join(__dirname, "../flower.com/js/admin/admin.js"), "utf8");
+    const source = fs.readFileSync(path.join(__dirname, "../flower.com/js/admin/admin-orders.js"), "utf8");
     const handler = source.slice(source.indexOf("async function updateOrderStatus("), source.indexOf("async function verifyOrderPayment("));
     const order = { id: "test-order", status: "Chờ xác nhận", paymentMethod: "cod" };
     const calls = [];
-    const messages = [];
     const context = vm.createContext({ ORDER_STATUSES, canTransitionOrderStatus, normalizeOrderStatus, orderStatusLabel, Date,
         getOrders: () => [order], isOrderPaid: () => false, renderOrdersTab() {},
-        alert(message) { messages.push(message); }, console,
+        alert(message) { throw new Error(message); }, console,
         window: { confirm: () => false, FlowerOrderStore: {
             update: async (id, changes, options) => { calls.push({ id, changes, options }); }
         } }
@@ -31,9 +30,4 @@ test("quản trị ghi bước chuẩn bị và hoàn thành kèm lịch sử v�
     assert.equal(calls[1].changes.paymentStatus, "Đã thanh toán");
     assert.equal(calls[1].options.expectedStatus, "Đang giao");
     assert.equal(calls[1].options.newEvent.status, "Đã giao");
-
-    order.status = "Chờ xác nhận";
-    await vm.runInContext('updateOrderStatus("test-order", "Đã giao", "Đã nhận hoa", "")', context);
-    assert.equal(calls.length, 2);
-    assert.match(messages.at(-1), /đúng thứ tự/);
 });

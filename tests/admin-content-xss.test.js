@@ -13,10 +13,11 @@ function functionSource(source, name, nextName) {
 }
 
 test("nội dung đánh giá và tin nhắn được escape trước khi render ở trang quản trị", () => {
-    const source = fs.readFileSync(path.join(__dirname, "../flower.com/js/admin/admin.js"), "utf8");
-    const escapeHtml = functionSource(source, "escapeHtml", "getSafeImageUrl");
-    const reviewCard = functionSource(source, "renderReviewCard", "renderActiveReviewSummary");
-    const messageCard = functionSource(source, "renderMessageCard", "renderCompletedMessageSummary");
+    const orderSource = fs.readFileSync(path.join(__dirname, "../flower.com/js/admin/admin-orders.js"), "utf8");
+    const reviewSource = fs.readFileSync(path.join(__dirname, "../flower.com/js/admin/admin-reviews.js"), "utf8");
+    const escapeHtml = functionSource(orderSource, "escapeHtml", "getSafeImageUrl");
+    const reviewCard = functionSource(reviewSource, "renderReviewCard", "renderActiveReviewSummary");
+    const messageCard = functionSource(reviewSource, "renderMessageCard", "renderCompletedMessageSummary");
     const payload = '<img data-xss src=x onerror="alert(1)">';
     const context = vm.createContext({
         review: {
