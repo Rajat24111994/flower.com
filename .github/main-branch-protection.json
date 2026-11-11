@@ -4,7 +4,8 @@
     "contexts": [
       "Unit test + coverage",
       "Feature, system và security test (Firebase Emulator)",
-      "Luồng mua hàng trên trình duyệt"
+      "Luồng mua hàng trên trình duyệt",
+      "Critical module coverage"
     ]
   },
   "enforce_admins": true,
