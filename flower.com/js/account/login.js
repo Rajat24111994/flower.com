@@ -14,15 +14,16 @@ const loginSubmit = signIn.querySelector('[type="submit"]');
 const loginEmail = document.getElementById("email1");
 signUp.inert = true;
 
-const loginPassword = document.getElementById("password1");
-const toggleLoginPassword = document.getElementById("toggle-login-password");
-
-toggleLoginPassword.addEventListener("click", () => {
-    const showPassword = loginPassword.type === "password";
-    loginPassword.type = showPassword ? "text" : "password";
-    const label = showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu";
-    toggleLoginPassword.setAttribute("aria-label", label);
-    toggleLoginPassword.title = label;
+document.querySelectorAll(".password-toggle").forEach((button) => {
+    const password = document.getElementById(button.getAttribute("aria-controls"));
+    const passwordLabel = button.dataset.passwordLabel || "mật khẩu";
+    button.addEventListener("click", () => {
+        const showPassword = password.type === "password";
+        password.type = showPassword ? "text" : "password";
+        const label = `${showPassword ? "Ẩn" : "Hiện"} ${passwordLabel}`;
+        button.setAttribute("aria-label", label);
+        button.title = label;
+    });
 });
 
 let firebaseAuthApiPromise;

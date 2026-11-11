@@ -8,7 +8,7 @@ test("login password toggles with mouse, Enter and Space without submitting", as
   await expect(page.locator("#signIn [type=submit]")).toBeEnabled();
 
   const password = page.locator("#password1");
-  const toggle = page.getByRole("button", { name: "Hiện mật khẩu", exact: true });
+  const toggle = page.locator("#signIn").getByRole("button", { name: "Hiện mật khẩu", exact: true });
   const value = randomUUID();
   await page.locator("#email1").fill("visibility@example.test");
   await password.fill(value);
