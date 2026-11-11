@@ -254,7 +254,7 @@ test("admin confirms catalog restoration with the themed dialog", async ({ page 
   });
   await page.locator("#product_page").click();
   await page.locator('[data-action="restore-catalog"]').click();
-  await expect(page.locator("#admin-confirm-title")).toHaveText("Khôi phục sản phẩm");
+  await expect(page.locator("#admin-confirm-title")).toHaveText("Thêm sản phẩm mẫu");
   await expect(page.locator("#admin-confirm-message")).toContainText("1 sản phẩm");
   await page.locator("[data-confirm-cancel]").click();
   expect(await page.evaluate(() => window.testProducts)).toHaveLength(3);

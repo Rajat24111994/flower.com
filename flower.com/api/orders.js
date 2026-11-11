@@ -2,7 +2,7 @@ const bouquet = require("../js/catalog/bouquet-options.js");
 const { validateReviewPhotos } = require("../lib/review-images");
 const { createHash, createHmac } = require("node:crypto");
 const { FieldValue, Timestamp } = require("firebase-admin/firestore");
-const { getAdminAuth, getAdminFirestore, sendError, verifyRequest, verifyAdminRequest } = require("../lib/firebase-admin");
+const { getAdminAuth, getAdminFirestore, sendError, verifyRequest } = require("../lib/firebase-admin");
 const { optionalCustomer, LOCAL_IDENTITY } = require("../lib/request-identity");
 // Same price reading as the shop pages (whole VND, old USD prices converted), so both agree.
 const { toVndPrice } = require("../js/catalog/product-store.js");
@@ -550,9 +550,23 @@ function validateQuote(body = {}) {
     return { items, promotionId, deliveryZoneId };
 }
 
+function isValidPromotionDate(value) {
+    if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+    const timestamp = Date.parse(`${value}T00:00:00Z`);
+    return Number.isFinite(timestamp) && new Date(timestamp).toISOString().slice(0, 10) === value;
+}
+
+function vietnameseDate(now = new Date()) {
+    const parts = new Intl.DateTimeFormat("en-CA", {
+        timeZone: "Asia/Ho_Chi_Minh", year: "numeric", month: "2-digit", day: "2-digit"
+    }).formatToParts(now);
+    const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+    return `${values.year}-${values.month}-${values.day}`;
+}
+
 // The active promotion a checkout asked for, or null when it asked for none. Throws
 // "invalid-promotion" for an unknown, inactive or malformed one.
-function findPromotion(promotions, promotionId) {
+function findPromotion(promotions, promotionId, now = new Date()) {
     if (!promotionId) return null;
     const promotion = (Array.isArray(promotions) ? promotions : [])
         .find((item) => String(item.id) === String(promotionId) && item.active === true);
@@ -562,7 +576,15 @@ function findPromotion(promotions, promotionId) {
         throw error;
     }
     const discountPercent = Number(promotion.discountPercent);
-    if (!Number.isFinite(discountPercent) || discountPercent <= 0 || discountPercent > 100) {
+    const today = vietnameseDate(now);
+    const startDate = promotion.startDate || "";
+    const endDate = promotion.endDate || "";
+    if (!Number.isFinite(discountPercent) || discountPercent <= 0 || discountPercent > 100
+        || (startDate && !isValidPromotionDate(startDate))
+        || (endDate && !isValidPromotionDate(endDate))
+        || (startDate && endDate && startDate > endDate)
+        || (startDate && today < startDate)
+        || (endDate && today > endDate)) {
         const error = new Error("Ưu đãi hiện không hợp lệ.");
         error.code = "invalid-promotion";
         throw error;
@@ -1271,14 +1293,8 @@ module.exports = async function handler(req, res) {
         const match = String(req.headers.authorization || "").match(/^Bearer\s+(.+)$/i);
         let authorized = Boolean(process.env.CRON_SECRET && match?.[1] === process.env.CRON_SECRET);
         if (!authorized && match?.[1]) {
-            try {
-                const claims = await verifyAdminRequest(req, res, getAdminAuth(), getAdminFirestore());
-                if (!claims) return;
-                authorized = true;
-            } catch (error) {
-                console.error("Reservation cleanup authentication failed:", error.code || "unknown");
-                return sendError(res, 503, "order-service-unavailable", "Chưa thể xác minh quyền dọn đơn hết hạn.");
-            }
+            if (!await authorizeOrderAdmin(req, res)) return;
+            authorized = true;
         }
         if (!authorized) return sendError(res, 401, "unauthenticated", "Quyền dọn đơn hết hạn không hợp lệ.");
         try {
@@ -1298,6 +1314,8 @@ module.exports.internals = {
     normalizePhone,
     aggregateItems,
     findPromotion,
+    isValidPromotionDate,
+    vietnameseDate,
     priceCart,
     validateCheckout,
     validateQuote,

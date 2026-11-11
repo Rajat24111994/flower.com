@@ -3,7 +3,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 
 test("trạng thái đơn hàng chuẩn và trạng thái cũ", async () => {
-    const { ORDER_STATUSES, normalizeOrderStatus } = await import("../flower.com/js/order/order-status.js");
+    const { ORDER_STATUSES, normalizeOrderStatus, canTransitionOrderStatus } = await import("../flower.com/js/order/order-status.js");
     assert.deepEqual([...ORDER_STATUSES], ["Chờ xác nhận", "Đang chuẩn bị", "Đang giao", "Đã giao", "Đã hủy"]);
     assert.ok(Object.isFrozen(ORDER_STATUSES));
     for (const status of ORDER_STATUSES) assert.equal(normalizeOrderStatus(status), status);
@@ -16,6 +16,15 @@ test("trạng thái đơn hàng chuẩn và trạng thái cũ", async () => {
     assert.equal(normalizeOrderStatus("Từ chối đơn hàng"), "Đã hủy");
     assert.equal(normalizeOrderStatus(""), "Chờ xác nhận");
     assert.equal(normalizeOrderStatus(undefined), "Chờ xác nhận");
+    assert.equal(canTransitionOrderStatus("Chờ xác nhận", "Đang chuẩn bị"), true);
+    assert.equal(canTransitionOrderStatus("Chờ xác nhận", "Đang giao"), false);
+    assert.equal(canTransitionOrderStatus("Đang chuẩn bị", "Đang giao"), true);
+    assert.equal(canTransitionOrderStatus("Đang chuẩn bị", "Đã giao"), false);
+    assert.equal(canTransitionOrderStatus("Đang giao", "Đã giao"), true);
+    assert.equal(canTransitionOrderStatus("Đã giao", "Đã hủy"), true);
+    assert.equal(canTransitionOrderStatus("Đã hủy", "Chờ xác nhận"), true);
+    assert.equal(canTransitionOrderStatus("Đã hủy", "Đang chuẩn bị"), false);
+    assert.equal(canTransitionOrderStatus("Đã vận chuyển", "Đã giao"), true);
 });
 
 test("tiến độ bốn bước, đơn cũ và đơn hủy không tạo mốc cập nhật giả", async () => {

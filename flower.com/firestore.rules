@@ -81,6 +81,27 @@ service cloud.firestore {
     }
 
     match /orders/{orderId} {
+      function canonicalOrderStatus(status) {
+        return status in ['Đặt hàng', 'Đã nhận đơn'] ? 'Chờ xác nhận'
+          : status == 'Đã vận chuyển' ? 'Đang giao'
+          : status in ['Hoàn thành', 'Hoàn thành chuyến'] ? 'Đã giao'
+          : status in ['Giao hàng thất bại', 'Từ chối đơn hàng'] ? 'Đã hủy'
+          : status;
+      }
+      function validOrderStatusTransition() {
+        let previousRaw = resource.data.get('status', 'Chờ xác nhận');
+        let nextRaw = request.resource.data.get('status', previousRaw);
+        let previous = canonicalOrderStatus(previousRaw);
+        let next = canonicalOrderStatus(nextRaw);
+        return nextRaw == previousRaw
+          || (nextRaw in ['Chờ xác nhận', 'Đang chuẩn bị', 'Đang giao', 'Đã giao', 'Đã hủy']
+            && (previous == next
+              || (previous == 'Chờ xác nhận' && next in ['Đang chuẩn bị', 'Đã hủy'])
+              || (previous == 'Đang chuẩn bị' && next in ['Đang giao', 'Đã hủy'])
+              || (previous == 'Đang giao' && next in ['Đã giao', 'Đã hủy'])
+              || (previous == 'Đã giao' && next == 'Đã hủy')
+              || (previous == 'Đã hủy' && next == 'Chờ xác nhận')));
+      }
       function allowedAdminOrderUpdate() {
         let changed = request.resource.data.diff(resource.data).affectedKeys();
         let codDeliveryPayment = request.resource.data.get('paymentMethod', '') == 'cod'
@@ -97,6 +118,7 @@ service cloud.firestore {
           'paymentStatus', 'paidAt', 'salesCounted', 'inventoryState', 'inventoryReserved',
           'reservationExpiresAt', 'reservationExpiredAt'
         ])
+          && validOrderStatusTransition()
           && (!changed.hasAny(['paymentStatus']) || codDeliveryPayment || restoreUnpaidQrOrder)
           && (!changed.hasAny(['paidAt']) || (codDeliveryPayment && request.resource.data.paidAt is string));
       }

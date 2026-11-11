@@ -43,6 +43,7 @@ jobs:
         working-directory: flower.com
         run: npm ci --omit=dev
       - name: Sao lưu và mã hóa
+        shell: bash
         working-directory: flower.com
         env:
           FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
@@ -50,7 +51,9 @@ jobs:
         run: |
           stamp=$(date -u +%Y-%m-%dT%H-%M-%SZ)
           npm run backup -- --out "backups/flowerflow-$stamp.json.enc" | tee backup-log.txt
+          npm run restore -- "backups/flowerflow-$stamp.json.enc" | tee restore-preview-log.txt
           { echo "### Sao lưu Firestore $stamp"; echo '```'; cat backup-log.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          { echo "### Diễn tập khôi phục: xem trước, không ghi Firestore"; echo '```'; cat restore-preview-log.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v4
         with:
           name: firestore-backup-${{ github.run_id }}
