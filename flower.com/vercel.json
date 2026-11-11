@@ -62,5 +62,19 @@
       "path": "/api/orders?action=expire",
       "schedule": "7 19 * * *"
     }
+  ],
+  "rewrites": [
+    {
+      "source": "/api/admin/audit",
+      "destination": "/api/admin/users?route=audit"
+    },
+    {
+      "source": "/api/bouquet-wrapping",
+      "destination": "/api/delivery-zones?route=bouquet-wrapping"
+    },
+    {
+      "source": "/api/flower-prices",
+      "destination": "/api/products?route=flower-prices"
+    }
   ]
 }

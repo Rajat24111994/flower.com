@@ -1,6 +1,8 @@
 const { FieldValue } = require("firebase-admin/firestore");
 const { getAdminAuth, getAdminFirestore, sendError, verifyAdminRequest } = require("../lib/firebase-admin");
 const { addAdminAudit } = require("../lib/admin-audit");
+const { withRoutes } = require("../lib/api-routes");
+const bouquetWrapping = require("../lib/routes/bouquet-wrapping");
 
 const ZONES_DOCUMENT = "deliveryZones";
 
@@ -28,7 +30,7 @@ function hasDuplicateAreas(zones) {
     return false;
 }
 
-module.exports = async function handler(req, res) {
+async function deliveryZones(req, res) {
     res.setHeader("Cache-Control", "no-store");
     const db = (() => {
         try {
@@ -127,6 +129,8 @@ module.exports = async function handler(req, res) {
         console.error("Delivery-zone update failed:", error.code || error.message);
         return sendError(res, 503, "delivery-zone-service-unavailable", "Chưa thể lưu khu vực giao hàng. Vui lòng thử lại.");
     }
-};
+}
 
+// /api/bouquet-wrapping được vercel.json chuyển tới đây với ?route=bouquet-wrapping.
+module.exports = withRoutes(deliveryZones, { "bouquet-wrapping": bouquetWrapping });
 module.exports.internals = { validZone, hasDuplicateAreas };
