@@ -46,7 +46,7 @@ Cột **Kiểm chứng** lấy từ mô tả PR và kết quả CI khi gộp. C�
 | 04/11/2026 | #105 | Claude Code | Sửa logo chân trang bị thành ô trắng (CSS filter) | 80/80 unit; thử 11 trang ở 2 kích thước màn hình (theo mô tả PR) | Longg5048 |
 | 11/11/2026 | #132 | Claude Code | Sửa Vercel không deploy được (lệnh `build`, vượt 12 hàm), gộp 3 API; thiết kế database SQL Server | 176/176 unit, 91/91 tích hợp, Vercel Preview Ready; `schema.sql` chạy trên SQL Server 2022, 10/10 kiểm thử quy tắc | Longg5048 |
 | 11/11/2026 | #116, #117 (commit gỡ xung đột) | Claude Code | Merge `main` vào nhánh của Dol-tech07 và haib15526-oss, gỡ xung đột; sửa 2 test e2e cũ theo chính sách mật khẩu #121 | Unit, tích hợp và e2e tài khoản chạy trên máy; CI xanh trước khi gộp | Longg5048 (gộp); Dol-tech07, haib15526-oss (tác giả PR) |
-| 11/11/2026 | PR cho #122, #124, #125, #126, #129, #130, #119, #131 | Claude Code | Đồng bộ tài liệu, ma trận truy vết, thêm unit test và Firestore giả, load test, nhật ký này, nguồn gốc code, tài liệu triển khai và nghiên cứu người dùng | Ghi trong từng commit; unit 204/204, CI | Longg5048 |
+| 11/11/2026 | PR cho #122, #125, #126, #129, #130, #119, #131 | Claude Code | Đồng bộ tài liệu, thêm unit test và Firestore giả, load test, nhật ký này, nguồn gốc code, tài liệu triển khai và nghiên cứu người dùng; bổ sung bằng chứng mới vào ma trận truy vết của #124 (ma trận chính do DoThai207 làm) | Ghi trong từng commit; unit 204/204, CI | Longg5048 |
 
 ## Việc thành viên cần bổ sung
 

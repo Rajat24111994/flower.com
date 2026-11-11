@@ -54,7 +54,7 @@ Danh tính và vai trò chính thức ghi tại [`docs/TEAM.md`](../TEAM.md) (#1
 | GitHub | Phần việc thấy trong repo | Vai trò (nhóm điền) |
 | --- | --- | --- |
 | Longg5048 | Điều phối PR, kiểm thử, CI, tái cấu trúc, tài liệu (nhiều PR dùng Claude Code, xem [`AI-USAGE-LOG.md`](../AI-USAGE-LOG.md)) | |
-| DoThai207 | Danh sách sản phẩm, checkout (#28, #29), rà soát bảo mật (#91), chống brute force (#92), CSP (#120), chính sách mật khẩu (#121), quy trình review (#127), rà soát issue (#123) | |
+| DoThai207 | Danh sách sản phẩm, checkout (#28, #29), rà soát bảo mật (#91), chống brute force (#92), CSP (#120), chính sách mật khẩu (#121), quy trình review (#127), rà soát issue (#123), ma trận truy vết (#124) | |
 | Dol-tech07 | Quyền riêng tư (#106, #108), giá hoa (#110), phân quyền đơn (#112), HTTPS (#113), mật khẩu (#116) | |
 | haib15526-oss | Lọc doanh thu (#78), phân quyền admin (#117), giá héo tự động (#107) | |
 | Cuongvan-pixel | Tăng cường bảo mật tài khoản trên máy (commit 71212e6), trang thông tin thanh toán (PR #73, chưa gộp) | |
