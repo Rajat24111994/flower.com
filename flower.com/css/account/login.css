@@ -203,42 +203,82 @@ form input:not([type="submit"]):focus {
 
 .password-field {
 	position: relative;
+	min-width: 0;
+	flex-shrink: 0;
 	margin-bottom: 12px;
 }
 
 form .password-field input {
 	margin-bottom: 0;
-	padding-right: 52px;
+	padding-right: 60px;
+	border-radius: 14px;
+	font-size: 14px;
+}
+
+form .password-field input::placeholder {
+	color: #66756d;
+	opacity: 1;
 }
 
 .password-toggle {
 	position: absolute;
 	top: 2px;
-	right: 2px;
+	right: 4px;
 	display: grid;
 	width: 44px;
 	height: 44px;
+	min-width: 44px;
+	min-height: 44px;
 	place-items: center;
 	padding: 0;
 	border: 0;
-	border-radius: 9px;
-	background: transparent;
+	border-radius: 11px;
+	background: #f4f6f1;
 	color: var(--sage);
 	cursor: pointer;
+	touch-action: manipulation;
+	transition: background-color 160ms ease, color 160ms ease, box-shadow 160ms ease;
 }
 
-.password-toggle:hover {
+@media (hover: hover) {
+	.password-toggle:hover {
+		background: var(--rose-pale);
+		color: var(--rose-dark);
+	}
+}
+
+.password-toggle:focus-visible {
+	outline: 3px solid var(--rose-dark);
+	outline-offset: -3px;
 	background: var(--rose-pale);
 	color: var(--rose-dark);
 }
 
-.password-toggle:focus-visible {
-	outline: 2px solid var(--rose-dark);
-	outline-offset: -3px;
+.password-toggle:active {
+	background: #f3e4e7;
+	transform: none;
 }
 
-.password-toggle:active {
-	transform: none;
+.password-toggle svg {
+	pointer-events: none;
+	opacity: 0.9;
+	transform: scale(1);
+	transition: opacity 160ms ease, transform 160ms ease;
+}
+
+.password-field:has(input[type="text"]) .password-toggle svg {
+	opacity: 1;
+	transform: scale(0.94);
+}
+
+.password-toggle [data-password-slash]:not([hidden]) {
+	stroke-dasharray: 26;
+	animation: password-slash-reveal 160ms ease-out;
+}
+
+@keyframes password-slash-reveal {
+	from { stroke-dashoffset: 26; }
+	to { stroke-dashoffset: 0; }
 }
 
 .forgot-password {
@@ -581,6 +621,10 @@ button:active {
 		margin-bottom: 18px;
 	}
 
+	form .password-field input {
+		font-size: 16px;
+	}
+
 	.overlay-container {
 		position: relative;
 		inset: auto;
@@ -677,6 +721,13 @@ button:active {
 		animation-duration: 0.01ms !important;
 		animation-iteration-count: 1 !important;
 		transition-duration: 0.01ms !important;
+	}
+
+	.password-toggle,
+	.password-toggle svg,
+	.password-toggle [data-password-slash] {
+		animation: none !important;
+		transition: none !important;
 	}
 }
 
