@@ -60,6 +60,10 @@ Người review kiểm tra:
 
 Góp ý cụ thể, kèm lý do. Chỉ "Approve" khi đã chạy hoặc đọc kỹ phần test.
 
+## Sử dụng AI
+
+Được dùng công cụ AI (Claude Code, Copilot, Codex…), nhưng người tạo PR phải hiểu và giải thích được mọi dòng được gộp. Điền mục **"Sử dụng AI"** trong mẫu PR và thêm một dòng vào [`docs/AI-USAGE-LOG.md`](docs/AI-USAGE-LOG.md) sau khi gộp. Không đưa secret, mật khẩu hay dữ liệu khách hàng thật vào công cụ AI.
+
 ## Quality gates (bắt buộc trước khi gộp)
 
 | Cổng | Kiểm tra bởi |
