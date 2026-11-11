@@ -1,4 +1,4 @@
-const { getAdminAuth, getAdminFirestore, sendError, verifyAdminRequest } = require("../../lib/firebase-admin");
+const { getAdminAuth, getAdminFirestore, sendError, verifyAdminRequest } = require("../firebase-admin");
 
 module.exports = async function handler(req, res) {
     res.setHeader("Cache-Control", "private, no-store");
