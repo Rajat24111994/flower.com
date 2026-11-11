@@ -4,7 +4,7 @@
 
 # FlowerFlow
 
-**Website cửa hàng hoa tươi trực tuyến: danh mục sản phẩm, giỏ hàng, thanh toán QR và trang quản trị.**
+**Website cửa hàng hoa tươi trực tuyến: danh mục sản phẩm, giỏ hàng, thanh toán COD/VNPay và trang quản trị.**
 
 [Xem bản demo](https://flower-com-six.vercel.app) · [Kiến trúc kỹ thuật](flower.com/README.md) · [Cấu hình quản trị](docs/ADMIN-SETUP.md) · [Ghi chú phát hành](docs/RELEASE_NOTES_v0.2.0.md)
 
@@ -54,8 +54,8 @@ FlowerFlow là website bán hoa gồm ba lớp:
 | Đánh giá sản phẩm | Khách đã đăng nhập gửi đánh giá 1–5 sao; đánh giá hiển thị công khai trên trang sản phẩm |
 | Giỏ hàng và yêu thích | Đồng bộ giữa các trang và thiết bị khi đăng nhập, gộp dữ liệu cũ, giới hạn theo tồn kho |
 | Ưu đãi | Chọn chương trình khuyến mãi áp dụng cho các sản phẩm phù hợp khi thanh toán |
-| Đặt hàng | Server báo giá, kiểm tra tồn kho và giữ hàng (QR 30 phút, COD 24 giờ); đơn hết hạn tự hủy và hoàn kho |
-| Thanh toán | Thanh toán khi nhận hàng hoặc mã QR chuyển khoản Vietcombank (VietQR) |
+| Đặt hàng | Server báo giá, kiểm tra tồn kho và giữ hàng (VNPay 15 phút, COD 30 phút; đơn QR cũ 30 phút); đơn hết hạn tự hủy và hoàn kho |
+| Thanh toán | Thanh toán khi nhận hàng (COD) hoặc VNPay; VNPay xác nhận tự động qua IPN có chữ ký. Đơn chuyển khoản QR cũ vẫn được admin đối soát thủ công |
 | Theo dõi đơn | Tra cứu bằng mã đơn và số điện thoại; tự hiển thị đơn của tài khoản đang đăng nhập |
 | Tài khoản | Đăng ký, đăng nhập bằng email/mật khẩu hoặc Google, quên mật khẩu, trang hồ sơ |
 | Liên hệ | Thanh liên hệ nhanh qua Facebook và Zalo |
@@ -81,7 +81,7 @@ FlowerFlow là website bán hoa gồm ba lớp:
 | Xác thực | Firebase Authentication (Email/Password, Google) |
 | Backend | Vercel Functions (Node.js 24), `firebase-admin`, Vercel Cron |
 | Cơ sở dữ liệu | Cloud Firestore (Security Rules, chỉ mục trong `firestore.indexes.json`) |
-| Thanh toán | VietQR (mã QR chuyển khoản ngân hàng) |
+| Thanh toán | VNPay (URL thanh toán + IPN ký HMAC-SHA512), COD; VietQR chỉ còn cho đơn QR tạo trước đây |
 | Kiểm thử | `node:assert` có sẵn của Node.js, không cần thư viện ngoài |
 | Hosting | Vercel |
 
@@ -223,10 +223,11 @@ Hướng dẫn từng bước, bao gồm cách gán quyền Owner bằng Applica
 
 | Loại | Lệnh | Nội dung |
 | --- | --- | --- |
-| Unit test | `cd flower.com && npm test` | Tính giá, ưu đãi, dữ liệu đơn hàng, trạng thái đơn, giỏ hàng, danh mục, sản phẩm |
+| Unit test | `cd flower.com && npm test` | 181 test: tính giá, ưu đãi, dữ liệu đơn hàng, trạng thái đơn, giỏ hàng, danh mục, sản phẩm, cấu hình bảo mật |
 | Coverage | `cd flower.com && npm run test:coverage` | Như trên, kèm tỉ lệ dòng/nhánh/hàm được test; CI yêu cầu tối thiểu 50% coverage dòng |
-| Feature, system, security | `cd tests && npm ci && npm run integration` | Đặt hàng, đăng nhập, quản lý, luồng xuyên hệ thống và Security Rules trên Firebase Emulator (cần Java 11+) |
-| Browser E2E | `cd flower.com && npm run test:e2e:emulator` | Xem sản phẩm, giỏ hàng, đăng nhập, đặt hàng trên desktop/mobile; Firebase Emulator và Playwright |
+| Feature, system, security | `cd tests && npm ci && npm run integration` | 91 test: đặt hàng, đăng nhập, quản lý, luồng xuyên hệ thống và Security Rules trên Firebase Emulator (cần Java 11+) |
+| Browser E2E | `cd flower.com && npm run test:e2e:emulator` | 148 test (74 kịch bản × desktop/mobile): xem sản phẩm, giỏ hàng, đăng nhập, đặt hàng trên desktop/mobile; Firebase Emulator và Playwright |
+| Tài khoản trên máy | `cd flower.com && npm run test:e2e:local` | 24 test: đăng ký, PIN, câu hỏi khôi phục, khóa tài khoản (không cần emulator) |
 | Smoke test sau deploy | `cd flower.com && SMOKE_URL=https://... npm run smoke` | Trang và API còn chạy, không đổi dữ liệu |
 
 CI trên GitHub Actions chạy unit test, test tích hợp và browser E2E cho mọi Pull Request và mỗi lần push lên `main`; báo cáo coverage và ảnh/trace trình duyệt được lưu trong kết quả chạy. Chi tiết: [`tests/README.md`](tests/README.md). Sau mỗi đợt kiểm thử, tạo báo cáo từ [mẫu báo cáo](docs/test-reports/TEMPLATE.md) trong `docs/test-reports/` ([ví dụ ngày 2026-10-28](docs/test-reports/2026-10-28.md)). Trước mỗi lần phát hành làm theo [`docs/RELEASE-CHECKLIST.md`](docs/RELEASE-CHECKLIST.md).
@@ -243,13 +244,14 @@ Mỗi lần đổi vai trò, refresh token của người dùng bị thu hồi �
 
 ## Hạn chế đã biết
 
-Dự án đang ở giai đoạn **v0.1.0 (chưa phát hành)**. Trước khi vận hành thật, cần lưu ý:
+Bản **v0.1.0** đã phát hành ngày 14/10/2026 ([release](https://github.com/Longg5048/flower.com/releases/tag/v0.1.0)); **v0.2.0** đang phát triển trên `main`. Trước khi vận hành thật, cần lưu ý:
 
-- **Thanh toán QR chưa có bước đối soát tự động.** Admin cần tự kiểm tra sao kê ngân hàng rồi bấm “Xác nhận đã nhận tiền” trước khi đơn hết thời gian giữ hàng (30 phút).
+- **VNPay mới kiểm thử bằng test tự động, chưa có giao dịch sandbox thật** (#39, #119). Cần tài khoản merchant sandbox để xác nhận luồng IPN trên môi trường thật.
+- Trang thanh toán chỉ còn COD và VNPay. Đơn chuyển khoản QR tạo trước đây vẫn cần admin tự kiểm tra sao kê rồi bấm “Xác nhận đã nhận tiền”.
 - Ghi nhận hoàn tiền chỉ hỗ trợ hoàn toàn bộ giá trị đơn sau khi cửa hàng đã chuyển tiền và nhập mã giao dịch. Không có chuyển tiền tự động, hoàn một phần hoặc nhiều khoản hoàn trên cùng đơn.
 - **Vercel Hobby chỉ hỗ trợ cron hằng ngày.** Cần cấu hình GitHub Actions `FLOWER_APP_URL` và `CRON_SECRET` theo [`ADMIN-SETUP.md`](ADMIN-SETUP.md) để chạy cleanup mỗi 15 phút; cron Vercel hằng ngày chỉ là dự phòng.
 - Dữ liệu cũ chỉ lưu trong `localStorage` (đơn hàng, đánh giá, lời nhắn trước khi có backend) không được chuyển lên Firestore. Phân loại cũ được tải lên ở lần đầu admin mở trang quản trị.
-- **Chế độ tài khoản demo** (dùng khi Firebase chưa bật Email/Password) lưu mật khẩu không mã hóa trong `localStorage`. Không dùng mật khẩu thật ở chế độ này.
+- **Tài khoản tự tạo trên máy** (`AUTH_MODE=local`, chỉ khi chạy `npm run dev`) lưu trong SQLite trên máy chạy, mật khẩu/PIN băm bằng scrypt; không dùng trên bản Vercel. Bản triển khai dùng Firebase Authentication.
 - Khách chưa đăng nhập chỉ lưu giỏ hàng và yêu thích trên thiết bị hiện tại. Tài khoản đăng nhập được đồng bộ hai danh sách qua Firestore; khi ngoại tuyến, bản cục bộ vẫn dùng được và sẽ báo nếu đồng bộ thất bại.
 
 ## Lộ trình
@@ -259,9 +261,9 @@ Dự án đang ở giai đoạn **v0.1.0 (chưa phát hành)**. Trước khi v�
 - [x] Backend tạo đơn: báo giá, kiểm tra tồn kho, giữ hàng và tự hủy đơn hết hạn
 - [x] Chuyển đơn hàng, ưu đãi, phân loại, lời nhắn và trang quản lý đánh giá lên Firestore
 - [x] Xác minh thanh toán QR thủ công trong trang quản trị
-- [ ] Tích hợp xác nhận thanh toán tự động (webhook ngân hàng hoặc cổng thanh toán)
+- [x] Tích hợp VNPay: tạo URL thanh toán, IPN kiểm tra chữ ký và số tiền (còn chờ kiểm thử sandbox thật, #39)
 - [x] Thiết lập CI chạy unit test và test tích hợp trên GitHub Actions, kèm coverage
-- [ ] Tách `admin.js` thành các module theo chức năng
+- [ ] Tách `admin.js` thành các module theo chức năng (#128)
 
 ## Đóng góp
 

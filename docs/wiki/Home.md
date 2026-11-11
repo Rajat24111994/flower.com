@@ -45,7 +45,7 @@ FlowerFlow giúp khách hàng **tìm, chọn và đặt hoa trong vài phút**, 
 
 ![Vòng đời đơn hàng](https://raw.githubusercontent.com/Longg5048/flower.com/main/docs/wiki/vong-doi-don.png)
 
-> ⏱️ **Thời gian giữ hàng khi chưa thanh toán:** VNPay 15 phút · COD 24 giờ. Quá hạn, hàng tự trả lại kho.
+> ⏱️ **Thời gian giữ hàng khi chưa thanh toán:** VNPay 15 phút · COD 30 phút. Quá hạn, hàng tự trả lại kho.
 
 ## 🧭 Phạm vi
 
