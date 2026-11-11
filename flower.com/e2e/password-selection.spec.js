@@ -1,15 +1,8 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./helpers/password-visibility-fixture.js";
 import { randomUUID } from "node:crypto";
 
 const fieldIds = ["password1", "password", "checkpassword"];
 const selectionOf = input => [input.selectionStart, input.selectionEnd, input.selectionDirection];
-
-test.beforeEach(async ({ page }) => {
-  // Keep the UI tests independent of Firebase and external fonts.
-  await page.route("https://**/*", route => route.abort());
-  await page.goto("/login.html");
-  await expect(page.locator("#signIn [type=submit]")).toBeEnabled();
-});
 
 test("mouse and touch preserve selection and let typing resume in every password field", async ({ page, isMobile }) => {
   for (const id of fieldIds) {

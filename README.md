@@ -224,7 +224,7 @@ Hướng dẫn từng bước, bao gồm cách gán quyền Owner bằng Applica
 
 | Loại | Lệnh | Nội dung |
 | --- | --- | --- |
-| Unit test | `cd flower.com && npm test` | 204 test: tính giá, ưu đãi, dữ liệu đơn hàng, trạng thái đơn, giỏ hàng, danh mục, sản phẩm, cấu hình bảo mật |
+| Unit test | `cd flower.com && npm test` | 231 test: tính giá, ưu đãi, dữ liệu đơn hàng, trạng thái đơn, giỏ hàng, danh mục, sản phẩm, cấu hình bảo mật |
 | Coverage | `cd flower.com && npm run test:coverage` | Như trên, kèm tỉ lệ dòng/nhánh/hàm được test; CI yêu cầu tối thiểu 70% coverage dòng |
 | Feature, system, security | `cd tests && npm ci && npm run integration` | 91 test: đặt hàng, đăng nhập, quản lý, luồng xuyên hệ thống và Security Rules trên Firebase Emulator (cần Java 11+) |
 | Browser E2E | `cd flower.com && npm run test:e2e:emulator` | 148 test (74 kịch bản × desktop/mobile): xem sản phẩm, giỏ hàng, đăng nhập, đặt hàng trên desktop/mobile; Firebase Emulator và Playwright |

@@ -55,4 +55,4 @@ http.createServer(async (req, res) => {
     }
     res.writeHead(200, { "Content-Type": types[path.extname(file)] || "application/octet-stream" }).end(data);
   } catch { res.writeHead(404).end(); }
-}).listen(4173, "127.0.0.1");
+}).listen(Number(process.env.FLOWER_E2E_PORT || 4173), "127.0.0.1");

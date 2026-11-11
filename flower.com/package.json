@@ -19,6 +19,7 @@
         "backup": "node --env-file-if-exists=.env scripts/backup-firestore.js",
         "restore": "node --env-file-if-exists=.env scripts/restore-firestore.js",
         "test:e2e": "playwright test",
+        "test:auth-visibility": "playwright test --config playwright.auth-visibility.config.js",
         "test:e2e:local": "playwright test --config playwright.local.config.js",
         "test:e2e:emulator": "firebase emulators:exec --project web-ban-hoa-9fe0b --only auth,firestore \"npm run test:e2e\""
     },

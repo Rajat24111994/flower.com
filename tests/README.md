@@ -28,6 +28,22 @@ Test tích hợp chạy API thật (`flower.com/api/*.js`) và `firestore.rules`
 
 ## Các phạm vi đang được kiểm thử
 
+### Coverage các module rủi ro cao (#125)
+
+Job **Critical module coverage** tải artifact unit và integration trong cùng lần CI, rồi kiểm tra sáu module được #125 nêu: `api/delivery-zones.js`, `api/orders.js`, `api/design-requests.js`, `js/catalog/product-store.js`, `lib/firebase-admin.js`, `js/review/review-images.js`. Mỗi module cần ít nhất **50% dòng trong unit hoặc integration**. Chọn kết quả tốt hơn của hai bộ; không cộng phần trăm hoặc cộng số dòng đã chạy giữa các báo cáo. Thiếu module/báo cáo hoặc dữ liệu LCOV lỗi làm gate thất bại.
+
+Sau khi tạo cả hai báo cáo, chạy từ gốc repository:
+
+```sh
+node tests/coverage-targets.js flower.com/coverage/lcov.info tests/coverage/lcov.info --min-lines=50
+```
+
+Các test `firebase-admin.test.js`, `delivery-zones-api.test.js`, `design-requests-api.test.js` dùng module thật với dependency được cô lập để đưa lỗi cấu hình, xác thực và dịch vụ vào đúng nhánh xử lý. Fixture transaction trong `helpers/api-fixture.js` không mô phỏng Security Rules hay tính đồng thời của Firestore; các tính chất đó vẫn được kiểm tra trên Firebase Emulator.
+
+`product-store-runtime.test.js` chạy mã nguồn catalog thật trong browser context giả lập để kiểm tra cache/fallback/offline, không sửa chuỗi nguồn để bỏ qua hàm cần đo. `review-image-processing.test.js` kiểm tra vòng nén ảnh và thu hồi blob URL. `order-promotion-boundaries.test.js` kiểm tra lịch ưu đãi theo giờ Việt Nam và làm tròn tiền. Luồng offline còn có E2E `product-store-offline.spec.js` trên desktop/mobile.
+
+### Danh sách bộ kiểm thử
+
 | File | Phạm vi |
 | --- | --- |
 | `product-page.test.js` | Hiển thị và tương tác trang sản phẩm |
@@ -70,6 +86,28 @@ Sau mỗi đợt chạy test, sao chép `docs/test-reports/TEMPLATE.md` thành `
 Khi một test thất bại, giữ nguyên đầu ra lỗi liên quan, xác định test/file bị ảnh hưởng và mô tả các bước cần thiết để chạy lại. Không đánh dấu đợt kiểm thử là đạt nếu có test bị bỏ qua hoặc không chạy; hãy nêu rõ trạng thái thực tế.
 
 ## Kiểm thử giao diện trên trình duyệt
+
+### Nút ẩn/hiện mật khẩu — không cần Firebase Emulator
+
+```sh
+cd flower.com
+npm run test:auth-visibility
+```
+
+Trên PowerShell có execution policy chặn script, dùng `npm.cmd run test:auth-visibility`. Cài Chromium bằng `npx playwright install chromium` nếu chưa có; hoặc đặt `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` tới trình duyệt Chromium đã cài. Bộ test dùng lại Playwright và hai cấu hình desktop/mobile của dự án, mở máy chủ static trên loopback cổng 4175.
+
+`e2e/helpers/password-visibility-fixture.js` mock module Firebase App/Auth ngay trong trình duyệt, chặn tất cả kết nối ra ngoài và mọi yêu cầu API/ghi dữ liệu. Service worker bị chặn trong cấu hình riêng. Listener ở capture phase chặn submit trước handler thật và đếm riêng từng form; mỗi test phải kết thúc với 0 submit, 0 lời gọi xác thực và 0 yêu cầu backend. Không tạo tài khoản, không tải SDK Firebase thật và không cần `.env` hay thông tin xác thực.
+
+| File trong `flower.com/e2e/` | Phạm vi |
+| --- | --- |
+| `login-password-visibility.spec.js`, `signup-password-visibility.spec.js` | Bật/tắt từng ô, trạng thái độc lập, giá trị và validation không đổi, form hợp lệ nhưng nút không submit |
+| `password-selection.spec.js` | Vùng chọn xuôi/ngược và con trỏ đầu/giữa/cuối, chuột/chạm, Tab/Enter/Space, API vùng chọn không hỗ trợ |
+| `password-inactivity.spec.js` | Biên 2999/3000ms, đặt lại bộ đếm khi chỉnh sửa, bộ đếm riêng từng ô, hủy khi chủ động ẩn, không chạy bộ đếm cho ô đang che |
+| `password-concealment.spec.js` | Che ngay khi `document.hidden=true` hoặc chuyển form, hủy timer, đồng bộ icon/nhãn, không tự hiện lại khi quay về |
+
+Thời gian được điều khiển bằng Playwright Clock thay vì chờ 3 giây thật. Sự kiện dán/cắt/undo/redo được mô phỏng bằng `InputEvent`; chuyển tab được mô phỏng bằng `document.hidden` và `visibilitychange`, không thao tác clipboard hoặc tab thật của người dùng. Các thao tác gõ/xóa/thay vùng chọn, chuột/chạm và bàn phím dùng API trình duyệt của Playwright. Ảnh/trace khi thất bại nằm trong `test-results/auth-visibility/`.
+
+### Luồng mua hàng trên Firebase Emulator
 
 Các kịch bản Playwright nằm trong `flower.com/e2e/`. Chúng chạy trên Firebase Auth và Firestore Emulator, đồng thời mock API tạo đơn để kiểm thử không ghi dữ liệu lên cửa hàng thật. Cài Java 21 và Chromium cho Playwright, sau đó chạy:
 

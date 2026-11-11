@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, watchTypeWrites } from "./helpers/password-visibility-fixture.js";
 import { randomUUID } from "node:crypto";
 
 const fieldIds = ["password1", "password", "checkpassword"];
@@ -18,27 +18,9 @@ async function expectMasked(page) {
     await expect(button).toHaveAttribute("aria-label", label);
     if (await button.isVisible()) await expect(button).toHaveAccessibleName(label);
     await expect(button).toHaveAttribute("title", label);
-    await expect(button.locator("[data-password-slash]")).toHaveAttribute("hidden", "");
+    await expect(button.locator(".eye-slash")).toHaveCSS("opacity", "1");
   }
 }
-
-async function watchTypeWrites(page) {
-  await page.evaluate(() => {
-    window.concealTypeWrites = 0;
-    const observer = new MutationObserver(records => { window.concealTypeWrites += records.length; });
-    document.querySelectorAll(".password-field input").forEach(input => {
-      observer.observe(input, { attributes: true, attributeFilter: ["type"] });
-    });
-  });
-}
-
-test.beforeEach(async ({ page }) => {
-  await page.route("https://**/*", route => route.abort());
-  await page.clock.install();
-  await page.goto("/login.html");
-  await expect(page.locator("#signIn [type=submit]")).toBeEnabled();
-  await page.clock.pauseAt(await page.evaluate(() => Date.now() + 1000));
-});
 
 for (const form of ["login", "signup"]) {
   test(`hiding the document conceals ${form} passwords immediately and cancels pending timers`, async ({ page }) => {
@@ -75,7 +57,7 @@ for (const form of ["login", "signup"]) {
     const id = shownIds[0];
     const button = page.locator(`button[aria-controls="${id}"]`);
     await button.click();
-    await expect(button.locator("[data-password-slash]")).not.toHaveAttribute("hidden");
+    await expect(button.locator(".eye-slash")).toHaveCSS("opacity", "0");
     await page.clock.runFor(2999);
     await expect(page.locator(`#${id}`)).toHaveAttribute("type", "text");
     await page.clock.runFor(1);

@@ -82,7 +82,7 @@ Các dòng dưới đây ghi bằng chứng mới thêm sau commit snapshot [M].
 | NF-08 | Cùng báo cáo: 5–200 khách tranh mua 10 bó, không lần nào bán vượt kho hay kho âm | Có test (load test thủ công, chưa chạy trong CI) |
 | KH-08, KH-10, NF-08, NF-10 | Unit [`api-orders.test.js`](https://github.com/Longg5048/flower.com/blob/main/tests/api-orders.test.js) với Firestore giả: báo giá có khuyến mãi và phí giao, thiếu hàng, tạo đơn trừ kho và lưu giá lúc đặt, chống đặt trùng, giá đổi trả 409, tra cứu công khai không lộ địa chỉ, giới hạn 20 lượt/IP, dọn đơn hết hạn không hoàn kho hai lần | Có test, chạy trong CI (job Unit test + coverage) |
 | QT-04, QT-10, NF-12 | Unit [`api-handlers.test.js`](https://github.com/Longg5048/flower.com/blob/main/tests/api-handlers.test.js) và [`helper-modules.test.js`](https://github.com/Longg5048/flower.com/blob/main/tests/helper-modules.test.js): khu vực giao, phí gói bó, giá hoa chỉ owner, tài khoản và nhật ký quản trị, quyền admin/owner bị thu hồi | Có test, chạy trong CI |
-| NF-15 | Unit tăng từ 181 lên 204 test; coverage dòng unit 57,45% → 77,41%; CI nâng ngưỡng tối thiểu từ 50% lên 70% (#125) | Có test, chạy trong CI |
+| NF-15 | Unit tăng từ 181 lên 204 test; coverage dòng unit 57,45% → 77,41%. Sau khi gộp thêm test #125 của DoThai207 trên main: 231 test, coverage dòng 83,80%; CI yêu cầu tối thiểu 70% và 50% cho 6 module rủi ro cao (#125) | Có test, chạy trong CI |
 
 ## Cập nhật ma trận
 
