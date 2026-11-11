@@ -3,6 +3,7 @@
     const CATEGORY_KEY = "flowerCategories";
     const LEGACY_USD_TO_VND = 25949.123093;
     let initialization;
+    let catalogProducts = [];
     let synchronization;
     let firebaseApiPromise;
     let unsubscribeProducts;
