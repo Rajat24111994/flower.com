@@ -35,8 +35,8 @@ function review(storage, store) {
     alert() {}, console: { error() {} },
     formatVnd: String,
   });
-  const html = fs.readFileSync(path.join(__dirname, "../flower.com/placeorder.html"), "utf8");
-  vm.runInContext(html.match(/<script>\s*([\s\S]*?)<\/script>/)[1], context);
+  const script = fs.readFileSync(path.join(__dirname, "../flower.com/js/order/placeorder.js"), "utf8");
+  vm.runInContext(script, context);
   return { context, elements };
 }
 const totals = { subtotal: 250000, savings: 0, tax: 0, shippingFee: 0, total: 250000 };

@@ -24,7 +24,8 @@ test("login password toggles with mouse, Enter and Space without submitting", as
   await expect(toggle).toHaveAttribute("type", "button");
   await expect(toggle).toHaveAttribute("aria-controls", "password1");
   await expect(password).toHaveAttribute("type", "password");
-  const icon = await toggle.locator("svg").evaluate(svg => svg.outerHTML);
+  const passwordSlash = toggle.locator("[data-password-slash]");
+  await expect(passwordSlash).toHaveAttribute("hidden", "");
   const fieldBox = await password.boundingBox();
   const buttonBox = await toggle.boundingBox();
   expect(buttonBox.x).toBeGreaterThan(fieldBox.x + fieldBox.width / 2);
@@ -38,6 +39,7 @@ test("login password toggles with mouse, Enter and Space without submitting", as
   await expect(password).toHaveValue(value);
   await expect(button).toHaveAccessibleName("Ẩn mật khẩu");
   await expect(button).toHaveAttribute("title", "Ẩn mật khẩu");
+  await expect(button.locator("[data-password-slash]")).toBeVisible();
 
   // Reach the native button in tab order, then activate it with both keys.
   await password.focus();
@@ -48,6 +50,7 @@ test("login password toggles with mouse, Enter and Space without submitting", as
   await expect(password).toHaveAttribute("type", "password");
   await expect(button).toHaveAccessibleName("Hiện mật khẩu");
   await expect(button).toHaveAttribute("title", "Hiện mật khẩu");
+  await expect(passwordSlash).toBeHidden();
   await page.keyboard.press("Space");
   await expect(password).toHaveAttribute("type", "text");
   await expect(button).toHaveAccessibleName("Ẩn mật khẩu");
@@ -55,7 +58,7 @@ test("login password toggles with mouse, Enter and Space without submitting", as
   await expect(password).toHaveValue(value);
   await expect(password).toHaveAttribute("autocomplete", "current-password");
   await expect(password).toHaveAttribute("required", "");
-  expect(await button.locator("svg").evaluate(svg => svg.outerHTML)).toBe(icon);
+  await expect(button.locator("[data-password-slash]")).toBeVisible();
   expect(await page.evaluate(() => window.visibilitySubmitCount)).toBe(0);
   await expect(page.locator("#password")).toHaveAttribute("type", "password");
   await expect(page.locator("#checkpassword")).toHaveAttribute("type", "password");

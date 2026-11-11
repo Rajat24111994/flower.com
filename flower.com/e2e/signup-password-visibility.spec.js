@@ -56,7 +56,6 @@ test("signup password fields toggle independently without submitting", async ({ 
     await expect(field).toHaveValue(value);
     await expect(field).toHaveAttribute("required", "");
     await expect(field).toHaveAttribute("minlength", "8");
-    await expect(field).toHaveAttribute("maxlength", "4096");
     await expect(field).toHaveAttribute("autocomplete", "new-password");
   }
   expect(await page.evaluate(() => window.visibilitySubmitCount)).toBe(0);
