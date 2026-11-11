@@ -1,25 +1,13 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./helpers/password-visibility-fixture.js";
 import { randomUUID } from "node:crypto";
 
 test("login password toggles with mouse, Enter and Space without submitting", async ({ page }) => {
-  // This UI check does not need Firebase or a real account.
-  await page.route("https://www.gstatic.com/firebasejs/**", route => route.abort());
-  await page.goto("/login.html");
-  await expect(page.locator("#signIn [type=submit]")).toBeEnabled();
-
   const password = page.locator("#password1");
   const toggle = page.locator("#signIn").getByRole("button", { name: "Hiện mật khẩu", exact: true });
   const value = randomUUID();
   await page.locator("#email1").fill("visibility@example.test");
   await password.fill(value);
-  await page.evaluate(() => {
-    window.visibilitySubmitCount = 0;
-    document.getElementById("signIn").addEventListener("submit", event => {
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      window.visibilitySubmitCount++;
-    }, true);
-  });
+  expect(await page.locator("#signIn").evaluate(form => form.checkValidity())).toBe(true);
 
   await expect(toggle).toHaveAttribute("type", "button");
   await expect(toggle).toHaveAttribute("aria-controls", "password1");
@@ -59,7 +47,7 @@ test("login password toggles with mouse, Enter and Space without submitting", as
   await expect(password).toHaveAttribute("autocomplete", "current-password");
   await expect(password).toHaveAttribute("required", "");
   await expect(button.locator("[data-password-slash]")).toBeVisible();
-  expect(await page.evaluate(() => window.visibilitySubmitCount)).toBe(0);
+  expect(await page.evaluate(() => window.visibilitySubmits)).toEqual({ signIn: 0, signUp: 0 });
   await expect(page.locator("#password")).toHaveAttribute("type", "password");
   await expect(page.locator("#checkpassword")).toHaveAttribute("type", "password");
 });

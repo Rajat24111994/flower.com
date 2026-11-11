@@ -67,6 +67,28 @@ Khi một test thất bại, giữ nguyên đầu ra lỗi liên quan, xác đ�
 
 ## Kiểm thử giao diện trên trình duyệt
 
+### Nút ẩn/hiện mật khẩu — không cần Firebase Emulator
+
+```sh
+cd flower.com
+npm run test:auth-visibility
+```
+
+Trên PowerShell có execution policy chặn script, dùng `npm.cmd run test:auth-visibility`. Cài Chromium bằng `npx playwright install chromium` nếu chưa có; hoặc đặt `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` tới trình duyệt Chromium đã cài. Bộ test dùng lại Playwright và hai cấu hình desktop/mobile của dự án, mở máy chủ static trên loopback cổng 4175.
+
+`e2e/helpers/password-visibility-fixture.js` mock module Firebase App/Auth ngay trong trình duyệt, chặn tất cả kết nối ra ngoài và mọi yêu cầu API/ghi dữ liệu. Service worker bị chặn trong cấu hình riêng. Listener ở capture phase chặn submit trước handler thật và đếm riêng từng form; mỗi test phải kết thúc với 0 submit, 0 lời gọi xác thực và 0 yêu cầu backend. Không tạo tài khoản, không tải SDK Firebase thật và không cần `.env` hay thông tin xác thực.
+
+| File trong `flower.com/e2e/` | Phạm vi |
+| --- | --- |
+| `login-password-visibility.spec.js`, `signup-password-visibility.spec.js` | Bật/tắt từng ô, trạng thái độc lập, giá trị và validation không đổi, form hợp lệ nhưng nút không submit |
+| `password-selection.spec.js` | Vùng chọn xuôi/ngược và con trỏ đầu/giữa/cuối, chuột/chạm, Tab/Enter/Space, API vùng chọn không hỗ trợ |
+| `password-inactivity.spec.js` | Biên 2999/3000ms, đặt lại bộ đếm khi chỉnh sửa, bộ đếm riêng từng ô, hủy khi chủ động ẩn, không chạy bộ đếm cho ô đang che |
+| `password-concealment.spec.js` | Che ngay khi `document.hidden=true` hoặc chuyển form, hủy timer, đồng bộ icon/nhãn, không tự hiện lại khi quay về |
+
+Thời gian được điều khiển bằng Playwright Clock thay vì chờ 3 giây thật. Sự kiện dán/cắt/undo/redo được mô phỏng bằng `InputEvent`; chuyển tab được mô phỏng bằng `document.hidden` và `visibilitychange`, không thao tác clipboard hoặc tab thật của người dùng. Các thao tác gõ/xóa/thay vùng chọn, chuột/chạm và bàn phím dùng API trình duyệt của Playwright. Ảnh/trace khi thất bại nằm trong `test-results/auth-visibility/`.
+
+### Luồng mua hàng trên Firebase Emulator
+
 Các kịch bản Playwright nằm trong `flower.com/e2e/`. Chúng chạy trên Firebase Auth và Firestore Emulator, đồng thời mock API tạo đơn để kiểm thử không ghi dữ liệu lên cửa hàng thật. Cài Java 21 và Chromium cho Playwright, sau đó chạy:
 
 ```sh

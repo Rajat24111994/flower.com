@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, watchTypeWrites } from "./helpers/password-visibility-fixture.js";
 import { randomUUID } from "node:crypto";
 
 const fieldIds = ["password1", "password", "checkpassword"];
@@ -21,24 +21,6 @@ async function expectMasked(page) {
     await expect(button.locator("[data-password-slash]")).toHaveAttribute("hidden", "");
   }
 }
-
-async function watchTypeWrites(page) {
-  await page.evaluate(() => {
-    window.concealTypeWrites = 0;
-    const observer = new MutationObserver(records => { window.concealTypeWrites += records.length; });
-    document.querySelectorAll(".password-field input").forEach(input => {
-      observer.observe(input, { attributes: true, attributeFilter: ["type"] });
-    });
-  });
-}
-
-test.beforeEach(async ({ page }) => {
-  await page.route("https://**/*", route => route.abort());
-  await page.clock.install();
-  await page.goto("/login.html");
-  await expect(page.locator("#signIn [type=submit]")).toBeEnabled();
-  await page.clock.pauseAt(await page.evaluate(() => Date.now() + 1000));
-});
 
 for (const form of ["login", "signup"]) {
   test(`hiding the document conceals ${form} passwords immediately and cancels pending timers`, async ({ page }) => {
