@@ -66,7 +66,7 @@ const handlers = {
     products: require(path.join(ROOT, "api/products.js")),
     adminUsers: require(path.join(ROOT, "api/admin/users.js")),
     ownerUsers: require(path.join(ROOT, "api/owner/users.js")),
-    flowerPrices: require(path.join(ROOT, "api/flower-prices.js")),
+    flowerPrices: viaRoute("api/products.js", "flower-prices"),
     adminAudit: viaRoute("api/admin/users.js", "audit"),
     bouquetWrapping: viaRoute("api/delivery-zones.js", "bouquet-wrapping")
 };

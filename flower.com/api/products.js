@@ -1,4 +1,6 @@
 const { getAdminAuth, getAdminFirestore, sendError, verifyRequest } = require("../lib/firebase-admin");
+const { withRoutes } = require("../lib/api-routes");
+const flowerPrices = require("../lib/routes/flower-prices");
 const catalog = require("../flower.json").flower;
 const catalogById = new Map(catalog.map((product) => [String(product.id), product]));
 
@@ -57,7 +59,7 @@ async function listProducts(req, res, db) {
     return res.status(200).json({ products });
 }
 
-module.exports = async function handler(req, res) {
+async function products(req, res) {
     if (req.method !== "GET") {
         res.setHeader("Allow", "GET");
         return sendError(res, 405, "method-not-allowed", "API này chỉ chấp nhận GET.");
@@ -77,4 +79,7 @@ module.exports = async function handler(req, res) {
         console.error("Products API failed:", error.code || error.message);
         return sendError(res, 503, "product-service-unavailable", "Máy chủ chưa đọc được kho sản phẩm. Vui lòng thử lại sau.");
     }
-};
+}
+
+// /api/flower-prices được vercel.json chuyển tới đây với ?route=flower-prices.
+module.exports = withRoutes(products, { "flower-prices": flowerPrices });

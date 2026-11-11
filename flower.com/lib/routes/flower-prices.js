@@ -1,7 +1,7 @@
 const { FieldValue } = require("firebase-admin/firestore");
-const { getAdminAuth, getAdminFirestore, sendError, verifyRequest } = require("../lib/firebase-admin");
-const { toVndPrice } = require("../js/catalog/product-store.js");
-const { addAdminAudit } = require("../lib/admin-audit");
+const { getAdminAuth, getAdminFirestore, sendError, verifyRequest } = require("../firebase-admin");
+const { toVndPrice } = require("../../js/catalog/product-store.js");
+const { addAdminAudit } = require("../admin-audit");
 
 const MIN_PRICE = 1000;
 const MAX_PRICE = 1_000_000_000;
