@@ -2,7 +2,7 @@
 const { randomBytes, randomUUID, scryptSync, timingSafeEqual, createHash } = require("node:crypto");
 const fs = require("node:fs");
 const path = require("node:path");
-const { failureState, restriction } = require("./login-protection");
+const { failureState, restriction } = require("../backend/accounts/login-protection");
 const { isStrongPassword, message: passwordPolicyMessage } = require("../js/core/password-policy");
 const { SESSION_MS } = require("./local-session");
 

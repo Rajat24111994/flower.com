@@ -55,7 +55,7 @@ function viaRoute(file, route) {
 }
 
 const handlers = {
-    login: require(path.join(ROOT, "api/login.js")),
+    login: require(path.join(ROOT, "backend/accounts/login.js")),
     orders: require(path.join(ROOT, "api/orders.js")),
     payments: require(path.join(ROOT, "api/payments.js")),
     vnpayIpn: require(path.join(ROOT, "api/vnpay-ipn.js")),

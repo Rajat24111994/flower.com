@@ -35,7 +35,7 @@ function configuration() {
 async function assertPublicPasswordSignInBlocked() {
     const config = configuration();
     if (config.emulator) return;
-    const { firebaseConfig } = await import("../js/core/firebase-config.js");
+    const { firebaseConfig } = await import("../../js/core/firebase-config.js");
     if (config.publicKey !== firebaseConfig.apiKey) throw unavailable();
     const cacheKey = config.publicKey;
     if (protectionCheck?.key === cacheKey && protectionCheck.expiresAt > Date.now()) {
