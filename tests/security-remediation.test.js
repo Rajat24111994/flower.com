@@ -4,7 +4,7 @@ const path = require("node:path");
 const { createLocalAccounts } = require("../flower.com/lib/local-accounts");
 const { createLocalAccountWorker } = require("../flower.com/lib/local-account-worker");
 const { createLocalServer } = require("../flower.com/lib/local-server");
-const { optionalCustomer } = require("../flower.com/lib/request-identity");
+const { optionalCustomer } = require("../flower.com/backend/shared/request-identity");
 const profile = require("./helpers/local-profile");
 const root = path.join(__dirname, "../flower.com");
 

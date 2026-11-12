@@ -20,7 +20,7 @@ if (process.env.FIREBASE_AUTH_EMULATOR_HOST && process.env.FIRESTORE_EMULATOR_HO
     project_id: projectId, client_email: `test@${projectId}.iam.gserviceaccount.com`,
     private_key: privateKey.export({ type: "pkcs8", format: "pem" })
   });
-  loginHandler = require("../api/login");
+  loginHandler = require("../backend/accounts/login");
 }
 const types = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".json": "application/json",
   ".png": "image/png", ".webp": "image/webp", ".jpg": "image/jpeg", ".svg": "image/svg+xml" };

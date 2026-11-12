@@ -30,9 +30,9 @@ Object.assign(process.env, {
     VNPAY_ENV: "sandbox"
 });
 
-const { getAdminAuth, getAdminFirestore } = require(path.join(ROOT, "lib/firebase-admin.js"));
+const { getAdminAuth, getAdminFirestore } = require(path.join(ROOT, "backend/shared/firebase-admin.js"));
 const { Timestamp } = require(require.resolve("firebase-admin/firestore", { paths: [ROOT] }));
-const { syncAdminRole } = require(path.join(ROOT, "lib/admin-roles.js"));
+const { syncAdminRole } = require(path.join(ROOT, "backend/admin/roles.js"));
 const catalog = Array.from({ length: 10 }, (_, index) => {
     const id = index + 1;
     return {
@@ -55,20 +55,20 @@ function viaRoute(file, route) {
 }
 
 const handlers = {
-    login: require(path.join(ROOT, "api/login.js")),
+    login: require(path.join(ROOT, "backend/accounts/login.js")),
     orders: require(path.join(ROOT, "api/orders.js")),
-    payments: require(path.join(ROOT, "api/payments.js")),
-    vnpayIpn: require(path.join(ROOT, "api/vnpay-ipn.js")),
-    reviewImages: require(path.join(ROOT, "api/review-images.js")),
-    productImages: require(path.join(ROOT, "api/product-images.js")),
-    deliveryZones: require(path.join(ROOT, "api/delivery-zones.js")),
-    designRequests: require(path.join(ROOT, "api/design-requests.js")),
-    products: require(path.join(ROOT, "api/products.js")),
-    adminUsers: require(path.join(ROOT, "api/admin/users.js")),
-    ownerUsers: require(path.join(ROOT, "api/owner/users.js")),
-    flowerPrices: viaRoute("api/products.js", "flower-prices"),
-    adminAudit: viaRoute("api/admin/users.js", "audit"),
-    bouquetWrapping: viaRoute("api/delivery-zones.js", "bouquet-wrapping")
+    payments: require(path.join(ROOT, "backend/payments/payments.js")),
+    vnpayIpn: require(path.join(ROOT, "backend/payments/vnpay-ipn.js")),
+    reviewImages: require(path.join(ROOT, "backend/catalog/review-images.js")),
+    productImages: require(path.join(ROOT, "backend/catalog/product-images.js")),
+    deliveryZones: require(path.join(ROOT, "backend/shop-settings/delivery-zones.js")),
+    designRequests: require(path.join(ROOT, "backend/design-requests/controller.js")),
+    products: require(path.join(ROOT, "backend/catalog/products.js")),
+    adminUsers: require(path.join(ROOT, "backend/admin/users.js")),
+    ownerUsers: require(path.join(ROOT, "backend/admin/owner-users.js")),
+    flowerPrices: viaRoute("backend/catalog/products.js", "flower-prices"),
+    adminAudit: viaRoute("backend/admin/users.js", "audit"),
+    bouquetWrapping: viaRoute("backend/shop-settings/delivery-zones.js", "bouquet-wrapping")
 };
 
 // Calls a Vercel-style handler in-process and returns { status, body, headers }.

@@ -17,7 +17,7 @@ function fixture(extra = {}) {
     const admin = adminDependency(db);
     admin.getAdminFirestore = () => { if (state.databaseError) throw new Error('missing database'); return db; };
     admin.getAdminAuth = () => { if (state.authError) throw new Error('missing auth'); return auth; };
-    const handler = loadModule('flower.com/api/design-requests.js', { '../lib/firebase-admin': admin });
+    const handler = loadModule('flower.com/backend/design-requests/controller.js', { '../shared/firebase-admin': admin });
     return { handler, db, state };
 }
 const create = () => ({ action: 'create', customerName: 'Buyer', phone: '0908123456', address: '1 Test Street',

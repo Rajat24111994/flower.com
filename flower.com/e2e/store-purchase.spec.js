@@ -59,7 +59,7 @@ test("customer can browse, add a flower, sign in, and place an order", async ({ 
   });
   await page.addInitScript(() => sessionStorage.setItem("flowerflowE2e", "true"));
 
-  // The static test server has no API: answer the catalog request the way api/products.js does.
+  // The static test server has no API: answer the catalog request the way backend/catalog/products.js does.
   await page.route("**/api/products", (route) => route.fulfill({
     json: { products: catalog.map((product) => ({ ...product, quantity: product.quantity ?? 10 })) }
   }));

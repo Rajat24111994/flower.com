@@ -1,7 +1,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { createLoginProtection } = require("../flower.com/lib/login-protection");
-const { createLoginHandler } = require("../flower.com/api/login");
+const { createLoginProtection } = require("../flower.com/backend/accounts/login-protection");
+const { createLoginHandler } = require("../flower.com/backend/accounts/login");
 const { memoryDb } = require("./helpers/login-memory-db");
 
 function fixture() {

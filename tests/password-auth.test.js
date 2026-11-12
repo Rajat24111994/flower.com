@@ -18,8 +18,8 @@ function setup(t, overrides = {}) {
         if (value === undefined) delete process.env[key]; else process.env[key] = value;
         t.after(() => { if (previous === undefined) delete process.env[key]; else process.env[key] = previous; });
     }
-    delete require.cache[require.resolve("../flower.com/lib/password-auth")];
-    return require("../flower.com/lib/password-auth");
+    delete require.cache[require.resolve("../flower.com/backend/accounts/password-auth")];
+    return require("../flower.com/backend/accounts/password-auth");
 }
 
 function json(status, body) { return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } }); }

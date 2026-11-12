@@ -30,7 +30,7 @@ test("từ chối số điện thoại người nhận quá ngắn", () => {
     assert.equal(validateCheckout(checkout({ recipientPhone: "12" })), null);
 });
 ```
-Chạy `npm test` → đỏ. Thêm điều kiện trong `validateCheckout` (`flower.com/api/orders.js`) → xanh. Dọn code → vẫn xanh.
+Chạy `npm test` → đỏ. Thêm điều kiện trong `validateCheckout` (`flower.com/backend/orders/validation.js`) → xanh. Dọn code → vẫn xanh.
 
 ### Đặt test ở đâu
 

@@ -6,7 +6,7 @@ const { randomUUID } = require("node:crypto");
 const { createLocalAccounts } = require("../flower.com/lib/local-accounts");
 const { createLocalServer } = require("../flower.com/lib/local-server");
 const { createLocalAuthHandler } = require("../flower.com/lib/local-auth-http");
-const { optionalCustomer } = require("../flower.com/lib/request-identity");
+const { optionalCustomer } = require("../flower.com/backend/shared/request-identity");
 const { SESSION_MS, SESSION_SECONDS } = require("../flower.com/lib/local-session");
 const profile = require("./helpers/local-profile");
 

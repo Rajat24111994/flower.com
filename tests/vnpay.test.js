@@ -6,7 +6,7 @@ const {
     createVnpayPaymentUrl,
     verifyVnpaySignature,
     formatVietnamDate
-} = require("../flower.com/lib/vnpay.js");
+} = require("../flower.com/backend/payments/vnpay.js");
 
 const hashSecret = "sandbox-test-secret";
 const config = {

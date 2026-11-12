@@ -12,7 +12,7 @@ const path = require("path");
 const { applicationDefault, initializeApp } = require("firebase-admin/app");
 const { getAuth } = require("firebase-admin/auth");
 const { getFirestore } = require("firebase-admin/firestore");
-const { syncAdminRoles } = require("../lib/admin-roles");
+const { syncAdminRoles } = require("../backend/admin/roles");
 const { toVndPrice } = require("../product-store");
 
 const projectId = process.env.GOOGLE_CLOUD_PROJECT || "web-ban-hoa-9fe0b";

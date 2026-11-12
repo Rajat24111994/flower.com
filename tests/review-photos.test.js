@@ -3,7 +3,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
-const { validateReviewPhotos, jpegDimensions, MAX_PHOTO_BYTES } = require("../flower.com/lib/review-images");
+const { validateReviewPhotos, jpegDimensions, MAX_PHOTO_BYTES } = require("../flower.com/backend/catalog/image-rules");
 const jpeg = fs.readFileSync(path.join(__dirname, "../flower.com/images/start.jpeg"));
 const photo = `data:image/jpeg;base64,${jpeg.toString("base64")}`;
 

@@ -52,7 +52,7 @@ function createLocalServer({ root, resolveApi, missingLoginConfiguration = [], l
     const realRoot = fs.realpath(directory);
     const vercelConfig = require("../vercel.json");
     const policy = vercelConfig.headers[0].headers.find(header => header.key === "Content-Security-Policy").value;
-    // Giống Vercel: URL API cũ được chuyển sang hàm đã gộp (xem lib/api-routes.js).
+    // Giống Vercel: URL API cũ được chuyển sang hàm đã gộp (xem backend/shared/api-routes.js).
     const apiRewrites = new Map((vercelConfig.rewrites || [])
         .filter(rule => rule.source.startsWith("/api/") && !/[:*(]/.test(rule.source))
         .map(rule => [rule.source, new URL(rule.destination, "http://local.invalid")]));
@@ -122,7 +122,7 @@ function createLocalServer({ root, resolveApi, missingLoginConfiguration = [], l
                 // Local requests have no trusted reverse proxy.
                 req.headers["x-forwarded-for"] = req.socket.remoteAddress;
                 if (localAccounts && !route.startsWith("local-auth/") && route !== "login") {
-                    const { LOCAL_IDENTITY, sessionCookie } = require("./request-identity");
+                    const { LOCAL_IDENTITY, sessionCookie } = require("../backend/shared/request-identity");
                     const token = sessionCookie(req);
                     req[LOCAL_IDENTITY] = { account: token ? await localAccounts.session(token) : null, presented: token !== undefined };
                 }

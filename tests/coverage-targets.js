@@ -1,7 +1,9 @@
 const fs = require('node:fs');
 const path = require('node:path');
-const TARGETS = ['api/delivery-zones.js', 'api/orders.js', 'api/design-requests.js',
-    'js/catalog/product-store.js', 'lib/firebase-admin.js', 'js/review/review-images.js'];
+const TARGETS = ['backend/shop-settings/delivery-zones.js', 'backend/orders/checkout.js', 'backend/orders/reservations.js', 'backend/orders/tracking.js',
+    'backend/orders/payment-admin.js', 'backend/orders/reviews.js', 'backend/orders/pricing.js',
+    'backend/orders/validation.js', 'backend/orders/controller.js', 'backend/design-requests/controller.js', 'backend/design-requests/validation.js',
+    'js/catalog/product-store.js', 'backend/shared/firebase-admin.js', 'js/review/review-images.js'];
 
 function parseLcov(contents) {
     const rows = [];

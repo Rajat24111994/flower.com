@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { internals } = require("../flower.com/api/delivery-zones.js");
+const { internals } = require("../flower.com/backend/shop-settings/delivery-zones.js");
 
 const { validZone, hasDuplicateAreas } = internals;
 

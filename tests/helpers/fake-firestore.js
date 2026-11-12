@@ -199,14 +199,15 @@ function fakeAuth(tokens = {}) {
     };
 }
 
-// Thay getAdminAuth/getAdminFirestore trong lib/firebase-admin rồi nạp lại handler.
+// Thay getAdminAuth/getAdminFirestore trong backend/shared/firebase-admin rồi nạp lại handler.
 function loadHandler(relativePath, { db, auth = fakeAuth(), firestoreError, authError } = {}) {
     const root = path.join(__dirname, "../../flower.com");
-    const adminLib = require(path.join(root, "lib/firebase-admin.js"));
+    const adminLib = require(path.join(root, "backend/shared/firebase-admin.js"));
     adminLib.getAdminFirestore = () => { if (firestoreError) throw firestoreError; return db; };
     adminLib.getAdminAuth = () => { if (authError) throw authError; return auth; };
     for (const key of Object.keys(require.cache)) {
-        if (key.startsWith(path.join(root, "api")) || key.startsWith(path.join(root, "lib/routes"))) delete require.cache[key];
+        if (["api", "lib/routes", "backend"].some((dir) => key.startsWith(path.join(root, dir) + path.sep))
+            && !key.endsWith(path.join("shared", "firebase-admin.js"))) delete require.cache[key];
     }
     return require(path.join(root, relativePath));
 }

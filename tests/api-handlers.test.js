@@ -18,7 +18,7 @@ test("delivery zones: public list hides disabled zones; manage view needs an act
     const db = fakeFirestore({ ...adminRoles, "metadata/deliveryZones": { zones: [
         zone("cg", "Hà Nội", "Cầu Giấy", 30000), zone("hk", "Hà Nội", "Hoàn Kiếm", 25000, false), { id: "bad" }
     ] } });
-    const handler = loadHandler("api/delivery-zones.js", { db });
+    const handler = loadHandler("backend/shop-settings/delivery-zones.js", { db });
 
     const publicList = await call(handler);
     assert.equal(publicList.status, 200);
@@ -35,7 +35,7 @@ test("delivery zones: public list hides disabled zones; manage view needs an act
 test("delivery zones: upsert, duplicate area and delete are audited in one transaction", async (t) => {
     quiet(t);
     const db = fakeFirestore({ ...adminRoles });
-    const handler = loadHandler("api/delivery-zones.js", { db });
+    const handler = loadHandler("backend/shop-settings/delivery-zones.js", { db });
     const post = (body, token = "admin-token") => call(handler, { method: "POST", body, token });
 
     assert.equal((await post({ action: "upsert", zone: zone("cg", "Hà Nội", "Cầu Giấy", 30000) }, "user-token")).status, 403);
@@ -64,15 +64,15 @@ test("delivery zones: upsert, duplicate area and delete are audited in one trans
 
 test("delivery zones: wrong method, missing configuration and storage failure return JSON errors", async (t) => {
     quiet(t);
-    const handler = loadHandler("api/delivery-zones.js", { db: fakeFirestore(adminRoles) });
+    const handler = loadHandler("backend/shop-settings/delivery-zones.js", { db: fakeFirestore(adminRoles) });
     const wrong = await call(handler, { method: "DELETE" });
     assert.equal(wrong.status, 405);
     assert.equal(wrong.headers.allow, "GET, POST");
 
-    const unconfigured = loadHandler("api/delivery-zones.js", { firestoreError: configError });
+    const unconfigured = loadHandler("backend/shop-settings/delivery-zones.js", { firestoreError: configError });
     assert.equal((await call(unconfigured)).status, 503);
 
-    const noAuth = loadHandler("api/delivery-zones.js", { db: fakeFirestore(adminRoles), authError: configError });
+    const noAuth = loadHandler("backend/shop-settings/delivery-zones.js", { db: fakeFirestore(adminRoles), authError: configError });
     assert.equal((await call(noAuth, { query: { manage: "1" } })).status, 503);
     assert.equal((await call(noAuth, { method: "POST", body: { action: "delete", id: "x" } })).status, 503);
 
@@ -81,7 +81,7 @@ test("delivery zones: wrong method, missing configuration and storage failure re
         ? fakeFirestore(adminRoles).collection(name)
         : { doc: () => ({ get: async () => { throw Object.assign(new Error("down"), { code: 14 }); } }) };
     broken.runTransaction = async () => { throw Object.assign(new Error("down"), { code: 14 }); };
-    const failing = loadHandler("api/delivery-zones.js", { db: broken });
+    const failing = loadHandler("backend/shop-settings/delivery-zones.js", { db: broken });
     assert.equal((await call(failing)).body.code, "delivery-zone-service-unavailable");
     assert.equal((await call(failing, { method: "POST", token: "admin-token",
         body: { action: "delete", id: "cg" } })).body.code, "delivery-zone-service-unavailable");
@@ -90,7 +90,7 @@ test("delivery zones: wrong method, missing configuration and storage failure re
 test("bouquet wrapping is served through /api/delivery-zones?route=bouquet-wrapping", async (t) => {
     quiet(t);
     const db = fakeFirestore({ ...adminRoles });
-    const handler = loadHandler("api/delivery-zones.js", { db });
+    const handler = loadHandler("backend/shop-settings/delivery-zones.js", { db });
     const route = (options) => call(handler, { ...options, query: { ...(options?.query || {}), route: "bouquet-wrapping" } });
 
     assert.deepEqual((await route()).body, { configured: false, tiers: [] });
@@ -122,7 +122,7 @@ test("admin users lists Firebase accounts with roles; audit route returns newest
             ]
         })
     };
-    const handler = loadHandler("api/admin/users.js", { db, auth });
+    const handler = loadHandler("backend/admin/users.js", { db, auth });
 
     assert.equal((await call(handler, { method: "GET" })).status, 405);
     assert.equal((await call(handler, { method: "POST", token: "user-token" })).status, 403);
@@ -141,9 +141,9 @@ test("admin users lists Firebase accounts with roles; audit route returns newest
     assert.equal((await call(handler, { method: "POST", query: { route: "audit" }, token: "admin-token" })).status, 405);
 
     const failingAuth = { ...auth, listUsers: async () => { throw Object.assign(new Error("x"), { code: "auth/internal-error" }); } };
-    const failing = loadHandler("api/admin/users.js", { db, auth: failingAuth });
+    const failing = loadHandler("backend/admin/users.js", { db, auth: failingAuth });
     assert.equal((await call(failing, { method: "POST", token: "admin-token", body: {} })).body.code, "user-list-failed");
-    const unconfigured = loadHandler("api/admin/users.js", { firestoreError: configError });
+    const unconfigured = loadHandler("backend/admin/users.js", { firestoreError: configError });
     assert.equal((await call(unconfigured, { method: "POST" })).status, 503);
     assert.equal((await call(unconfigured, { query: { route: "audit" } })).status, 503);
 });
@@ -154,7 +154,7 @@ test("products API hides hidden items publicly, repairs legacy catalog names/ima
         "products/vn-flower-01": { title: "B? hoa h?ng", image: "./img/p/GEN/lgwt/1.jpg", images: ["./img/p/GEN/lgwt/1.jpg", "./images/x.webp"], status: "active" },
         "products/an": { title: "Bó ẩn", status: "hidden", createdAt: new Date("2026-11-01T00:00:00Z") }
     });
-    const handler = loadHandler("api/products.js", { db });
+    const handler = loadHandler("backend/catalog/products.js", { db });
 
     const publicList = await call(handler);
     assert.equal(publicList.status, 200);
@@ -172,10 +172,10 @@ test("products API hides hidden items publicly, repairs legacy catalog names/ima
     assert.equal(managed.headers["cache-control"], "private, no-store");
 
     assert.equal((await call(handler, { method: "POST" })).status, 405);
-    assert.equal((await call(loadHandler("api/products.js", { firestoreError: configError }))).status, 503);
+    assert.equal((await call(loadHandler("backend/catalog/products.js", { firestoreError: configError }))).status, 503);
     const broken = fakeFirestore();
     broken.collection = () => ({ get: async () => { throw new Error("down"); } });
-    assert.equal((await call(loadHandler("api/products.js", { db: broken }))).body.code, "product-service-unavailable");
+    assert.equal((await call(loadHandler("backend/catalog/products.js", { db: broken }))).body.code, "product-service-unavailable");
 });
 
 test("design requests: validation, token lookup, customer response and admin quote update", async (t) => {
@@ -189,7 +189,7 @@ test("design requests: validation, token lookup, customer response and admin quo
         createdAt: new Date("2026-11-01T00:00:00Z"), updatedAt: new Date("2026-11-01T00:00:00Z")
     };
     const db = fakeFirestore({ ...adminRoles, "designRequests/req1": request });
-    const handler = loadHandler("api/design-requests.js", { db });
+    const handler = loadHandler("backend/design-requests/controller.js", { db });
 
     assert.equal((await call(handler, { method: "PUT" })).status, 405);
     assert.equal((await call(handler, { query: { id: "req1" } })).status, 400);
@@ -224,7 +224,7 @@ test("design requests: validation, token lookup, customer response and admin quo
     assert.equal(db.data("designRequests/req1").customerResponse, "accept");
     assert.equal((await respond("reject")).status, 409, "đã phản hồi thì không còn báo giá chờ xác nhận");
     assert.equal((await call(handler, { method: "POST", body: { action: "lạ" } })).status, 400);
-    assert.equal((await call(loadHandler("api/design-requests.js", { firestoreError: configError }))).status, 503);
+    assert.equal((await call(loadHandler("backend/design-requests/controller.js", { firestoreError: configError }))).status, 503);
 });
 
 test("flower prices (via /api/products?route=flower-prices): owner only, history and audited updates", async (t) => {
@@ -234,7 +234,7 @@ test("flower prices (via /api/products?route=flower-prices): owner only, history
         "products/bo": { title: "Bó cưới", saleType: "ready_made", price: 900000 },
         "products/loi": { title: "Hoa lỗi", saleType: "flower", price: -5 }
     });
-    const handler = loadHandler("api/products.js", { db });
+    const handler = loadHandler("backend/catalog/products.js", { db });
     const prices = (options = {}) => call(handler, { ...options, query: { ...(options.query || {}), route: "flower-prices" } });
 
     assert.equal((await prices()).status, 401);

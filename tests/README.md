@@ -11,7 +11,7 @@
 | Loại | Lệnh | Nội dung |
 |---|---|---|
 | Unit test | `cd flower.com && npm test` | Tính giá, ưu đãi, dữ liệu đơn hàng, trạng thái đơn, giỏ hàng, danh mục, sản phẩm |
-| Unit test + coverage | `cd flower.com && npm run test:coverage` | Như trên, kèm tỉ lệ dòng/nhánh/hàm; CI yêu cầu tối thiểu 70% coverage dòng |
+| Unit test + coverage | `cd flower.com && npm run test:coverage` | Như trên, kèm tỉ lệ dòng/nhánh/hàm; CI yêu cầu tối thiểu 70% coverage dòng. 12 module giao diện admin (`js/admin/admin-{state,data,…,events}.js`) không tính vào coverage unit vì chạy trong trình duyệt và được kiểm tra bằng e2e `admin-*.spec.js` |
 | Feature, system, security | `cd tests && npm ci && npm run integration` | Đặt hàng, đăng nhập, quản lý, luồng xuyên hệ thống, Firestore rules và quyền API |
 | Kiểm thử tải (emulator) | `cd tests && npm ci && npm run load` | Xem danh mục, báo giá và nhiều khách tranh mua hàng cuối; in p50/p95/p99, tỉ lệ lỗi, kiểm tra không bán vượt kho. Chỉnh bằng `LOAD_DURATION`, `LOAD_CONCURRENCY`, `LOAD_BUYERS`, `LOAD_STOCK` |
 | Smoke test sau khi deploy | `cd flower.com && SMOKE_URL=https://... npm run smoke` | Trang và API còn chạy, không tạo đơn, không đổi dữ liệu |
@@ -30,7 +30,7 @@ Test tích hợp chạy API thật (`flower.com/api/*.js`) và `firestore.rules`
 
 ### Coverage các module rủi ro cao (#125)
 
-Job **Critical module coverage** tải artifact unit và integration trong cùng lần CI, rồi kiểm tra sáu module được #125 nêu: `api/delivery-zones.js`, `api/orders.js`, `api/design-requests.js`, `js/catalog/product-store.js`, `lib/firebase-admin.js`, `js/review/review-images.js`. Mỗi module cần ít nhất **50% dòng trong unit hoặc integration**. Chọn kết quả tốt hơn của hai bộ; không cộng phần trăm hoặc cộng số dòng đã chạy giữa các báo cáo. Thiếu module/báo cáo hoặc dữ liệu LCOV lỗi làm gate thất bại.
+Job **Critical module coverage** tải artifact unit và integration trong cùng lần CI, rồi kiểm tra các module rủi ro cao được #125 nêu: `backend/shop-settings/delivery-zones.js`, từng file của module đơn hàng `backend/orders/` (checkout, reservations, tracking, payment-admin, reviews, pricing, validation, controller), `backend/design-requests/` (controller, validation), `js/catalog/product-store.js`, `backend/shared/firebase-admin.js`, `js/review/review-images.js`. Danh sách nằm trong `tests/coverage-targets.js`. Mỗi module cần ít nhất **50% dòng trong unit hoặc integration**. Chọn kết quả tốt hơn của hai bộ; không cộng phần trăm hoặc cộng số dòng đã chạy giữa các báo cáo. Thiếu module/báo cáo hoặc dữ liệu LCOV lỗi làm gate thất bại.
 
 Sau khi tạo cả hai báo cáo, chạy từ gốc repository:
 

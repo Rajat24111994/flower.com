@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { internals } = require("../flower.com/api/design-requests.js");
+const { internals } = require("../flower.com/backend/design-requests/controller.js");
 
 test("yêu cầu thiết kế kiểm tra số lượng, màu, vai trò và giới hạn 50 cành", () => {
   assert.deepEqual(internals.normalizeStems([
