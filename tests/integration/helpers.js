@@ -59,14 +59,14 @@ const handlers = {
     orders: require(path.join(ROOT, "api/orders.js")),
     payments: require(path.join(ROOT, "api/payments.js")),
     vnpayIpn: require(path.join(ROOT, "api/vnpay-ipn.js")),
-    reviewImages: require(path.join(ROOT, "api/review-images.js")),
-    productImages: require(path.join(ROOT, "api/product-images.js")),
+    reviewImages: require(path.join(ROOT, "backend/catalog/review-images.js")),
+    productImages: require(path.join(ROOT, "backend/catalog/product-images.js")),
     deliveryZones: require(path.join(ROOT, "backend/shop-settings/delivery-zones.js")),
     designRequests: require(path.join(ROOT, "api/design-requests.js")),
-    products: require(path.join(ROOT, "api/products.js")),
+    products: require(path.join(ROOT, "backend/catalog/products.js")),
     adminUsers: require(path.join(ROOT, "api/admin/users.js")),
     ownerUsers: require(path.join(ROOT, "api/owner/users.js")),
-    flowerPrices: viaRoute("api/products.js", "flower-prices"),
+    flowerPrices: viaRoute("backend/catalog/products.js", "flower-prices"),
     adminAudit: viaRoute("api/admin/users.js", "audit"),
     bouquetWrapping: viaRoute("backend/shop-settings/delivery-zones.js", "bouquet-wrapping")
 };

@@ -1,5 +1,5 @@
 const bouquet = require("../js/catalog/bouquet-options.js");
-const { validateReviewPhotos } = require("../lib/review-images");
+const { validateReviewPhotos } = require("../backend/catalog/image-rules");
 const { createHash, createHmac } = require("node:crypto");
 const { FieldValue, Timestamp } = require("firebase-admin/firestore");
 const { getAdminAuth, getAdminFirestore, sendError, verifyRequest } = require("../backend/shared/firebase-admin");

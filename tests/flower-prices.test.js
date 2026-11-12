@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { internals } = require("../flower.com/lib/routes/flower-prices.js");
+const { internals } = require("../flower.com/backend/catalog/flower-prices.js");
 
 const { validFlowerId, validPrice, updateFlowerPrice } = internals;
 

@@ -154,7 +154,7 @@ test("products API hides hidden items publicly, repairs legacy catalog names/ima
         "products/vn-flower-01": { title: "B? hoa h?ng", image: "./img/p/GEN/lgwt/1.jpg", images: ["./img/p/GEN/lgwt/1.jpg", "./images/x.webp"], status: "active" },
         "products/an": { title: "Bó ẩn", status: "hidden", createdAt: new Date("2026-11-01T00:00:00Z") }
     });
-    const handler = loadHandler("api/products.js", { db });
+    const handler = loadHandler("backend/catalog/products.js", { db });
 
     const publicList = await call(handler);
     assert.equal(publicList.status, 200);
@@ -172,10 +172,10 @@ test("products API hides hidden items publicly, repairs legacy catalog names/ima
     assert.equal(managed.headers["cache-control"], "private, no-store");
 
     assert.equal((await call(handler, { method: "POST" })).status, 405);
-    assert.equal((await call(loadHandler("api/products.js", { firestoreError: configError }))).status, 503);
+    assert.equal((await call(loadHandler("backend/catalog/products.js", { firestoreError: configError }))).status, 503);
     const broken = fakeFirestore();
     broken.collection = () => ({ get: async () => { throw new Error("down"); } });
-    assert.equal((await call(loadHandler("api/products.js", { db: broken }))).body.code, "product-service-unavailable");
+    assert.equal((await call(loadHandler("backend/catalog/products.js", { db: broken }))).body.code, "product-service-unavailable");
 });
 
 test("design requests: validation, token lookup, customer response and admin quote update", async (t) => {
@@ -234,7 +234,7 @@ test("flower prices (via /api/products?route=flower-prices): owner only, history
         "products/bo": { title: "Bó cưới", saleType: "ready_made", price: 900000 },
         "products/loi": { title: "Hoa lỗi", saleType: "flower", price: -5 }
     });
-    const handler = loadHandler("api/products.js", { db });
+    const handler = loadHandler("backend/catalog/products.js", { db });
     const prices = (options = {}) => call(handler, { ...options, query: { ...(options.query || {}), route: "flower-prices" } });
 
     assert.equal((await prices()).status, 401);
