@@ -3,7 +3,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const { createHmac } = require("node:crypto");
 const h = require("./helpers");
-const { canonicalQuery } = require("../../flower.com/lib/vnpay.js");
+const { canonicalQuery } = require("../../flower.com/backend/payments/vnpay.js");
 
 const hashSecret = process.env.VNPAY_HASH_SECRET;
 
