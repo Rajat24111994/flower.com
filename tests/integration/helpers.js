@@ -62,7 +62,7 @@ const handlers = {
     reviewImages: require(path.join(ROOT, "backend/catalog/review-images.js")),
     productImages: require(path.join(ROOT, "backend/catalog/product-images.js")),
     deliveryZones: require(path.join(ROOT, "backend/shop-settings/delivery-zones.js")),
-    designRequests: require(path.join(ROOT, "api/design-requests.js")),
+    designRequests: require(path.join(ROOT, "backend/design-requests/controller.js")),
     products: require(path.join(ROOT, "backend/catalog/products.js")),
     adminUsers: require(path.join(ROOT, "backend/admin/users.js")),
     ownerUsers: require(path.join(ROOT, "backend/admin/owner-users.js")),

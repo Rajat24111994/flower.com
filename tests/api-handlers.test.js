@@ -189,7 +189,7 @@ test("design requests: validation, token lookup, customer response and admin quo
         createdAt: new Date("2026-11-01T00:00:00Z"), updatedAt: new Date("2026-11-01T00:00:00Z")
     };
     const db = fakeFirestore({ ...adminRoles, "designRequests/req1": request });
-    const handler = loadHandler("api/design-requests.js", { db });
+    const handler = loadHandler("backend/design-requests/controller.js", { db });
 
     assert.equal((await call(handler, { method: "PUT" })).status, 405);
     assert.equal((await call(handler, { query: { id: "req1" } })).status, 400);
@@ -224,7 +224,7 @@ test("design requests: validation, token lookup, customer response and admin quo
     assert.equal(db.data("designRequests/req1").customerResponse, "accept");
     assert.equal((await respond("reject")).status, 409, "đã phản hồi thì không còn báo giá chờ xác nhận");
     assert.equal((await call(handler, { method: "POST", body: { action: "lạ" } })).status, 400);
-    assert.equal((await call(loadHandler("api/design-requests.js", { firestoreError: configError }))).status, 503);
+    assert.equal((await call(loadHandler("backend/design-requests/controller.js", { firestoreError: configError }))).status, 503);
 });
 
 test("flower prices (via /api/products?route=flower-prices): owner only, history and audited updates", async (t) => {
