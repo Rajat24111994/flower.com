@@ -122,7 +122,7 @@ test("admin users lists Firebase accounts with roles; audit route returns newest
             ]
         })
     };
-    const handler = loadHandler("api/admin/users.js", { db, auth });
+    const handler = loadHandler("backend/admin/users.js", { db, auth });
 
     assert.equal((await call(handler, { method: "GET" })).status, 405);
     assert.equal((await call(handler, { method: "POST", token: "user-token" })).status, 403);
@@ -141,9 +141,9 @@ test("admin users lists Firebase accounts with roles; audit route returns newest
     assert.equal((await call(handler, { method: "POST", query: { route: "audit" }, token: "admin-token" })).status, 405);
 
     const failingAuth = { ...auth, listUsers: async () => { throw Object.assign(new Error("x"), { code: "auth/internal-error" }); } };
-    const failing = loadHandler("api/admin/users.js", { db, auth: failingAuth });
+    const failing = loadHandler("backend/admin/users.js", { db, auth: failingAuth });
     assert.equal((await call(failing, { method: "POST", token: "admin-token", body: {} })).body.code, "user-list-failed");
-    const unconfigured = loadHandler("api/admin/users.js", { firestoreError: configError });
+    const unconfigured = loadHandler("backend/admin/users.js", { firestoreError: configError });
     assert.equal((await call(unconfigured, { method: "POST" })).status, 503);
     assert.equal((await call(unconfigured, { query: { route: "audit" } })).status, 503);
 });

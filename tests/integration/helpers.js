@@ -32,7 +32,7 @@ Object.assign(process.env, {
 
 const { getAdminAuth, getAdminFirestore } = require(path.join(ROOT, "backend/shared/firebase-admin.js"));
 const { Timestamp } = require(require.resolve("firebase-admin/firestore", { paths: [ROOT] }));
-const { syncAdminRole } = require(path.join(ROOT, "lib/admin-roles.js"));
+const { syncAdminRole } = require(path.join(ROOT, "backend/admin/roles.js"));
 const catalog = Array.from({ length: 10 }, (_, index) => {
     const id = index + 1;
     return {
@@ -64,10 +64,10 @@ const handlers = {
     deliveryZones: require(path.join(ROOT, "backend/shop-settings/delivery-zones.js")),
     designRequests: require(path.join(ROOT, "api/design-requests.js")),
     products: require(path.join(ROOT, "backend/catalog/products.js")),
-    adminUsers: require(path.join(ROOT, "api/admin/users.js")),
-    ownerUsers: require(path.join(ROOT, "api/owner/users.js")),
+    adminUsers: require(path.join(ROOT, "backend/admin/users.js")),
+    ownerUsers: require(path.join(ROOT, "backend/admin/owner-users.js")),
     flowerPrices: viaRoute("backend/catalog/products.js", "flower-prices"),
-    adminAudit: viaRoute("api/admin/users.js", "audit"),
+    adminAudit: viaRoute("backend/admin/users.js", "audit"),
     bouquetWrapping: viaRoute("backend/shop-settings/delivery-zones.js", "bouquet-wrapping")
 };
 

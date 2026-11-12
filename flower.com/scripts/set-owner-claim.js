@@ -1,7 +1,7 @@
 const { applicationDefault, initializeApp } = require("firebase-admin/app");
 const { getAuth } = require("firebase-admin/auth");
 const { getFirestore } = require("firebase-admin/firestore");
-const { syncAdminRole } = require("../lib/admin-roles");
+const { syncAdminRole } = require("../backend/admin/roles");
 
 const email = process.env.OWNER_EMAIL?.trim().toLowerCase();
 const uid = process.env.OWNER_UID?.trim();

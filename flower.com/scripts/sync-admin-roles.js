@@ -4,7 +4,7 @@
 const { applicationDefault, initializeApp } = require("firebase-admin/app");
 const { getAuth } = require("firebase-admin/auth");
 const { getFirestore } = require("firebase-admin/firestore");
-const { syncAdminRoles } = require("../lib/admin-roles");
+const { syncAdminRoles } = require("../backend/admin/roles");
 
 const projectId = process.env.GOOGLE_CLOUD_PROJECT || "web-ban-hoa-9fe0b";
 initializeApp({ credential: applicationDefault(), projectId });
