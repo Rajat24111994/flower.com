@@ -30,7 +30,7 @@ Test tích hợp chạy API thật (`flower.com/api/*.js`) và `firestore.rules`
 
 ### Coverage các module rủi ro cao (#125)
 
-Job **Critical module coverage** tải artifact unit và integration trong cùng lần CI, rồi kiểm tra sáu module được #125 nêu: `api/delivery-zones.js`, `api/orders.js`, `api/design-requests.js`, `js/catalog/product-store.js`, `lib/firebase-admin.js`, `js/review/review-images.js`. Mỗi module cần ít nhất **50% dòng trong unit hoặc integration**. Chọn kết quả tốt hơn của hai bộ; không cộng phần trăm hoặc cộng số dòng đã chạy giữa các báo cáo. Thiếu module/báo cáo hoặc dữ liệu LCOV lỗi làm gate thất bại.
+Job **Critical module coverage** tải artifact unit và integration trong cùng lần CI, rồi kiểm tra các module rủi ro cao được #125 nêu: `backend/shop-settings/delivery-zones.js`, từng file của module đơn hàng `backend/orders/` (checkout, reservations, tracking, payment-admin, reviews, pricing, validation, controller), `api/design-requests.js`, `js/catalog/product-store.js`, `backend/shared/firebase-admin.js`, `js/review/review-images.js`. Danh sách nằm trong `tests/coverage-targets.js`. Mỗi module cần ít nhất **50% dòng trong unit hoặc integration**. Chọn kết quả tốt hơn của hai bộ; không cộng phần trăm hoặc cộng số dòng đã chạy giữa các báo cáo. Thiếu module/báo cáo hoặc dữ liệu LCOV lỗi làm gate thất bại.
 
 Sau khi tạo cả hai báo cáo, chạy từ gốc repository:
 
