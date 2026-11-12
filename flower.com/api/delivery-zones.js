@@ -1,7 +1,7 @@
 const { FieldValue } = require("firebase-admin/firestore");
-const { getAdminAuth, getAdminFirestore, sendError, verifyAdminRequest } = require("../lib/firebase-admin");
-const { addAdminAudit } = require("../lib/admin-audit");
-const { withRoutes } = require("../lib/api-routes");
+const { getAdminAuth, getAdminFirestore, sendError, verifyAdminRequest } = require("../backend/shared/firebase-admin");
+const { addAdminAudit } = require("../backend/shared/admin-audit");
+const { withRoutes } = require("../backend/shared/api-routes");
 const bouquetWrapping = require("../lib/routes/bouquet-wrapping");
 
 const ZONES_DOCUMENT = "deliveryZones";

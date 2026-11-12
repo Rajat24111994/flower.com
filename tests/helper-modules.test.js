@@ -48,7 +48,7 @@ test("review photos are scaled to 1280px, flattened on white and compressed unde
 test("Firebase Admin reports missing or malformed service account as a configuration error", () => {
     const saved = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
     try {
-        const admin = require(path.join(SITE, "lib/firebase-admin.js"));
+        const admin = require(path.join(SITE, "backend/shared/firebase-admin.js"));
         delete process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
         assert.throws(() => admin.getAdminAuth(), (error) => error.code === "admin-api-not-configured" && /not configured/.test(error.message));
         process.env.FIREBASE_SERVICE_ACCOUNT_JSON = "{khong-phai-json";
@@ -63,7 +63,7 @@ test("role checks: missing/invalid token 401, non-admin 403, revoked role 403, o
     const errorLog = console.error;
     console.error = () => {};
     t.after(() => { console.error = errorLog; });
-    const { verifyAdminRequest, verifyOwnerRequest } = require(path.join(SITE, "lib/firebase-admin.js"));
+    const { verifyAdminRequest, verifyOwnerRequest } = require(path.join(SITE, "backend/shared/firebase-admin.js"));
     const { fakeFirestore, fakeAuth } = require("./helpers/fake-firestore");
     const auth = fakeAuth({ "fake-owner": { uid: "admin-uid", admin: true, role: "owner" } });
     const db = fakeFirestore({ "adminRoles/admin-uid": { role: "admin" }, "adminRoles/owner-uid": { role: "owner" } });

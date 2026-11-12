@@ -38,7 +38,7 @@ test("one local origin serves both the login page and API with JSON body/query p
 
 test("local server never serves credentials, internal source or configuration files", async (t) => {
     const { base } = await start(t);
-    for (const file of [".env", ".env.example", "lib/firebase-admin.js", "scripts/dev.js", "api/login.js",
+    for (const file of [".env", ".env.example", "backend/shared/firebase-admin.js", "scripts/dev.js", "api/login.js",
         "node_modules/firebase-admin/package.json", "package.json", "firebase.json", "vercel.json", "firestore.rules",
         ".tools/retest-unit.log", "%2eenv", "images/..%5c.env.example"]) {
         assert.equal((await fetch(`${base}/${file}`)).status, 404, file);

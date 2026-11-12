@@ -1,6 +1,6 @@
 // Read-only deployment check. Uses a deliberately nonexistent probe account;
 // never prints keys, passwords, tokens, upstream responses or user data.
-const { getAdminAuth, getAdminFirestore } = require("../lib/firebase-admin");
+const { getAdminAuth, getAdminFirestore } = require("../backend/shared/firebase-admin");
 const { createPasswordAuth } = require("../lib/password-auth");
 const { randomUUID } = require("node:crypto");
 

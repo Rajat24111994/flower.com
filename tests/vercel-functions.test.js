@@ -21,7 +21,7 @@ test("api/ stays within the Vercel Hobby limit of 12 functions per deployment", 
     const files = apiFunctionFiles();
     assert.ok(files.length <= HOBBY_FUNCTION_LIMIT,
         `api/ có ${files.length} hàm (${files.join(", ")}); gói Hobby chỉ cho ${HOBBY_FUNCTION_LIMIT}. `
-        + "Hãy gộp API mới vào một hàm có sẵn bằng lib/api-routes.js và rewrites trong vercel.json.");
+        + "Hãy gộp API mới vào một hàm có sẵn bằng backend/shared/api-routes.js và rewrites trong vercel.json.");
 });
 
 test("every API rewrite targets an existing function and a route that function registers", () => {
@@ -40,7 +40,7 @@ test("every API rewrite targets an existing function and a route that function r
 });
 
 test("routed handlers reject unknown or repeated route values", async () => {
-    const { withRoutes } = require("../flower.com/lib/api-routes");
+    const { withRoutes } = require("../flower.com/backend/shared/api-routes");
     const calls = [];
     const handler = withRoutes(async () => calls.push("default"), { audit: async () => calls.push("audit") });
     const res = {

@@ -1,5 +1,5 @@
-const { getAdminAuth, getAdminFirestore, sendError, verifyRequest } = require("../lib/firebase-admin");
-const { withRoutes } = require("../lib/api-routes");
+const { getAdminAuth, getAdminFirestore, sendError, verifyRequest } = require("../backend/shared/firebase-admin");
+const { withRoutes } = require("../backend/shared/api-routes");
 const flowerPrices = require("../lib/routes/flower-prices");
 const catalog = require("../flower.json").flower;
 const catalogById = new Map(catalog.map((product) => [String(product.id), product]));

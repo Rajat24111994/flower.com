@@ -5,7 +5,7 @@ const zone = (id = 'one', enabled = true) => ({ id, province: 'Province', distri
 function fixture(seed = {}) {
     const db = memoryDatabase(seed), admin = adminDependency(db), audits = [];
     const handler = loadModule('flower.com/api/delivery-zones.js', {
-        '../lib/firebase-admin': admin, '../lib/admin-audit': { addAdminAudit: (...args) => audits.push(args) }
+        '../backend/shared/firebase-admin': admin, '../backend/shared/admin-audit': { addAdminAudit: (...args) => audits.push(args) }
     });
     return { db, admin, audits, handler };
 }
@@ -43,6 +43,6 @@ test('invalid/duplicate zone writes never commit and service errors stay opaque'
     assert.equal(failed.statusCode, 503); assert.ok(!JSON.stringify(failed.body).includes('private infrastructure'));
     f.admin.getAdminFirestore = () => { throw new Error('missing config'); };
     // The loaded handler captures its dependency functions, so use a fresh isolated module.
-    const handler = loadModule('flower.com/api/delivery-zones.js', { '../lib/firebase-admin': f.admin });
+    const handler = loadModule('flower.com/api/delivery-zones.js', { '../backend/shared/firebase-admin': f.admin });
     assert.equal((await call(handler)).statusCode, 503);
 });

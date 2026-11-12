@@ -1,6 +1,6 @@
 const { createHash } = require("node:crypto");
 const { FieldValue } = require("firebase-admin/firestore");
-const { getAdminAuth, getAdminFirestore, sendError, verifyRequest } = require("../lib/firebase-admin");
+const { getAdminAuth, getAdminFirestore, sendError, verifyRequest } = require("../backend/shared/firebase-admin");
 const { validateReviewPhotos } = require("../lib/review-images");
 
 // Product photos uploaded from the admin page, stored in Firestore (free plan, no Cloud Storage).

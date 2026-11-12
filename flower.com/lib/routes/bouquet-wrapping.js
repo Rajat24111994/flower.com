@@ -1,7 +1,7 @@
 const { FieldValue } = require("firebase-admin/firestore");
-const { getAdminAuth, getAdminFirestore, sendError, verifyAdminRequest } = require("../firebase-admin");
+const { getAdminAuth, getAdminFirestore, sendError, verifyAdminRequest } = require("../../backend/shared/firebase-admin");
 const { normalizeTiers } = require("../../js/catalog/bouquet-wrapping.js");
-const { addAdminAudit } = require("../admin-audit");
+const { addAdminAudit } = require("../../backend/shared/admin-audit");
 
 const WRAPPING_DOCUMENT = "bouquetWrapping";
 

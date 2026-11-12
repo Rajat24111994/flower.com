@@ -1,6 +1,6 @@
-const { getAdminAuth, getAdminFirestore, sendError, verifyOwnerRequest } = require("../../lib/firebase-admin");
+const { getAdminAuth, getAdminFirestore, sendError, verifyOwnerRequest } = require("../../backend/shared/firebase-admin");
 const { syncAdminRole, syncAdminRoles } = require("../../lib/admin-roles");
-const { recordAdminAudit } = require("../../lib/admin-audit");
+const { recordAdminAudit } = require("../../backend/shared/admin-audit");
 
 function getRole(user) {
     if (user.customClaims && user.customClaims.role === "owner") return "owner";

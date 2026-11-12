@@ -30,7 +30,7 @@ Object.assign(process.env, {
     VNPAY_ENV: "sandbox"
 });
 
-const { getAdminAuth, getAdminFirestore } = require(path.join(ROOT, "lib/firebase-admin.js"));
+const { getAdminAuth, getAdminFirestore } = require(path.join(ROOT, "backend/shared/firebase-admin.js"));
 const { Timestamp } = require(require.resolve("firebase-admin/firestore", { paths: [ROOT] }));
 const { syncAdminRole } = require(path.join(ROOT, "lib/admin-roles.js"));
 const catalog = Array.from({ length: 10 }, (_, index) => {

@@ -1,5 +1,5 @@
-const { getAdminAuth, getAdminFirestore, sendError, verifyAdminRequest } = require("../../lib/firebase-admin");
-const { withRoutes } = require("../../lib/api-routes");
+const { getAdminAuth, getAdminFirestore, sendError, verifyAdminRequest } = require("../../backend/shared/firebase-admin");
+const { withRoutes } = require("../../backend/shared/api-routes");
 const adminAudit = require("../../lib/routes/admin-audit");
 
 async function listUsers(req, res) {

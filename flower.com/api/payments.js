@@ -1,6 +1,6 @@
 const { randomBytes } = require("node:crypto");
 const { FieldValue, Timestamp } = require("firebase-admin/firestore");
-const { getAdminFirestore, sendError } = require("../lib/firebase-admin");
+const { getAdminFirestore, sendError } = require("../backend/shared/firebase-admin");
 const {
     getVnpayConfig,
     createVnpayPaymentUrl

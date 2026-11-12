@@ -2,8 +2,8 @@ const bouquet = require("../js/catalog/bouquet-options.js");
 const { validateReviewPhotos } = require("../lib/review-images");
 const { createHash, createHmac } = require("node:crypto");
 const { FieldValue, Timestamp } = require("firebase-admin/firestore");
-const { getAdminAuth, getAdminFirestore, sendError, verifyRequest } = require("../lib/firebase-admin");
-const { optionalCustomer, LOCAL_IDENTITY } = require("../lib/request-identity");
+const { getAdminAuth, getAdminFirestore, sendError, verifyRequest } = require("../backend/shared/firebase-admin");
+const { optionalCustomer, LOCAL_IDENTITY } = require("../backend/shared/request-identity");
 // Same price reading as the shop pages (whole VND, old USD prices converted), so both agree.
 const { toVndPrice } = require("../js/catalog/product-store.js");
 const bouquetWrapping = require("../js/catalog/bouquet-wrapping.js");

@@ -1,5 +1,5 @@
 const { FieldValue } = require("firebase-admin/firestore");
-const { getAdminFirestore, sendError } = require("../lib/firebase-admin");
+const { getAdminFirestore, sendError } = require("../backend/shared/firebase-admin");
 const { getVnpaySecrets, verifyVnpaySignature } = require("../lib/vnpay");
 const { expireReservations } = require("./orders.js").internals;
 

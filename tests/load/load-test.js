@@ -30,7 +30,7 @@ const CONCURRENCY = Number(process.env.LOAD_CONCURRENCY || 20);
 const BUYERS = Number(process.env.LOAD_BUYERS || 200);
 const STOCK = Number(process.env.LOAD_STOCK || 10);
 
-const { getAdminFirestore } = require(path.join(ROOT, "lib/firebase-admin.js"));
+const { getAdminFirestore } = require(path.join(ROOT, "backend/shared/firebase-admin.js"));
 const orders = require(path.join(ROOT, "api/orders.js"));
 const products = require(path.join(ROOT, "api/products.js"));
 

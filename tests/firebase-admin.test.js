@@ -11,7 +11,7 @@ function fixture(t, value) {
     const apps = [], initialized = [];
     const auth = { verifyIdToken: async () => ({ uid: 'a', admin: true, role: 'owner' }) };
     const db = memoryDatabase({ 'adminRoles/a': { role: 'owner' } });
-    const api = loadModule('flower.com/lib/firebase-admin.js', {
+    const api = loadModule('flower.com/backend/shared/firebase-admin.js', {
         'firebase-admin/app': { getApps: () => apps, cert: account => ({ account }),
             initializeApp(options) { const app = { options }; initialized.push(app); apps.push(app); return app; } },
         'firebase-admin/auth': { getAuth: () => auth }, 'firebase-admin/firestore': { getFirestore: () => db }

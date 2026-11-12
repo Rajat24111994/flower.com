@@ -1,4 +1,4 @@
-const { getAdminAuth, getAdminFirestore } = require("../lib/firebase-admin");
+const { getAdminAuth, getAdminFirestore } = require("../backend/shared/firebase-admin");
 const { createLoginProtection } = require("../lib/login-protection");
 const { createPasswordAuth } = require("../lib/password-auth");
 

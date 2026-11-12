@@ -1,6 +1,6 @@
 const { createHash, randomBytes, timingSafeEqual } = require("node:crypto");
 const { FieldValue } = require("firebase-admin/firestore");
-const { getAdminAuth, getAdminFirestore, sendError, verifyRequest, verifyAdminRequest } = require("../lib/firebase-admin");
+const { getAdminAuth, getAdminFirestore, sendError, verifyRequest, verifyAdminRequest } = require("../backend/shared/firebase-admin");
 const { internals: orderRules } = require("./orders");
 const bouquetWrapping = require("../js/catalog/bouquet-wrapping.js");
 
