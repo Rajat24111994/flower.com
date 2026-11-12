@@ -59,7 +59,7 @@ flowchart LR
 | Liên hệ | `contact-tools.js/.css` | Thanh liên hệ Facebook và Zalo (ẩn trên trang quản trị) |
 | Quản trị | `admin.html`, `admin.js`, `admin.css` | Sản phẩm, danh mục, ưu đãi, cấu hình khu vực/phí giao và bậc phí gói bó hoa, xử lý yêu cầu thiết kế/báo giá, đơn hàng, xác minh QR và xem audit đối soát, doanh thu, đánh giá, lời nhắn, người dùng |
 | Owner | `owner.html`, `owner.js`, mục “Quản lý giá hoa” trong `admin.html` | Cấp/gỡ quyền admin; cập nhật giá hoa nguyên liệu và xem lịch sử giá |
-| API | `api/admin/users.js` (kèm nhật ký `/api/admin/audit`), `api/owner/users.js`, `api/products.js` (kèm giá hoa `/api/flower-prices`), `api/delivery-zones.js` (kèm phí gói `/api/bouquet-wrapping`), `api/design-requests.js`, `api/orders.js`, `lib/routes/`, `lib/firebase-admin.js` | API giá hoa chỉ Owner dùng, cập nhật giá và lịch sử trong cùng giao dịch; quản lý khu vực/phí bó, yêu cầu thiết kế; báo giá/tạo đơn authoritative, tra cứu đơn khách và đối soát thanh toán |
+| API | `api/*.js` (điểm vào, mỗi file 1 dòng) → `backend/<module>/` (xử lý thật, xem [`backend/README.md`](backend/README.md)): `orders`, `payments`, `catalog` (kèm giá hoa `/api/flower-prices`), `shop-settings` (kèm phí gói `/api/bouquet-wrapping`), `design-requests`, `accounts`, `admin` (kèm nhật ký `/api/admin/audit`), `shared` | API giá hoa chỉ Owner dùng, cập nhật giá và lịch sử trong cùng giao dịch; quản lý khu vực/phí bó, yêu cầu thiết kế; báo giá/tạo đơn authoritative, tra cứu đơn khách và đối soát thanh toán |
 
 ## Dữ liệu
 
@@ -164,5 +164,5 @@ Triển khai: `firebase deploy --only firestore:rules,firestore:indexes`. Lệnh
 - Các script được nạp kèm tham số phiên bản (`?v=N`) để tránh cache trình duyệt; tăng số này khi thay đổi file JS/CSS tương ứng.
 - Firebase Web SDK được nạp từ CDN `gstatic.com` (phiên bản 11.6.0).
 - Chạy `npm test` trước khi commit.
-- **Giới hạn 12 hàm của Vercel Hobby:** mỗi file `.js` trong `api/` là một hàm, và vượt 12 hàm thì Vercel không deploy được. Hiện có 11 hàm. API mới nên đặt trong `lib/routes/`, đăng ký vào một hàm có sẵn bằng `withRoutes` (`lib/api-routes.js`), rồi thêm `rewrites` trong `vercel.json` để giữ URL riêng. Test `tests/vercel-functions.test.js` sẽ báo đỏ nếu vượt giới hạn.
+- **Giới hạn 12 hàm của Vercel Hobby:** mỗi file `.js` trong `api/` là một hàm, và vượt 12 hàm thì Vercel không deploy được. Hiện có 11 hàm. API mới đặt trong module phù hợp ở `backend/`, đăng ký vào một hàm có sẵn bằng `withRoutes` (`backend/shared/api-routes.js`), rồi thêm `rewrites` trong `vercel.json` để giữ URL riêng. Test `tests/vercel-functions.test.js` sẽ báo đỏ nếu vượt giới hạn.
 - Không đặt lệnh `"build"` trong `package.json`: Vercel sẽ chạy nó rồi đòi thư mục kết quả `public`. Dùng `npm run check:generated` để cập nhật dữ liệu SEO và hash CSP.

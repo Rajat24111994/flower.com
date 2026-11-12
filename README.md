@@ -93,12 +93,18 @@ FlowerFlow là website bán hoa gồm ba lớp:
 ```text
 .
 ├── flower.com/                 # Gốc dự án Vercel (Root Directory)
-│   ├── api/                    # Backend: Vercel Functions
-│   │   ├── orders.js           # Báo giá, tạo đơn, tra cứu đơn, dọn đơn hết hạn
-│   │   ├── admin/users.js      # API liệt kê người dùng (yêu cầu quyền admin)
-│   │   └── owner/users.js      # API cấp/gỡ quyền admin (yêu cầu quyền owner)
-│   ├── lib/firebase-admin.js   # Khởi tạo Firebase Admin, xác minh ID token
-│   ├── scripts/                # Script gán quyền owner/admin lần đầu
+│   ├── api/                    # Điểm vào Vercel Functions: mỗi file = 1 URL /api/..., chỉ 1 dòng trỏ sang backend/
+│   ├── backend/                # Backend chia theo nghiệp vụ (xem flower.com/backend/README.md)
+│   │   ├── orders/             # Báo giá, tạo đơn, giữ/hoàn kho, tra cứu, đánh giá, đối soát thanh toán
+│   │   ├── payments/           # VNPay: tạo link thanh toán, nhận IPN, ký và kiểm chữ ký
+│   │   ├── catalog/            # Sản phẩm, ảnh sản phẩm/đánh giá, giá hoa
+│   │   ├── shop-settings/      # Khu vực giao hàng, phí gói bó
+│   │   ├── design-requests/    # Yêu cầu thiết kế bó hoa riêng
+│   │   ├── accounts/           # Đăng nhập, chống dò mật khẩu
+│   │   ├── admin/              # Tài khoản, cấp quyền, nhật ký quản trị
+│   │   └── shared/             # Kết nối Firebase, kiểm tra quyền, gộp route
+│   ├── lib/                    # Công cụ phát triển: máy chủ chạy trên máy, tài khoản SQLite, CSP, sao lưu
+│   ├── scripts/                # Script quản trị: gán quyền, sao lưu/khôi phục, smoke test
 │   ├── images/                 # Ảnh sản phẩm và giao diện
 │   ├── *.html                  # Các trang web (giữ ở gốc để địa chỉ như /product.html không đổi)
 │   ├── js/                     # JavaScript chạy trên trình duyệt, chia theo chức năng
