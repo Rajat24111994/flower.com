@@ -61,14 +61,14 @@ const handlers = {
     vnpayIpn: require(path.join(ROOT, "api/vnpay-ipn.js")),
     reviewImages: require(path.join(ROOT, "api/review-images.js")),
     productImages: require(path.join(ROOT, "api/product-images.js")),
-    deliveryZones: require(path.join(ROOT, "api/delivery-zones.js")),
+    deliveryZones: require(path.join(ROOT, "backend/shop-settings/delivery-zones.js")),
     designRequests: require(path.join(ROOT, "api/design-requests.js")),
     products: require(path.join(ROOT, "api/products.js")),
     adminUsers: require(path.join(ROOT, "api/admin/users.js")),
     ownerUsers: require(path.join(ROOT, "api/owner/users.js")),
     flowerPrices: viaRoute("api/products.js", "flower-prices"),
     adminAudit: viaRoute("api/admin/users.js", "audit"),
-    bouquetWrapping: viaRoute("api/delivery-zones.js", "bouquet-wrapping")
+    bouquetWrapping: viaRoute("backend/shop-settings/delivery-zones.js", "bouquet-wrapping")
 };
 
 // Calls a Vercel-style handler in-process and returns { status, body, headers }.

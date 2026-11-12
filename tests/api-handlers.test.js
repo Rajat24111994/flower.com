@@ -18,7 +18,7 @@ test("delivery zones: public list hides disabled zones; manage view needs an act
     const db = fakeFirestore({ ...adminRoles, "metadata/deliveryZones": { zones: [
         zone("cg", "Hà Nội", "Cầu Giấy", 30000), zone("hk", "Hà Nội", "Hoàn Kiếm", 25000, false), { id: "bad" }
     ] } });
-    const handler = loadHandler("api/delivery-zones.js", { db });
+    const handler = loadHandler("backend/shop-settings/delivery-zones.js", { db });
 
     const publicList = await call(handler);
     assert.equal(publicList.status, 200);
@@ -35,7 +35,7 @@ test("delivery zones: public list hides disabled zones; manage view needs an act
 test("delivery zones: upsert, duplicate area and delete are audited in one transaction", async (t) => {
     quiet(t);
     const db = fakeFirestore({ ...adminRoles });
-    const handler = loadHandler("api/delivery-zones.js", { db });
+    const handler = loadHandler("backend/shop-settings/delivery-zones.js", { db });
     const post = (body, token = "admin-token") => call(handler, { method: "POST", body, token });
 
     assert.equal((await post({ action: "upsert", zone: zone("cg", "Hà Nội", "Cầu Giấy", 30000) }, "user-token")).status, 403);
@@ -64,15 +64,15 @@ test("delivery zones: upsert, duplicate area and delete are audited in one trans
 
 test("delivery zones: wrong method, missing configuration and storage failure return JSON errors", async (t) => {
     quiet(t);
-    const handler = loadHandler("api/delivery-zones.js", { db: fakeFirestore(adminRoles) });
+    const handler = loadHandler("backend/shop-settings/delivery-zones.js", { db: fakeFirestore(adminRoles) });
     const wrong = await call(handler, { method: "DELETE" });
     assert.equal(wrong.status, 405);
     assert.equal(wrong.headers.allow, "GET, POST");
 
-    const unconfigured = loadHandler("api/delivery-zones.js", { firestoreError: configError });
+    const unconfigured = loadHandler("backend/shop-settings/delivery-zones.js", { firestoreError: configError });
     assert.equal((await call(unconfigured)).status, 503);
 
-    const noAuth = loadHandler("api/delivery-zones.js", { db: fakeFirestore(adminRoles), authError: configError });
+    const noAuth = loadHandler("backend/shop-settings/delivery-zones.js", { db: fakeFirestore(adminRoles), authError: configError });
     assert.equal((await call(noAuth, { query: { manage: "1" } })).status, 503);
     assert.equal((await call(noAuth, { method: "POST", body: { action: "delete", id: "x" } })).status, 503);
 
@@ -81,7 +81,7 @@ test("delivery zones: wrong method, missing configuration and storage failure re
         ? fakeFirestore(adminRoles).collection(name)
         : { doc: () => ({ get: async () => { throw Object.assign(new Error("down"), { code: 14 }); } }) };
     broken.runTransaction = async () => { throw Object.assign(new Error("down"), { code: 14 }); };
-    const failing = loadHandler("api/delivery-zones.js", { db: broken });
+    const failing = loadHandler("backend/shop-settings/delivery-zones.js", { db: broken });
     assert.equal((await call(failing)).body.code, "delivery-zone-service-unavailable");
     assert.equal((await call(failing, { method: "POST", token: "admin-token",
         body: { action: "delete", id: "cg" } })).body.code, "delivery-zone-service-unavailable");
@@ -90,7 +90,7 @@ test("delivery zones: wrong method, missing configuration and storage failure re
 test("bouquet wrapping is served through /api/delivery-zones?route=bouquet-wrapping", async (t) => {
     quiet(t);
     const db = fakeFirestore({ ...adminRoles });
-    const handler = loadHandler("api/delivery-zones.js", { db });
+    const handler = loadHandler("backend/shop-settings/delivery-zones.js", { db });
     const route = (options) => call(handler, { ...options, query: { ...(options?.query || {}), route: "bouquet-wrapping" } });
 
     assert.deepEqual((await route()).body, { configured: false, tiers: [] });
