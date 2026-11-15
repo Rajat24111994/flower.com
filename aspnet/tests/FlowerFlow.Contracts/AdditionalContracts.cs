@@ -14,6 +14,23 @@ using FlowerFlow.Infrastructure.DesignRequests;
 
 static class AdditionalContracts
 {
+    public static async Task CheckoutFingerprintsAsync(string root)
+    {
+        using var cases = await OracleAsync(root, "checkout-fingerprint-oracle.cjs");
+        foreach (var test in cases.RootElement.GetProperty("fingerprints").EnumerateArray())
+        {
+            var body = test.GetProperty("body"); var normalized = OrderValidation.ValidateCheckout(body)!;
+            Require(Checkout.RequestHash(normalized, Js.StringOrEmpty(Js.Get(body, "orderNote")).Trim(), "user-a") == test.GetProperty("expected").GetString(),
+                "Checkout SHA-256 request fingerprint differs from Node");
+        }
+        foreach (var test in cases.RootElement.GetProperty("raw").EnumerateArray())
+        {
+            using var input = JsonDocument.Parse(test.GetProperty("input").GetString()!);
+            Require(JsJson.Stringify(input.RootElement) == test.GetProperty("expected").GetString(), "JSON.stringify compatibility changed");
+        }
+        Console.WriteLine("PASS: checkout fingerprint and JSON.stringify parity including Unicode/control escapes, integer keys and duplicate keys.");
+    }
+
     public static async Task DesignValidationAsync(string root)
     {
         using var cases = await OracleAsync(root, "design-validation-oracle.cjs"); var count = 0;

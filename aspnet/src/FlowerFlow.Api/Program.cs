@@ -39,6 +39,7 @@ builder.Services.AddSingleton<Func<LoginProtection>>(services => () => new Login
 builder.Services.AddSingleton<LoginHandler>();
 builder.Services.AddSingleton<AdminUsersHandler>();
 builder.Services.AddSingleton<OwnerUsersHandler>();
+builder.Services.AddSingleton<Checkout>();
 
 var app = builder.Build();
 

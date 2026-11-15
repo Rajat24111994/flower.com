@@ -491,5 +491,6 @@ static class FirestoreContracts
         AdditionalContracts.Require(ownerList.Response.StatusCode == 200 && ownerListBody.RootElement.GetProperty("users")[0].EnumerateObject().Count() == 5
             && (await db.Collection("adminRoles").Document(otherOwnerId).GetSnapshotAsync()).GetValue<string>("role") == "owner", "Owner list/backfill changed");
         Console.WriteLine("PASS: owner grant/remove, retained custom claims, live role revocation, owner protection, backfill and partial session-revoke failure.");
+        await CheckoutContracts.RunAsync(db);
     }
 }

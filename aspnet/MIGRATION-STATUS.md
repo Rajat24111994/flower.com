@@ -189,3 +189,7 @@ Kết quả kiểm tra file 02:
 ## File 28: admin/owner-users.js
 
 Đích: `src/FlowerFlow.Infrastructure/Admin/OwnerUsersHandler.cs`, `/api/owner/users`. Giữ owner authorization, list/backfill, cấp/gỡ admin giữ custom claims khác, chặn tự đổi quyền/chỉnh owner khác, mirror adminRoles, revoke rồi audit, thông báo lỗi một phần sau khi quyền đã thay đổi. Hoàn tất mirror/revoke sau khi bắt đầu thay đổi kể cả client ngắt kết nối. Test fake SDK + emulator: cấp/gỡ và giữ claim, role document, thu hồi session, bảo vệ owner, backfill và lỗi revoke không giả báo rollback.
+
+## File 29: orders/checkout.js
+
+Đích: `src/FlowerFlow.Infrastructure/Orders/Checkout.cs`. Giữ quote/create, báo thiếu kho/ẩn sản phẩm, giá/ưu đãi/phí/lịch giao, note/quantity limit, guest cap, HMAC quotas, idempotency hash và UID, ghi quota+kho+order+orderRequests trong một transaction, toàn bộ trường order và hạn giữ QR/VNPay/COD. Kèm JSON.stringify tương thích để fingerprint khớp Node, kể cả Unicode/control escapes và thứ tự key. Test emulator: nhiều option cùng sản phẩm, hai request cùng key chỉ giữ kho một lần, content conflict, stale totals không ghi, phone quota, guest cap và hai đơn cạnh tranh không vượt tồn kho.
