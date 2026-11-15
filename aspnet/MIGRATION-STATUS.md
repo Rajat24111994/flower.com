@@ -105,3 +105,7 @@ Kết quả kiểm tra file 02:
 ## File 07: admin/roles.js
 
 Đích: `src/FlowerFlow.Infrastructure/Firebase/AdminRoles.cs`. Giữ boolean claim, owner/admin, merge khi đồng bộ một tài khoản, xóa quyền, backfill chỉ tạo thiếu/xóa thừa và không sửa document đang tồn tại. Kiểm tra trên emulator: merge giữ field cũ, owner, batch write count, chạy lặp không ghi và gỡ quyền.
+
+## File 08: accounts/login-protection.js
+
+Đích: `src/FlowerFlow.Infrastructure/Accounts/LoginProtection.cs`. Giữ 5 lần sai đầu, khóa 15/30/60/120/240 phút rồi bắt buộc reset, lease 60 giây, transaction trước/sau provider, chỉ phiên bản mật khẩu server mới xóa khóa. Test emulator: hai yêu cầu đồng thời chỉ một lease, phiên bản mới không vượt lease đang chạy, leo thang khóa và expiry, reset, thành công xóa record, provider outage không tăng failures, lease hết hạn từ chối kết quả.

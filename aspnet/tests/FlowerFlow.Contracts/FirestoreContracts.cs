@@ -1,6 +1,7 @@
 using FlowerFlow.Infrastructure.Firebase;
 using Google.Cloud.Firestore;
 using Grpc.Core;
+using FlowerFlow.Infrastructure.Accounts;
 
 static class FirestoreContracts
 {
@@ -63,5 +64,42 @@ static class FirestoreContracts
         await AdminRoles.SyncAdminRoleAsync(db, owner, false);
         AdditionalContracts.Require(!(await ownerRef.GetSnapshotAsync()).Exists, "Explicit role removal failed");
         Console.WriteLine("PASS: Firestore role merge, owner preservation, batch backfill, idempotency and revocation.");
+        long now = 1_700_000_000_000;
+        var protection = new LoginProtection(db, () => now);
+        var accountKey = "login-" + suffix;
+        for (var failures = 1; failures <= 10; failures++)
+        {
+            var attempt = await protection.AcquireAsync(accountKey, 1);
+            AdditionalContracts.Require(attempt.Code is null, "Login unexpectedly blocked after expiry");
+            var competing = await protection.AcquireAsync(accountKey, 2);
+            AdditionalContracts.Require(competing.Code == "login-in-progress", "Password version must not bypass active lease");
+            var result = await protection.FinishAsync(attempt, "invalid");
+            if (failures < 5) AdditionalContracts.Require(result.Code == "invalid-credential", "Initial attempt policy changed");
+            else if (failures < 10)
+            {
+                var minutes = LoginProtection.LockMinutes[failures - 5];
+                AdditionalContracts.Require(result.Code == "account-locked" && result.RetryAfter == minutes * 60, "Escalating lock changed");
+                AdditionalContracts.Require((await protection.AcquireAsync(accountKey, 1)).Code == "account-locked", "Lock bypassed");
+                now += minutes * 60_000L;
+            }
+            else AdditionalContracts.Require(result.Code == "password-reset-required", "Reset requirement missing");
+        }
+        AdditionalContracts.Require((await protection.AcquireAsync(accountKey, 1)).Code == "password-reset-required", "Reset requirement bypassed");
+        var afterReset = await protection.AcquireAsync(accountKey, 2);
+        AdditionalContracts.Require(afterReset.Code is null, "Server password version must reset lock");
+        AdditionalContracts.Require((await protection.FinishAsync(afterReset, "success")).Status == 200, "Valid login failed");
+        AdditionalContracts.Require(!(await afterReset.Ref!.GetSnapshotAsync()).Exists, "Successful login did not clear protection record");
+        var unavailable = await protection.AcquireAsync(accountKey, 2);
+        await protection.FinishAsync(unavailable, "unavailable");
+        AdditionalContracts.Require(Convert.ToDouble((await unavailable.Ref!.GetSnapshotAsync()).GetValue<object>("failures")) == 0,
+            "Provider outage must not count as password failure");
+        var expired = await protection.AcquireAsync(accountKey, 2);
+        now += LoginProtection.LeaseMs;
+        AdditionalContracts.Require((await protection.FinishAsync(expired, "success")).Status == 503, "Expired lease accepted");
+        var concurrentKey = "concurrent-" + suffix;
+        var concurrent = await Task.WhenAll(protection.AcquireAsync(concurrentKey, 1), protection.AcquireAsync(concurrentKey, 1));
+        AdditionalContracts.Require(concurrent.Count(result => result.Code is null) == 1
+            && concurrent.Count(result => result.Code == "login-in-progress") == 1, "Concurrent login lease not serialized");
+        Console.WriteLine("PASS: Firestore login leases, concurrent requests, escalating locks, reset version and provider outages.");
     }
 }
