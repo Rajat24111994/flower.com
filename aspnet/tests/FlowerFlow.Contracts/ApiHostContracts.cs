@@ -17,8 +17,8 @@ static class ApiHostContracts
         if (!production) { start.ArgumentList.Add("--urls"); start.ArgumentList.Add($"http://127.0.0.1:{port}"); }
         start.Environment["ASPNETCORE_ENVIRONMENT"] = production ? "Production" : "Development"; start.Environment["AUTH_MODE"] = production ? "firebase" : "local";
         start.Environment["LOCAL_ACCOUNTS_FILE"] = Path.Combine(directory,"accounts.sqlite");
-        foreach (var key in new[] { "PORT", "FLOWER_FRONTEND_ROOT", "FIREBASE_SERVICE_ACCOUNT_JSON", "FIREBASE_SERVICE_ACCOUNT_FILE", "FIREBASE_PROJECT_ID", "FIRESTORE_EMULATOR_HOST", "FIREBASE_AUTH_PUBLIC_API_KEY", "FIREBASE_AUTH_SERVER_API_KEY" }) start.Environment.Remove(key);
-        if (production) start.Environment["PORT"] = port.ToString();
+        foreach (var key in new[] { "PORT", "FLOWER_FRONTEND_ROOT", "RENDER_EXTERNAL_URL", "PUBLIC_APP_URL", "FIREBASE_SERVICE_ACCOUNT_JSON", "FIREBASE_SERVICE_ACCOUNT_FILE", "FIREBASE_PROJECT_ID", "FIRESTORE_EMULATOR_HOST", "FIREBASE_AUTH_PUBLIC_API_KEY", "FIREBASE_AUTH_SERVER_API_KEY" }) start.Environment.Remove(key);
+        if (production) { start.Environment["PORT"] = port.ToString(); start.Environment["RENDER_EXTERNAL_URL"] = "https://flowerflow-contract.onrender.com"; }
         using var process = Process.Start(start)!; var output = process.StandardOutput.ReadToEndAsync(); var errors = process.StandardError.ReadToEndAsync();
         try
         {
@@ -37,6 +37,14 @@ static class ApiHostContracts
                 using var unavailable = await client.GetAsync("/api/local-auth/session");
                 AdditionalContracts.Require(unavailable.StatusCode == HttpStatusCode.NotFound, "Production enabled local account APIs");
                 AdditionalContracts.Require(!(await client.GetStringAsync("/login.html")).Contains("/__local/auth-runtime.js"), "Production injected local authentication mode");
+                using var request = new HttpRequestMessage(HttpMethod.Post, "/api/login") { Content = JsonContent.Create(new { }) };
+                request.Headers.Add("Origin", "https://flowerflow-contract.onrender.com");
+                using var result = await client.SendAsync(request); var diagnosticBody = await result.Content.ReadFromJsonAsync<JsonElement>();
+                AdditionalContracts.Require(result.StatusCode == HttpStatusCode.BadRequest && diagnosticBody.GetProperty("code").GetString() == "invalid-argument", "Render HTTPS origin was rejected behind its HTTP proxy");
+                using var forged = new HttpRequestMessage(HttpMethod.Post, "/api/login") { Content = JsonContent.Create(new { }) };
+                forged.Headers.Add("Origin", "https://attacker.invalid"); forged.Headers.Add("X-Forwarded-Proto", "https"); forged.Headers.Add("X-Forwarded-Host", "attacker.invalid");
+                using var blocked = await client.SendAsync(forged);
+                AdditionalContracts.Require(blocked.StatusCode == HttpStatusCode.Forbidden, "Forwarded headers bypassed production origin validation");
                 Console.WriteLine("PASS: production host honors platform PORT, serves packaged frontend and keeps local account APIs disabled; no Firebase connection claimed.");
                 return;
             }

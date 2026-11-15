@@ -11,6 +11,7 @@ namespace FlowerFlow.Infrastructure.Local;
 
 public sealed record BackendServerOptions(string Root, bool Development, string? AuthMode = null, IReadOnlyList<string>? MissingLoginConfiguration = null)
 {
+    public IReadOnlySet<string> PublicOrigins { get; init; } = new HashSet<string>(StringComparer.Ordinal);
     public IReadOnlySet<string> ApiPaths { get; init; } = new HashSet<string>(StringComparer.Ordinal)
     {
         "/api/review-images", "/api/product-images", "/api/admin/audit", "/api/bouquet-wrapping", "/api/delivery-zones", "/api/flower-prices",
@@ -140,7 +141,9 @@ public sealed class BackendServer
             if (pathname.StartsWith("/api/", StringComparison.Ordinal))
             {
                 var origin = context.Request.Headers.Origin.ToString();
-                if (origin.Length > 0 && origin != $"{context.Request.Scheme}://{host}")
+                var sameOrigin = origin == $"{context.Request.Scheme}://{host}"
+                    || (!_options.Development && _options.PublicOrigins.Contains(origin));
+                if (origin.Length > 0 && !sameOrigin)
                 { await Error(403, "same-origin-required", "Hãy mở giao diện từ cùng địa chỉ máy chủ API."); return; }
                 var route = pathname[5..];
                 if (!Match(route, @"\A(?:[a-z0-9-]+/)*[a-z0-9-]+\z") || (!_options.ApiPaths.Contains(pathname) && !(_localAuth is not null && route.StartsWith("local-auth/", StringComparison.Ordinal))))

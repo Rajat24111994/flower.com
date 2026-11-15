@@ -64,6 +64,20 @@ static class BackendServerContracts
         using var broken = await client.GetAsync("/api/broken");
         AdditionalContracts.Require((int)broken.StatusCode == 500 && !(await broken.Content.ReadAsStringAsync()).Contains("private credential"), "Server error disclosed exception text");
         var direct = new BackendServer(_ => Task.CompletedTask, options);
+        var accepted = false;
+        var proxied = new BackendServer(context => { accepted = true; context.Response.StatusCode = 204; return Task.CompletedTask; },
+            new(frontend, false) { PublicOrigins = new HashSet<string> { "https://flowerflow-contract.onrender.com" } });
+        foreach (var origin in new[] { "https://flowerflow-contract.onrender.com", "https://attacker.invalid" })
+        {
+            accepted = false; var context = new DefaultHttpContext(); context.Request.Method = "POST"; context.Request.Scheme = "http";
+            context.Request.Host = new("flowerflow-contract.onrender.com"); context.Request.Path = "/api/login"; context.Request.Headers.Origin = origin;
+            context.Request.Headers["X-Forwarded-For"] = "attacker-controlled"; context.Connection.RemoteIpAddress = IPAddress.Loopback;
+            context.Response.Body = new MemoryStream();
+            await proxied.InvokeAsync(context);
+            AdditionalContracts.Require(accepted == (origin == "https://flowerflow-contract.onrender.com"), "Production public origin validation failed");
+            if (accepted) AdditionalContracts.Require(context.Request.Headers["X-Forwarded-For"] == "127.0.0.1", "Public origin trust changed the client IP trust boundary");
+            else AdditionalContracts.Require(context.Response.StatusCode == 403, "Unconfigured public origin was accepted");
+        }
         foreach (var raw in new[] { "/%FF", "/%ZZ" })
         {
             var context = new DefaultHttpContext(); context.Request.Host = new HostString("127.0.0.1:3000"); context.Features.Get<IHttpRequestFeature>()!.RawTarget = raw; context.Response.Body = new MemoryStream();

@@ -1,6 +1,6 @@
 # Triển khai ASP.NET trên Render Docker
 
-Người dùng đã chọn Render và Free để chạy thử trước. Production hiện tại là `https://flower-com-six.vercel.app`, deployment GitHub Production đang trỏ commit `d1644f1`. Chưa chuyển domain, chưa sửa routing Vercel, chưa tạo host Render hoặc kích hoạt thanh toán trong quá trình chuẩn bị này.
+Người dùng đã chọn Render và Free để chạy thử trước. Ngày 16/11/2026, người dùng đã tạo host `https://flower-com.onrender.com` qua dashboard. Đã kiểm tra trực tiếp `/health`: HTTP 200, `status=ok`, `service=flowerflow-api`. API catalog hiện trả 503 `admin-api-not-configured`, vì vậy chưa xác nhận Firebase thật sẵn sàng. Website production gốc `https://flower-com-six.vercel.app` chưa chuyển routing sang Render và không kích hoạt gói trả phí.
 
 ## Gói chạy thử
 
@@ -21,11 +21,19 @@ docker run --rm -p 127.0.0.1:8080:8080 -e PORT=8080 flowerflow-csharp
 
 Cần tài khoản Render đã được kết nối/đăng nhập để tạo web service Free từ Blueprint. Quyền truy cập GitHub hiện tại chỉ cho phép chuẩn bị/push code và chạy CI, không thay thế quyền triển khai Render. Tích hợp Render đã được tìm thấy nhưng phải được người dùng kết nối trước khi gọi thao tác triển khai.
 
+Host hiện tại do người dùng tạo thủ công; agent chưa có kết nối quản trị Render để bấm deploy hoặc đặt secrets thay người dùng. Nếu service không tự deploy, sau khi push bản sửa cần chọn Manual Deploy → Deploy latest commit rồi chờ Live.
+
 Nếu người dùng tự đăng nhập để tạo dịch vụ, dùng [Deploy bản Free từ nhánh asp.net](https://render.com/deploy?repo=https%3A%2F%2Fgithub.com%2FLongg5048%2Fflower.com%2Ftree%2Fasp.net), kiểm tra `plan: free` trước khi tạo. Link chỉ mở quy trình trên tài khoản Render của người dùng; không có nghĩa agent đã tạo host hoặc website đã chuyển production. Quy tắc chọn nhánh theo [Deploy to Render](https://render.com/docs/deploy-to-render).
 
 Free được dùng cho bản thử theo lựa chọn của người dùng. Render khuyến cáo không dùng Free cho production; dịch vụ Free ngủ sau 15 phút không có truy cập. Không tự chuyển sang gói trả phí. Tham khảo [Render Free](https://render.com/docs/free) và [Render Docker](https://render.com/docs/docker).
 
 ## Firebase và nghiệp vụ trước khi chuyển lưu lượng
+
+### HTTPS sau proxy Render
+
+Render cấp `RENDER_EXTERNAL_URL` chứa URL HTTPS công khai trong khi container nhận HTTP nội bộ. ASP.NET dùng origin của URL server-side này và `PUBLIC_APP_URL` (nếu có) để kiểm tra Origin cho API. Chỉ các origin được cấu hình rõ ràng mới được bổ sung; không lấy giá trị tin cậy từ header do client gửi. Quy tắc proxy/IP vẫn giữ riêng và phải được kiểm tra trước khi chuyển toàn bộ lưu lượng production. Không bật tin cậy mọi X-Forwarded-For/Proto để giải quyết lỗi HTTPS.
+
+Regression test mô phỏng HTTPS ngoài proxy/HTTP trong container, yêu cầu hợp lệ đi tới validation, origin lạ vẫn 403 và forwarded IP giả vẫn bị bỏ qua. Docker CI kiểm tra cùng trường hợp. Lệnh POST `/api/login` với JSON rỗng và Origin của host phải trả 400 `invalid-argument`, không phải 403 `same-origin-required`; phép thử này không dùng tài khoản, mật khẩu hoặc ghi dữ liệu.
 
 Trong Render Environment, cấu hình các giá trị server đang dùng, không đưa chúng vào Git:
 

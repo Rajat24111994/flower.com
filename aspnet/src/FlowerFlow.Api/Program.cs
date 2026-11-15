@@ -95,7 +95,22 @@ if (proxies.Length > 0) app.UseForwardedHeaders();
 if (!development) app.UseHsts();
 var missingLoginConfiguration = development && authMode == "firebase" ? new[] { "FIREBASE_SERVICE_ACCOUNT_JSON", "FIREBASE_AUTH_PUBLIC_API_KEY", "FIREBASE_AUTH_SERVER_API_KEY" }
     .Where(key => key == "FIREBASE_SERVICE_ACCOUNT_JSON" ? !FirebaseServiceAccount.IsConfigured() : string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable(key))).ToArray() : [];
-var serverOptions = new BackendServerOptions(frontendRoot, development, development ? authMode : null, missingLoginConfiguration);
+var publicOrigins = new HashSet<string>(StringComparer.Ordinal);
+if (!development)
+{
+    // Render terminates TLS before forwarding HTTP to the container. Use server-owned
+    // public URLs, without trusting caller-supplied forwarded headers or changing client IPs.
+    foreach (var key in new[] { "RENDER_EXTERNAL_URL", "PUBLIC_APP_URL" })
+    {
+        var value = Environment.GetEnvironmentVariable(key);
+        if (string.IsNullOrWhiteSpace(value)) continue;
+        if (!Uri.TryCreate(value, UriKind.Absolute, out var uri) || uri.Scheme is not "https" and not "http" || uri.UserInfo.Length > 0)
+            throw new InvalidOperationException("Public application URL configuration is invalid.");
+        publicOrigins.Add(uri.GetLeftPart(UriPartial.Authority));
+    }
+}
+var serverOptions = new BackendServerOptions(frontendRoot, development, development ? authMode : null, missingLoginConfiguration)
+{ PublicOrigins = publicOrigins };
 app.Use(next => new BackendServer(next, serverOptions, authMode == "local" ? app.Services.GetRequiredService<ILocalAccountWorker>() : null,
     authMode == "local" ? app.Services.GetRequiredService<LocalAuthHandler>() : null).InvokeAsync);
 app.UseRouting();

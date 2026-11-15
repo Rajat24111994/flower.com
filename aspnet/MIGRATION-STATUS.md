@@ -260,3 +260,7 @@ Bổ sung `FIREBASE_SERVICE_ACCOUNT_FILE` để đọc Service Account ở đư�
 ## Chuẩn bị triển khai Render Free
 
 Người dùng yêu cầu chuyển production, xác nhận chưa có host ASP.NET và chọn Render Docker, sau đó chọn Free để chạy thử trước. Đã thêm Dockerfile .NET 10 non-root, build context lọc secrets, Blueprint chỉ tạo web service Free (không database mới, không tự deploy mỗi commit), hỗ trợ PORT của nền tảng và kiểm tra executable Production thực. CI bổ sung build image và HTTP smoke test. Hướng dẫn/chuyển lưu lượng/rollback ở [DEPLOYMENT.md](DEPLOYMENT.md). Chưa có tài khoản Render được kết nối hoặc Service Account Firebase; gói chuẩn bị không được coi là đã tạo preview hay đã chuyển production. Vercel routing và frontend giữ nguyên.
+
+## Host Render đã Live và sửa HTTPS origin
+
+Người dùng tự tạo `https://flower-com.onrender.com`, log xác nhận Production và cổng 10000. Probe `/health` trả HTTP 200 `flowerflow-api`. Probe POST login JSON rỗng cho thấy Origin HTTPS bị chặn 403 trong khi request không có Origin tới được validation 400. Đã sửa allowlist origin server-side từ `RENDER_EXTERNAL_URL`/`PUBLIC_APP_URL`, không đổi Firebase auth, nghiệp vụ, frontend hoặc quy tắc tin cậy IP. Có regression test HTTP sau TLS proxy và chặn origin/header giả; Docker CI chạy cùng probe. Catalog còn 503 `admin-api-not-configured`; chưa chuyển website Vercel production.

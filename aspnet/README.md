@@ -59,6 +59,8 @@ Output chứa API và bản sao nguyên trạng các file frontend công khai. C
 
 Nếu có reverse proxy, cấu hình IP của proxy tin cậy bằng `ReverseProxy__KnownProxies__0` (và các chỉ số tiếp theo); middleware chỉ nhận X-Forwarded-For/Proto từ các IP này rồi dùng IP đã xác minh cho rate limit. TLS kết thúc tại host/proxy. Không tin trực tiếp header IP do client gửi. Lịch cleanup cũ cần tiếp tục gọi `GET /api/orders?action=expire` với `Authorization: Bearer <CRON_SECRET>` từ scheduler của nền tảng.
 
+Trên Render, origin HTTPS công khai được nhận từ `RENDER_EXTERNAL_URL` do nền tảng cấp; `PUBLIC_APP_URL` cũng được nhận nếu cấu hình domain riêng. Điều này cho phép request trình duyệt hợp lệ sau TLS proxy mà không nới quy tắc tin cậy IP hoặc nhận Origin tùy ý. Cần deploy commit mới để bản sửa có hiệu lực trên host đang chạy.
+
 Commit/push không chuyển deployment Vercel hiện tại sang .NET. `vercel.json` và các JS entry point cũ vẫn được giữ để đối chiếu và cho deployment Node cũ; muốn chạy bản C# phải triển khai output ASP.NET trên host phù hợp. Các script quản trị/maintenance Node vẫn là công cụ vận hành riêng; không được gọi bởi runtime API C#. Bản C# của export/import/mã hóa backup nằm tại `Firebase/FirestoreBackup.cs`, giữ định dạng backup cũ và không mở thêm endpoint sao lưu công khai.
 
 ## Kiểm tra

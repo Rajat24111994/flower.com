@@ -99,7 +99,7 @@ jobs:
           IMAGE: flowerflow-csharp:${{ github.sha }}
         run: |
           set -euo pipefail
-          docker run -d --name flowerflow-smoke -p 127.0.0.1:18080:8080 -e PORT=8080 "$IMAGE"
+          docker run -d --name flowerflow-smoke -p 127.0.0.1:18080:8080 -e PORT=8080 -e RENDER_EXTERNAL_URL=https://flowerflow-contract.onrender.com "$IMAGE"
           trap 'docker rm -f flowerflow-smoke >/dev/null 2>&1 || true' EXIT
           ready=0
           for attempt in $(seq 1 30); do
@@ -114,6 +114,9 @@ jobs:
           curl -fsS http://127.0.0.1:18080/js/core/firebase-config.js > "$RUNNER_TEMP/firebase-config.js"
           cmp flower.com/js/core/firebase-config.js "$RUNNER_TEMP/firebase-config.js"
           test "$(curl -sS -o /dev/null -w '%{http_code}' http://127.0.0.1:18080/api/local-auth/session)" = 404
+          test "$(curl -sS -o "$RUNNER_TEMP/origin.json" -w '%{http_code}' -X POST -H 'Content-Type: application/json' -H 'Origin: https://flowerflow-contract.onrender.com' --data '{}' http://127.0.0.1:18080/api/login)" = 400
+          python3 -c 'import json,os; assert json.load(open(os.environ["RUNNER_TEMP"]+"/origin.json"))["code"] == "invalid-argument"'
+          test "$(curl -sS -o /dev/null -w '%{http_code}' -X POST -H 'Content-Type: application/json' -H 'Origin: https://attacker.invalid' -H 'X-Forwarded-Proto: https' --data '{}' http://127.0.0.1:18080/api/login)" = 403
           if docker run --rm "$IMAGE" --check-firebase > "$RUNNER_TEMP/firebase-check.json"; then exit 1; fi
           python3 -c 'import json,os; assert json.load(open(os.environ["RUNNER_TEMP"]+"/firebase-check.json"))["code"] == "firebase-credentials-missing"'
           test "$(docker exec flowerflow-smoke id -u)" != 0
