@@ -77,6 +77,21 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+      - name: Verify Docker context excludes private and generated files
+        run: |
+          set -euo pipefail
+          mkdir -p aspnet/src/FlowerFlow.Api/Properties/PublishProfiles aspnet/src/FlowerFlow.Api/bin/context-canary
+          printf 'test-only' > .env.container-canary
+          printf '{}' > aspnet/src/FlowerFlow.Api/credential-canary.json
+          printf 'test-only' > aspnet/src/FlowerFlow.Api/Properties/PublishProfiles/credential-canary.pubxml
+          printf '{}' > aspnet/src/FlowerFlow.Api/bin/context-canary/appsettings.json
+          docker build -f - --output "type=local,dest=$RUNNER_TEMP/context-audit" . <<'DOCKERFILE'
+          FROM scratch
+          COPY . /context/
+          DOCKERFILE
+          for path in .env.container-canary aspnet/src/FlowerFlow.Api/credential-canary.json aspnet/src/FlowerFlow.Api/Properties/PublishProfiles/credential-canary.pubxml aspnet/src/FlowerFlow.Api/bin/context-canary/appsettings.json; do
+            test ! -e "$RUNNER_TEMP/context-audit/context/$path"
+          done
       - name: Build production ASP.NET image without credentials
         run: docker build -f aspnet/Dockerfile -t flowerflow-csharp:${{ github.sha }} .
       - name: Smoke test production container
