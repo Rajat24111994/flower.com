@@ -10,9 +10,33 @@ using FlowerFlow.Application.Orders;
 using FlowerFlow.Application.Compatibility;
 using FlowerFlow.Infrastructure.Orders;
 using Google.Cloud.Firestore;
+using FlowerFlow.Infrastructure.DesignRequests;
 
 static class AdditionalContracts
 {
+    public static async Task DesignValidationAsync(string root)
+    {
+        using var cases = await OracleAsync(root, "design-validation-oracle.cjs"); var count = 0;
+        foreach (var test in cases.RootElement.EnumerateArray())
+        {
+            var input = test.GetProperty("input"); object? result = null; var failed = false;
+            try
+            {
+                result = test.GetProperty("method").GetString() switch
+                {
+                    "design" => DesignValidation.ParseDesign(input), "stems" => DesignValidation.NormalizeStems(input),
+                    "image" => DesignValidation.ValidImage(input), "token" => DesignValidation.ValidAccessToken(Js.Get(input, "token"), Js.Get(input, "hash")),
+                    _ => throw new Exception("Unknown design test")
+                };
+            }
+            catch (InvalidOperationException) { failed = true; }
+            if (test.TryGetProperty("exception", out _)) Require(failed, "Design null behavior differs from JS");
+            else Require(!failed && JsonNode.DeepEquals(JsonSerializer.SerializeToNode(result), JsonNode.Parse(test.GetProperty("expected").GetRawText())),
+                $"Design validation case {count} differs from JS: {input}"); count++;
+        }
+        Console.WriteLine($"PASS: {count} design choices, stems, image signatures and access token scenarios matched JS.");
+    }
+
     public static async Task TrackingAsync(string root)
     {
         using var cases = await OracleAsync(root, "tracking-oracle.cjs"); var count = 0;

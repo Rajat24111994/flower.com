@@ -157,3 +157,7 @@ Kết quả kiểm tra file 02:
 ## File 20: catalog/products.js
 
 Đích: `src/FlowerFlow.Infrastructure/Catalog/ProductsHandler.cs`. Giữ trường Firestore gốc, id fallback, timestamp top-level ISO, sửa title lỗi dấu và ảnh cũ theo flower.json hiện tại, public chỉ loại status hidden (không tự loại archived), manage claim+document, header cache và alias flower-prices. flower.json được liên kết làm content build/publish, không sửa file frontend. Test emulator: sửa dữ liệu catalog cũ, public/manage/hidden/archived, timestamp và giữ trường gốc.
+
+## File 21: design-requests/validation.js
+
+Đích: `src/FlowerFlow.Infrastructure/DesignRequests/DesignValidation.cs`. Giữ toàn bộ lựa chọn/giới hạn, chuẩn hóa thiết kế/cành/màu, phụ kiện và budget, chữ ký ảnh JPEG/PNG/WebP, token SHA-256 constant-time, dữ liệu public loại accessTokenHash và history. Đối chiếu trực tiếp với JS cả các quy tắc dễ sai như paperLayers số 0 so với chuỗi "0", addons trùng/coercion, null design và hex token có hậu tố (Buffer.from semantics).
