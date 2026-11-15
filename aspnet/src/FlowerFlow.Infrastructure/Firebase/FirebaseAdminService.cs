@@ -81,6 +81,10 @@ public sealed class FirebaseAdminBackend : IFirebaseAdminBackend, IDisposable
     }
 
     public FirebaseAuth GetAdminAuth() => FirebaseAuth.GetAuth(GetAdminApp());
+    public string ProjectId => GetAdminApp().Options.ProjectId;
+    public Task<string> GetAccessTokenAsync(CancellationToken cancellationToken = default) =>
+        ((ITokenAccess)GetAdminApp().Options.Credential.CreateScoped("https://www.googleapis.com/auth/identitytoolkit"))
+            .GetAccessTokenForRequestAsync(cancellationToken: cancellationToken);
 
     public FirestoreDb GetAdminFirestore()
     {

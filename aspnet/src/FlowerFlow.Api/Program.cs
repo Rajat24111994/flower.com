@@ -6,6 +6,7 @@ using FlowerFlow.Infrastructure.Admin;
 using FlowerFlow.Infrastructure.ShopSettings;
 using FlowerFlow.Infrastructure.Orders;
 using FlowerFlow.Infrastructure.DesignRequests;
+using FlowerFlow.Infrastructure.Accounts;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -29,6 +30,11 @@ builder.Services.AddSingleton<ProductsHandler>();
 builder.Services.AddSingleton<DesignRequestsHandler>();
 builder.Services.AddSingleton<OrderReviews>();
 builder.Services.AddSingleton<PaymentAdmin>();
+builder.Services.AddSingleton<IFirebaseAccounts, FirebaseAccounts>();
+builder.Services.AddSingleton(_ => FrontendFirebaseConfig.Load(Path.Combine(AppContext.BaseDirectory, "catalog", "firebase-config.js")));
+builder.Services.AddHttpClient<PasswordAuth>(client => client.Timeout = TimeSpan.FromSeconds(10))
+    .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false }).RemoveAllLoggers();
+builder.Services.AddSingleton<Func<IPasswordAuth>>(services => () => services.GetRequiredService<PasswordAuth>());
 
 var app = builder.Build();
 

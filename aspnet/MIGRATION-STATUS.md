@@ -173,3 +173,7 @@ Kết quả kiểm tra file 02:
 ## File 24: orders/payment-admin.js
 
 Đích: `src/FlowerFlow.Infrastructure/Orders/PaymentAdmin.cs`. Giữ phân quyền với mã forbidden, đối soát QR đúng tổng tiền, xác nhận tiền trễ riêng, ghi nhận hoàn tiền một lần, audit orderPaymentAudit trong transaction và whitelist 25 bản ghi mới nhất. Test emulator: sai số tiền từ chối, xác minh/hoàn tiền lặp từ chối, audit chỉ ghi cho lần thành công, tiền trễ không tự khôi phục đơn/kho đã giải phóng. Nối action khi controller orders hoàn tất.
+
+## File 25: accounts/password-auth.js
+
+Đích: `src/FlowerFlow.Infrastructure/Accounts/PasswordAuth.cs`. Giữ khóa public/server riêng, kiểm tra public key khớp frontend hiện tại (content liên kết, không sửa frontend), probe cả hai endpoint yêu cầu API_KEY_SERVICE_BLOCKED đúng method, cache chung 60 giây, lookup passwordUpdatedAt phía server, HMAC tài khoản không tồn tại, lỗi provider không tính sai mật khẩu, timeout 10 giây và chặn redirect. Bổ sung ranh giới SDK FirebaseAccounts dùng credential phía server với scope identitytoolkit. Emulator chỉ loopback và bị chặn trên môi trường production của ASP.NET/Node/Vercel. HttpClient logging tắt để không lộ API key trong URL.
