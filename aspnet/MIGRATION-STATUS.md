@@ -201,3 +201,7 @@ Kết quả kiểm tra file 02:
 ## File 31: payments/payments.js
 
 Đích: `src/FlowerFlow.Infrastructure/Payments/PaymentsHandler.cs`, `/api/payments`. Giữ create/retry/status, capability orderId+paymentReference hoặc txnRef trước, pending attempt reuse, xác nhận số tiền, cleanup và khôi phục kho đơn hết hạn trong transaction, hạn 15 phút, số lần thử, URL ký và response lỗi. Test emulator: chữ ký URL, capability sai, reuse không tạo thêm/không trừ kho, retry đơn expired hoàn rồi giữ kho một lần, đơn paid không tạo lại attempt.
+
+## File 32: payments/vnpay-ipn.js
+
+Đích: `src/FlowerFlow.Infrastructure/Payments/VnpayIpnHandler.cs`, `/api/vnpay-ipn`. Giữ GET/HMAC/TmnCode/txnRef/currency/số tiền, gateway response HTTP 200 với đúng RspCode/Message viết hoa, transaction attempt+order, duplicate callback, failure cũ không ghi đè attempt hiện tại, thanh toán thêm/trễ cần attention không khôi phục kho tự động. Test emulator: chữ ký sai/tiền sai không đổi dữ liệu, success/duplicate, failed attempt cũ, extra payment, cancelled late payment và thiếu cấu hình.

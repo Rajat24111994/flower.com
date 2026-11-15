@@ -493,5 +493,6 @@ static class FirestoreContracts
         Console.WriteLine("PASS: owner grant/remove, retained custom claims, live role revocation, owner protection, backfill and partial session-revoke failure.");
         await CheckoutContracts.RunAsync(db);
         await PaymentsContracts.RunAsync(db);
+        await IpnContracts.RunAsync(db);
     }
 }

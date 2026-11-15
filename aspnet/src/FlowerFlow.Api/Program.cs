@@ -43,6 +43,7 @@ builder.Services.AddSingleton<OwnerUsersHandler>();
 builder.Services.AddSingleton<Checkout>();
 builder.Services.AddSingleton<OrdersHandler>();
 builder.Services.AddSingleton<PaymentsHandler>();
+builder.Services.AddSingleton<VnpayIpnHandler>();
 
 var app = builder.Build();
 
@@ -61,6 +62,7 @@ app.Map("/api/admin/users", (HttpContext context, AdminUsersHandler handler) => 
 app.Map("/api/owner/users", (HttpContext context, OwnerUsersHandler handler) => handler.HandleAsync(context));
 app.Map("/api/orders", (HttpContext context, OrdersHandler handler) => handler.HandleAsync(context));
 app.Map("/api/payments", (HttpContext context, PaymentsHandler handler) => handler.HandleAsync(context));
+app.Map("/api/vnpay-ipn", (HttpContext context, VnpayIpnHandler handler) => handler.HandleAsync(context));
 app.Run();
 
 public partial class Program;
