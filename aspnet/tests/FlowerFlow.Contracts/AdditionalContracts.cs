@@ -5,9 +5,35 @@ using FlowerFlow.Application.Catalog;
 using FlowerFlow.Infrastructure.Http;
 using Microsoft.AspNetCore.Http;
 using FlowerFlow.Infrastructure.Firebase;
+using FlowerFlow.Application.Payments;
 
 static class AdditionalContracts
 {
+    public static async Task VnpayAsync(string root)
+    {
+        using var cases = await OracleAsync(root, "vnpay-oracle.cjs");
+        foreach (var test in cases.RootElement.GetProperty("queries").EnumerateArray())
+        {
+            var input = JsonNode.Parse(test.GetProperty("input").GetRawText())!.AsObject();
+            Require(Vnpay.CanonicalQuery(input) == test.GetProperty("expected").GetString(), "VNPay canonical query differs from JS");
+            Require(Vnpay.VerifySignature(input, "test-secret") == test.GetProperty("valid").GetBoolean(), "VNPay signature differs from JS");
+        }
+        var config = new VnpayConfig("TEST", "test-secret", Vnpay.SandboxPaymentUrl, "https://example.invalid/payment-result.html");
+        var created = DateTimeOffset.Parse(cases.RootElement.GetProperty("now").GetString()!);
+        var expires = DateTimeOffset.Parse(cases.RootElement.GetProperty("expires").GetString()!);
+        foreach (var test in cases.RootElement.GetProperty("urls").EnumerateArray())
+            Require(Vnpay.CreatePaymentUrl("FFabc123", 123456, test.GetProperty("ipAddress").GetString(), created, expires, config)
+                == test.GetProperty("expected").GetString(), "VNPay signed URL differs from JS");
+        foreach (var amount in new[] { 0d, -1, 1.5, 10_000_000_000, double.NaN })
+        {
+            try { Vnpay.CreatePaymentUrl("FFabc123", amount, "127.0.0.1", created, expires, config); throw new Exception("Invalid payment accepted"); }
+            catch (VnpayException error) { Require(error.Code == "invalid-payment", "Wrong payment error"); }
+        }
+        try { Vnpay.GetSecrets(_ => null); throw new Exception("Missing VNPay config accepted"); }
+        catch (VnpayException error) { Require(error.Code == "vnpay-not-configured", "Wrong configuration error"); }
+        Console.WriteLine("PASS: VNPay form encoding, signatures, exact signed URLs, IP fallback and payment amount limits.");
+    }
+
     public static void AdminAuditEntry()
     {
         var actor = new FirebaseIdentity(new string('u', 200), new Dictionary<string, object> { ["email"] = new string('e', 400) });

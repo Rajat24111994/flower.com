@@ -102,6 +102,7 @@ await AdditionalContracts.ImageRulesAsync(root);
 await AdditionalContracts.ApiRoutesAsync(root);
 await AdditionalContracts.IdentityAsync();
 AdditionalContracts.AdminAuditEntry();
+await AdditionalContracts.VnpayAsync(root);
 if (args.Contains("--firestore-emulator")) await FirestoreContracts.RunAsync();
 
 static void Assert(bool condition, string message)

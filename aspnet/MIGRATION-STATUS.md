@@ -109,3 +109,7 @@ Kết quả kiểm tra file 02:
 ## File 08: accounts/login-protection.js
 
 Đích: `src/FlowerFlow.Infrastructure/Accounts/LoginProtection.cs`. Giữ 5 lần sai đầu, khóa 15/30/60/120/240 phút rồi bắt buộc reset, lease 60 giây, transaction trước/sau provider, chỉ phiên bản mật khẩu server mới xóa khóa. Test emulator: hai yêu cầu đồng thời chỉ một lease, phiên bản mới không vượt lease đang chạy, leo thang khóa và expiry, reset, thành công xóa record, provider outage không tăng failures, lease hết hạn từ chối kết quả.
+
+## File 09: payments/vnpay.js
+
+Đích: `src/FlowerFlow.Application/Payments/Vnpay.cs`. Giữ cấu hình sandbox/production, thời gian Việt Nam, ký HMAC-SHA512 và so sánh constant-time, mã tham chiếu/số tiền hợp lệ, giới hạn số tiền nhân 100, IP fallback và form encoding của URLSearchParams. Kiểm thử đối chiếu canonical query, chữ ký và URL đã ký chính xác với JS (Unicode, khoảng trắng, ký tự đặc biệt, IP không hợp lệ), biên số tiền và thiếu cấu hình. Chưa chuyển payments/IPN handler.
