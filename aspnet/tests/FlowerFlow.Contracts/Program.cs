@@ -97,6 +97,7 @@ finally
     Environment.SetEnvironmentVariable("FIRESTORE_EMULATOR_HOST", previousEmulator);
 }
 Console.WriteLine($"PASS: {count} Firebase Admin contract/configuration scenarios; no live database operations.");
+await AdditionalContracts.ImageRulesAsync(root);
 
 static void Assert(bool condition, string message)
 {

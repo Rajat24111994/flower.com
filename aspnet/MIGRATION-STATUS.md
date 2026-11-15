@@ -83,3 +83,7 @@ Kết quả kiểm tra file 02:
 - `dotnet run --project aspnet/tests/FlowerFlow.Contracts --configuration Release`: 31 tình huống thành công, trong đó 24 tình huống đối chiếu trực tiếp với module JavaScript và 7 tình huống cấu hình/khởi tạo SDK (gồm emulator).
 - API khởi động khi không có biến bí mật Firebase; `/health` trả HTTP 200 và `Cache-Control: no-store`.
 - Frontend, backend JS nguồn và cấu hình Vercel không bị thay đổi.
+
+## File 03: catalog/image-rules.js
+
+Đích: `src/FlowerFlow.Application/Catalog/ImageRules.cs`. Giữ giới hạn 3 ảnh, 120 KiB/ảnh, JPEG SOF C0/C1/C2, kích thước 1–1600, base64 canonical và dữ liệu bytes gốc; phân biệt tham số thiếu với JSON null. Đối chiếu trực tiếp với module JS qua `image-rules-oracle.cjs` gồm ảnh thật, biên kích thước, dữ liệu sai định dạng và quá giới hạn. Không thay frontend hoặc endpoint.
