@@ -4,7 +4,7 @@ Người dùng đã chọn Render và Free để chạy thử trước. Ngày 16
 
 ## Gói chạy thử
 
-`render.yaml` tại gốc repo khai báo đúng một web service Free, nhánh `asp.net`, Dockerfile `aspnet/Dockerfile`, build context gốc repo, region Singapore và health check `/health`. Không khai báo database mới. Auto-deploy tắt để kiểm tra commit trước mỗi lần triển khai. Docker chạy .NET 10 với user không phải root, phục vụ cùng frontend nguyên trạng và `/api/...`.
+`render.yaml` tại gốc repo khai báo đúng một web service Free, nhánh `asp.net`, Dockerfile `aspnet/Dockerfile`, build context gốc repo, region Singapore và health check `/health`. Không khai báo database mới. Auto-deploy tắt để kiểm tra commit trước mỗi lần triển khai. Docker chạy .NET 10 với user không phải root và group `1000`, cần thiết để đọc Render Secret Files trong `/etc/secrets`; frontend nguyên trạng và `/api/...` được phục vụ cùng host.
 
 Ứng dụng nhận biến `PORT` do Render cấp và bind `0.0.0.0` trong Production; Development tiếp tục bind loopback. `AUTH_MODE=firebase` và API tài khoản SQLite local bị tắt ở Production. `.dockerignore` giới hạn nội dung build, loại `.env`, key files, Git metadata, bin/obj và JSON ngoài các file cấu hình công khai đã chỉ định. Secrets chỉ được truyền lúc chạy từ Render Environment/Secret Files.
 
@@ -37,7 +37,7 @@ Regression test mô phỏng HTTPS ngoài proxy/HTTP trong container, yêu cầu 
 
 Trong Render Environment, cấu hình các giá trị server đang dùng, không đưa chúng vào Git:
 
-- `FIREBASE_SERVICE_ACCOUNT_JSON` hoặc file bí mật rồi đặt `FIREBASE_SERVICE_ACCOUNT_FILE` tới đường dẫn mount mà user chạy app có thể đọc.
+- `FIREBASE_SERVICE_ACCOUNT_JSON` hoặc file bí mật. Với file `firebase-service-account.json`, đặt `FIREBASE_SERVICE_ACCOUNT_FILE=/etc/secrets/firebase-service-account.json`; container chạy trong group `1000` để đọc file đó.
 - `FIREBASE_PROJECT_ID=web-ban-hoa-9fe0b`: giữ nguyên project Firestore/Authentication.
 - `FIREBASE_AUTH_PUBLIC_API_KEY` khớp frontend và `FIREBASE_AUTH_SERVER_API_KEY` riêng, có restriction theo hướng dẫn đăng nhập hiện có.
 - Các giá trị `VNPAY_TMN_CODE`, `VNPAY_HASH_SECRET`, `VNPAY_ENV`, `PUBLIC_APP_URL` nếu đang dùng VNPay; giữ thông số merchant hiện tại cho production và dùng sandbox cho thử thanh toán.

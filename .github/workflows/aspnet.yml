@@ -99,7 +99,10 @@ jobs:
           IMAGE: flowerflow-csharp:${{ github.sha }}
         run: |
           set -euo pipefail
-          docker run -d --name flowerflow-smoke -p 127.0.0.1:18080:8080 -e PORT=8080 -e RENDER_EXTERNAL_URL=https://flowerflow-contract.onrender.com "$IMAGE"
+          printf '{}' > "$RUNNER_TEMP/firebase-service-account.json"
+          sudo chown 0:1000 "$RUNNER_TEMP/firebase-service-account.json"
+          chmod 0440 "$RUNNER_TEMP/firebase-service-account.json"
+          docker run -d --name flowerflow-smoke -p 127.0.0.1:18080:8080 -v "$RUNNER_TEMP/firebase-service-account.json:/etc/secrets/firebase-service-account.json:ro" -e PORT=8080 -e RENDER_EXTERNAL_URL=https://flowerflow-contract.onrender.com "$IMAGE"
           trap 'docker rm -f flowerflow-smoke >/dev/null 2>&1 || true' EXIT
           ready=0
           for attempt in $(seq 1 30); do
@@ -120,3 +123,5 @@ jobs:
           if docker run --rm "$IMAGE" --check-firebase > "$RUNNER_TEMP/firebase-check.json"; then exit 1; fi
           python3 -c 'import json,os; assert json.load(open(os.environ["RUNNER_TEMP"]+"/firebase-check.json"))["code"] == "firebase-credentials-missing"'
           test "$(docker exec flowerflow-smoke id -u)" != 0
+          test "$(docker exec flowerflow-smoke id -g)" = 1000
+          docker exec flowerflow-smoke sh -c 'test -r /etc/secrets/firebase-service-account.json'

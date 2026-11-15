@@ -106,8 +106,8 @@ public sealed class Checkout(Func<FirestoreDb> database, Reservations reservatio
 
     public static List<OrderCreationLimit> CreationLimitRefs(FirestoreDb db, HttpContext context, FirebaseIdentity? user, string phone)
     {
-        var ip = context.Request.Headers["x-forwarded-for"].ToString().Split(',')[0].Trim(); var secret = Environment.GetEnvironmentVariable("FIREBASE_SERVICE_ACCOUNT_JSON");
-        if (ip.Length is < 1 or > 64 || string.IsNullOrEmpty(secret)) throw new InvalidOperationException("Trusted order source unavailable");
+        var ip = context.Request.Headers["x-forwarded-for"].ToString().Split(',')[0].Trim(); var secret = FirebaseServiceAccount.ReadJson();
+        if (ip.Length is < 1 or > 64) throw new InvalidOperationException("Trusted order source unavailable");
         var values = new List<(string Type, string Value, int Maximum)> { ("ip", ip, 5), ("phone", OrderValidation.NormalizePhone(phone), 3) };
         if (user is not null) values.Add(("account", user.Uid, 5));
         return values.Select(value => new OrderCreationLimit(value.Maximum, db.Collection("orderCreationLimits").Document(Convert.ToHexStringLower(

@@ -70,8 +70,7 @@ public sealed class OrderTracking(Func<FirestoreDb> database, RequestIdentity id
     {
         var ip = context.Request.Headers["x-forwarded-for"].ToString().Split(',')[0].Trim();
         if (ip.Length is < 1 or > 64) throw new InvalidOperationException("Trusted client IP is unavailable for order lookup rate limiting.");
-        var secret = Environment.GetEnvironmentVariable("FIREBASE_SERVICE_ACCOUNT_JSON");
-        if (string.IsNullOrEmpty(secret)) throw new InvalidOperationException("Firebase service credentials are required for order lookup rate limiting.");
+        var secret = FirebaseServiceAccount.ReadJson();
         var key = Convert.ToHexStringLower(HMACSHA256.HashData(Encoding.UTF8.GetBytes(secret), Encoding.UTF8.GetBytes(ip)));
         var reference = db.Collection("orderLookupLimits").Document(key); var millis = _now(); var now = FirestoreValues.FromMillis(millis);
         return db.RunTransactionAsync(async transaction =>

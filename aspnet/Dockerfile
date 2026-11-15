@@ -16,6 +16,6 @@ ENV ASPNETCORE_ENVIRONMENT=Production \
     AUTH_MODE=firebase \
     ASPNETCORE_HTTP_PORTS=8080
 COPY --from=build /out/ ./
-USER $APP_UID
+USER $APP_UID:1000
 EXPOSE 8080
 ENTRYPOINT ["dotnet", "FlowerFlow.Api.dll"]

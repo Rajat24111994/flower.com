@@ -1,4 +1,6 @@
 using System.Text.Json;
+using System.Security.Cryptography;
+using System.Text;
 using FlowerFlow.Application.Orders;
 using FlowerFlow.Infrastructure.Firebase;
 using FlowerFlow.Infrastructure.Http;
@@ -12,9 +14,11 @@ static class CheckoutContracts
     public static async Task RunAsync(FirestoreDb db)
     {
         var suffix = Guid.NewGuid().ToString("N"); var oldSecret = Environment.GetEnvironmentVariable("FIREBASE_SERVICE_ACCOUNT_JSON");
+        var oldSecretFile = Environment.GetEnvironmentVariable("FIREBASE_SERVICE_ACCOUNT_FILE");
+        var testSecret = "checkout-test-" + suffix;
         try
         {
-            Environment.SetEnvironmentVariable("FIREBASE_SERVICE_ACCOUNT_JSON", "checkout-test-" + suffix);
+            Environment.SetEnvironmentVariable("FIREBASE_SERVICE_ACCOUNT_JSON", testSecret);
             using var identityCase = JsonDocument.Parse("{\"claims\":{\"uid\":\"user-a\"}}");
             var tracking = new OrderTracking(() => db, new RequestIdentity(new FakeBackend(identityCase.RootElement)), NullLogger<OrderTracking>.Instance);
             var service = new Checkout(() => db, new Reservations(NullLogger<Reservations>.Instance), tracking, NullLogger<Checkout>.Instance);
@@ -90,10 +94,42 @@ static class CheckoutContracts
                 await controller.HandleAsync(cronRequest); AdditionalContracts.Require(cronRequest.Response.StatusCode == 200 && Body(cronRequest).TryGetProperty("released", out _), "Cron cleanup action rejected");
             }
             finally { Environment.SetEnvironmentVariable("CRON_SECRET", previousCron); }
+            var fileSecret = "checkout-file-secret-" + suffix;
+            var credentialFile = Path.Combine(Path.GetTempPath(), $"flowerflow-checkout-{suffix}.json");
+            try
+            {
+                await File.WriteAllTextAsync(credentialFile, fileSecret);
+                Environment.SetEnvironmentVariable("FIREBASE_SERVICE_ACCOUNT_JSON", null);
+                Environment.SetEnvironmentVariable("FIREBASE_SERVICE_ACCOUNT_FILE", credentialFile);
+                const string fileCredentialIp = "198.51.100.42";
+                var fileCredentialContext = Context(new { }, fileCredentialIp);
+                var fileCredentialLimits = Checkout.CreationLimitRefs(db, fileCredentialContext, null, "0901234567");
+                var expectedLimitId = Convert.ToHexStringLower(HMACSHA256.HashData(Encoding.UTF8.GetBytes(fileSecret),
+                    Encoding.UTF8.GetBytes("ip:" + fileCredentialIp)));
+                AdditionalContracts.Require(fileCredentialLimits[0].Ref.Id == expectedLimitId,
+                    "Checkout rate limits did not use the external service-account file.");
+                var lookupLimit = await tracking.CheckOrderLookupLimitAsync(db, fileCredentialContext);
+                var expectedLookupLimitId = Convert.ToHexStringLower(HMACSHA256.HashData(Encoding.UTF8.GetBytes(fileSecret),
+                    Encoding.UTF8.GetBytes(fileCredentialIp)));
+                AdditionalContracts.Require(lookupLimit.Allowed
+                    && (await db.Collection("orderLookupLimits").Document(expectedLookupLimitId).GetSnapshotAsync()).Exists,
+                    "Order tracking rate limits did not use the external service-account file.");
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable("FIREBASE_SERVICE_ACCOUNT_JSON", testSecret);
+                Environment.SetEnvironmentVariable("FIREBASE_SERVICE_ACCOUNT_FILE", oldSecretFile);
+                File.Delete(credentialFile);
+            }
             Console.WriteLine("PASS: checkout quote/duplicate product options, concurrent idempotency, exact request content, price change, quotas, guest cap and no overselling.");
             Console.WriteLine("PASS: orders controller methods, account/review action routing and cron cleanup authorization.");
+            Console.WriteLine("PASS: checkout and order tracking rate limits use external Firebase service-account files.");
         }
-        finally { Environment.SetEnvironmentVariable("FIREBASE_SERVICE_ACCOUNT_JSON", oldSecret); }
+        finally
+        {
+            Environment.SetEnvironmentVariable("FIREBASE_SERVICE_ACCOUNT_JSON", oldSecret);
+            Environment.SetEnvironmentVariable("FIREBASE_SERVICE_ACCOUNT_FILE", oldSecretFile);
+        }
     }
     public static DefaultHttpContext Context(object payload, string ip, bool authenticated = true)
     {
