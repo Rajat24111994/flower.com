@@ -101,3 +101,7 @@ Kết quả kiểm tra file 02:
 Đích: `src/FlowerFlow.Infrastructure/Firebase/AdminAudit.cs`. Giữ collection adminAudit, giới hạn độ dài UTF-16, server timestamp, details gốc (kể cả null), tạo document mới và audit nằm trong transaction gốc khi gọi AddAdminAudit. RecordAdminAuditAsync tạo riêng như JS. Kiểm thử dữ liệu audit và giới hạn; kiểm thử ghi thật cần Firestore Emulator, không ghi project production.
 
 Đã kiểm thử ghi audit, timestamp do server tạo, commit đồng thời và rollback trên Firestore Emulator 127.0.0.1:8787, project cố định demo-flowerflow-csharp. Bộ kiểm thử từ chối dùng credentials/endpoint production bằng cách khởi tạo client test với endpoint loopback và channel insecure cố định. CI đã có bước khởi động emulator và chạy `--firestore-emulator`.
+
+## File 07: admin/roles.js
+
+Đích: `src/FlowerFlow.Infrastructure/Firebase/AdminRoles.cs`. Giữ boolean claim, owner/admin, merge khi đồng bộ một tài khoản, xóa quyền, backfill chỉ tạo thiếu/xóa thừa và không sửa document đang tồn tại. Kiểm tra trên emulator: merge giữ field cũ, owner, batch write count, chạy lặp không ghi và gỡ quyền.

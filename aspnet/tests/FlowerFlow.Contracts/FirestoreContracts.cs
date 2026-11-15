@@ -44,5 +44,24 @@ static class FirestoreContracts
         AdditionalContracts.Require(!(await rejectedItem.GetSnapshotAsync()).Exists
             && !(await rejectedAudit!.GetSnapshotAsync()).Exists, "Rolled-back audit leaked into database");
         Console.WriteLine("PASS: local Firestore Emulator audit writes, server timestamp, atomic commit and rollback.");
+        var suffix = Guid.NewGuid().ToString("N");
+        var owner = new RoleUser("owner-" + suffix, "owner@example.invalid", new Dictionary<string, object> { ["admin"] = true, ["role"] = "owner" });
+        var admin = new RoleUser("admin-" + suffix, null, new Dictionary<string, object> { ["admin"] = true });
+        var removed = new RoleUser("removed-" + suffix, null, new Dictionary<string, object> { ["admin"] = "true" });
+        var ownerRef = db.Collection("adminRoles").Document(owner.Uid);
+        await ownerRef.SetAsync(new Dictionary<string, object> { ["customField"] = 7 });
+        await AdminRoles.SyncAdminRoleAsync(db, owner);
+        var ownerDoc = await ownerRef.GetSnapshotAsync();
+        AdditionalContracts.Require(ownerDoc.GetValue<string>("role") == "owner" && ownerDoc.GetValue<long>("customField") == 7,
+            "Role sync must merge and preserve owner");
+        await db.Collection("adminRoles").Document(removed.Uid).SetAsync(new { role = "admin" });
+        var users = new[] { owner, admin, removed };
+        AdditionalContracts.Require(await AdminRoles.SyncAdminRolesAsync(db, users) == 2, "Backfill write count changed");
+        AdditionalContracts.Require(await AdminRoles.SyncAdminRolesAsync(db, users) == 0, "Backfill must be idempotent");
+        AdditionalContracts.Require(!(await db.Collection("adminRoles").Document(removed.Uid).GetSnapshotAsync()).Exists,
+            "Non-boolean admin claim must remove role document");
+        await AdminRoles.SyncAdminRoleAsync(db, owner, false);
+        AdditionalContracts.Require(!(await ownerRef.GetSnapshotAsync()).Exists, "Explicit role removal failed");
+        Console.WriteLine("PASS: Firestore role merge, owner preservation, batch backfill, idempotency and revocation.");
     }
 }
