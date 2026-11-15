@@ -9,6 +9,7 @@ using Microsoft.Extensions.Logging;
 // Differential contract checks against the actual JS source; no live Firebase credentials needed.
 var rootArgument = args.FirstOrDefault(argument => !argument.StartsWith("--", StringComparison.Ordinal));
 var root = rootArgument is not null ? Path.GetFullPath(rootArgument) : Directory.GetCurrentDirectory();
+if (args.Contains("--local-accounts")) { await LocalAccountContracts.RunAsync(root); return; }
 var start = new ProcessStartInfo("node") { RedirectStandardOutput = true, RedirectStandardError = true };
 start.ArgumentList.Add(Path.Combine(root, "aspnet/tests/FlowerFlow.Contracts/firebase-admin-oracle.cjs"));
 using var process = Process.Start(start) ?? throw new Exception("Cannot start Node.js oracle.");
@@ -112,6 +113,7 @@ await AdditionalContracts.CheckoutFingerprintsAsync(root);
 AdditionalContracts.LocalSessionCookies();
 await AdditionalContracts.LocalRateLimitAsync(root);
 await AdditionalContracts.ContentSecurityAsync(root);
+await LocalAccountContracts.RunAsync(root);
 if (args.Contains("--firestore-emulator")) await FirestoreContracts.RunAsync();
 
 static void Assert(bool condition, string message)
