@@ -27,6 +27,7 @@ builder.Services.AddSingleton<FlowerPricesHandler>();
 builder.Services.AddSingleton(_ => new ProductCatalog(Path.Combine(AppContext.BaseDirectory, "catalog", "flower.json")));
 builder.Services.AddSingleton<ProductsHandler>();
 builder.Services.AddSingleton<DesignRequestsHandler>();
+builder.Services.AddSingleton<OrderReviews>();
 
 var app = builder.Build();
 

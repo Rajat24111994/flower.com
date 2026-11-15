@@ -165,3 +165,7 @@ Kết quả kiểm tra file 02:
 ## File 22: design-requests/controller.js
 
 Đích: `src/FlowerFlow.Infrastructure/DesignRequests/DesignRequestsHandler.cs`, `/api/design-requests`. Giữ create/lookup/manage/respond/admin-update, token ngẫu nhiên chỉ lưu hash, kiểm tra màu/kho/giá hoa hiện tại, estimate không tính phí giao và không giữ kho, phí gói, báo giá và history/state transaction. Giữ cả response snapshot history cũ ở respond/admin-update như JS. Test emulator: tạo và ước tính không trừ kho, lookup không lộ hash, admin báo giá, khách xác nhận và trạng thái lưu đúng.
+
+## File 23: orders/reviews.js
+
+Đích: `src/FlowerFlow.Infrastructure/Orders/OrderReviews.cs`. Giữ ID review SHA-256 rút gọn 40, chủ đơn đã giao, một review/đơn trong transaction, JPEG và photoIds, tên/sản phẩm lấy từ đơn, không giả danh cửa hàng, pending moderation và own-review lookup. Test emulator: đơn chưa giao bị từ chối, hai yêu cầu đồng thời chỉ một thành công, pending/name privacy và chủ đơn đọc review. Nối action trên orders sau khi controller được chuyển.

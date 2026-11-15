@@ -367,5 +367,24 @@ static class FirestoreContracts
         AdditionalContracts.Require((await db.Collection("designRequests").Document(designId).GetSnapshotAsync()).GetValue<string>("status") == "Đang thực hiện",
             "Design quote acceptance not persisted");
         Console.WriteLine("PASS: design creation/estimate without stock reservation, secret-token lookup, admin quote and customer acceptance.");
+        var reviewTracking = new OrderTracking(() => db, new RequestIdentity(new FakeBackend(identityCase.RootElement)), NullLogger<OrderTracking>.Instance);
+        var reviews = new OrderReviews(() => db, new FakeBackend(identityCase.RootElement), reviewTracking, NullLogger<OrderReviews>.Instance);
+        var reviewedOrder = db.Collection("orders").Document();
+        await reviewedOrder.SetAsync(new { uid = "user-a", customerName = "FlowerFlow Admin", status = "Chờ xác nhận",
+            items = new[] { new { id = flowerRef.Id, quantity = 2, title = "Hoa hồng" } } });
+        var reviewPayload = JsonSerializer.Serialize(new { orderId = reviewedOrder.Id, rating = 4, comment = "Hoa đẹp", photos = new[] { "data:image/jpeg;base64," + Convert.ToBase64String(jpeg) } });
+        var undelivered = JsonContext(reviewPayload); await reviews.SubmitReviewAsync(undelivered);
+        AdditionalContracts.Require(undelivered.Response.StatusCode == 409, "Undelivered order reviewed");
+        await reviewedOrder.UpdateAsync(new Dictionary<string, object> { ["status"] = "Đã giao" });
+        var firstReview = JsonContext(reviewPayload); var duplicateReview = JsonContext(reviewPayload);
+        await Task.WhenAll(reviews.SubmitReviewAsync(firstReview), reviews.SubmitReviewAsync(duplicateReview));
+        AdditionalContracts.Require(new[] { firstReview.Response.StatusCode, duplicateReview.Response.StatusCode }.Order().SequenceEqual(new[] { 201, 409 }),
+            "Concurrent duplicate review was accepted");
+        var savedReview = await db.Collection("reviews").Document(OrderReviews.ReviewIdForOrder(reviewedOrder.Id)).GetSnapshotAsync();
+        AdditionalContracts.Require(savedReview.GetValue<string>("moderationStatus") == "pending"
+            && savedReview.GetValue<string>("customerName") == "Khách hàng" && !savedReview.ContainsField("orderId"), "Review moderation/name/privacy changed");
+        var ownReview = JsonContext(JsonSerializer.Serialize(new { orderId = reviewedOrder.Id })); await reviews.GetOwnReviewAsync(ownReview);
+        AdditionalContracts.Require(ownReview.Response.StatusCode == 200, "Owner review lookup failed");
+        Console.WriteLine("PASS: delivered-owner reviews, one review under concurrent requests, pending moderation, name protection and own review lookup.");
     }
 }
