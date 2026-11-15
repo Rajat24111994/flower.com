@@ -1,0 +1,27 @@
+name: ASP.NET build
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'aspnet/**'
+      - '.github/workflows/aspnet.yml'
+  pull_request:
+    paths:
+      - 'aspnet/**'
+      - '.github/workflows/aspnet.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - run: dotnet build aspnet/FlowerFlow.sln --configuration Release

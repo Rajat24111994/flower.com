@@ -1,0 +1,57 @@
+# Chuyển backend JavaScript sang C# theo từng file
+
+## Yêu cầu áp dụng
+
+- Nguồn đối chiếu: `../flower.com/backend/`, các entry point `../flower.com/api/`, rewrite trong `vercel.json` và các module dùng chung được backend import.
+- Giữ Firebase Authentication và Cloud Firestore hiện tại. Dùng Firebase Admin SDK cho xác thực và Google.Cloud.Firestore cho truy cập Firestore trong các bước tích hợp C#.
+- Không chuyển dữ liệu sang SQL Server, tạo lại database, đổi collection/document/field hoặc chạy EF migration cho công việc chuyển đổi này.
+- Giữ nguyên frontend, URL, HTTP method, query, body, response, mã lỗi, thông báo lỗi, header, điều kiện phân quyền và transaction.
+- Không lưu service account vào mã nguồn, frontend hoặc tài liệu. Giữ cấu hình bí mật ở phía server.
+- Mỗi bước chuyển một file nghiệp vụ, đối chiếu nguồn và kiểm tra trước khi chuyển file tiếp theo. Không xóa file JS hoặc chuyển lưu lượng khi các phụ thuộc và hợp đồng API chưa được kiểm chứng.
+
+## Hiện trạng và phần cần phân tích tiếp
+
+Đã kiểm kê 32 file trong `backend/`, rà soát import/export, điểm vào API và các collection được tham chiếu. Đây là kiểm kê ban đầu, **chưa phải xác nhận đã phân tích đầy đủ mọi nhánh nghiệp vụ**. Cần hoàn thành phân tích chi tiết toàn bộ backend cùng các module chia sẻ ngoài thư mục trước khi chuyển các luồng thực thi/API.
+
+Nhánh riêng `codex/aspnet-sql-server` có `ProductsController` và `AccountController` dùng SQL Server. Các endpoint này chưa tương đương backend Firestore và không được coi là đã chuyển đổi xong. Không đưa khung SQL Server đó vào main trong bước chuyển đổi này. Main bắt đầu với project Application độc lập, không có phụ thuộc SQL Server.
+
+Các nhóm cần đối chiếu chi tiết:
+
+| Nhóm | File nguồn | Điểm cần bảo toàn |
+| --- | --- | --- |
+| shared | firebase-admin, request-identity, admin-audit, api-routes | Token bị thu hồi, claim admin và document adminRoles, owner, lỗi 401/403/503, session local, audit trong transaction, query route |
+| accounts | password-auth, login-protection, login | Firebase password provider, kiểm tra public API key bị chặn, lease transaction, khóa tăng dần, reset mật khẩu, custom token |
+| admin | roles, users, owner-users, audit | Claims và adminRoles, phân trang, không tự đổi quyền owner, audit |
+| catalog | image-rules, product-images, review-images, products, flower-prices | Bytes/JPEG, quyền xem ảnh, chuẩn hóa sản phẩm/ảnh cũ, giá nguyên VND, owner và lịch sử giá |
+| shop-settings | delivery-zones, bouquet-wrapping | Metadata hiện tại, vùng trùng, bậc phí, public/manage, audit nguyên tử |
+| orders | config, validation, pricing, checkout, reservations, tracking, payment-admin, reviews, controller | Giá/khuyến mãi/phí, lịch Việt Nam, giới hạn giỏ hàng, idempotency, chống vượt kho, thời hạn giữ hàng, hoàn kho một lần, tra cứu, đối soát/hoàn tiền, quyền đánh giá |
+| payments | vnpay, payments, vnpay-ipn | Canonical query/HMAC, attempt/retry, idempotency IPN, kiểm tra tiền, hết hạn và hoàn kho |
+| design-requests | validation, controller | Token truy cập, lựa chọn thiết kế, quote/reply, quyền và lịch sử |
+
+Backend còn import module frontend dùng chung như `product-store.js`, `bouquet-options.js`, `bouquet-wrapping.js`, cùng `lib/local-session.js`. Cần chuyển phần quy tắc dùng ở server mà vẫn giữ nguyên các file frontend. Các API rewrite `/api/flower-prices`, `/api/bouquet-wrapping`, `/api/admin/audit` và dạng `?route=` cần được đối chiếu riêng.
+
+## File 01: orders/config.js
+
+Đích: `src/FlowerFlow.Application/Orders/OrderConfig.cs`.
+
+Đã chuyển đủ 9 export, giữ nguyên giá trị và đơn vị milliseconds:
+
+| JavaScript | C# | Giá trị |
+| --- | --- | --- |
+| MAX_QUANTITY_PER_PRODUCT | MaxQuantityPerProduct | 50 |
+| QR_RESERVATION_MS | QrReservationMs | 1800000 |
+| VNPAY_RESERVATION_MS | VnpayReservationMs | 900000 |
+| COD_RESERVATION_MS | CodReservationMs | 1800000 |
+| ORDER_LOOKUP_WINDOW_MS | OrderLookupWindowMs | 600000 |
+| ORDER_LOOKUP_MAX_ATTEMPTS | OrderLookupMaxAttempts | 20 |
+| DELIVERY_TIME_WINDOWS | DeliveryTimeWindows | 08:00–11:00; 11:00–14:00; 14:00–17:00; 17:00–20:00 |
+| DELIVERY_TIME_ZONE | DeliveryTimeZone | Asia/Ho_Chi_Minh |
+| MAX_ORDER_NOTE_LENGTH | MaxOrderNoteLength | 500 |
+
+Danh sách khung giờ giữ đúng ký tự en dash của nguồn và được cung cấp dạng chỉ đọc. File không truy cập database, không thay đổi endpoint và chưa được nối vào các luồng C# khác. Việc chuyển file này chưa có nghĩa API đơn hàng đã chạy bằng C#.
+
+Khung ASP.NET Core Web API đã có solution `FlowerFlow.sln` và bốn project Api, Application, Domain, Infrastructure. `OrderConfig.cs` được đặt trong Application/Orders. Có CI build .NET riêng, không thay đổi các job kiểm thử JavaScript hiện tại.
+
+Kiểm tra từ gốc repository: `dotnet build aspnet/FlowerFlow.sln --configuration Release --nologo` thành công, 0 warning và 0 error. Chạy API Release và gọi `/health` thực tế: HTTP 200, `Cache-Control: no-store`, body `{"status":"ok","service":"flowerflow-api"}`. Đây là kiểm tra khung HTTP và biên dịch, chưa phải kiểm tra tích hợp Firebase hoặc xác nhận tương đương API nghiệp vụ.
+
+Bước tiếp theo: hoàn thành phân tích chi tiết backend trước khi chuyển các file có logic thực thi; ưu tiên nền tảng Firebase/Firestore và phân quyền trước các controller.
