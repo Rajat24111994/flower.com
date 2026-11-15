@@ -117,3 +117,16 @@ sealed class TestFirebaseAccounts : IFirebaseAccounts
     public Task<string> CreateCustomTokenAsync(string uid, CancellationToken cancellationToken)
     { TokenCreations++; return Task.FromResult("custom-" + uid); }
 }
+
+sealed class TestPasswordProvider(string key) : IPasswordAuth
+{
+    public bool Valid { get; set; }
+    public bool Outage { get; set; }
+    public int Verifications { get; private set; }
+    public string? LastEmail { get; private set; }
+    public Task AssertReadyAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+    public Task<PasswordAccount> LookupAsync(string email, CancellationToken cancellationToken = default)
+    { LastEmail = email; return Task.FromResult(new PasswordAccount(key, "login-user", 1)); }
+    public Task<bool> VerifyPasswordAsync(string email, string password, PasswordAccount account, CancellationToken cancellationToken = default)
+    { Verifications++; if (Outage) throw new Exception("private-provider-detail"); return Task.FromResult(Valid); }
+}

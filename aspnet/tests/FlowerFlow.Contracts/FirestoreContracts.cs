@@ -413,5 +413,36 @@ static class FirestoreContracts
             && lateData.GetValue<string>("status") == "Đã hủy" && lateData.GetValue<string>("inventoryState") == "released", "Late payment silently restored cancelled stock/order");
         await adminRef.DeleteAsync();
         Console.WriteLine("PASS: QR exact amount, one-time verification/refund, transactional audit and late payment without restoring released stock.");
+        var loginAccounts = new TestFirebaseAccounts(); var loginProvider = new TestPasswordProvider("http-login-" + suffix);
+        long loginNow = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        var login = new LoginHandler(loginAccounts, () => loginProvider, () => new LoginProtection(db, () => loginNow));
+        for (var failure = 1; failure <= 5; failure++)
+        {
+            var request = JsonContext("{\"email\":\" User@Example.Invalid \",\"password\":\"bad\"}"); await login.HandleAsync(request);
+            AdditionalContracts.Require(request.Response.StatusCode == (failure < 5 ? 401 : 429), "Login HTTP lock policy changed");
+            if (failure == 5) AdditionalContracts.Require(request.Response.Headers.RetryAfter == "900", "Login retry-after changed");
+        }
+        loginProvider.Valid = true; var lockedLogin = JsonContext("{\"email\":\"user@example.invalid\",\"password\":\"correct\"}");
+        await login.HandleAsync(lockedLogin);
+        AdditionalContracts.Require(lockedLogin.Response.StatusCode == 429 && loginProvider.Verifications == 5 && loginAccounts.TokenCreations == 0,
+            "Locked account reached password check or custom token minting");
+        loginNow += 15 * 60_000L; var goodLogin = JsonContext("{\"email\":\"user@example.invalid\",\"password\":\"correct\"}");
+        await login.HandleAsync(goodLogin);
+        using var loginBody = JsonDocument.Parse(((MemoryStream)goodLogin.Response.Body).ToArray());
+        AdditionalContracts.Require(goodLogin.Response.StatusCode == 200 && loginAccounts.TokenCreations == 1
+            && loginBody.RootElement.EnumerateObject().Single().Name == "customToken" && loginProvider.LastEmail == "user@example.invalid",
+            "Protected login did not return only customToken");
+        loginProvider.Outage = true; var outageLogin = JsonContext("{\"email\":\"user@example.invalid\",\"password\":\"correct\"}"); await login.HandleAsync(outageLogin);
+        var outageState = await db.Collection("loginProtection").Document("http-login-" + suffix).GetSnapshotAsync();
+        AdditionalContracts.Require(outageLogin.Response.StatusCode == 503 && outageState.GetValue<double>("failures") == 0
+            && loginAccounts.TokenCreations == 1 && !Encoding.UTF8.GetString(((MemoryStream)outageLogin.Response.Body).ToArray()).Contains("private-provider-detail"),
+            "Login provider outage counted failure, minted token or leaked details");
+        loginProvider.Outage = false; loginProvider.Valid = false;
+        var disconnectedLogin = JsonContext("{\"email\":\"user@example.invalid\",\"password\":\"wrong\"}");
+        await JsonInput.ReadAsync(disconnectedLogin); disconnectedLogin.RequestAborted = new CancellationToken(true);
+        try { await login.HandleAsync(disconnectedLogin); } catch (OperationCanceledException) { }
+        AdditionalContracts.Require((await db.Collection("loginProtection").Document("http-login-" + suffix).GetSnapshotAsync()).GetValue<double>("failures") == 1,
+            "Disconnect bypassed wrong-password accounting");
+        Console.WriteLine("PASS: login HTTP normalization/errors, lock retry-after, no password check while locked, custom-token-only success and provider outage cleanup.");
     }
 }

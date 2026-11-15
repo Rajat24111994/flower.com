@@ -35,6 +35,8 @@ builder.Services.AddSingleton(_ => FrontendFirebaseConfig.Load(Path.Combine(AppC
 builder.Services.AddHttpClient<PasswordAuth>(client => client.Timeout = TimeSpan.FromSeconds(10))
     .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false }).RemoveAllLoggers();
 builder.Services.AddSingleton<Func<IPasswordAuth>>(services => () => services.GetRequiredService<PasswordAuth>());
+builder.Services.AddSingleton<Func<LoginProtection>>(services => () => new LoginProtection(services.GetRequiredService<FirebaseAdminBackend>().GetAdminFirestore()));
+builder.Services.AddSingleton<LoginHandler>();
 
 var app = builder.Build();
 
@@ -48,6 +50,7 @@ app.Map("/api/delivery-zones", (HttpContext context, DeliveryZonesHandler handle
 app.Map("/api/flower-prices", (HttpContext context, FlowerPricesHandler handler) => handler.HandleAsync(context));
 app.Map("/api/products", (HttpContext context, ProductsHandler handler) => handler.HandleAsync(context));
 app.Map("/api/design-requests", (HttpContext context, DesignRequestsHandler handler) => handler.HandleAsync(context));
+app.Map("/api/login", (HttpContext context, LoginHandler handler) => handler.HandleAsync(context));
 app.Run();
 
 public partial class Program;

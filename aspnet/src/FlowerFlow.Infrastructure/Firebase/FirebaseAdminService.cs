@@ -34,6 +34,7 @@ public sealed class FirebaseAdminBackend : IFirebaseAdminBackend, IDisposable
     private FirebaseApp? _app;
     private FirestoreDb? _firestore;
     private GoogleCredential? _credential;
+    private GoogleCredential? _identityCredential;
     private bool _disposed;
 
     private FirebaseApp GetAdminApp()
@@ -71,6 +72,7 @@ public sealed class FirebaseAdminBackend : IFirebaseAdminBackend, IDisposable
                     ProjectId = string.IsNullOrEmpty(projectId) ? accountProjectId : projectId
                 }, "flowerflow-" + Guid.NewGuid().ToString("N"));
                 _credential = credential;
+                _identityCredential = credential.CreateScoped("https://www.googleapis.com/auth/identitytoolkit");
                 return _app;
             }
             catch
@@ -82,9 +84,11 @@ public sealed class FirebaseAdminBackend : IFirebaseAdminBackend, IDisposable
 
     public FirebaseAuth GetAdminAuth() => FirebaseAuth.GetAuth(GetAdminApp());
     public string ProjectId => GetAdminApp().Options.ProjectId;
-    public Task<string> GetAccessTokenAsync(CancellationToken cancellationToken = default) =>
-        ((ITokenAccess)GetAdminApp().Options.Credential.CreateScoped("https://www.googleapis.com/auth/identitytoolkit"))
-            .GetAccessTokenForRequestAsync(cancellationToken: cancellationToken);
+    public Task<string> GetAccessTokenAsync(CancellationToken cancellationToken = default)
+    {
+        GetAdminApp();
+        return ((ITokenAccess)_identityCredential!).GetAccessTokenForRequestAsync(cancellationToken: cancellationToken);
+    }
 
     public FirestoreDb GetAdminFirestore()
     {
