@@ -11,9 +11,24 @@ using FlowerFlow.Application.Compatibility;
 using FlowerFlow.Infrastructure.Orders;
 using Google.Cloud.Firestore;
 using FlowerFlow.Infrastructure.DesignRequests;
+using FlowerFlow.Infrastructure.Local;
 
 static class AdditionalContracts
 {
+    public static void LocalSessionCookies()
+    {
+        var context = new DefaultHttpContext(); context.Request.Headers.Cookie = new Microsoft.Extensions.Primitives.StringValues(
+            new[] { "flower_local_session=one", "flower_local_session=two" });
+        Require(LocalSession.SessionCookie(context) == "" && LocalSession.SessionCookies(context).Count == 2, "Repeated Cookie headers selected an identity");
+        context.Request.Headers.Cookie = "other=1; flower_local_session=token";
+        Require(LocalSession.SessionCookie(context) == "token", "Local session cookie parsing changed");
+        context.Request.Scheme = "https"; LocalSession.SetSessionCookie(context, "token", DateTimeOffset.Parse("2026-11-15T00:00:00Z"));
+        Require(context.Response.Headers.SetCookie == "flower_local_session=token; Path=/; HttpOnly; SameSite=Strict; Max-Age=43200; Expires=Sun, 15 Nov 2026 12:00:00 GMT; Secure", "Session cookie policy changed");
+        LocalSession.SetSessionCookie(context);
+        Require(context.Response.Headers.SetCookie.ToString().Contains("Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT"), "Session logout cookie not expired");
+        Console.WriteLine("PASS: local session cookie ambiguity, HTTP-only strict policy, 12-hour expiry and secure/logout attributes.");
+    }
+
     public static async Task CheckoutFingerprintsAsync(string root)
     {
         using var cases = await OracleAsync(root, "checkout-fingerprint-oracle.cjs");

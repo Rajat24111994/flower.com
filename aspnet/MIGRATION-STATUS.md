@@ -11,7 +11,7 @@
 
 ## Hiện trạng và phần cần phân tích tiếp
 
-Đã kiểm kê 32 file trong `backend/`, rà soát import/export, điểm vào API và các collection được tham chiếu. Đây là kiểm kê ban đầu, **chưa phải xác nhận đã phân tích đầy đủ mọi nhánh nghiệp vụ**. Cần hoàn thành phân tích chi tiết toàn bộ backend cùng các module chia sẻ ngoài thư mục trước khi chuyển các luồng thực thi/API.
+Đã đọc 32 file trong `backend/`, đối chiếu import/export, nhánh xử lý, điểm vào API, collection và các module frontend dùng chung. Mỗi file có bản C# và kiểm thử được ghi ở các bước 01–32 bên dưới. Tiếp tục chuyển các thư viện server trong `lib/` để chế độ chạy local cũng dùng C#; không coi việc hoàn thành 32 module là hoàn thành toàn bộ runtime nếu local server còn Node.
 
 Nhánh riêng `codex/aspnet-sql-server` có `ProductsController` và `AccountController` dùng SQL Server. Các endpoint này chưa tương đương backend Firestore và không được coi là đã chuyển đổi xong. Không đưa khung SQL Server đó vào main trong bước chuyển đổi này. Main bắt đầu với project Application độc lập, không có phụ thuộc SQL Server.
 
@@ -205,3 +205,7 @@ Kết quả kiểm tra file 02:
 ## File 32: payments/vnpay-ipn.js
 
 Đích: `src/FlowerFlow.Infrastructure/Payments/VnpayIpnHandler.cs`, `/api/vnpay-ipn`. Giữ GET/HMAC/TmnCode/txnRef/currency/số tiền, gateway response HTTP 200 với đúng RspCode/Message viết hoa, transaction attempt+order, duplicate callback, failure cũ không ghi đè attempt hiện tại, thanh toán thêm/trễ cần attention không khôi phục kho tự động. Test emulator: chữ ký sai/tiền sai không đổi dữ liệu, success/duplicate, failed attempt cũ, extra payment, cancelled late payment và thiếu cấu hình.
+
+## File 33: lib/local-session.js
+
+Đích: `src/FlowerFlow.Infrastructure/Local/LocalSession.cs`. Giữ cookie 12 giờ, HttpOnly/SameSite Strict/Path, Secure khi HTTPS, xóa cookie epoch và từ chối cookie mơ hồ. RequestIdentity dùng helper chung này; nhiều Cookie header được xét như Node nối cookie header bằng dấu chấm phẩy, không chọn nhầm danh tính. Test thuộc tính cookie và nhiều header.

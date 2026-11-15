@@ -2,6 +2,7 @@ using System.Text.RegularExpressions;
 using FirebaseAdmin.Auth;
 using FlowerFlow.Infrastructure.Firebase;
 using Microsoft.AspNetCore.Http;
+using FlowerFlow.Infrastructure.Local;
 
 namespace FlowerFlow.Infrastructure.Http;
 
@@ -24,13 +25,7 @@ public sealed class RequestIdentity(IFirebaseAdminBackend backend)
 
     public static bool HasLocalIdentity(HttpContext context) => context.Items.ContainsKey(LocalIdentityKey);
 
-    public static string? SessionCookie(HttpContext context)
-    {
-        const string prefix = "flower_local_session=";
-        var cookies = context.Request.Headers.Cookie.ToString().Split(';').Select(part => part.Trim())
-            .Where(part => part.StartsWith(prefix, StringComparison.Ordinal)).Select(part => part[prefix.Length..]).ToArray();
-        return cookies.Length > 1 ? "" : cookies.FirstOrDefault();
-    }
+    public static string? SessionCookie(HttpContext context) => LocalSession.SessionCookie(context);
 
     public async Task<FirebaseIdentity?> OptionalCustomerAsync(HttpContext context)
     {

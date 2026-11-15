@@ -109,6 +109,7 @@ await AdditionalContracts.TrackingAsync(root);
 await AdditionalContracts.DesignValidationAsync(root);
 await PasswordContracts.RunAsync();
 await AdditionalContracts.CheckoutFingerprintsAsync(root);
+AdditionalContracts.LocalSessionCookies();
 if (args.Contains("--firestore-emulator")) await FirestoreContracts.RunAsync();
 
 static void Assert(bool condition, string message)
