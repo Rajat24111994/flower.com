@@ -61,8 +61,17 @@ public static class Js
     private static string NumberString(double number)
     {
         if (number == 0) return "0";
-        if (Math.Abs(number) is >= 0.000001 and < 1e21) return number.ToString("0.##############################", CultureInfo.InvariantCulture);
-        var text = number.ToString("G", CultureInfo.InvariantCulture).Replace('E', 'e');
+        var text = number.ToString("R", CultureInfo.InvariantCulture).Replace('E', 'e');
+        if (Math.Abs(number) is >= 0.000001 and < 1e21 && text.Contains('e'))
+        {
+            var parts = text.Split('e'); var negative = parts[0].StartsWith('-');
+            var coefficient = parts[0].TrimStart('-'); var dot = coefficient.IndexOf('.');
+            var digits = coefficient.Replace(".", "");
+            var position = (dot < 0 ? coefficient.Length : dot) + int.Parse(parts[1], CultureInfo.InvariantCulture);
+            var expanded = position <= 0 ? "0." + new string('0', -position) + digits
+                : position >= digits.Length ? digits + new string('0', position - digits.Length) : digits.Insert(position, ".");
+            return (negative ? "-" : "") + expanded;
+        }
         return System.Text.RegularExpressions.Regex.Replace(text, @"e([+-])0+([0-9])", "e$1$2");
     }
 }

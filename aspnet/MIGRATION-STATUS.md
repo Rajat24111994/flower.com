@@ -133,3 +133,7 @@ Kết quả kiểm tra file 02:
 ## File 14: shop-settings/delivery-zones.js
 
 Đích: `src/FlowerFlow.Infrastructure/ShopSettings/DeliveryZonesHandler.cs`. Giữ coercion và validation zone, phí số nguyên, enabled boolean, trùng tỉnh/quận không phân biệt hoa/thường tiếng Việt, public/manage, upsert/delete và audit trong transaction, alias `?route=bouquet-wrapping`. Kèm adapter JS coercion dùng chung cho các bước tiếp theo. Test emulator: upsert/delete, trùng địa bàn trả 409, public ẩn vùng disabled/manage hiện đầy đủ, alias cũ hoạt động.
+
+## File 15: orders/validation.js
+
+Đích: `src/FlowerFlow.Application/Orders/OrderValidation.cs`, kèm server copy của normalize/demand từ bouquet-options.js. Giữ nguyên chuẩn hóa điện thoại, checkout/quote/items/options, UUID v4, expectedTotals safe integer, recipient fallback, khung giờ và cutoff 15:00 Việt Nam, ngày Gregorian kể cả năm 0000. Đối chiếu trực tiếp JS các biên dữ liệu, coercion số, duplicate cart lines, tùy chọn bó hoa và lịch giao ở hai phía cutoff. Frontend giữ nguyên.

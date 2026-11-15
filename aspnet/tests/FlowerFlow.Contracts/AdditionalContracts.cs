@@ -6,9 +6,28 @@ using FlowerFlow.Infrastructure.Http;
 using Microsoft.AspNetCore.Http;
 using FlowerFlow.Infrastructure.Firebase;
 using FlowerFlow.Application.Payments;
+using FlowerFlow.Application.Orders;
 
 static class AdditionalContracts
 {
+    public static async Task OrderValidationAsync(string root)
+    {
+        using var cases = await OracleAsync(root, "order-validation-oracle.cjs"); var count = 0;
+        foreach (var test in cases.RootElement.GetProperty("results").EnumerateArray())
+        {
+            var body = test.GetProperty("body");
+            var actual = test.GetProperty("type").GetString() == "checkout" ? OrderValidation.ValidateCheckout(body) : OrderValidation.ValidateQuote(body);
+            Require(JsonNode.DeepEquals(JsonSerializer.SerializeToNode(actual), JsonNode.Parse(test.GetProperty("expected").GetRawText())),
+                $"Order validation case {count} differs from JS: {body}"); count++;
+        }
+        foreach (var test in cases.RootElement.GetProperty("schedules").EnumerateArray())
+        {
+            Require(OrderValidation.DeliveryScheduleError(test.GetProperty("date").GetString()!, test.GetProperty("time").GetString()!,
+                DateTimeOffset.Parse(test.GetProperty("now").GetString()!)) == test.GetProperty("expected").GetString(), "Delivery schedule differs from JS"); count++;
+        }
+        Console.WriteLine($"PASS: {count} order normalization, checkout/quote validation and Vietnam delivery schedule cases matched JS.");
+    }
+
     public static async Task VnpayAsync(string root)
     {
         using var cases = await OracleAsync(root, "vnpay-oracle.cjs");
