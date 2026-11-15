@@ -161,3 +161,7 @@ Kết quả kiểm tra file 02:
 ## File 21: design-requests/validation.js
 
 Đích: `src/FlowerFlow.Infrastructure/DesignRequests/DesignValidation.cs`. Giữ toàn bộ lựa chọn/giới hạn, chuẩn hóa thiết kế/cành/màu, phụ kiện và budget, chữ ký ảnh JPEG/PNG/WebP, token SHA-256 constant-time, dữ liệu public loại accessTokenHash và history. Đối chiếu trực tiếp với JS cả các quy tắc dễ sai như paperLayers số 0 so với chuỗi "0", addons trùng/coercion, null design và hex token có hậu tố (Buffer.from semantics).
+
+## File 22: design-requests/controller.js
+
+Đích: `src/FlowerFlow.Infrastructure/DesignRequests/DesignRequestsHandler.cs`, `/api/design-requests`. Giữ create/lookup/manage/respond/admin-update, token ngẫu nhiên chỉ lưu hash, kiểm tra màu/kho/giá hoa hiện tại, estimate không tính phí giao và không giữ kho, phí gói, báo giá và history/state transaction. Giữ cả response snapshot history cũ ở respond/admin-update như JS. Test emulator: tạo và ước tính không trừ kho, lookup không lộ hash, admin báo giá, khách xác nhận và trạng thái lưu đúng.

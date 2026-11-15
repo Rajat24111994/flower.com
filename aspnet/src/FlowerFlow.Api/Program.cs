@@ -5,6 +5,7 @@ using Google.Cloud.Firestore;
 using FlowerFlow.Infrastructure.Admin;
 using FlowerFlow.Infrastructure.ShopSettings;
 using FlowerFlow.Infrastructure.Orders;
+using FlowerFlow.Infrastructure.DesignRequests;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -25,6 +26,7 @@ builder.Services.AddSingleton<OrderTracking>();
 builder.Services.AddSingleton<FlowerPricesHandler>();
 builder.Services.AddSingleton(_ => new ProductCatalog(Path.Combine(AppContext.BaseDirectory, "catalog", "flower.json")));
 builder.Services.AddSingleton<ProductsHandler>();
+builder.Services.AddSingleton<DesignRequestsHandler>();
 
 var app = builder.Build();
 
@@ -37,6 +39,7 @@ app.Map("/api/bouquet-wrapping", (HttpContext context, BouquetWrappingHandler ha
 app.Map("/api/delivery-zones", (HttpContext context, DeliveryZonesHandler handler) => handler.HandleAsync(context));
 app.Map("/api/flower-prices", (HttpContext context, FlowerPricesHandler handler) => handler.HandleAsync(context));
 app.Map("/api/products", (HttpContext context, ProductsHandler handler) => handler.HandleAsync(context));
+app.Map("/api/design-requests", (HttpContext context, DesignRequestsHandler handler) => handler.HandleAsync(context));
 app.Run();
 
 public partial class Program;

@@ -12,6 +12,7 @@ using FlowerFlow.Infrastructure.Admin;
 using FlowerFlow.Infrastructure.ShopSettings;
 using FlowerFlow.Infrastructure.Orders;
 using FlowerFlow.Infrastructure.Http;
+using FlowerFlow.Infrastructure.DesignRequests;
 
 static class FirestoreContracts
 {
@@ -341,5 +342,30 @@ static class FirestoreContracts
             "Manage catalog missing hidden product");
         await adminRef.DeleteAsync();
         Console.WriteLine("PASS: product catalog field preservation, legacy title/image repairs, public/manage visibility and timestamp conversion.");
+        var designHandler = new DesignRequestsHandler(() => db, new FakeBackend(identityCase.RootElement), auditAuth, NullLogger<DesignRequestsHandler>.Instance);
+        await db.Collection("metadata").Document("deliveryZones").SetAsync(new { zones = new[] { new { id = "design-zone", province = "Hà Nội", district = "Ba Đình", fee = 25000, enabled = true } } });
+        await flowerRef.UpdateAsync(new Dictionary<string, object> { ["quantity"] = 10, ["colors"] = new[] { "red", "pink" } });
+        var designCreate = JsonContext(JsonSerializer.Serialize(new { action = "create", customerName = "Khách thiết kế", phone = "0901234567", address = "Địa chỉ",
+            deliveryDate = DateTimeOffset.UtcNow.ToOffset(TimeSpan.FromHours(7)).Date.AddDays(1).ToString("yyyy-MM-dd"), deliveryTime = "08:00–11:00", deliveryZoneId = "design-zone",
+            design = new { wrapStyle = "Không gói" }, stems = new[] { new { productId = flowerRef.Id, quantity = 2, color = "đỏ", role = "main" } } }));
+        designCreate.Request.Headers.Remove("Authorization"); await designHandler.HandleAsync(designCreate);
+        using var designCreated = JsonDocument.Parse(((MemoryStream)designCreate.Response.Body).ToArray());
+        AdditionalContracts.Require(designCreate.Response.StatusCode == 201, "Design request creation failed: " + designCreated.RootElement);
+        var designId = designCreated.RootElement.GetProperty("request").GetProperty("id").GetString()!;
+        var designToken = designCreated.RootElement.GetProperty("accessToken").GetString()!;
+        AdditionalContracts.Require(designCreated.RootElement.GetProperty("request").GetProperty("estimatedTotal").GetDouble() == 24000
+            && (await flowerRef.GetSnapshotAsync()).GetValue<double>("quantity") == 10, "Design estimate or non-reservation behavior changed");
+        var designLookup = ImageContext(""); designLookup.Request.QueryString = new QueryString("?id=" + designId + "&token=" + designToken);
+        await designHandler.HandleAsync(designLookup);
+        using var designLookedUp = JsonDocument.Parse(((MemoryStream)designLookup.Response.Body).ToArray());
+        AdditionalContracts.Require(designLookup.Response.StatusCode == 200
+            && !designLookedUp.RootElement.GetProperty("request").TryGetProperty("accessTokenHash", out _), "Design token hash exposed");
+        var designQuote = JsonContext(JsonSerializer.Serialize(new { action = "admin-update", id = designId, status = "Chờ khách xác nhận", quotedTotal = 50000, quoteNote = "Bó đỏ" }));
+        await designHandler.HandleAsync(designQuote); AdditionalContracts.Require(designQuote.Response.StatusCode == 200, "Admin design quote failed");
+        var designAccept = JsonContext(JsonSerializer.Serialize(new { action = "respond", id = designId, accessToken = designToken, response = "accept" }));
+        await designHandler.HandleAsync(designAccept); AdditionalContracts.Require(designAccept.Response.StatusCode == 200, "Design quote acceptance failed");
+        AdditionalContracts.Require((await db.Collection("designRequests").Document(designId).GetSnapshotAsync()).GetValue<string>("status") == "Đang thực hiện",
+            "Design quote acceptance not persisted");
+        Console.WriteLine("PASS: design creation/estimate without stock reservation, secret-token lookup, admin quote and customer acceptance.");
     }
 }
