@@ -113,3 +113,7 @@ Kết quả kiểm tra file 02:
 ## File 09: payments/vnpay.js
 
 Đích: `src/FlowerFlow.Application/Payments/Vnpay.cs`. Giữ cấu hình sandbox/production, thời gian Việt Nam, ký HMAC-SHA512 và so sánh constant-time, mã tham chiếu/số tiền hợp lệ, giới hạn số tiền nhân 100, IP fallback và form encoding của URLSearchParams. Kiểm thử đối chiếu canonical query, chữ ký và URL đã ký chính xác với JS (Unicode, khoảng trắng, ký tự đặc biệt, IP không hợp lệ), biên số tiền và thiếu cấu hình. Chưa chuyển payments/IPN handler.
+
+## File 10: catalog/review-images.js
+
+Đích: `src/FlowerFlow.Infrastructure/Catalog/ReviewImagesHandler.cs`, route `/api/review-images` trên API C#. Giữ GET, regex id, ảnh approved công khai/ảnh pending chỉ tác giả hoặc admin có role sống, token thu hồi, photoIds và reviewId khớp, bytes JPEG, private/no-store và nosniff, lỗi tiếng Việt. Test emulator: pending không lộ cho guest, tác giả xem được, approved public, bytes/header, từ chối ảnh thuộc review khác. Chưa chuyển traffic từ Vercel.

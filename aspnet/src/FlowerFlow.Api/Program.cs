@@ -1,5 +1,7 @@
 using FlowerFlow.Infrastructure.Firebase;
 using FlowerFlow.Infrastructure.Http;
+using FlowerFlow.Infrastructure.Catalog;
+using Google.Cloud.Firestore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -9,11 +11,14 @@ builder.Services.AddSingleton<FirebaseAdminBackend>();
 builder.Services.AddSingleton<IFirebaseAdminBackend>(services => services.GetRequiredService<FirebaseAdminBackend>());
 builder.Services.AddSingleton<FirebaseAdminService>();
 builder.Services.AddSingleton<RequestIdentity>();
+builder.Services.AddSingleton<Func<FirestoreDb>>(services => () => services.GetRequiredService<FirebaseAdminBackend>().GetAdminFirestore());
+builder.Services.AddSingleton<ReviewImagesHandler>();
 
 var app = builder.Build();
 
 app.UseExceptionHandler();
 app.MapControllers();
+app.Map("/api/review-images", (HttpContext context, ReviewImagesHandler handler) => handler.HandleAsync(context));
 app.Run();
 
 public partial class Program;

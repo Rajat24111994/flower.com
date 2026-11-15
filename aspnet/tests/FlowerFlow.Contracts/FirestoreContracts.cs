@@ -2,6 +2,10 @@ using FlowerFlow.Infrastructure.Firebase;
 using Google.Cloud.Firestore;
 using Grpc.Core;
 using FlowerFlow.Infrastructure.Accounts;
+using FlowerFlow.Infrastructure.Catalog;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging.Abstractions;
+using System.Text.Json;
 
 static class FirestoreContracts
 {
@@ -101,5 +105,34 @@ static class FirestoreContracts
         AdditionalContracts.Require(concurrent.Count(result => result.Code is null) == 1
             && concurrent.Count(result => result.Code == "login-in-progress") == 1, "Concurrent login lease not serialized");
         Console.WriteLine("PASS: Firestore login leases, concurrent requests, escalating locks, reset version and provider outages.");
+        var reviewId = Guid.NewGuid().ToString("N") + "00000000";
+        var photoId = reviewId + "_0";
+        var reviewRef = db.Collection("reviews").Document(reviewId);
+        var bytes = new byte[] { 0xff, 0xd8, 0xff, 0xd9 };
+        await reviewRef.SetAsync(new { authorUid = "user-a", moderationStatus = "pending", photoIds = new[] { photoId } });
+        await db.Collection("reviewImages").Document(photoId).SetAsync(new { reviewId, bytes });
+        using var identityCase = JsonDocument.Parse("{\"claims\":{\"uid\":\"user-a\"}}");
+        var imageHandler = new ReviewImagesHandler(() => db, new FakeBackend(identityCase.RootElement), NullLogger<ReviewImagesHandler>.Instance);
+        static DefaultHttpContext ImageContext(string photo, string? bearer = null)
+        {
+            var context = new DefaultHttpContext(); context.Request.Method = "GET";
+            context.Request.QueryString = new QueryString("?id=" + photo); context.Response.Body = new MemoryStream();
+            if (bearer is not null) context.Request.Headers.Authorization = bearer;
+            return context;
+        }
+        var hiddenPhoto = ImageContext(photoId); await imageHandler.HandleAsync(hiddenPhoto);
+        AdditionalContracts.Require(hiddenPhoto.Response.StatusCode == 404, "Pending review image exposed to guest");
+        var ownPhoto = ImageContext(photoId, "Bearer token"); await imageHandler.HandleAsync(ownPhoto);
+        AdditionalContracts.Require(ownPhoto.Response.StatusCode == 200
+            && ((MemoryStream)ownPhoto.Response.Body).ToArray().SequenceEqual(bytes), "Author cannot view own image");
+        await reviewRef.UpdateAsync(new Dictionary<string, object> { ["moderationStatus"] = "approved" });
+        var approvedPhoto = ImageContext(photoId); await imageHandler.HandleAsync(approvedPhoto);
+        AdditionalContracts.Require(approvedPhoto.Response.StatusCode == 200 && approvedPhoto.Response.ContentType == "image/jpeg"
+            && approvedPhoto.Response.Headers.CacheControl == "private, no-store" && approvedPhoto.Response.Headers.XContentTypeOptions == "nosniff",
+            "Approved image response differs");
+        await db.Collection("reviewImages").Document(photoId).UpdateAsync(new Dictionary<string, object> { ["reviewId"] = "other-review" });
+        var unrelated = ImageContext(photoId); await imageHandler.HandleAsync(unrelated);
+        AdditionalContracts.Require(unrelated.Response.StatusCode == 404, "Unrelated photo exposed");
+        Console.WriteLine("PASS: review image author/guest visibility, original bytes, response headers and review ownership.");
     }
 }
