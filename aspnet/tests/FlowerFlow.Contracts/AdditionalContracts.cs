@@ -7,9 +7,40 @@ using Microsoft.AspNetCore.Http;
 using FlowerFlow.Infrastructure.Firebase;
 using FlowerFlow.Application.Payments;
 using FlowerFlow.Application.Orders;
+using FlowerFlow.Application.Compatibility;
 
 static class AdditionalContracts
 {
+    public static async Task PricingAsync(string root)
+    {
+        using var cases = await OracleAsync(root, "order-pricing-oracle.cjs"); var count = 0;
+        foreach (var test in cases.RootElement.EnumerateArray())
+        {
+            var input = test.GetProperty("input"); object? result = null; BackendException? error = null;
+            List<Dictionary<string, object>> Items() => (Js.Object(Js.Get(input, "items")) as List<object?> ?? [])
+                .Select(item => (Dictionary<string, object>)item!).ToList();
+            try
+            {
+                result = test.GetProperty("method").GetString() switch
+                {
+                    "price" => OrderPricing.GetProductPrice(input),
+                    "cart" => OrderPricing.PriceCart(Items(), Js.Object(Js.Get(input, "promotion")) as Dictionary<string, object>),
+                    "promotion" => OrderPricing.FindPromotion(Js.Get(input, "promotions"), Js.Get(input, "id").GetString(), DateTimeOffset.Parse("2026-11-15T12:00:00Z")),
+                    "aggregate" => OrderPricing.AggregateItems(Js.Get(input, "items")),
+                    "bouquets" => OrderPricing.CalculateCustomBouquets(Items(), Js.Get(input, "tiers")),
+                    _ => throw new Exception("Unknown pricing test")
+                };
+            }
+            catch (BackendException failure) { error = failure; }
+            if (test.TryGetProperty("code", out var code))
+                Require(error is not null && error.Code == code.GetString() && error.Message == test.GetProperty("message").GetString(), "Pricing business error differs from JS");
+            else Require(error is null && JsonNode.DeepEquals(JsonSerializer.SerializeToNode(result), JsonNode.Parse(test.GetProperty("expected").GetRawText())),
+                $"Pricing case {count} differs from JS: {input}");
+            count++;
+        }
+        Console.WriteLine($"PASS: {count} VND pricing, promotion, rounding, inventory aggregation and custom bouquet cases matched JS.");
+    }
+
     public static async Task OrderValidationAsync(string root)
     {
         using var cases = await OracleAsync(root, "order-validation-oracle.cjs"); var count = 0;

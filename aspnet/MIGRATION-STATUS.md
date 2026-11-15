@@ -137,3 +137,7 @@ Kết quả kiểm tra file 02:
 ## File 15: orders/validation.js
 
 Đích: `src/FlowerFlow.Application/Orders/OrderValidation.cs`, kèm server copy của normalize/demand từ bouquet-options.js. Giữ nguyên chuẩn hóa điện thoại, checkout/quote/items/options, UUID v4, expectedTotals safe integer, recipient fallback, khung giờ và cutoff 15:00 Việt Nam, ngày Gregorian kể cả năm 0000. Đối chiếu trực tiếp JS các biên dữ liệu, coercion số, duplicate cart lines, tùy chọn bó hoa và lịch giao ở hai phía cutoff. Frontend giữ nguyên.
+
+## File 16: orders/pricing.js
+
+Đích: `src/FlowerFlow.Application/Orders/OrderPricing.cs`. Giữ quy đổi giá USD cũ sang VND (25949.123093), làm tròn đúng JS, giá hoa/sản phẩm, khuyến mãi và ngày Việt Nam, eligibility theo productId, tổng hợp dòng tồn kho, mã QR từ idempotency key, khu vực giao và phí bó tùy chỉnh. Kiểm thử đối chiếu trực tiếp với JS cả kết quả và mã/thông báo lỗi, các biên giá/khuyến mãi/bó tối đa 50 cành.

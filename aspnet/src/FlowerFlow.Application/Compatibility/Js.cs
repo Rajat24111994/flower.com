@@ -36,6 +36,14 @@ public static class Js
     public static bool SafeInteger(JsonElement value) => value.ValueKind == JsonValueKind.Number && SafeInteger(value.GetDouble());
     public static double Round(double value) => Math.Floor(value + 0.5);
     public static string Cut(string value, int length) => value[..Math.Min(value.Length, length)];
+    public static JsonElement Element(object? value) => value is JsonElement element ? element : JsonSerializer.SerializeToElement(value);
+    public static object? Object(JsonElement value) => value.ValueKind switch
+    {
+        JsonValueKind.Object => value.EnumerateObject().ToDictionary(property => property.Name, property => Object(property.Value)!),
+        JsonValueKind.Array => value.EnumerateArray().Select(Object).ToList(),
+        JsonValueKind.String => value.GetString(), JsonValueKind.Number => value.GetDouble(),
+        JsonValueKind.True => true, JsonValueKind.False => false, _ => null
+    };
 
     private static double ParseNumber(string text)
     {
