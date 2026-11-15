@@ -8,6 +8,21 @@ using FlowerFlow.Infrastructure.Firebase;
 
 static class AdditionalContracts
 {
+    public static void AdminAuditEntry()
+    {
+        var actor = new FirebaseIdentity(new string('u', 200), new Dictionary<string, object> { ["email"] = new string('e', 400) });
+        var details = new Dictionary<string, object> { ["before"] = 1, ["after"] = 2 };
+        var entry = AdminAudit.MakeEntry(actor, new string('a', 100), new string('r', 100), new string('i', 200), details);
+        Require(((string)entry["actorUid"]).Length == 128 && ((string)entry["actorEmail"]).Length == 320
+            && ((string)entry["action"]).Length == 80 && ((string)entry["resourceType"]).Length == 80
+            && ((string)entry["resourceId"]).Length == 128, "Audit field bounds changed");
+        Require(ReferenceEquals(entry["details"], details), "Audit details altered");
+        Require(ReferenceEquals(entry["createdAt"], Google.Cloud.Firestore.FieldValue.ServerTimestamp), "Audit must use server timestamp");
+        Require(AdminAudit.MakeEntry(null, "action", "resource", null)["details"] is Dictionary<string, object>, "Missing details default changed");
+        Require(AdminAudit.MakeEntry(null, "action", "resource", null, null)["details"] is null, "Explicit null details changed");
+        Console.WriteLine("PASS: audit entry limits, original details, explicit null, defaults and server timestamp.");
+    }
+
     public static async Task IdentityAsync()
     {
         using var scenario = JsonDocument.Parse("{\"claims\":{\"uid\":\"user-a\"}}");

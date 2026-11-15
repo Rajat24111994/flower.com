@@ -7,7 +7,8 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 
 // Differential contract checks against the actual JS source; no live Firebase credentials needed.
-var root = args.Length == 1 ? Path.GetFullPath(args[0]) : Directory.GetCurrentDirectory();
+var rootArgument = args.FirstOrDefault(argument => !argument.StartsWith("--", StringComparison.Ordinal));
+var root = rootArgument is not null ? Path.GetFullPath(rootArgument) : Directory.GetCurrentDirectory();
 var start = new ProcessStartInfo("node") { RedirectStandardOutput = true, RedirectStandardError = true };
 start.ArgumentList.Add(Path.Combine(root, "aspnet/tests/FlowerFlow.Contracts/firebase-admin-oracle.cjs"));
 using var process = Process.Start(start) ?? throw new Exception("Cannot start Node.js oracle.");
@@ -100,6 +101,8 @@ Console.WriteLine($"PASS: {count} Firebase Admin contract/configuration scenario
 await AdditionalContracts.ImageRulesAsync(root);
 await AdditionalContracts.ApiRoutesAsync(root);
 await AdditionalContracts.IdentityAsync();
+AdditionalContracts.AdminAuditEntry();
+if (args.Contains("--firestore-emulator")) await FirestoreContracts.RunAsync();
 
 static void Assert(bool condition, string message)
 {

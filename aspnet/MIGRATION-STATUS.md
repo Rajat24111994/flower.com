@@ -95,3 +95,9 @@ Kết quả kiểm tra file 02:
 ## File 05: shared/request-identity.js
 
 Đích: `src/FlowerFlow.Infrastructure/Http/RequestIdentity.cs`. Giữ khách ẩn danh, bearer nghiêm ngặt có kiểm tra thu hồi, danh tính local chỉ từ middleware server, từ chối session local sai hoặc trộn bearer/local. Port cả helper sessionCookie được export từ local-session: không có cookie trả null, cookie lặp trả chuỗi rỗng. Kiểm thử ranh giới local/bearer và cookie mơ hồ; chưa chuyển SQLite/local-server runtime.
+
+## File 06: shared/admin-audit.js
+
+Đích: `src/FlowerFlow.Infrastructure/Firebase/AdminAudit.cs`. Giữ collection adminAudit, giới hạn độ dài UTF-16, server timestamp, details gốc (kể cả null), tạo document mới và audit nằm trong transaction gốc khi gọi AddAdminAudit. RecordAdminAuditAsync tạo riêng như JS. Kiểm thử dữ liệu audit và giới hạn; kiểm thử ghi thật cần Firestore Emulator, không ghi project production.
+
+Đã kiểm thử ghi audit, timestamp do server tạo, commit đồng thời và rollback trên Firestore Emulator 127.0.0.1:8787, project cố định demo-flowerflow-csharp. Bộ kiểm thử từ chối dùng credentials/endpoint production bằng cách khởi tạo client test với endpoint loopback và channel insecure cố định. CI đã có bước khởi động emulator và chạy `--firestore-emulator`.

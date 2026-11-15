@@ -29,3 +29,18 @@ jobs:
           node-version: 24
       - run: dotnet build aspnet/FlowerFlow.sln --configuration Release
       - run: dotnet run --project aspnet/tests/FlowerFlow.Contracts --configuration Release --no-build
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - name: Start isolated Firestore Emulator
+        run: |
+          curl -fsSL https://storage.googleapis.com/firebase-preview-drop/emulator/cloud-firestore-emulator-v1.22.0.jar -o "$RUNNER_TEMP/firestore-emulator.jar"
+          java -jar "$RUNNER_TEMP/firestore-emulator.jar" --host 127.0.0.1 --port 8787 --project_id demo-flowerflow-csharp > "$RUNNER_TEMP/firestore-emulator.log" 2>&1 &
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8787/ > /dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat "$RUNNER_TEMP/firestore-emulator.log"
+          exit 1
+      - run: dotnet run --project aspnet/tests/FlowerFlow.Contracts --configuration Release --no-build -- --firestore-emulator
