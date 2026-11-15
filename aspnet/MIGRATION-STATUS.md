@@ -55,3 +55,31 @@ Khung ASP.NET Core Web API đã có solution `FlowerFlow.sln` và bốn project 
 Kiểm tra từ gốc repository: `dotnet build aspnet/FlowerFlow.sln --configuration Release --nologo` thành công, 0 warning và 0 error. Chạy API Release và gọi `/health` thực tế: HTTP 200, `Cache-Control: no-store`, body `{"status":"ok","service":"flowerflow-api"}`. Đây là kiểm tra khung HTTP và biên dịch, chưa phải kiểm tra tích hợp Firebase hoặc xác nhận tương đương API nghiệp vụ.
 
 Bước tiếp theo: hoàn thành phân tích chi tiết backend trước khi chuyển các file có logic thực thi; ưu tiên nền tảng Firebase/Firestore và phân quyền trước các controller.
+
+## File 02: shared/firebase-admin.js
+
+Nhánh làm việc từ bước này: `asp.net`, bắt đầu từ commit khung ASP.NET `d1644f1` trên main.
+
+Đích: `src/FlowerFlow.Infrastructure/Firebase/FirebaseAdminService.cs`. Chỉ chuyển file nguồn này, kèm đăng ký DI, thư viện SDK và kiểm thử cần thiết.
+
+| JavaScript | C# |
+| --- | --- |
+| getAdminAuth | FirebaseAdminBackend.GetAdminAuth |
+| getAdminFirestore | FirebaseAdminBackend.GetAdminFirestore |
+| sendError | FirebaseAdminService.SendErrorAsync |
+| verifyRequest | FirebaseAdminService.VerifyRequestAsync |
+| verifyAdminRequest | FirebaseAdminService.VerifyAdminRequestAsync |
+| verifyOwnerRequest | FirebaseAdminService.VerifyOwnerRequestAsync |
+
+Giữ service account ở biến môi trường server, project ID override/fallback, một app dùng chung cho Auth/Firestore, xác minh token có `checkRevoked: true`, claim `admin` phải là boolean true, document `adminRoles/{uid}` phải tồn tại; owner yêu cầu cả claim role và document role là `owner`. Giữ mã HTTP, code và thông báo lỗi tiếng Việt, không cache document phân quyền. JSON lỗi vẫn có `{ code, error }`.
+
+Khác biệt triển khai SDK: C# tạo app có tên riêng thuộc singleton và giải phóng khi host dừng, không dùng nhầm app toàn cục của thành phần khác. Firestore dùng thư viện Google.Cloud.Firestore, cùng credential và project với Firebase Admin. Lỗi cấu hình credential và log được làm sạch để không lộ khóa, token hoặc chi tiết provider. Chưa đổi URL, method, frontend, dữ liệu hoặc cấu trúc Firestore.
+
+Bộ kiểm thử đối chiếu trực tiếp với JS gốc và kiểm tra khởi tạo SDK dùng khóa tạm, không thao tác database thật. Chưa xác nhận kết nối project Firebase thật hoặc triển khai API nghiệp vụ.
+
+Kết quả kiểm tra file 02:
+
+- Build Release toàn solution: thành công, 0 warning, 0 error.
+- `dotnet run --project aspnet/tests/FlowerFlow.Contracts --configuration Release`: 31 tình huống thành công, trong đó 24 tình huống đối chiếu trực tiếp với module JavaScript và 7 tình huống cấu hình/khởi tạo SDK (gồm emulator).
+- API khởi động khi không có biến bí mật Firebase; `/health` trả HTTP 200 và `Cache-Control: no-store`.
+- Frontend, backend JS nguồn và cấu hình Vercel không bị thay đổi.

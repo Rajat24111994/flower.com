@@ -2,7 +2,7 @@ name: ASP.NET build
 
 on:
   push:
-    branches: [main]
+    branches: [main, asp.net]
     paths:
       - 'aspnet/**'
       - '.github/workflows/aspnet.yml'
@@ -24,4 +24,8 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
       - run: dotnet build aspnet/FlowerFlow.sln --configuration Release
+      - run: dotnet run --project aspnet/tests/FlowerFlow.Contracts --configuration Release --no-build
