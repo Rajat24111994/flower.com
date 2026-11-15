@@ -15,6 +15,22 @@ using FlowerFlow.Infrastructure.Local;
 
 static class AdditionalContracts
 {
+    public static async Task LocalRateLimitAsync(string root)
+    {
+        using var cases = await OracleAsync(root, "local-rate-limit-oracle.cjs");
+        long now = 0; var limit = new LocalRateLimit(() => now, 2);
+        foreach (var test in cases.RootElement.EnumerateArray())
+        {
+            now = test.GetProperty("now").GetInt64();
+            Require(limit.Check(test.GetProperty("key").GetString()!, test.GetProperty("maximum").GetInt32(), test.GetProperty("duration").GetInt64())
+                == test.GetProperty("expected").GetInt32(), "Local rate limit differs from Node");
+        }
+        var concurrent = new LocalRateLimit(); var allowed = 0;
+        Parallel.For(0, 100, _ => { if (concurrent.Check("same", 5, 60_000) == 0) Interlocked.Increment(ref allowed); });
+        Require(allowed == 5, "Concurrent local rate limit exceeded its budget");
+        Require(FirestoreWrites.Normalize(-0d) is double, "Negative zero lost its Firestore double type");
+        Console.WriteLine("PASS: local rate limit matches Node expiry/rounding/capacity and concurrent calls remain bounded.");
+    }
     public static void LocalSessionCookies()
     {
         var context = new DefaultHttpContext(); context.Request.Headers.Cookie = new Microsoft.Extensions.Primitives.StringValues(

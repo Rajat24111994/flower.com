@@ -213,3 +213,7 @@ Kết quả kiểm tra file 02:
 ### Tương thích kiểu số Firestore
 
 `Firebase/FirestoreWrites.cs` chuẩn hóa mọi write của backend theo serializer Node: số nguyên an toàn thành integer, số lẻ/số ngoài miền an toàn/âm zero vẫn double; áp dụng cả map và array lồng nhau. Không sửa database đang có. Toàn bộ contract + Firestore Emulator pass, có kiểm tra kiểu thực tế trả về từ database (không chỉ giá trị số).
+
+## File 34: lib/local-rate-limit.js
+
+Đích: `Local/LocalRateLimit.cs`. Giữ cửa sổ cố định, dọn entry hết hạn, capacity 5000, retry-after làm tròn lên và trả 60 giây khi đầy. Đối chiếu trực tiếp Node và kiểm tra 100 request đồng thời không vượt ngân sách.
