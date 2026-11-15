@@ -117,3 +117,7 @@ Kết quả kiểm tra file 02:
 ## File 10: catalog/review-images.js
 
 Đích: `src/FlowerFlow.Infrastructure/Catalog/ReviewImagesHandler.cs`, route `/api/review-images` trên API C#. Giữ GET, regex id, ảnh approved công khai/ảnh pending chỉ tác giả hoặc admin có role sống, token thu hồi, photoIds và reviewId khớp, bytes JPEG, private/no-store và nosniff, lỗi tiếng Việt. Test emulator: pending không lộ cho guest, tác giả xem được, approved public, bytes/header, từ chối ảnh thuộc review khác. Chưa chuyển traffic từ Vercel.
+
+## File 11: catalog/product-images.js
+
+Đích: `src/FlowerFlow.Infrastructure/Catalog/ProductImagesHandler.cs`, URL `/api/product-images`. Giữ quyền claim + adminRoles, kiểm tra ảnh, document SHA-1, create và bỏ qua AlreadyExists, HTTP 201 URL cũ, GET bytes JPEG với immutable cache 1 năm/nosniff, mã lỗi và thông báo. Test emulator: claim không role bị từ chối, tải lặp cùng ảnh không lỗi, SHA-1 URL, bytes/cache giữ nguyên, ảnh sai bị từ chối.

@@ -6,6 +6,8 @@ using FlowerFlow.Infrastructure.Catalog;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging.Abstractions;
 using System.Text.Json;
+using System.Security.Cryptography;
+using System.Text;
 
 static class FirestoreContracts
 {
@@ -134,5 +136,39 @@ static class FirestoreContracts
         var unrelated = ImageContext(photoId); await imageHandler.HandleAsync(unrelated);
         AdditionalContracts.Require(unrelated.Response.StatusCode == 404, "Unrelated photo exposed");
         Console.WriteLine("PASS: review image author/guest visibility, original bytes, response headers and review ownership.");
+        using var adminCase = JsonDocument.Parse("{\"claims\":{\"uid\":\"user-a\",\"admin\":true}}");
+        var photoAuth = new FirebaseAdminService(new FakeBackend(adminCase.RootElement), NullLogger<FirebaseAdminService>.Instance);
+        var productsHandler = new ProductImagesHandler(() => db, photoAuth, NullLogger<ProductImagesHandler>.Instance);
+        var jpeg = await File.ReadAllBytesAsync(Path.Combine(Directory.GetCurrentDirectory(), "flower.com/images/start.jpeg"));
+        var jpegId = Convert.ToHexStringLower(SHA1.HashData(jpeg));
+        var adminRef = db.Collection("adminRoles").Document("user-a");
+        await adminRef.DeleteAsync();
+        DefaultHttpContext UploadContext(string? photo)
+        {
+            var context = new DefaultHttpContext(); context.Request.Method = "POST";
+            context.Request.Headers.Authorization = "Bearer token";
+            var payload = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new { photo }));
+            context.Request.Body = new MemoryStream(payload); context.Request.ContentLength = payload.Length;
+            context.Response.Body = new MemoryStream(); return context;
+        }
+        var noRole = UploadContext("data:image/jpeg;base64," + Convert.ToBase64String(jpeg));
+        await productsHandler.HandleAsync(noRole);
+        AdditionalContracts.Require(noRole.Response.StatusCode == 403, "Claim without role uploaded image");
+        await adminRef.SetAsync(new { role = "admin" });
+        foreach (var iteration in new[] { 1, 2 })
+        {
+            var upload = UploadContext("data:image/jpeg;base64," + Convert.ToBase64String(jpeg));
+            await productsHandler.HandleAsync(upload);
+            AdditionalContracts.Require(upload.Response.StatusCode == 201
+                && Encoding.UTF8.GetString(((MemoryStream)upload.Response.Body).ToArray()).Contains(jpegId), "Photo upload/dedup failed");
+        }
+        var download = ImageContext(jpegId); await productsHandler.HandleAsync(download);
+        AdditionalContracts.Require(download.Response.StatusCode == 200
+            && ((MemoryStream)download.Response.Body).ToArray().SequenceEqual(jpeg)
+            && download.Response.Headers.CacheControl == "public, max-age=31536000, immutable", "Product image bytes/cache changed");
+        var invalidUpload = UploadContext("data:image/jpeg;base64,dGV4dA=="); await productsHandler.HandleAsync(invalidUpload);
+        AdditionalContracts.Require(invalidUpload.Response.StatusCode == 400, "Invalid image uploaded");
+        await adminRef.DeleteAsync();
+        Console.WriteLine("PASS: product image live role, JPEG validation, SHA-1 deduplication, original bytes and immutable cache.");
     }
 }

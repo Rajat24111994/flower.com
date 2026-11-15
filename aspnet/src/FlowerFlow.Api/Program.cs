@@ -13,12 +13,14 @@ builder.Services.AddSingleton<FirebaseAdminService>();
 builder.Services.AddSingleton<RequestIdentity>();
 builder.Services.AddSingleton<Func<FirestoreDb>>(services => () => services.GetRequiredService<FirebaseAdminBackend>().GetAdminFirestore());
 builder.Services.AddSingleton<ReviewImagesHandler>();
+builder.Services.AddSingleton<ProductImagesHandler>();
 
 var app = builder.Build();
 
 app.UseExceptionHandler();
 app.MapControllers();
 app.Map("/api/review-images", (HttpContext context, ReviewImagesHandler handler) => handler.HandleAsync(context));
+app.Map("/api/product-images", (HttpContext context, ProductImagesHandler handler) => handler.HandleAsync(context));
 app.Run();
 
 public partial class Program;
