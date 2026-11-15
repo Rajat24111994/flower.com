@@ -79,11 +79,19 @@ static class BackendServerContracts
                 await File.WriteAllTextAsync(Path.Combine(directory,"private","secret.js"), "private");
                 Directory.CreateSymbolicLink(Path.Combine(directory,"js","linked"), Path.Combine(directory,"private"));
                 var fixture = new BackendServer(_ => Task.CompletedTask, new(directory,true));
-                var context = new DefaultHttpContext(); context.Request.Host = new("127.0.0.1:3000"); context.Request.Path = "/js/linked/secret.js"; context.Response.Body = new MemoryStream();
+                var context = new DefaultHttpContext(); context.Request.Method = "GET"; context.Request.Host = new("127.0.0.1:3000"); context.Request.Path = "/js/linked/secret.js"; context.Response.Body = new MemoryStream();
                 await fixture.InvokeAsync(context); AdditionalContracts.Require(context.Response.StatusCode == 404, "Parent symlink exposed a private target");
-                Directory.Delete(Path.Combine(directory,"js","linked")); File.Delete(Path.Combine(directory,"private","secret.js")); Directory.Delete(Path.Combine(directory,"private")); Directory.Delete(Path.Combine(directory,"js")); File.Delete(Path.Combine(directory,"vercel.json"));
             }
-            finally { Directory.Delete(directory); }
+            finally
+            {
+                // Delete only the fixture's known paths; remove the link itself before its target.
+                var linked = Path.Combine(directory,"js","linked");
+                if (Directory.Exists(linked)) Directory.Delete(linked);
+                File.Delete(Path.Combine(directory,"private","secret.js"));
+                if (Directory.Exists(Path.Combine(directory,"private"))) Directory.Delete(Path.Combine(directory,"private"));
+                if (Directory.Exists(Path.Combine(directory,"js"))) Directory.Delete(Path.Combine(directory,"js"));
+                File.Delete(Path.Combine(directory,"vercel.json")); Directory.Delete(directory);
+            }
         }
         await app.StopAsync();
         Console.WriteLine("PASS: ASP.NET socket HTTP frontend/static/API routing, legacy aliases, JSON limits, CSP, host/origin protection and untrusted forwarded IP rejection.");
