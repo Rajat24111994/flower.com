@@ -49,6 +49,8 @@ Lệnh chỉ kiểm tra quyền đọc Firebase Authentication và đọc docume
 
 ## Build và triển khai
 
+Đã có Dockerfile và Blueprint Render Free cho bước chạy thử theo lựa chọn người dùng. Xem [DEPLOYMENT.md](DEPLOYMENT.md) về build, quyền truy cập, secrets, điều kiện chuyển lưu lượng và rollback. Gói triển khai không có nghĩa production đã được chuyển khi chưa có host/credentials.
+
 ```powershell
 dotnet publish aspnet/src/FlowerFlow.Api --configuration Release --output aspnet/.tools/publish
 ```

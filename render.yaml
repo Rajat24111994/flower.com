@@ -1,0 +1,22 @@
+# Free preview chosen by the user. This does not change the existing Vercel production.
+services:
+  - type: web
+    name: flowerflow-csharp-preview
+    runtime: docker
+    repo: https://github.com/Longg5048/flower.com
+    branch: asp.net
+    plan: free
+    region: singapore
+    dockerfilePath: ./aspnet/Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    autoDeployTrigger: "off"
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: AUTH_MODE
+        value: firebase
+      - key: FIREBASE_PROJECT_ID
+        value: web-ban-hoa-9fe0b
+    # Supply private Firebase, password-provider, payment and cron settings in Render.
+    # No credential is committed or baked into the Docker image. See aspnet/DEPLOYMENT.md.

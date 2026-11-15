@@ -25,10 +25,10 @@ var sourceFrontend = Path.GetFullPath(Path.Combine(builder.Environment.ContentRo
 var frontendRoot = Path.GetFullPath(builder.Configuration["FLOWER_FRONTEND_ROOT"] ??
     (development && File.Exists(Path.Combine(sourceFrontend, "vercel.json")) ? sourceFrontend : Path.Combine(AppContext.BaseDirectory, "frontend")));
 var port = Environment.GetEnvironmentVariable("PORT");
-if (development && port is not null)
+if (port is not null)
 {
     if (!int.TryParse(port, out var number) || number is < 1 or > 65535) throw new InvalidOperationException("PORT phải là số nguyên từ 1 đến 65535.");
-    builder.WebHost.UseUrls($"http://127.0.0.1:{number}");
+    builder.WebHost.UseUrls($"http://{(development ? "127.0.0.1" : "0.0.0.0")}:{number}");
 }
 builder.WebHost.ConfigureKestrel(options => { options.Limits.RequestHeadersTimeout = TimeSpan.FromSeconds(30); options.Limits.MaxRequestBodySize = null; });
 var proxies = builder.Configuration.GetSection("ReverseProxy:KnownProxies").Get<string[]>() ?? [];

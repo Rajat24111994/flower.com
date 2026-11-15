@@ -5,6 +5,8 @@ on:
     branches: [main, asp.net]
     paths:
       - 'aspnet/**'
+      - '.dockerignore'
+      - 'render.yaml'
       - 'flower.com/backend/**'
       - 'flower.com/lib/**'
       - 'flower.com/*.html'
@@ -18,6 +20,8 @@ on:
   pull_request:
     paths:
       - 'aspnet/**'
+      - '.dockerignore'
+      - 'render.yaml'
       - 'flower.com/backend/**'
       - 'flower.com/lib/**'
       - 'flower.com/*.html'
@@ -66,3 +70,35 @@ jobs:
           cat "$RUNNER_TEMP/firestore-emulator.log"
           exit 1
       - run: dotnet run --project aspnet/tests/FlowerFlow.Contracts --configuration Release --no-build -- --firestore-emulator
+
+  container:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build production ASP.NET image without credentials
+        run: docker build -f aspnet/Dockerfile -t flowerflow-csharp:${{ github.sha }} .
+      - name: Smoke test production container
+        env:
+          IMAGE: flowerflow-csharp:${{ github.sha }}
+        run: |
+          set -euo pipefail
+          docker run -d --name flowerflow-smoke -p 127.0.0.1:18080:8080 -e PORT=8080 "$IMAGE"
+          trap 'docker rm -f flowerflow-smoke >/dev/null 2>&1 || true' EXIT
+          ready=0
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:18080/health > "$RUNNER_TEMP/health.json"; then ready=1; break; fi
+            sleep 1
+          done
+          if [ "$ready" -ne 1 ]; then docker logs flowerflow-smoke; exit 1; fi
+          python3 -c 'import json,os; assert json.load(open(os.environ["RUNNER_TEMP"]+"/health.json"))["status"] == "ok"'
+          curl -fsS http://127.0.0.1:18080/login.html > "$RUNNER_TEMP/login.html"
+          grep -q 'id="signIn"' "$RUNNER_TEMP/login.html"
+          if grep -q '/__local/auth-runtime.js' "$RUNNER_TEMP/login.html"; then exit 1; fi
+          curl -fsS http://127.0.0.1:18080/js/core/firebase-config.js > "$RUNNER_TEMP/firebase-config.js"
+          cmp flower.com/js/core/firebase-config.js "$RUNNER_TEMP/firebase-config.js"
+          test "$(curl -sS -o /dev/null -w '%{http_code}' http://127.0.0.1:18080/api/local-auth/session)" = 404
+          if docker run --rm "$IMAGE" --check-firebase > "$RUNNER_TEMP/firebase-check.json"; then exit 1; fi
+          python3 -c 'import json,os; assert json.load(open(os.environ["RUNNER_TEMP"]+"/firebase-check.json"))["code"] == "firebase-credentials-missing"'
+          test "$(docker exec flowerflow-smoke id -u)" != 0

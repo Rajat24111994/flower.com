@@ -6,17 +6,19 @@ using System.Text.Json;
 
 static class ApiHostContracts
 {
-    public static async Task RunAsync(string root)
+    public static async Task RunAsync(string root, bool production = false)
     {
         var dll = Path.Combine(root,"aspnet/src/FlowerFlow.Api/bin/Release/net10.0/FlowerFlow.Api.dll");
         AdditionalContracts.Require(File.Exists(dll), "Build the solution in Release before the API host check");
         using var listener = new TcpListener(IPAddress.Loopback, 0); listener.Start(); var port = ((IPEndPoint)listener.LocalEndpoint).Port; listener.Stop();
         var directory = Path.Combine(Path.GetTempPath(), "flowerflow-host-" + Guid.NewGuid().ToString("N")); Directory.CreateDirectory(directory);
         var start = new ProcessStartInfo("dotnet") { WorkingDirectory = root, RedirectStandardOutput = true, RedirectStandardError = true };
-        start.ArgumentList.Add(dll); start.ArgumentList.Add("--urls"); start.ArgumentList.Add($"http://127.0.0.1:{port}");
-        start.Environment["ASPNETCORE_ENVIRONMENT"] = "Development"; start.Environment["AUTH_MODE"] = "local";
+        start.ArgumentList.Add(dll);
+        if (!production) { start.ArgumentList.Add("--urls"); start.ArgumentList.Add($"http://127.0.0.1:{port}"); }
+        start.Environment["ASPNETCORE_ENVIRONMENT"] = production ? "Production" : "Development"; start.Environment["AUTH_MODE"] = production ? "firebase" : "local";
         start.Environment["LOCAL_ACCOUNTS_FILE"] = Path.Combine(directory,"accounts.sqlite");
         foreach (var key in new[] { "PORT", "FLOWER_FRONTEND_ROOT", "FIREBASE_SERVICE_ACCOUNT_JSON", "FIREBASE_SERVICE_ACCOUNT_FILE", "FIREBASE_PROJECT_ID", "FIRESTORE_EMULATOR_HOST", "FIREBASE_AUTH_PUBLIC_API_KEY", "FIREBASE_AUTH_SERVER_API_KEY" }) start.Environment.Remove(key);
+        if (production) start.Environment["PORT"] = port.ToString();
         using var process = Process.Start(start)!; var output = process.StandardOutput.ReadToEndAsync(); var errors = process.StandardError.ReadToEndAsync();
         try
         {
@@ -30,6 +32,14 @@ static class ApiHostContracts
             }
             AdditionalContracts.Require(ready, "Actual ASP.NET host did not start: " + (process.HasExited ? await errors : "timeout"));
             AdditionalContracts.Require((await client.GetStringAsync("/login.html")).Contains("id=\"signIn\""), "Packaged frontend was not copied correctly");
+            if (production)
+            {
+                using var unavailable = await client.GetAsync("/api/local-auth/session");
+                AdditionalContracts.Require(unavailable.StatusCode == HttpStatusCode.NotFound, "Production enabled local account APIs");
+                AdditionalContracts.Require(!(await client.GetStringAsync("/login.html")).Contains("/__local/auth-runtime.js"), "Production injected local authentication mode");
+                Console.WriteLine("PASS: production host honors platform PORT, serves packaged frontend and keeps local account APIs disabled; no Firebase connection claimed.");
+                return;
+            }
             using (var privateQuery = await client.GetAsync("/api/login?token=contract-private-query-do-not-log"))
                 AdditionalContracts.Require(privateQuery.StatusCode == HttpStatusCode.MethodNotAllowed, "Login HTTP method contract changed");
             var body = new { email = "host@demo", password = "matkhau123", name = "Khách kiểm tra", phone = "0901234567", pin = "1234", confirmPin = "1234", questions = new[] {

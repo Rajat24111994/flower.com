@@ -256,3 +256,7 @@ Publish Production đã chạy smoke HTTP: health/HTML 200, cache/CSP đúng và
 ## Cấu hình kết nối Firebase thật
 
 Bổ sung `FIREBASE_SERVICE_ACCOUNT_FILE` để đọc Service Account ở đường dẫn riêng ngoài repository, vẫn ưu tiên biến JSON cũ và vẫn chỉ chấp nhận credential kiểu service account. Lệnh console `--check-firebase` kiểm tra project khớp frontend, xác thực server và đọc một document metadata; không ghi dữ liệu hay tạo tài khoản và không mở endpoint diagnostic công khai. Mọi lỗi được làm sạch trước khi in. Tests dùng file/khóa RSA tạm để kiểm tra thiếu/sai credential và chặn sai project trước khi gọi mạng. Chỉ xác nhận kết nối thật sau khi chạy thành công với credentials người dùng cung cấp; không coi build/test mock là đã kết nối project production.
+
+## Chuẩn bị triển khai Render Free
+
+Người dùng yêu cầu chuyển production, xác nhận chưa có host ASP.NET và chọn Render Docker, sau đó chọn Free để chạy thử trước. Đã thêm Dockerfile .NET 10 non-root, build context lọc secrets, Blueprint chỉ tạo web service Free (không database mới, không tự deploy mỗi commit), hỗ trợ PORT của nền tảng và kiểm tra executable Production thực. CI bổ sung build image và HTTP smoke test. Hướng dẫn/chuyển lưu lượng/rollback ở [DEPLOYMENT.md](DEPLOYMENT.md). Chưa có tài khoản Render được kết nối hoặc Service Account Firebase; gói chuẩn bị không được coi là đã tạo preview hay đã chuyển production. Vercel routing và frontend giữ nguyên.

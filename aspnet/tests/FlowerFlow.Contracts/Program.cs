@@ -14,6 +14,7 @@ if (args.Contains("--local-worker")) { await LocalWorkerContracts.RunAsync(); re
 if (args.Contains("--local-http")) { await LocalHttpContracts.RunAsync(root); return; }
 if (args.Contains("--server")) { await BackendServerContracts.RunAsync(root); return; }
 if (args.Contains("--api-host")) { await ApiHostContracts.RunAsync(root); return; }
+if (args.Contains("--production-host")) { await ApiHostContracts.RunAsync(root, true); return; }
 if (args.Contains("--firebase-connection")) { await FirebaseConnectionContracts.RunAsync(root); return; }
 if (args.Contains("--backup"))
 {
@@ -135,6 +136,7 @@ await LocalHttpContracts.RunAsync(root);
 await BackupContracts.RunAsync(root);
 await BackendServerContracts.RunAsync(root);
 await ApiHostContracts.RunAsync(root);
+await ApiHostContracts.RunAsync(root, true);
 await FirebaseConnectionContracts.RunAsync(root);
 if (args.Contains("--firestore-emulator")) await FirestoreContracts.RunAsync();
 
