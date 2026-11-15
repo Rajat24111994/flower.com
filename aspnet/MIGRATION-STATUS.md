@@ -121,3 +121,7 @@ Kết quả kiểm tra file 02:
 ## File 11: catalog/product-images.js
 
 Đích: `src/FlowerFlow.Infrastructure/Catalog/ProductImagesHandler.cs`, URL `/api/product-images`. Giữ quyền claim + adminRoles, kiểm tra ảnh, document SHA-1, create và bỏ qua AlreadyExists, HTTP 201 URL cũ, GET bytes JPEG với immutable cache 1 năm/nosniff, mã lỗi và thông báo. Test emulator: claim không role bị từ chối, tải lặp cùng ảnh không lỗi, SHA-1 URL, bytes/cache giữ nguyên, ảnh sai bị từ chối.
+
+## File 12: admin/audit.js
+
+Đích: `src/FlowerFlow.Infrastructure/Admin/AdminAuditHandler.cs`, URL `/api/admin/audit`. Giữ GET, private/no-store, xác thực admin, thứ tự createdAt giảm dần/100 bản ghi, whitelist field và timestamp ISO, lỗi nguyên bản. Test emulator: trường trả về và giới hạn, bản ghi audit tồn tại trong kết quả, không có token bị từ chối. Alias `?route=audit` sẽ được nối khi chuyển admin/users.js.

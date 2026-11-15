@@ -8,6 +8,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using System.Text.Json;
 using System.Security.Cryptography;
 using System.Text;
+using FlowerFlow.Infrastructure.Admin;
 
 static class FirestoreContracts
 {
@@ -170,5 +171,18 @@ static class FirestoreContracts
         AdditionalContracts.Require(invalidUpload.Response.StatusCode == 400, "Invalid image uploaded");
         await adminRef.DeleteAsync();
         Console.WriteLine("PASS: product image live role, JPEG validation, SHA-1 deduplication, original bytes and immutable cache.");
+        using var auditCase = JsonDocument.Parse("{\"claims\":{\"uid\":\"user-a\",\"admin\":true},\"roleExists\":true}");
+        var auditAuth = new FirebaseAdminService(new FakeBackend(auditCase.RootElement), NullLogger<FirebaseAdminService>.Instance);
+        var auditHandler = new AdminAuditHandler(() => db, auditAuth, NullLogger<AdminAuditHandler>.Instance);
+        var auditContext = ImageContext(""); auditContext.Request.Headers.Authorization = "Bearer token";
+        await auditHandler.HandleAsync(auditContext);
+        using var auditBody = JsonDocument.Parse(((MemoryStream)auditContext.Response.Body).ToArray());
+        var auditEntries = auditBody.RootElement.GetProperty("entries").EnumerateArray().ToArray();
+        AdditionalContracts.Require(auditContext.Response.StatusCode == 200 && auditEntries.Length <= 100
+            && auditEntries.Any(item => item.GetProperty("id").GetString() == separate.Id)
+            && auditEntries.All(item => item.EnumerateObject().Count() == 8), "Audit listing shape/limit changed");
+        var noAuditToken = ImageContext(""); await auditHandler.HandleAsync(noAuditToken);
+        AdditionalContracts.Require(noAuditToken.Response.StatusCode == 401, "Audit listing exposed without authentication");
+        Console.WriteLine("PASS: admin audit listing fields, timestamp serialization, limit and unauthenticated access rejection.");
     }
 }
