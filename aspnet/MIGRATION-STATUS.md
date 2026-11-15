@@ -217,3 +217,7 @@ Kết quả kiểm tra file 02:
 ## File 34: lib/local-rate-limit.js
 
 Đích: `Local/LocalRateLimit.cs`. Giữ cửa sổ cố định, dọn entry hết hạn, capacity 5000, retry-after làm tròn lên và trả 60 giây khi đầy. Đối chiếu trực tiếp Node và kiểm tra 100 request đồng thời không vượt ngân sách.
+
+## File 35: lib/content-security.js
+
+Đích: `Local/ContentSecurity.cs`. Giữ chuẩn hóa xuống dòng trước khi SHA-256, loại script ngoài/JSON, hash duy nhất có thứ tự và thay directive CSP đúng vị trí. Đối chiếu trực tiếp Node trên toàn bộ HTML gốc; không chỉnh sửa frontend.

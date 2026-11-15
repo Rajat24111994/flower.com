@@ -15,6 +15,14 @@ using FlowerFlow.Infrastructure.Local;
 
 static class AdditionalContracts
 {
+    public static async Task ContentSecurityAsync(string root)
+    {
+        using var expected = await OracleAsync(root, "content-security-oracle.cjs");
+        var htmlRoot = Path.Combine(root, "flower.com");
+        Require(JsonNode.DeepEquals(JsonSerializer.SerializeToNode(ContentSecurity.InlineScriptHashes(htmlRoot)), JsonNode.Parse(expected.RootElement.GetProperty("hashes").GetRawText())), "Inline CSP hashes differ from actual Node HTML scan");
+        Require(ContentSecurity.WithSecurityPolicy("default-src 'none'; script-src old; connect-src test; script-src duplicate", htmlRoot) == expected.RootElement.GetProperty("policy").GetString(), "CSP directive replacement differs from Node");
+        Console.WriteLine("PASS: exact inline script hashes and CSP directive ordering match Node across the unchanged frontend.");
+    }
     public static async Task LocalRateLimitAsync(string root)
     {
         using var cases = await OracleAsync(root, "local-rate-limit-oracle.cjs");
