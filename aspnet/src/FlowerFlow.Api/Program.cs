@@ -40,6 +40,7 @@ builder.Services.AddSingleton<LoginHandler>();
 builder.Services.AddSingleton<AdminUsersHandler>();
 builder.Services.AddSingleton<OwnerUsersHandler>();
 builder.Services.AddSingleton<Checkout>();
+builder.Services.AddSingleton<OrdersHandler>();
 
 var app = builder.Build();
 
@@ -56,6 +57,7 @@ app.Map("/api/design-requests", (HttpContext context, DesignRequestsHandler hand
 app.Map("/api/login", (HttpContext context, LoginHandler handler) => handler.HandleAsync(context));
 app.Map("/api/admin/users", (HttpContext context, AdminUsersHandler handler) => handler.HandleAsync(context));
 app.Map("/api/owner/users", (HttpContext context, OwnerUsersHandler handler) => handler.HandleAsync(context));
+app.Map("/api/orders", (HttpContext context, OrdersHandler handler) => handler.HandleAsync(context));
 app.Run();
 
 public partial class Program;

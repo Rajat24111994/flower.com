@@ -71,7 +71,27 @@ static class CheckoutContracts
             await Task.WhenAll(service.CreateOrderAsync(contenderA), service.CreateOrderAsync(contenderB));
             AdditionalContracts.Require(new[] { contenderA.Response.StatusCode, contenderB.Response.StatusCode }.Order().SequenceEqual(new[] { 201, 409 })
                 && (await productRef.GetSnapshotAsync()).GetValue<double>("quantity") == 0, "Concurrent orders oversold stock");
+            var auth = new FirebaseAdminService(new FakeBackend(identityCase.RootElement), NullLogger<FirebaseAdminService>.Instance);
+            var reservationService = new Reservations(NullLogger<Reservations>.Instance);
+            var controller = new OrdersHandler(service, tracking, new OrderReviews(() => db, new FakeBackend(identityCase.RootElement), tracking, NullLogger<OrderReviews>.Instance),
+                new PaymentAdmin(() => db, auth, NullLogger<PaymentAdmin>.Instance), reservationService, () => db, NullLogger<OrdersHandler>.Instance);
+            var invalidMethod = Context(new { }, "test"); invalidMethod.Request.Method = "PUT"; await controller.HandleAsync(invalidMethod);
+            AdditionalContracts.Require(invalidMethod.Response.StatusCode == 405 && invalidMethod.Response.Headers.Allow == "GET, POST", "Orders method contract changed");
+            var ownOrders = Context(new { }, "test"); ownOrders.Request.Method = "GET"; ownOrders.Request.QueryString = new QueryString("?action=mine");
+            await controller.HandleAsync(ownOrders); AdditionalContracts.Require(ownOrders.Response.StatusCode == 200 && Body(ownOrders).GetProperty("accountUid").GetString() == "user-a", "Orders mine action not routed");
+            var reviewGet = Context(new { action = "review-get", orderId }, "test", false); await controller.HandleAsync(reviewGet);
+            AdditionalContracts.Require(reviewGet.Response.StatusCode == 401, "Orders review-get action fell through to create");
+            var previousCron = Environment.GetEnvironmentVariable("CRON_SECRET");
+            try
+            {
+                Environment.SetEnvironmentVariable("CRON_SECRET", "test-cron");
+                var cronRequest = Context(new { }, "test"); cronRequest.Request.Method = "GET";
+                cronRequest.Request.QueryString = new QueryString("?action=expire"); cronRequest.Request.Headers.Authorization = "Bearer test-cron";
+                await controller.HandleAsync(cronRequest); AdditionalContracts.Require(cronRequest.Response.StatusCode == 200 && Body(cronRequest).TryGetProperty("released", out _), "Cron cleanup action rejected");
+            }
+            finally { Environment.SetEnvironmentVariable("CRON_SECRET", previousCron); }
             Console.WriteLine("PASS: checkout quote/duplicate product options, concurrent idempotency, exact request content, price change, quotas, guest cap and no overselling.");
+            Console.WriteLine("PASS: orders controller methods, account/review action routing and cron cleanup authorization.");
         }
         finally { Environment.SetEnvironmentVariable("FIREBASE_SERVICE_ACCOUNT_JSON", oldSecret); }
     }
