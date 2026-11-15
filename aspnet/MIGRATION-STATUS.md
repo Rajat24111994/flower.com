@@ -231,3 +231,7 @@ Kiểm tra: đối chiếu trực tiếp Node toàn bộ chuỗi thao tác và l
 ## File 37: lib/local-account-worker.js
 
 Đích: `Local/LocalAccountWorker.cs`. Một thread riêng sở hữu SQLite/scrypt; tuần tự hóa thao tác, tối đa 16 request tính cả request đang chạy, lỗi busy 429 và đóng worker không để Task treo. Không hủy cập nhật ngân sách xác thực theo disconnect của client. Test queue đầy trước startup, xử lý queue, lỗi startup không lộ chi tiết và từ chối sau shutdown.
+
+## File 38: lib/local-auth-http.js
+
+Đích: `Local/LocalAuthHandler.cs`. Giữ chín action/method, session chỉ qua HttpOnly cookie, thông báo/response/attemptsRemaining/retry-after, xóa cookie sau reset/recovery/session lỗi, rate limit theo socket IP và nhóm thao tác. Đối chiếu toàn bộ thông báo lỗi với Node; kiểm tra cookie không lộ token trong JSON, queue busy, lỗi worker được che chi tiết và giới hạn đăng ký.
