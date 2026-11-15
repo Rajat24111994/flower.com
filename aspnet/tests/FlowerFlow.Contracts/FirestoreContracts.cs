@@ -22,8 +22,10 @@ static class FirestoreContracts
         var db = new FirestoreDbBuilder
         {
             ProjectId = "demo-flowerflow-csharp", Endpoint = "127.0.0.1:8787",
-            ChannelCredentials = ChannelCredentials.Insecure
+            ChannelCredentials = ChannelCredentials.Insecure,
+            Settings = new Google.Cloud.Firestore.V1.FirestoreSettings { CallSettings = Google.Api.Gax.Grpc.CallSettings.FromHeader("Authorization", "Bearer owner") }
         }.Build();
+        await BackupContracts.EmulatorAsync(db);
         var numeric = db.Collection("contractTestItems").Document();
         await numeric.CreateJsAsync(new Dictionary<string, object> { ["quantity"] = 3d, ["fraction"] = 1.25d,
             ["large"] = 9007199254740992d, ["nested"] = new List<object> { new Dictionary<string, object> { ["total"] = 50000d } } });

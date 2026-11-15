@@ -235,3 +235,7 @@ Kiểm tra: đối chiếu trực tiếp Node toàn bộ chuỗi thao tác và l
 ## File 38: lib/local-auth-http.js
 
 Đích: `Local/LocalAuthHandler.cs`. Giữ chín action/method, session chỉ qua HttpOnly cookie, thông báo/response/attemptsRemaining/retry-after, xóa cookie sau reset/recovery/session lỗi, rate limit theo socket IP và nhóm thao tác. Đối chiếu toàn bộ thông báo lỗi với Node; kiểm tra cookie không lộ token trong JSON, queue busy, lỗi worker được che chi tiết và giới hạn đăng ký.
+
+## File 39: lib/firestore-backup.js
+
+Đích: `Firebase/FirestoreBackup.cs`. Giữ format v1, markers timestamp/geopoint/reference/bytes, export root collections bỏ duy nhất orderLookupLimits, import overwrite theo lô 400 và giữ document ngoài backup. Giữ scrypt N16384/r8/p1 và AES-256-GCM, salt/IV/tag/base64 để đọc được file cũ. Test Node/C# mã hóa–giải mã hai chiều, password sai/tamper, native markers; emulator import 401 document qua hai batch, giữ document khác và export đúng collection. Không backup/restore database thật trong quá trình chuyển đổi.

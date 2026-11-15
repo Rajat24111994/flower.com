@@ -12,6 +12,14 @@ var root = rootArgument is not null ? Path.GetFullPath(rootArgument) : Directory
 if (args.Contains("--local-accounts")) { await LocalAccountContracts.RunAsync(root); return; }
 if (args.Contains("--local-worker")) { await LocalWorkerContracts.RunAsync(); return; }
 if (args.Contains("--local-http")) { await LocalHttpContracts.RunAsync(root); return; }
+if (args.Contains("--backup"))
+{
+    await BackupContracts.RunAsync(root);
+    if (args.Contains("--firestore-emulator")) await BackupContracts.EmulatorAsync(new Google.Cloud.Firestore.FirestoreDbBuilder
+        { ProjectId = "demo-flowerflow-csharp", Endpoint = "127.0.0.1:8787", ChannelCredentials = Grpc.Core.ChannelCredentials.Insecure,
+            Settings = new Google.Cloud.Firestore.V1.FirestoreSettings { CallSettings = Google.Api.Gax.Grpc.CallSettings.FromHeader("Authorization", "Bearer owner") } }.Build());
+    return;
+}
 var start = new ProcessStartInfo("node") { RedirectStandardOutput = true, RedirectStandardError = true };
 start.ArgumentList.Add(Path.Combine(root, "aspnet/tests/FlowerFlow.Contracts/firebase-admin-oracle.cjs"));
 using var process = Process.Start(start) ?? throw new Exception("Cannot start Node.js oracle.");
@@ -118,6 +126,7 @@ await AdditionalContracts.ContentSecurityAsync(root);
 await LocalAccountContracts.RunAsync(root);
 await LocalWorkerContracts.RunAsync();
 await LocalHttpContracts.RunAsync(root);
+await BackupContracts.RunAsync(root);
 if (args.Contains("--firestore-emulator")) await FirestoreContracts.RunAsync();
 
 static void Assert(bool condition, string message)
