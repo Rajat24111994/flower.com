@@ -12,9 +12,10 @@ public static class FirestoreValues
     // Node's Timestamp.toDate rounds nanoseconds to milliseconds; ToDateTime().fff would truncate.
     public static string ToIso(Timestamp value)
     {
-        var proto = value.ToProto(); var millis = proto.Seconds * 1000 + (long)Math.Floor(proto.Nanos / 1_000_000d + 0.5);
-        return DateTimeOffset.FromUnixTimeMilliseconds(millis).UtcDateTime.ToString("yyyy-MM-dd'T'HH:mm:ss.fff'Z'", CultureInfo.InvariantCulture);
+        return ToDate(value).UtcDateTime.ToString("yyyy-MM-dd'T'HH:mm:ss.fff'Z'", CultureInfo.InvariantCulture);
     }
+    public static DateTimeOffset ToDate(Timestamp value)
+    { var proto = value.ToProto(); return DateTimeOffset.FromUnixTimeMilliseconds(proto.Seconds * 1000 + (long)Math.Floor(proto.Nanos / 1_000_000d + 0.5)); }
     public static Timestamp FromMillis(long millis) => Timestamp.FromDateTime(DateTimeOffset.FromUnixTimeMilliseconds(millis).UtcDateTime);
     public static bool Truthy(object? value) => value switch
     { null => false, bool boolean => boolean, string text => text.Length > 0, double number => number != 0 && !double.IsNaN(number),

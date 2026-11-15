@@ -197,3 +197,7 @@ Kết quả kiểm tra file 02:
 ## File 30: orders/controller.js
 
 Đích: `src/FlowerFlow.Infrastructure/Orders/OrdersHandler.cs`, `/api/orders`. Nối toàn bộ action quote/create/lookup/mine/review/review-get/payment reconciliation/refund/audit/expire theo đúng method. Giữ POST action không nhận diện vẫn tạo đơn, GET mặc định yêu cầu POST, cleanup bằng CRON_SECRET hoặc admin, no-store và lỗi nguyên bản. Test emulator: method, mine, review-get không rơi sang create và cron expire.
+
+## File 31: payments/payments.js
+
+Đích: `src/FlowerFlow.Infrastructure/Payments/PaymentsHandler.cs`, `/api/payments`. Giữ create/retry/status, capability orderId+paymentReference hoặc txnRef trước, pending attempt reuse, xác nhận số tiền, cleanup và khôi phục kho đơn hết hạn trong transaction, hạn 15 phút, số lần thử, URL ký và response lỗi. Test emulator: chữ ký URL, capability sai, reuse không tạo thêm/không trừ kho, retry đơn expired hoàn rồi giữ kho một lần, đơn paid không tạo lại attempt.

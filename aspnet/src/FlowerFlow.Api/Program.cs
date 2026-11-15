@@ -7,6 +7,7 @@ using FlowerFlow.Infrastructure.ShopSettings;
 using FlowerFlow.Infrastructure.Orders;
 using FlowerFlow.Infrastructure.DesignRequests;
 using FlowerFlow.Infrastructure.Accounts;
+using FlowerFlow.Infrastructure.Payments;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -41,6 +42,7 @@ builder.Services.AddSingleton<AdminUsersHandler>();
 builder.Services.AddSingleton<OwnerUsersHandler>();
 builder.Services.AddSingleton<Checkout>();
 builder.Services.AddSingleton<OrdersHandler>();
+builder.Services.AddSingleton<PaymentsHandler>();
 
 var app = builder.Build();
 
@@ -58,6 +60,7 @@ app.Map("/api/login", (HttpContext context, LoginHandler handler) => handler.Han
 app.Map("/api/admin/users", (HttpContext context, AdminUsersHandler handler) => handler.HandleAsync(context));
 app.Map("/api/owner/users", (HttpContext context, OwnerUsersHandler handler) => handler.HandleAsync(context));
 app.Map("/api/orders", (HttpContext context, OrdersHandler handler) => handler.HandleAsync(context));
+app.Map("/api/payments", (HttpContext context, PaymentsHandler handler) => handler.HandleAsync(context));
 app.Run();
 
 public partial class Program;
