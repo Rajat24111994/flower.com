@@ -6,8 +6,9 @@ namespace FlowerFlow.Infrastructure.Local;
 
 public static class ContentSecurity
 {
-    private static readonly Regex Scripts = new(@"<script\b([^>]*)>([\s\S]*?)</script\s*>", RegexOptions.IgnoreCase | RegexOptions.ECMAScript | RegexOptions.CultureInvariant, TimeSpan.FromSeconds(5));
-    private static readonly Regex ExternalOrJson = new("\\bsrc\\s*=|\\btype\\s*=\\s*[\"']application/(?:ld\\+)?json", RegexOptions.IgnoreCase | RegexOptions.ECMAScript | RegexOptions.CultureInvariant, TimeSpan.FromSeconds(1));
+    private const string Space = @"[\u0009-\u000D\u0020\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000\uFEFF]";
+    private static readonly Regex Scripts = new(@"<script\b([^>]*)>([\s\S]*?)</script" + Space + "*>", RegexOptions.IgnoreCase | RegexOptions.ECMAScript | RegexOptions.CultureInvariant, TimeSpan.FromSeconds(5));
+    private static readonly Regex ExternalOrJson = new("\\bsrc" + Space + "*=|\\btype" + Space + "*=" + Space + "*[\"']application/(?:ld\\+)?json", RegexOptions.IgnoreCase | RegexOptions.ECMAScript | RegexOptions.CultureInvariant, TimeSpan.FromSeconds(1));
     public static IReadOnlyList<string> InlineScriptHashes(string root)
     {
         var hashes = new SortedSet<string>(StringComparer.Ordinal);
@@ -17,7 +18,7 @@ public static class ContentSecurity
             foreach (Match match in Scripts.Matches(html))
             {
                 var body = match.Groups[2].Value;
-                if (ExternalOrJson.IsMatch(match.Groups[1].Value) || body.Trim().Trim('\uFEFF').Length == 0) continue;
+                if (ExternalOrJson.IsMatch(match.Groups[1].Value) || Regex.IsMatch(body, "\\A" + Space + "*\\z")) continue;
                 hashes.Add("'sha256-" + Convert.ToBase64String(SHA256.HashData(Encoding.UTF8.GetBytes(body))) + "'");
             }
         }

@@ -30,6 +30,10 @@ static class BackupContracts
         var db = new FirestoreDbBuilder { ProjectId = "demo-flowerflow-csharp", Endpoint = "127.0.0.1:8787", ChannelCredentials = ChannelCredentials.Insecure }.Build();
         var original = new Dictionary<string, object> { ["time"] = Timestamp.FromDateTime(new DateTime(2026,11,15,0,0,0,DateTimeKind.Utc)), ["point"] = new GeoPoint(10,106), ["ref"] = db.Document("items/one"), ["bytes"] = Blob.CopyFrom([1,2,3]), ["nested"] = new List<object> { 3d, false } };
         var serialized = JsonSerializer.SerializeToElement(FirestoreBackup.SerializeValue(original));
+        var integerPoint = JsonSerializer.SerializeToElement(FirestoreBackup.SerializeValue(new Dictionary<string, object> { ["latitude"] = 10L, ["longitude"] = 106L }));
+        AdditionalContracts.Require(integerPoint.GetProperty("__type").GetString() == "geopoint", "Node numeric geopoint detection lost integer coordinates");
+        var jsonBytes = JsonSerializer.SerializeToElement(FirestoreValues.JsonCompatible(Blob.CopyFrom([1,2,3])));
+        AdditionalContracts.Require(jsonBytes.GetProperty("type").GetString() == "Buffer" && jsonBytes.GetProperty("data")[2].GetInt32() == 3, "Firestore blob JSON differs from Node Buffer.toJSON");
         var restored = (Dictionary<string, object>)FirestoreBackup.DeserializeValue(serialized, db)!;
         AdditionalContracts.Require(restored["time"] is Timestamp && restored["point"] is GeoPoint point && point.Latitude == 10 && restored["ref"] is DocumentReference reference && reference.Equals(db.Document("items/one")) && ((byte[])restored["bytes"]).SequenceEqual(new byte[]{1,2,3}), "Firestore backup native value markers changed");
         Console.WriteLine("PASS: Node/C# backup encryption interoperability, tamper/password rejection and timestamp/geopoint/reference/blob round trips.");

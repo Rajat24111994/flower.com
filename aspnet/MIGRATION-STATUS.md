@@ -9,13 +9,13 @@
 - Không lưu service account vào mã nguồn, frontend hoặc tài liệu. Giữ cấu hình bí mật ở phía server.
 - Mỗi bước chuyển một file nghiệp vụ, đối chiếu nguồn và kiểm tra trước khi chuyển file tiếp theo. Không xóa file JS hoặc chuyển lưu lượng khi các phụ thuộc và hợp đồng API chưa được kiểm chứng.
 
-## Hiện trạng và phần cần phân tích tiếp
+## Hiện trạng
 
-Đã đọc 32 file trong `backend/`, đối chiếu import/export, nhánh xử lý, điểm vào API, collection và các module frontend dùng chung. Mỗi file có bản C# và kiểm thử được ghi ở các bước 01–32 bên dưới. Tiếp tục chuyển các thư viện server trong `lib/` để chế độ chạy local cũng dùng C#; không coi việc hoàn thành 32 module là hoàn thành toàn bộ runtime nếu local server còn Node.
+Đã đọc và chuyển lần lượt 32 file trong `backend/` cùng 8 file server trong `lib/`, đối chiếu import/export, nhánh xử lý, điểm vào API, collection và quy tắc frontend được server import. Các bước 01–40 bên dưới ghi bản C# và kiểm thử cho từng file. Runtime ASP.NET phục vụ frontend và toàn bộ API; launcher `npm run dev` cũng khởi động C#. JS backend cũ được giữ để làm oracle; HTML/CSS/JS frontend không bị sửa. Hướng dẫn chạy/cấu hình/giới hạn triển khai ở [README.md](README.md). Chưa chuyển deployment hoặc dùng database Firebase thật.
 
 Nhánh riêng `codex/aspnet-sql-server` có `ProductsController` và `AccountController` dùng SQL Server. Các endpoint này chưa tương đương backend Firestore và không được coi là đã chuyển đổi xong. Không đưa khung SQL Server đó vào main trong bước chuyển đổi này. Main bắt đầu với project Application độc lập, không có phụ thuộc SQL Server.
 
-Các nhóm cần đối chiếu chi tiết:
+Các nhóm đã đối chiếu (các ghi chú phía dưới là nhật ký tại từng bước chuyển đổi):
 
 | Nhóm | File nguồn | Điểm cần bảo toàn |
 | --- | --- | --- |
@@ -27,8 +27,9 @@ Các nhóm cần đối chiếu chi tiết:
 | orders | config, validation, pricing, checkout, reservations, tracking, payment-admin, reviews, controller | Giá/khuyến mãi/phí, lịch Việt Nam, giới hạn giỏ hàng, idempotency, chống vượt kho, thời hạn giữ hàng, hoàn kho một lần, tra cứu, đối soát/hoàn tiền, quyền đánh giá |
 | payments | vnpay, payments, vnpay-ipn | Canonical query/HMAC, attempt/retry, idempotency IPN, kiểm tra tiền, hết hạn và hoàn kho |
 | design-requests | validation, controller | Token truy cập, lựa chọn thiết kế, quote/reply, quyền và lịch sử |
+| lib | local-session, local-rate-limit, content-security, local-accounts, local-account-worker, local-auth-http, firestore-backup, local-server | Cookie, CSP, SQLite/scrypt cũ, recovery/lockout, worker giới hạn, mã hóa backup, static whitelist, Host/Origin, JSON size và IP tin cậy |
 
-Backend còn import module frontend dùng chung như `product-store.js`, `bouquet-options.js`, `bouquet-wrapping.js`, cùng `lib/local-session.js`. Cần chuyển phần quy tắc dùng ở server mà vẫn giữ nguyên các file frontend. Các API rewrite `/api/flower-prices`, `/api/bouquet-wrapping`, `/api/admin/audit` và dạng `?route=` cần được đối chiếu riêng.
+Quy tắc server từ `product-store.js`, `bouquet-options.js`, `bouquet-wrapping.js` đã được chép tương đương vào Application; file frontend giữ nguyên. Các API rewrite `/api/flower-prices`, `/api/bouquet-wrapping`, `/api/admin/audit` và dạng `?route=` đã có kiểm tra riêng. Không có thay đổi API yêu cầu sửa frontend.
 
 ## File 01: orders/config.js
 
@@ -239,3 +240,13 @@ Kiểm tra: đối chiếu trực tiếp Node toàn bộ chuỗi thao tác và l
 ## File 39: lib/firestore-backup.js
 
 Đích: `Firebase/FirestoreBackup.cs`. Giữ format v1, markers timestamp/geopoint/reference/bytes, export root collections bỏ duy nhất orderLookupLimits, import overwrite theo lô 400 và giữ document ngoài backup. Giữ scrypt N16384/r8/p1 và AES-256-GCM, salt/IV/tag/base64 để đọc được file cũ. Test Node/C# mã hóa–giải mã hai chiều, password sai/tamper, native markers; emulator import 401 document qua hai batch, giữ document khác và export đúng collection. Không backup/restore database thật trong quá trình chuyển đổi.
+
+## File 40: lib/local-server.js
+
+Đích: `Local/BackendServer.cs` và host `FlowerFlow.Api/Program.cs`. Phục vụ frontend nguyên trạng cùng API, whitelist static và kiểm tra realpath từng thành phần để chặn symlink ra file riêng tư; giữ query lặp/alias, JSON 32 KiB cho login/local-auth và 4 MiB cho API khác, lỗi JSON/content-type, CSP, Host/Origin, IP socket và trusted local identity. Development giữ runtime auth script bằng chèn response HTML trong bộ nhớ; không sửa HTML/JS frontend. Production dùng Firebase, headers/cache theo cấu hình gốc, hỗ trợ proxy được khai báo IP tin cậy. Body nhận quá 30 giây trả HTTP 408 có JSON `request-timeout` thay cho response timeout tự động của Node; không ảnh hưởng request frontend hợp lệ.
+
+`scripts/dev.js` chuyển thành launcher .NET, giữ `npm run dev`, PORT/AUTH_MODE/.env và đường dẫn SQLite cũ. Các API entry point được đăng ký ở C#, gồm ba alias; không yêu cầu sửa frontend. Build/publish kèm file frontend công khai; không kèm backend JS, `.env` hoặc credentials.
+
+Kiểm tra cuối: build Release 0 warning/0 error; bộ contract tổng thể và Firestore Emulator pass; socket HTTP kiểm tra HTML/HEAD/asset/private paths/JSON limits/Host/Origin/forwarded IP/alias; executable API thật dùng SQLite tạm đăng ký–session–logout thành công và khởi tạo mọi dependency graph endpoint. CI chạy cùng bộ kiểm tra trên Linux, có fixture symlink parent. Những phần kết nối Firebase/password provider thực được kiểm bằng mock/emulator; chưa dùng project/credentials production và chưa chuyển deployment Vercel.
+
+Publish Production đã chạy smoke HTTP: health/HTML 200, cache/CSP đúng và local-auth 404; launcher `npm.cmd run dev` đã khởi động ASP.NET Development, health và auth-runtime đúng. Chặn request diagnostics chứa query string để không ghi token truy cập thiết kế/thanh toán vào log; test executable xác nhận query token không xuất hiện trong stdout/stderr. Bổ sung tương thích Blob → Buffer JSON và tọa độ số nguyên trong backup.

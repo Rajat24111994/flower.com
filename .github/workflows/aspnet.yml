@@ -5,20 +5,42 @@ on:
     branches: [main, asp.net]
     paths:
       - 'aspnet/**'
+      - 'flower.com/backend/**'
+      - 'flower.com/lib/**'
+      - 'flower.com/*.html'
+      - 'flower.com/flower.json'
+      - 'flower.com/js/**'
+      - 'flower.com/css/**'
+      - 'flower.com/images/**'
+      - 'flower.com/vercel.json'
+      - 'flower.com/scripts/dev.js'
       - '.github/workflows/aspnet.yml'
   pull_request:
     paths:
       - 'aspnet/**'
+      - 'flower.com/backend/**'
+      - 'flower.com/lib/**'
+      - 'flower.com/*.html'
+      - 'flower.com/flower.json'
+      - 'flower.com/js/**'
+      - 'flower.com/css/**'
+      - 'flower.com/images/**'
+      - 'flower.com/vercel.json'
+      - 'flower.com/scripts/dev.js'
       - '.github/workflows/aspnet.yml'
   workflow_dispatch:
 
 permissions:
   contents: read
 
+concurrency:
+  group: aspnet-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
@@ -28,7 +50,7 @@ jobs:
         with:
           node-version: 24
       - run: dotnet build aspnet/FlowerFlow.sln --configuration Release
-      - run: dotnet run --project aspnet/tests/FlowerFlow.Contracts --configuration Release --no-build
+      - run: dotnet publish aspnet/src/FlowerFlow.Api --configuration Release --no-restore --output "${{ runner.temp }}/flowerflow-publish"
       - uses: actions/setup-java@v4
         with:
           distribution: temurin

@@ -12,6 +12,8 @@ var root = rootArgument is not null ? Path.GetFullPath(rootArgument) : Directory
 if (args.Contains("--local-accounts")) { await LocalAccountContracts.RunAsync(root); return; }
 if (args.Contains("--local-worker")) { await LocalWorkerContracts.RunAsync(); return; }
 if (args.Contains("--local-http")) { await LocalHttpContracts.RunAsync(root); return; }
+if (args.Contains("--server")) { await BackendServerContracts.RunAsync(root); return; }
+if (args.Contains("--api-host")) { await ApiHostContracts.RunAsync(root); return; }
 if (args.Contains("--backup"))
 {
     await BackupContracts.RunAsync(root);
@@ -127,6 +129,8 @@ await LocalAccountContracts.RunAsync(root);
 await LocalWorkerContracts.RunAsync();
 await LocalHttpContracts.RunAsync(root);
 await BackupContracts.RunAsync(root);
+await BackendServerContracts.RunAsync(root);
+await ApiHostContracts.RunAsync(root);
 if (args.Contains("--firestore-emulator")) await FirestoreContracts.RunAsync();
 
 static void Assert(bool condition, string message)

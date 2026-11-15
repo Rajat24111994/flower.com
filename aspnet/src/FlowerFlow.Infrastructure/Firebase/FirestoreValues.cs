@@ -25,6 +25,8 @@ public static class FirestoreValues
     public static object? JsonCompatible(object? value) => value switch
     {
         Timestamp timestamp => TimestampData(timestamp),
+        Blob blob => JsonCompatible(blob.ByteString.ToByteArray()),
+        Google.Protobuf.ByteString bytes => JsonCompatible(bytes.ToByteArray()),
         byte[] bytes => new Dictionary<string, object> { ["type"] = "Buffer", ["data"] = bytes.Select(b => (int)b).ToArray() },
         IDictionary<string, object> data => data.ToDictionary(pair => pair.Key, pair => JsonCompatible(pair.Value)),
         IEnumerable<object> items => items.Select(JsonCompatible).ToList(),

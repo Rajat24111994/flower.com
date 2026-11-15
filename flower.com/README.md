@@ -2,6 +2,8 @@
 
 Tài liệu này mô tả kiến trúc, luồng dữ liệu và các module chính của website. Hướng dẫn cài đặt và tổng quan dự án nằm ở [README gốc](../README.md).
 
+Trên nhánh `asp.net`, các API và máy chủ local chạy bằng ASP.NET Core C# trong `../aspnet/`, giữ các luồng Firebase/Firestore mô tả bên dưới. Các tham chiếu Vercel Functions/JS backend trong tài liệu là nguồn cũ được giữ để kiểm thử đối chiếu. Xem [cách chạy và triển khai bản C#](../aspnet/README.md).
+
 ## Tổng quan
 
 FlowerFlow là ứng dụng frontend tĩnh (HTML, CSS, JavaScript thuần, không có bước build) kết hợp với:

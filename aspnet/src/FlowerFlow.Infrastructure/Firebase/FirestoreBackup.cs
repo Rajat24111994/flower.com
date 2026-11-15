@@ -13,6 +13,7 @@ public static class FirestoreBackup
 {
     public const string Format = "flowerflow-backup-v1";
     private const string EncryptedFormat = Format + "+aes-256-gcm";
+    private static bool IsNumber(object? value) => value is byte or sbyte or short or ushort or int or uint or long or ulong or float or double or decimal;
     private static Dictionary<string, object> Marker(string type, object value) => new() { ["__type"] = type, ["value"] = value };
     public static object? SerializeValue(object? value) => value switch
     {
@@ -23,7 +24,7 @@ public static class FirestoreBackup
         Blob blob => Marker("bytes", Convert.ToBase64String(blob.ByteString.ToByteArray())),
         ByteString bytes => Marker("bytes", Convert.ToBase64String(bytes.ToByteArray())),
         byte[] bytes => Marker("bytes", Convert.ToBase64String(bytes)),
-        IDictionary<string, object> map when map.TryGetValue("latitude", out var lat) && lat is double latitude && map.TryGetValue("longitude", out var lng) && lng is double longitude =>
+        IDictionary<string, object> map when map.TryGetValue("latitude", out var latitude) && IsNumber(latitude) && map.TryGetValue("longitude", out var longitude) && IsNumber(longitude) =>
             Marker("geopoint", new Dictionary<string, object> { ["latitude"] = latitude, ["longitude"] = longitude }),
         IDictionary<string, object> map => map.ToDictionary(pair => pair.Key, pair => SerializeValue(pair.Value)),
         IEnumerable sequence when value is not string => sequence.Cast<object?>().Select(SerializeValue).ToList(),

@@ -21,6 +21,13 @@ static class AdditionalContracts
         var htmlRoot = Path.Combine(root, "flower.com");
         Require(JsonNode.DeepEquals(JsonSerializer.SerializeToNode(ContentSecurity.InlineScriptHashes(htmlRoot)), JsonNode.Parse(expected.RootElement.GetProperty("hashes").GetRawText())), "Inline CSP hashes differ from actual Node HTML scan");
         Require(ContentSecurity.WithSecurityPolicy("default-src 'none'; script-src old; connect-src test; script-src duplicate", htmlRoot) == expected.RootElement.GetProperty("policy").GetString(), "CSP directive replacement differs from Node");
+        var directory = Path.Combine(Path.GetTempPath(), "flowerflow-csp-" + Guid.NewGuid().ToString("N")); Directory.CreateDirectory(directory);
+        try
+        {
+            foreach (var file in expected.RootElement.GetProperty("files").EnumerateObject()) File.WriteAllText(Path.Combine(directory, file.Name), file.Value.GetString());
+            Require(JsonNode.DeepEquals(JsonSerializer.SerializeToNode(ContentSecurity.InlineScriptHashes(directory)), JsonNode.Parse(expected.RootElement.GetProperty("fixtureHashes").GetRawText())), "CSP CRLF/deduplication/JSON/external/Unicode whitespace fixture differs from Node");
+        }
+        finally { foreach (var file in Directory.EnumerateFiles(directory)) File.Delete(file); Directory.Delete(directory); }
         Console.WriteLine("PASS: exact inline script hashes and CSP directive ordering match Node across the unchanged frontend.");
     }
     public static async Task LocalRateLimitAsync(string root)
