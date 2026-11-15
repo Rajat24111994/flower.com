@@ -51,9 +51,9 @@ public sealed class FlowerPricesHandler(Func<FirestoreDb> database, FirebaseAdmi
             var product = snapshot.ToDictionary(); var oldPrice = OrderPricing.ToVndPrice(Js.Element(product.GetValueOrDefault("price")));
             if (!Js.SafeInteger(oldPrice) || oldPrice is < MinPrice or > MaxPrice) return Error("Giá hiện tại của loại hoa không hợp lệ.", "invalid-current-price");
             if (oldPrice == price.GetDouble()) return new() { ["changed"] = false, ["flower"] = SerializeFlower(productRef.Id, product) };
-            transaction.Update(productRef, new Dictionary<string, object> { ["price"] = price.GetDouble(),
+            transaction.UpdateJs(productRef, new Dictionary<string, object> { ["price"] = price.GetDouble(),
                 ["priceUpdatedAt"] = OrderValidation.VietnameseDate(now), ["priceChangedAt"] = FieldValue.ServerTimestamp, ["priceUpdatedBy"] = token.Uid });
-            transaction.Create(historyRef, new Dictionary<string, object> { ["flowerId"] = productRef.Id, ["oldPrice"] = oldPrice,
+            transaction.CreateJs(historyRef, new Dictionary<string, object> { ["flowerId"] = productRef.Id, ["oldPrice"] = oldPrice,
                 ["newPrice"] = price.GetDouble(), ["updatedAt"] = FieldValue.ServerTimestamp, ["updatedBy"] = token.Uid, ["updatedByEmail"] = email });
             AdminAudit.AddAdminAudit(transaction, db, token, "flower-price.update", "flower", productRef.Id,
                 new Dictionary<string, object> { ["oldPrice"] = oldPrice, ["newPrice"] = price.GetDouble() });

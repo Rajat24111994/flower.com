@@ -55,7 +55,7 @@ public sealed class BouquetWrappingHandler(Func<FirestoreDb> database, FirebaseA
                 var reference = db.Collection("metadata").Document(WrappingDocument);
                 var snapshot = await transaction.GetSnapshotAsync(reference, context.RequestAborted);
                 var previous = ReadTiers(snapshot.ToDictionary()).Select(tier => tier.ToData()).ToList();
-                transaction.Set(reference, new Dictionary<string, object> { ["tiers"] = tiers, ["updatedAt"] = FieldValue.ServerTimestamp });
+                transaction.SetJs(reference, new Dictionary<string, object> { ["tiers"] = tiers, ["updatedAt"] = FieldValue.ServerTimestamp });
                 AdminAudit.AddAdminAudit(transaction, db, claims, "bouquet-wrapping.update", "bouquet-wrapping", WrappingDocument,
                     new Dictionary<string, object> { ["before"] = previous, ["after"] = tiers });
                 return 0;

@@ -67,21 +67,21 @@ public sealed class VnpayIpnHandler(Func<FirestoreDb> database, Reservations res
                 var changes = new Dictionary<string, object> { ["status"] = paid ? "success" : "failed", ["responseCode"] = Text(parameters, "vnp_ResponseCode"),
                     ["transactionStatus"] = Text(parameters, "vnp_TransactionStatus"), ["transactionNo"] = Js.Cut(Text(parameters, "vnp_TransactionNo"), 100), ["processedAt"] = FieldValue.ServerTimestamp };
                 if (late) changes["latePayment"] = true;
-                transaction.Update(attemptRef, changes);
+                transaction.UpdateJs(attemptRef, changes);
                 if (paid && order.GetValueOrDefault("paymentVerified") is not true)
                 {
                     var payment = new Dictionary<string, object> { ["paymentStatus"] = "da_thanh_toan", ["paymentVerified"] = true,
                         ["paidAt"] = DateTime.UtcNow.ToString("yyyy-MM-dd'T'HH:mm:ss.fff'Z'", CultureInfo.InvariantCulture),
                         ["vnpTransactionNo"] = Js.Cut(Text(parameters, "vnp_TransactionNo"), 100), ["vnpTxnRef"] = txnRef };
                     if (late) { payment["latePayment"] = true; payment["paymentAttention"] = "Thanh toán đến sau khi đơn đã hủy; cần kiểm tra và xử lý hoàn tiền hoặc khôi phục đơn."; }
-                    transaction.Update(orderRef, payment);
+                    transaction.UpdateJs(orderRef, payment);
                 }
                 else if (!paid && order.GetValueOrDefault("paymentVerified") is not true && order.GetValueOrDefault("vnpTxnRef") as string == txnRef)
-                    transaction.Update(orderRef, new Dictionary<string, object> { ["paymentStatus"] = "that_bai", ["vnpResponseCode"] = Js.Cut(Text(parameters, "vnp_ResponseCode"), 10) });
+                    transaction.UpdateJs(orderRef, new Dictionary<string, object> { ["paymentStatus"] = "that_bai", ["vnpResponseCode"] = Js.Cut(Text(parameters, "vnp_ResponseCode"), 10) });
                 else if (paid && order.GetValueOrDefault("paymentVerified") is true)
                 {
-                    transaction.Update(attemptRef, new Dictionary<string, object> { ["latePayment"] = true });
-                    transaction.Update(orderRef, new Dictionary<string, object> { ["latePayment"] = true,
+                    transaction.UpdateJs(attemptRef, new Dictionary<string, object> { ["latePayment"] = true });
+                    transaction.UpdateJs(orderRef, new Dictionary<string, object> { ["latePayment"] = true,
                         ["paymentAttention"] = "Có thêm giao dịch VNPay thành công cho đơn đã thanh toán; cần kiểm tra và xử lý hoàn tiền." });
                 }
                 return new Reply("00", "Confirm Success");

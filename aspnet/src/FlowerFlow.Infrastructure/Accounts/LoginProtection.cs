@@ -1,4 +1,5 @@
 using Google.Cloud.Firestore;
+using FlowerFlow.Infrastructure.Firebase;
 
 namespace FlowerFlow.Infrastructure.Accounts;
 
@@ -53,7 +54,7 @@ public sealed class LoginProtection(FirestoreDb db, Func<long>? clock = null, Fu
             var state = passwordUpdatedAt > Number(record, "passwordUpdatedAt") ? EmptyState(passwordUpdatedAt) : record;
             var blocked = Restriction(state, now);
             if (blocked is not null) return blocked;
-            transaction.Set(reference, new Dictionary<string, object>(state)
+            transaction.SetJs(reference, new Dictionary<string, object>(state)
             {
                 ["passwordUpdatedAt"] = Math.Max(passwordUpdatedAt, Number(state, "passwordUpdatedAt")),
                 ["leaseId"] = leaseId, ["leaseUntil"] = now + LeaseMs, ["updatedAt"] = now
@@ -76,7 +77,7 @@ public sealed class LoginProtection(FirestoreDb db, Func<long>? clock = null, Fu
             return new LoginProtectionResult(200);
         }
         var state = outcome == "invalid" ? FailureState(record, now) : record;
-        transaction.Set(attempt.Ref!, new Dictionary<string, object>(state)
+        transaction.SetJs(attempt.Ref!, new Dictionary<string, object>(state)
         {
             ["leaseId"] = "", ["leaseUntil"] = 0, ["updatedAt"] = now
         });

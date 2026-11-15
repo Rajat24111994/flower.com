@@ -83,7 +83,7 @@ public sealed class OrderTracking(Func<FirestoreDb> database, RequestIdentity id
             var attempts = same ? Js.NumberOrZero(Js.Element(record.GetValueOrDefault("attempts"))) : 0;
             if (attempts >= OrderConfig.OrderLookupMaxAttempts)
                 return new OrderLookupLimit(false, Math.Max(1, (int)Math.Ceiling((started + OrderConfig.OrderLookupWindowMs - millis) / 1000d)));
-            transaction.Set(reference, new Dictionary<string, object> { ["windowStartedAt"] = same ? record["windowStartedAt"] : now,
+            transaction.SetJs(reference, new Dictionary<string, object> { ["windowStartedAt"] = same ? record["windowStartedAt"] : now,
                 ["attempts"] = attempts + 1, ["expiresAt"] = FirestoreValues.FromMillis(millis + 24 * 60 * 60 * 1000L) });
             return new OrderLookupLimit(true, 0);
         }, cancellationToken: context.RequestAborted);

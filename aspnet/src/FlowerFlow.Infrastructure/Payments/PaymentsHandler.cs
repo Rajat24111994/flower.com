@@ -79,9 +79,9 @@ public sealed class PaymentsHandler(Func<FirestoreDb> database, Reservations res
             var attemptNumber = Math.Max(0, Js.NumberOrZero(Js.Element(order.GetValueOrDefault("vnpPaymentAttempt")))) + 1;
             var attemptRef = db.Collection("paymentTransactions").Document(txnRef);
             if (!wasReserved)
-                for (var index = 0; index < products.Count; index++) transaction.Update(products[index].Reference, new Dictionary<string, object>
+                for (var index = 0; index < products.Count; index++) transaction.UpdateJs(products[index].Reference, new Dictionary<string, object>
                 { ["quantity"] = Js.Number(Js.Element(products[index].ToDictionary().GetValueOrDefault("quantity"))) - Convert.ToDouble(items[index]["quantity"], CultureInfo.InvariantCulture) });
-            transaction.Create(attemptRef, new Dictionary<string, object> { ["orderId"] = orderId, ["amount"] = order["total"], ["status"] = "pending", ["attempt"] = attemptNumber,
+            transaction.CreateJs(attemptRef, new Dictionary<string, object> { ["orderId"] = orderId, ["amount"] = order["total"], ["status"] = "pending", ["attempt"] = attemptNumber,
                 ["createdAt"] = Timestamp.FromDateTime(createdAt.UtcDateTime), ["expiresAt"] = Timestamp.FromDateTime(expiresAt.UtcDateTime) });
             var changes = new Dictionary<string, object>();
             if (!wasReserved)
@@ -92,7 +92,7 @@ public sealed class PaymentsHandler(Func<FirestoreDb> database, Reservations res
                 changes["inventoryState"] = "reserved"; changes["reservationExpiresAt"] = Timestamp.FromDateTime(expiresAt.UtcDateTime); changes["reservationExpiredAt"] = FieldValue.Delete; changes["trackingHistory"] = history;
             }
             changes["paymentStatus"] = "chua_thanh_toan"; changes["vnpTxnRef"] = txnRef; changes["vnpPaymentAttempt"] = attemptNumber; changes["vnpPaymentCreatedAt"] = FieldValue.ServerTimestamp;
-            transaction.Update(orderRef, changes); return new PaymentAttempt(txnRef, order["total"], createdAt, expiresAt);
+            transaction.UpdateJs(orderRef, changes); return new PaymentAttempt(txnRef, order["total"], createdAt, expiresAt);
         }, cancellationToken: cancellationToken);
     }
 

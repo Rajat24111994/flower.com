@@ -138,7 +138,7 @@ public sealed class DesignRequestsHandler(Func<FirestoreDb> database, IFirebaseA
                     ["history"] = new[] { DesignValidation.AddHistory("Chờ tư vấn", "Khách đã gửi yêu cầu thiết kế.") },
                     ["createdAt"] = FieldValue.ServerTimestamp, ["updatedAt"] = FieldValue.ServerTimestamp
                 };
-                transaction.Create(reference, request);
+                transaction.CreateJs(reference, request);
                 return new { id = reference.Id, status = "Chờ tư vấn", subtotal, wrappingFee, estimatedTotal = subtotal + wrappingFee, createdAt = NowIso() };
             }, cancellationToken: context.RequestAborted);
             context.Response.StatusCode = 201; await context.Response.WriteAsJsonAsync(new { request = result, accessToken = token }, context.RequestAborted);
@@ -166,7 +166,7 @@ public sealed class DesignRequestsHandler(Func<FirestoreDb> database, IFirebaseA
                 var status = response == "accept" ? "Đang thực hiện" : "Đã hủy";
                 var history = data.GetValueOrDefault("history") is IEnumerable<object> events ? events.ToList() : [];
                 history.Add(DesignValidation.AddHistory(status, response == "accept" ? "Khách đã chấp nhận báo giá." : "Khách đã từ chối báo giá."));
-                transaction.Update(reference, new Dictionary<string, object> { ["status"] = status, ["customerResponse"] = response,
+                transaction.UpdateJs(reference, new Dictionary<string, object> { ["status"] = status, ["customerResponse"] = response,
                     ["history"] = history, ["updatedAt"] = FieldValue.ServerTimestamp });
                 // Legacy response contains the snapshot history, not the just-appended event.
                 return DesignValidation.PublicRequest(snapshot.Id, new Dictionary<string, object>(data) { ["status"] = status, ["customerResponse"] = response });
@@ -198,7 +198,7 @@ public sealed class DesignRequestsHandler(Func<FirestoreDb> database, IFirebaseA
                 var detail = status == "Chờ khách xác nhận" ? $"Cửa hàng gửi báo giá {Js.String(Js.Element(quote))} ₫{(note.Length > 0 ? " · " + note : "")}."
                     : note.Length > 0 ? note : $"Cửa hàng cập nhật trạng thái: {status}.";
                 history.Add(DesignValidation.AddHistory(status, detail)); var price = quote is null ? data.GetValueOrDefault("quotedTotal") ?? 0 : (object)quote.Value;
-                transaction.Update(reference, new Dictionary<string, object> { ["status"] = status, ["quotedTotal"] = price, ["quoteNote"] = note,
+                transaction.UpdateJs(reference, new Dictionary<string, object> { ["status"] = status, ["quotedTotal"] = price, ["quoteNote"] = note,
                     ["history"] = history, ["updatedAt"] = FieldValue.ServerTimestamp });
                 return DesignValidation.PublicRequest(snapshot.Id, new Dictionary<string, object>(data)
                     { ["status"] = status, ["quotedTotal"] = price, ["quoteNote"] = note, ["updatedAt"] = NowIso() });

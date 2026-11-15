@@ -206,10 +206,10 @@ public sealed class Checkout(Func<FirestoreDb> database, Reservations reservatio
                 dataOrder["promotionId"] = promotion is null ? "" : checkout["promotionId"]; dataOrder["orderNote"] = note; dataOrder["items"] = products.Select(PublicItem).ToList();
                 dataOrder["inventoryReserved"] = true; dataOrder["inventoryState"] = "reserved";
                 dataOrder["reservationExpiresAt"] = FirestoreValues.FromMillis(nowMillis + (method == "qr" ? OrderConfig.QrReservationMs : method == "vnpay" ? OrderConfig.VnpayReservationMs : OrderConfig.CodReservationMs));
-                foreach (var limit in limitUpdates) transaction.Set(limit.Ref, new Dictionary<string, object> { ["count"] = limit.Count, ["expiresAt"] = limit.Expires });
+                foreach (var limit in limitUpdates) transaction.SetJs(limit.Ref, new Dictionary<string, object> { ["count"] = limit.Count, ["expiresAt"] = limit.Expires });
                 var reserved = new HashSet<string>(StringComparer.Ordinal);
-                foreach (var item in products) if (reserved.Add(ProductId(item))) transaction.Update((DocumentReference)item["ref"], new Dictionary<string, object> { ["quantity"] = Numeric(item, "stock") - BouquetOptions.Demand(items, ProductId(item)) });
-                transaction.Create(orderRef, dataOrder); transaction.Create(idempotencyRef, new Dictionary<string, object> { ["orderId"] = orderRef.Id, ["requestHash"] = hash, ["uid"] = uid, ["createdAt"] = FieldValue.ServerTimestamp });
+                foreach (var item in products) if (reserved.Add(ProductId(item))) transaction.UpdateJs((DocumentReference)item["ref"], new Dictionary<string, object> { ["quantity"] = Numeric(item, "stock") - BouquetOptions.Demand(items, ProductId(item)) });
+                transaction.CreateJs(orderRef, dataOrder); transaction.CreateJs(idempotencyRef, new Dictionary<string, object> { ["orderId"] = orderRef.Id, ["requestHash"] = hash, ["uid"] = uid, ["createdAt"] = FieldValue.ServerTimestamp });
                 return new Dictionary<string, object>(dataOrder) { ["id"] = orderRef.Id, ["createdAt"] = nowIso };
             }, cancellationToken: context.RequestAborted);
             var responseOrder = new Dictionary<string, object> { ["id"] = order["id"] }; if (order.TryGetValue("paymentReference", out var paymentReference)) responseOrder["paymentReference"] = paymentReference;

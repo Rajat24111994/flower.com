@@ -18,7 +18,7 @@ public static class AdminRoles
     {
         var reference = db.Collection("adminRoles").Document(user.Uid);
         if (isAdmin ?? IsAdminUser(user))
-            await reference.SetAsync(RoleData(user), SetOptions.MergeAll, cancellationToken);
+            await reference.SetJsAsync(RoleData(user), SetOptions.MergeAll, cancellationToken);
         else await reference.DeleteAsync(cancellationToken: cancellationToken);
     }
 
@@ -33,7 +33,7 @@ public static class AdminRoles
         {
             if (IsAdminUser(users[index]) && !existing[index].Exists)
             {
-                batch.Set(references[index], RoleData(users[index])); writes++;
+                batch.SetJs(references[index], RoleData(users[index])); writes++;
             }
             else if (!IsAdminUser(users[index]) && existing[index].Exists)
             {

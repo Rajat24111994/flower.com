@@ -209,3 +209,7 @@ Kết quả kiểm tra file 02:
 ## File 33: lib/local-session.js
 
 Đích: `src/FlowerFlow.Infrastructure/Local/LocalSession.cs`. Giữ cookie 12 giờ, HttpOnly/SameSite Strict/Path, Secure khi HTTPS, xóa cookie epoch và từ chối cookie mơ hồ. RequestIdentity dùng helper chung này; nhiều Cookie header được xét như Node nối cookie header bằng dấu chấm phẩy, không chọn nhầm danh tính. Test thuộc tính cookie và nhiều header.
+
+### Tương thích kiểu số Firestore
+
+`Firebase/FirestoreWrites.cs` chuẩn hóa mọi write của backend theo serializer Node: số nguyên an toàn thành integer, số lẻ/số ngoài miền an toàn/âm zero vẫn double; áp dụng cả map và array lồng nhau. Không sửa database đang có. Toàn bộ contract + Firestore Emulator pass, có kiểm tra kiểu thực tế trả về từ database (không chỉ giá trị số).

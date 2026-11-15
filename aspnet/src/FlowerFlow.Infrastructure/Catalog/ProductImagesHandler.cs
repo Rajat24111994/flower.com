@@ -58,7 +58,7 @@ public sealed class ProductImagesHandler(Func<FirestoreDb> database, FirebaseAdm
         var id = Convert.ToHexStringLower(SHA1.HashData(bytes));
         try
         {
-            await db.Collection("productImages").Document(id).CreateAsync(new Dictionary<string, object>
+            await db.Collection("productImages").Document(id).CreateJsAsync(new Dictionary<string, object>
             {
                 ["bytes"] = bytes, ["size"] = bytes.Length, ["uploadedBy"] = user.Uid, ["createdAt"] = FieldValue.ServerTimestamp
             }, context.RequestAborted);

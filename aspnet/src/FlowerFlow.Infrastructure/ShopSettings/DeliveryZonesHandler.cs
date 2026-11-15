@@ -91,7 +91,7 @@ public sealed class DeliveryZonesHandler(Func<FirestoreDb> database, FirebaseAdm
                 var next = current.Where(item => (string)item["id"] != zoneId).ToList();
                 if (upsert) next.Add(zone!);
                 if (HasDuplicateAreas(next)) throw new DuplicateAreaException();
-                transaction.Set(reference, new Dictionary<string, object> { ["zones"] = next, ["updatedAt"] = FieldValue.ServerTimestamp });
+                transaction.SetJs(reference, new Dictionary<string, object> { ["zones"] = next, ["updatedAt"] = FieldValue.ServerTimestamp });
                 AdminAudit.AddAdminAudit(transaction, db, claims, "delivery-zone." + action.GetString(), "delivery-zone", zoneId,
                     new Dictionary<string, object> { ["before"] = current.FirstOrDefault(item => (string)item["id"] == zoneId)!,
                         ["after"] = next.FirstOrDefault(item => (string)item["id"] == zoneId)! });

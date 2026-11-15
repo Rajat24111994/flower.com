@@ -83,9 +83,9 @@ public sealed class OrderReviews(Func<FirestoreDb> database, IFirebaseAdminBacke
                     ["customerName"] = name.Length == 0 || Regex.IsMatch(name, @"flower\s*flow|cửa hàng|quản trị|admin", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant) ? "Khách hàng" : name,
                     ["rating"] = rating, ["comment"] = comment, ["createdAt"] = FieldValue.ServerTimestamp
                 };
-                transaction.Create(reviewRef, data);
+                transaction.CreateJs(reviewRef, data);
                 for (var index = 0; index < photos.Count; index++)
-                    transaction.Create(db.Collection("reviewImages").Document($"{reviewRef.Id}_{index}"), new Dictionary<string, object>
+                    transaction.CreateJs(db.Collection("reviewImages").Document($"{reviewRef.Id}_{index}"), new Dictionary<string, object>
                     { ["reviewId"] = reviewRef.Id, ["bytes"] = photos[index], ["createdAt"] = FieldValue.ServerTimestamp });
                 return data;
             }, cancellationToken: context.RequestAborted);

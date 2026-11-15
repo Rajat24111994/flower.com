@@ -31,7 +31,7 @@ public static class AdminAudit
         string action, string resourceType, string? resourceId, object? details)
     {
         var reference = db.Collection("adminAudit").Document();
-        transaction.Create(reference, MakeEntry(actor, action, resourceType, resourceId, details));
+        transaction.CreateJs(reference, MakeEntry(actor, action, resourceType, resourceId, details));
         return reference;
     }
 
@@ -43,7 +43,7 @@ public static class AdminAudit
         string action, string resourceType, string? resourceId, object? details, CancellationToken cancellationToken = default)
     {
         var reference = db.Collection("adminAudit").Document();
-        await reference.CreateAsync(MakeEntry(actor, action, resourceType, resourceId, details), cancellationToken);
+        await reference.CreateJsAsync(MakeEntry(actor, action, resourceType, resourceId, details), cancellationToken);
         return reference;
     }
 

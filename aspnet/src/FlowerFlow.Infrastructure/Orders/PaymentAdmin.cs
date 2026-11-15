@@ -68,8 +68,8 @@ public sealed class PaymentAdmin(Func<FirestoreDb> database, FirebaseAdminServic
                     ["paymentVerifiedBy"] = user.Uid, ["paymentReconciliationReference"] = reference
                 };
                 if (latePayment) { changes["latePayment"] = true; changes["paymentAttention"] = "Thanh toán đến sau khi đơn đã hủy; cần kiểm tra và xử lý hoàn tiền hoặc khôi phục đơn."; }
-                transaction.Update(orderRef, changes);
-                transaction.Create(auditRef, AuditData(id, latePayment ? "qr-late-payment-recorded" : "qr-payment-verified", user, order, reference));
+                transaction.UpdateJs(orderRef, changes);
+                transaction.CreateJs(auditRef, AuditData(id, latePayment ? "qr-late-payment-recorded" : "qr-payment-verified", user, order, reference));
                 return 0;
             }, cancellationToken: context.RequestAborted);
             await context.Response.WriteAsJsonAsync(new { ok = true, auditId = auditRef.Id }, context.RequestAborted);
@@ -101,9 +101,9 @@ public sealed class PaymentAdmin(Func<FirestoreDb> database, FirebaseAdminServic
                     throw new BackendException("payment-not-complete", "Chỉ ghi nhận hoàn tiền cho đơn đã xác nhận thanh toán.");
                 var total = Js.Element(order.GetValueOrDefault("total"));
                 if (!Js.SafeInteger(total) || total.GetDouble() <= 0) throw new BackendException("invalid-refund-amount", "Tổng tiền đơn hàng không hợp lệ để hoàn tiền.");
-                transaction.Update(orderRef, new Dictionary<string, object> { ["paymentRefunded"] = true, ["paymentRefundAmount"] = order["total"],
+                transaction.UpdateJs(orderRef, new Dictionary<string, object> { ["paymentRefunded"] = true, ["paymentRefundAmount"] = order["total"],
                     ["paymentRefundedAt"] = FieldValue.ServerTimestamp, ["paymentRefundedBy"] = user.Uid, ["paymentRefundReference"] = reference, ["paymentStatus"] = "Đã hoàn tiền" });
-                transaction.Create(auditRef, AuditData(id, "payment-refunded", user, order, reference)); return order["total"];
+                transaction.CreateJs(auditRef, AuditData(id, "payment-refunded", user, order, reference)); return order["total"];
             }, cancellationToken: context.RequestAborted);
             await context.Response.WriteAsJsonAsync(new { ok = true, auditId = auditRef.Id, amountVnd = amount }, context.RequestAborted);
         }

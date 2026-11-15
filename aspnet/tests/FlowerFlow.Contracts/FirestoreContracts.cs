@@ -24,6 +24,14 @@ static class FirestoreContracts
             ProjectId = "demo-flowerflow-csharp", Endpoint = "127.0.0.1:8787",
             ChannelCredentials = ChannelCredentials.Insecure
         }.Build();
+        var numeric = db.Collection("contractTestItems").Document();
+        await numeric.CreateJsAsync(new Dictionary<string, object> { ["quantity"] = 3d, ["fraction"] = 1.25d,
+            ["large"] = 9007199254740992d, ["nested"] = new List<object> { new Dictionary<string, object> { ["total"] = 50000d } } });
+        var numericData = (await numeric.GetSnapshotAsync()).ToDictionary();
+        AdditionalContracts.Require(numericData["quantity"] is long && numericData["fraction"] is double && numericData["large"] is double
+            && ((Dictionary<string, object>)((List<object>)numericData["nested"])[0])["total"] is long,
+            "Firestore number wire types differ from Node safe-integer serialization");
+        Console.WriteLine("PASS: Firestore safe integers, nested totals, fractions and unsafe integer wire types.");
         var actor = new FirebaseIdentity("audit-tester", new Dictionary<string, object> { ["email"] = "tester@example.invalid" });
         var details = new Dictionary<string, object> { ["before"] = 1, ["after"] = 2 };
         var separate = await AdminAudit.RecordAdminAuditAsync(db, actor, "test.separate", "test", "item", details);

@@ -22,13 +22,13 @@ public sealed class Reservations(ILogger<Reservations> logger)
         if (reserved && originalStatus != "Chờ xác nhận" && expires is not null
             && (expires is Timestamp || Js.Truthy(Js.Element(expires))))
         {
-            transaction.Update(orderRef, new Dictionary<string, object> { ["reservationExpiresAt"] = FieldValue.Delete }); return false;
+            transaction.UpdateJs(orderRef, new Dictionary<string, object> { ["reservationExpiresAt"] = FieldValue.Delete }); return false;
         }
         if (!reserved || expires is not Timestamp expiresAt || FirestoreValues.ToMillis(expiresAt) > FirestoreValues.ToMillis(now)) return false;
         var paymentStatus = Js.StringOrEmpty(Js.Element(order.GetValueOrDefault("paymentStatus"))).Trim().ToLower(CultureInfo.GetCultureInfo("vi-VN"));
         if (order.GetValueOrDefault("paymentVerified") is true || new[] { "đã thanh toán", "paid", "da_thanh_toan", "đã hoàn tiền" }.Contains(paymentStatus))
         {
-            transaction.Update(orderRef, new Dictionary<string, object> { ["reservationExpiresAt"] = FieldValue.Delete }); return false;
+            transaction.UpdateJs(orderRef, new Dictionary<string, object> { ["reservationExpiresAt"] = FieldValue.Delete }); return false;
         }
         var items = OrderPricing.AggregateItems(Js.Element(order.GetValueOrDefault("items")));
         var txn = order.GetValueOrDefault("vnpTxnRef");
@@ -54,16 +54,16 @@ public sealed class Reservations(ILogger<Reservations> logger)
         {
             if (!products[index].Exists) continue;
             var quantity = Js.NumberOrZero(Js.Element(products[index].ToDictionary().GetValueOrDefault("quantity")));
-            transaction.Update(products[index].Reference, new Dictionary<string, object>
+            transaction.UpdateJs(products[index].Reference, new Dictionary<string, object>
                 { ["quantity"] = quantity + Convert.ToDouble(items[index]["quantity"], CultureInfo.InvariantCulture) });
         }
         var history = order.GetValueOrDefault("trackingHistory") is IEnumerable<object> events ? events.ToList() : [];
         history.Add(new Dictionary<string, object> { ["status"] = status!, ["location"] = location, ["estimatedDelivery"] = "",
             ["updatedAt"] = now.ToDateTime().ToString("yyyy-MM-dd'T'HH:mm:ss.fff'Z'", CultureInfo.InvariantCulture) });
         changes["trackingHistory"] = history;
-        transaction.Update(orderRef, changes);
+        transaction.UpdateJs(orderRef, changes);
         if (attempt?.Exists == true && attempt.ToDictionary().GetValueOrDefault("status") is "pending")
-            transaction.Update(attemptRef!, new Dictionary<string, object> { ["status"] = "expired", ["processedAt"] = now });
+            transaction.UpdateJs(attemptRef!, new Dictionary<string, object> { ["status"] = "expired", ["processedAt"] = now });
         return true;
     }, cancellationToken: cancellationToken);
 
