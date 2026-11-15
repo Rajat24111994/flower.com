@@ -149,3 +149,7 @@ Kết quả kiểm tra file 02:
 ## File 18: orders/tracking.js
 
 Đích: `src/FlowerFlow.Infrastructure/Orders/OrderTracking.cs`. Giữ dữ liệu public giới hạn riêng tư, QR/VNPay/refund, dữ liệu account, auth và local identity, tra cứu mã đơn/điện thoại, limiter HMAC từ IP trusted và service-account secret, transaction 20 lần/10 phút, đơn account tối đa 100 và thông báo lỗi. Kèm adapter Firestore timestamp/JSON tương thích Node (_seconds/_nanoseconds khi spread raw; ISO làm tròn mili giây như Timestamp.toDate). URL orders sẽ nối sau khi các service orders còn lại đã chuyển. Reverse proxy triển khai phải ghi đè x-forwarded-for như Vercel hiện tại; không dùng IP do client tự chọn để triển khai production.
+
+## File 19: catalog/flower-prices.js
+
+Đích: `src/FlowerFlow.Infrastructure/Catalog/FlowerPricesHandler.cs`, GET/PATCH `/api/flower-prices`. Giữ claim+document owner, validation id/giá, danh sách hoa tiếng Việt, lịch sử giảm dần, quy đổi giá cũ, no-op giá không đổi, update product/history/audit trong cùng transaction, mã lỗi và response. Test emulator: Owner cập nhật và lịch sử đúng, không ghi lặp giá không đổi, document owner bị gỡ từ chối claim cũ. Alias trên products nối ở file kế tiếp.

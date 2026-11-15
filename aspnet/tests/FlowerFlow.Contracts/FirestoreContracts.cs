@@ -296,5 +296,27 @@ static class FirestoreContracts
             Console.WriteLine("PASS: lookup quota, guest privacy, account ownership and cross-account rejection on Firestore Emulator.");
         }
         finally { Environment.SetEnvironmentVariable("FIREBASE_SERVICE_ACCOUNT_JSON", previousSecret); }
+        using var ownerCase = JsonDocument.Parse("{\"claims\":{\"uid\":\"user-a\",\"admin\":true,\"role\":\"owner\",\"email\":\"owner@example.invalid\"}}");
+        var ownerAuth = new FirebaseAdminService(new FakeBackend(ownerCase.RootElement), NullLogger<FirebaseAdminService>.Instance);
+        var priceHandler = new FlowerPricesHandler(() => db, ownerAuth, NullLogger<FlowerPricesHandler>.Instance);
+        await adminRef.SetAsync(new { role = "owner" });
+        var flowerRef = db.Collection("products").Document("flower-price-" + suffix);
+        await flowerRef.SetAsync(new { saleType = "flower", title = "Hoa hồng", price = 10000, image = "rose.jpg" });
+        var priceUpdate = JsonContext(JsonSerializer.Serialize(new { flowerId = flowerRef.Id, price = 12000 }), "PATCH");
+        await priceHandler.HandleAsync(priceUpdate);
+        AdditionalContracts.Require(priceUpdate.Response.StatusCode == 200 && (await flowerRef.GetSnapshotAsync()).GetValue<double>("price") == 12000,
+            "Owner flower price update failed");
+        var priceHistory = await db.Collection("priceHistory").WhereEqualTo("flowerId", flowerRef.Id).GetSnapshotAsync();
+        AdditionalContracts.Require(priceHistory.Count == 1 && priceHistory.Documents[0].GetValue<double>("oldPrice") == 10000
+            && priceHistory.Documents[0].GetValue<double>("newPrice") == 12000, "Price history changed");
+        var noChange = JsonContext(JsonSerializer.Serialize(new { flowerId = flowerRef.Id, price = 12000 }), "PATCH");
+        await priceHandler.HandleAsync(noChange);
+        AdditionalContracts.Require((await db.Collection("priceHistory").WhereEqualTo("flowerId", flowerRef.Id).GetSnapshotAsync()).Count == 1,
+            "Unchanged price wrote history");
+        await adminRef.SetAsync(new { role = "admin" });
+        var revokedOwner = JsonContext(JsonSerializer.Serialize(new { flowerId = flowerRef.Id, price = 13000 }), "PATCH");
+        await priceHandler.HandleAsync(revokedOwner); AdditionalContracts.Require(revokedOwner.Response.StatusCode == 403, "Stale owner claim changed price");
+        await adminRef.DeleteAsync();
+        Console.WriteLine("PASS: owner-only flower pricing, transactional history, unchanged-price no-op and live owner revocation.");
     }
 }

@@ -22,6 +22,7 @@ builder.Services.AddSingleton<BouquetWrappingHandler>();
 builder.Services.AddSingleton<DeliveryZonesHandler>();
 builder.Services.AddSingleton<Reservations>();
 builder.Services.AddSingleton<OrderTracking>();
+builder.Services.AddSingleton<FlowerPricesHandler>();
 
 var app = builder.Build();
 
@@ -32,6 +33,7 @@ app.Map("/api/product-images", (HttpContext context, ProductImagesHandler handle
 app.Map("/api/admin/audit", (HttpContext context, AdminAuditHandler handler) => handler.HandleAsync(context));
 app.Map("/api/bouquet-wrapping", (HttpContext context, BouquetWrappingHandler handler) => handler.HandleAsync(context));
 app.Map("/api/delivery-zones", (HttpContext context, DeliveryZonesHandler handler) => handler.HandleAsync(context));
+app.Map("/api/flower-prices", (HttpContext context, FlowerPricesHandler handler) => handler.HandleAsync(context));
 app.Run();
 
 public partial class Program;
