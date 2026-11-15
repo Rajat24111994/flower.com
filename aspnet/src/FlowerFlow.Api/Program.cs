@@ -23,6 +23,8 @@ builder.Services.AddSingleton<DeliveryZonesHandler>();
 builder.Services.AddSingleton<Reservations>();
 builder.Services.AddSingleton<OrderTracking>();
 builder.Services.AddSingleton<FlowerPricesHandler>();
+builder.Services.AddSingleton(_ => new ProductCatalog(Path.Combine(AppContext.BaseDirectory, "catalog", "flower.json")));
+builder.Services.AddSingleton<ProductsHandler>();
 
 var app = builder.Build();
 
@@ -34,6 +36,7 @@ app.Map("/api/admin/audit", (HttpContext context, AdminAuditHandler handler) => 
 app.Map("/api/bouquet-wrapping", (HttpContext context, BouquetWrappingHandler handler) => handler.HandleAsync(context));
 app.Map("/api/delivery-zones", (HttpContext context, DeliveryZonesHandler handler) => handler.HandleAsync(context));
 app.Map("/api/flower-prices", (HttpContext context, FlowerPricesHandler handler) => handler.HandleAsync(context));
+app.Map("/api/products", (HttpContext context, ProductsHandler handler) => handler.HandleAsync(context));
 app.Run();
 
 public partial class Program;

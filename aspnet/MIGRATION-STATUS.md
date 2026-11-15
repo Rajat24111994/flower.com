@@ -153,3 +153,7 @@ Kết quả kiểm tra file 02:
 ## File 19: catalog/flower-prices.js
 
 Đích: `src/FlowerFlow.Infrastructure/Catalog/FlowerPricesHandler.cs`, GET/PATCH `/api/flower-prices`. Giữ claim+document owner, validation id/giá, danh sách hoa tiếng Việt, lịch sử giảm dần, quy đổi giá cũ, no-op giá không đổi, update product/history/audit trong cùng transaction, mã lỗi và response. Test emulator: Owner cập nhật và lịch sử đúng, không ghi lặp giá không đổi, document owner bị gỡ từ chối claim cũ. Alias trên products nối ở file kế tiếp.
+
+## File 20: catalog/products.js
+
+Đích: `src/FlowerFlow.Infrastructure/Catalog/ProductsHandler.cs`. Giữ trường Firestore gốc, id fallback, timestamp top-level ISO, sửa title lỗi dấu và ảnh cũ theo flower.json hiện tại, public chỉ loại status hidden (không tự loại archived), manage claim+document, header cache và alias flower-prices. flower.json được liên kết làm content build/publish, không sửa file frontend. Test emulator: sửa dữ liệu catalog cũ, public/manage/hidden/archived, timestamp và giữ trường gốc.

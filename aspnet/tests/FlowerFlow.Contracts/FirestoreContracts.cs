@@ -318,5 +318,28 @@ static class FirestoreContracts
         await priceHandler.HandleAsync(revokedOwner); AdditionalContracts.Require(revokedOwner.Response.StatusCode == 403, "Stale owner claim changed price");
         await adminRef.DeleteAsync();
         Console.WriteLine("PASS: owner-only flower pricing, transactional history, unchanged-price no-op and live owner revocation.");
+        var catalog = new ProductCatalog(Path.Combine(Directory.GetCurrentDirectory(), "flower.com/flower.json"));
+        var productHandler = new ProductsHandler(() => db, photoAuth, catalog, priceHandler, NullLogger<ProductsHandler>.Instance);
+        var catalogId = catalog.ById.Keys.First();
+        var repaired = productHandler.SerializeProduct(catalogId, new Dictionary<string, object>
+        { ["title"] = "???", ["image"] = "/images/flower-01.webp", ["images"] = new object[] { "/images/flower-02.webp", "/custom.jpg" }, ["createdAt"] = expireNow });
+        AdditionalContracts.Require(Equals(repaired["title"], catalog.ById[catalogId]["title"])
+            && ((List<object>)repaired["images"]).SequenceEqual(new object[] { "/custom.jpg" })
+            && repaired["createdAt"] is string, "Legacy product repair/timestamp changed");
+        var hiddenId = "hidden-" + suffix; var archivedId = "archived-" + suffix;
+        await db.Collection("products").Document(hiddenId).SetAsync(new { title = "Hidden", status = "hidden" });
+        await db.Collection("products").Document(archivedId).SetAsync(new { title = "Archived", status = "archived" });
+        var publicProducts = ImageContext(""); await productHandler.HandleAsync(publicProducts);
+        using var productBody = JsonDocument.Parse(((MemoryStream)publicProducts.Response.Body).ToArray());
+        var productIds = productBody.RootElement.GetProperty("products").EnumerateArray().Select(item => item.GetProperty("id").ToString()).ToArray();
+        AdditionalContracts.Require(!productIds.Contains(hiddenId) && productIds.Contains(archivedId), "Public catalog filtering changed");
+        await adminRef.SetAsync(new { role = "admin" });
+        var manageProducts = ImageContext(""); manageProducts.Request.QueryString = new QueryString("?manage=1"); manageProducts.Request.Headers.Authorization = "Bearer token";
+        await productHandler.HandleAsync(manageProducts);
+        using var manageProductsBody = JsonDocument.Parse(((MemoryStream)manageProducts.Response.Body).ToArray());
+        AdditionalContracts.Require(manageProductsBody.RootElement.GetProperty("products").EnumerateArray().Any(item => item.GetProperty("id").ToString() == hiddenId),
+            "Manage catalog missing hidden product");
+        await adminRef.DeleteAsync();
+        Console.WriteLine("PASS: product catalog field preservation, legacy title/image repairs, public/manage visibility and timestamp conversion.");
     }
 }
