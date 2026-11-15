@@ -16,7 +16,7 @@ static class ApiHostContracts
         start.ArgumentList.Add(dll); start.ArgumentList.Add("--urls"); start.ArgumentList.Add($"http://127.0.0.1:{port}");
         start.Environment["ASPNETCORE_ENVIRONMENT"] = "Development"; start.Environment["AUTH_MODE"] = "local";
         start.Environment["LOCAL_ACCOUNTS_FILE"] = Path.Combine(directory,"accounts.sqlite");
-        foreach (var key in new[] { "PORT", "FLOWER_FRONTEND_ROOT", "FIREBASE_SERVICE_ACCOUNT_JSON", "FIREBASE_PROJECT_ID", "FIRESTORE_EMULATOR_HOST", "FIREBASE_AUTH_PUBLIC_API_KEY", "FIREBASE_AUTH_SERVER_API_KEY" }) start.Environment.Remove(key);
+        foreach (var key in new[] { "PORT", "FLOWER_FRONTEND_ROOT", "FIREBASE_SERVICE_ACCOUNT_JSON", "FIREBASE_SERVICE_ACCOUNT_FILE", "FIREBASE_PROJECT_ID", "FIRESTORE_EMULATOR_HOST", "FIREBASE_AUTH_PUBLIC_API_KEY", "FIREBASE_AUTH_SERVER_API_KEY" }) start.Environment.Remove(key);
         using var process = Process.Start(start)!; var output = process.StandardOutput.ReadToEndAsync(); var errors = process.StandardError.ReadToEndAsync();
         try
         {

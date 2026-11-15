@@ -252,3 +252,7 @@ Kiểm tra cuối: build Release 0 warning/0 error; bộ contract tổng thể v
 Publish Production đã chạy smoke HTTP: health/HTML 200, cache/CSP đúng và local-auth 404; launcher `npm.cmd run dev` đã khởi động ASP.NET Development, health và auth-runtime đúng. Chặn request diagnostics chứa query string để không ghi token truy cập thiết kế/thanh toán vào log; test executable xác nhận query token không xuất hiện trong stdout/stderr. Bổ sung tương thích Blob → Buffer JSON và tọa độ số nguyên trong backup.
 
 Đối chiếu CI Linux bổ sung: fixture symlink dùng request GET rõ ràng và dọn các file đã tạo trong finally, tránh lỗi cleanup che lỗi assertion. Đây là sửa test fixture, không thay logic server.
+
+## Cấu hình kết nối Firebase thật
+
+Bổ sung `FIREBASE_SERVICE_ACCOUNT_FILE` để đọc Service Account ở đường dẫn riêng ngoài repository, vẫn ưu tiên biến JSON cũ và vẫn chỉ chấp nhận credential kiểu service account. Lệnh console `--check-firebase` kiểm tra project khớp frontend, xác thực server và đọc một document metadata; không ghi dữ liệu hay tạo tài khoản và không mở endpoint diagnostic công khai. Mọi lỗi được làm sạch trước khi in. Tests dùng file/khóa RSA tạm để kiểm tra thiếu/sai credential và chặn sai project trước khi gọi mạng. Chỉ xác nhận kết nối thật sau khi chạy thành công với credentials người dùng cung cấp; không coi build/test mock là đã kết nối project production.

@@ -39,9 +39,7 @@ public sealed class FirebaseAdminBackend : IFirebaseAdminBackend, IDisposable
 
     private FirebaseApp GetAdminApp()
     {
-        var json = Environment.GetEnvironmentVariable("FIREBASE_SERVICE_ACCOUNT_JSON");
-        if (string.IsNullOrEmpty(json))
-            throw new FirebaseAdminConfigurationException("FIREBASE_SERVICE_ACCOUNT_JSON is not configured.");
+        var json = FirebaseServiceAccount.ReadJson();
 
         string? accountProjectId;
         try

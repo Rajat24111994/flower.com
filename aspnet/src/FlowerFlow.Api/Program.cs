@@ -11,12 +11,14 @@ using FlowerFlow.Infrastructure.Payments;
 using FlowerFlow.Infrastructure.Local;
 using Microsoft.AspNetCore.HttpOverrides;
 using System.Net;
+using FlowerFlow.Api;
 
-var builder = WebApplication.CreateBuilder(args);
+var checkFirebase = args.Contains("--check-firebase", StringComparer.Ordinal);
+var builder = WebApplication.CreateBuilder(args.Where(argument => argument != "--check-firebase").ToArray());
 // Default request diagnostics include the full query string (design/payment access tokens).
 builder.Logging.AddFilter("Microsoft.AspNetCore", LogLevel.Warning);
 var development = builder.Environment.IsDevelopment();
-var authMode = Environment.GetEnvironmentVariable("AUTH_MODE") ?? (development ? "local" : "firebase");
+var authMode = checkFirebase ? "firebase" : Environment.GetEnvironmentVariable("AUTH_MODE") ?? (development ? "local" : "firebase");
 if (authMode is not "local" and not "firebase") throw new InvalidOperationException("AUTH_MODE phải là local hoặc firebase.");
 if (authMode == "local" && !development) throw new InvalidOperationException("Tài khoản local chỉ được bật trong môi trường Development.");
 var sourceFrontend = Path.GetFullPath(Path.Combine(builder.Environment.ContentRootPath, "../../../flower.com"));
@@ -81,11 +83,18 @@ builder.Services.AddSingleton<PaymentsHandler>();
 builder.Services.AddSingleton<VnpayIpnHandler>();
 
 var app = builder.Build();
+if (checkFirebase)
+{
+    Environment.ExitCode = await FirebaseConnectionCheck.RunAsync(app.Services.GetRequiredService<FirebaseAdminBackend>(),
+        Path.Combine(frontendRoot, "js", "core", "firebase-config.js"), Console.Out);
+    await app.DisposeAsync();
+    return;
+}
 
 if (proxies.Length > 0) app.UseForwardedHeaders();
 if (!development) app.UseHsts();
 var missingLoginConfiguration = development && authMode == "firebase" ? new[] { "FIREBASE_SERVICE_ACCOUNT_JSON", "FIREBASE_AUTH_PUBLIC_API_KEY", "FIREBASE_AUTH_SERVER_API_KEY" }
-    .Where(key => string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable(key))).ToArray() : [];
+    .Where(key => key == "FIREBASE_SERVICE_ACCOUNT_JSON" ? !FirebaseServiceAccount.IsConfigured() : string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable(key))).ToArray() : [];
 var serverOptions = new BackendServerOptions(frontendRoot, development, development ? authMode : null, missingLoginConfiguration);
 app.Use(next => new BackendServer(next, serverOptions, authMode == "local" ? app.Services.GetRequiredService<ILocalAccountWorker>() : null,
     authMode == "local" ? app.Services.GetRequiredService<LocalAuthHandler>() : null).InvokeAsync);

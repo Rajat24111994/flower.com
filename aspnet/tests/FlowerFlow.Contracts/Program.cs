@@ -14,6 +14,7 @@ if (args.Contains("--local-worker")) { await LocalWorkerContracts.RunAsync(); re
 if (args.Contains("--local-http")) { await LocalHttpContracts.RunAsync(root); return; }
 if (args.Contains("--server")) { await BackendServerContracts.RunAsync(root); return; }
 if (args.Contains("--api-host")) { await ApiHostContracts.RunAsync(root); return; }
+if (args.Contains("--firebase-connection")) { await FirebaseConnectionContracts.RunAsync(root); return; }
 if (args.Contains("--backup"))
 {
     await BackupContracts.RunAsync(root);
@@ -64,10 +65,12 @@ foreach (var input in scenarios.RootElement.EnumerateArray())
 }
 
 var previousJson = Environment.GetEnvironmentVariable("FIREBASE_SERVICE_ACCOUNT_JSON");
+var previousAccountFile = Environment.GetEnvironmentVariable("FIREBASE_SERVICE_ACCOUNT_FILE");
 var previousProject = Environment.GetEnvironmentVariable("FIREBASE_PROJECT_ID");
 var previousEmulator = Environment.GetEnvironmentVariable("FIRESTORE_EMULATOR_HOST");
 try
 {
+    Environment.SetEnvironmentVariable("FIREBASE_SERVICE_ACCOUNT_FILE", null);
     foreach (var json in new string?[] { null, "{invalid", "{}", "null" })
     {
         Environment.SetEnvironmentVariable("FIREBASE_SERVICE_ACCOUNT_JSON", json);
@@ -107,6 +110,7 @@ try
 finally
 {
     Environment.SetEnvironmentVariable("FIREBASE_SERVICE_ACCOUNT_JSON", previousJson);
+    Environment.SetEnvironmentVariable("FIREBASE_SERVICE_ACCOUNT_FILE", previousAccountFile);
     Environment.SetEnvironmentVariable("FIREBASE_PROJECT_ID", previousProject);
     Environment.SetEnvironmentVariable("FIRESTORE_EMULATOR_HOST", previousEmulator);
 }
@@ -131,6 +135,7 @@ await LocalHttpContracts.RunAsync(root);
 await BackupContracts.RunAsync(root);
 await BackendServerContracts.RunAsync(root);
 await ApiHostContracts.RunAsync(root);
+await FirebaseConnectionContracts.RunAsync(root);
 if (args.Contains("--firestore-emulator")) await FirestoreContracts.RunAsync();
 
 static void Assert(bool condition, string message)

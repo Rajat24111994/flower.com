@@ -28,12 +28,24 @@ Nếu PowerShell chặn `npm.ps1`, dùng `npm.cmd run dev`.
 
 Production dùng `AUTH_MODE=firebase` (mặc định). Cấu hình phía server bằng biến môi trường hoặc kho bí mật của nền tảng:
 
-- `FIREBASE_SERVICE_ACCOUNT_JSON`: service account hiện tại; bắt buộc khi dùng Firebase Admin.
+- `FIREBASE_SERVICE_ACCOUNT_JSON`: nội dung Service Account hiện tại, giữ cách cấu hình của deployment cũ.
+- Hoặc `FIREBASE_SERVICE_ACCOUNT_FILE`: đường dẫn file Service Account JSON ngoài Git/OneDrive, chỉ dùng ở server ASP.NET. Nếu đồng thời đặt JSON và FILE thì JSON được ưu tiên như cấu hình triển khai cũ. Không dùng file cấu hình Firebase Web thay cho Service Account.
 - `FIREBASE_PROJECT_ID`: tùy chọn, mặc định `project_id` trong service account; dùng project/database hiện có.
 - `FIREBASE_AUTH_PUBLIC_API_KEY`, `FIREBASE_AUTH_SERVER_API_KEY`: cấu hình password provider theo [hướng dẫn bảo vệ đăng nhập](../docs/login-protection.md). Public key phải khớp frontend và bị chặn các phương thức đăng nhập mật khẩu trực tiếp; server key phải khác public key.
 - Các biến VNPay, `CRON_SECRET` và khóa tra cứu giữ tên/cách sử dụng của backend JS; xem `.env.example` và cấu hình triển khai hiện có.
 
 `dotnet run` không tự đọc `.env`; `npm run dev` đọc file này qua Node launcher. Không đặt service account trong appsettings, frontend, repo hoặc log. SDK khởi tạo khi cần, không tạo lại database, không đổi schema Firestore. Xác thực Firebase ID token kiểm tra thu hồi; admin/owner vẫn kiểm tra live `adminRoles` và custom claims. `FIRESTORE_EMULATOR_HOST` chỉ dùng khi chủ động cấu hình emulator để thử nghiệm.
+
+Kiểm tra kết nối project thật từ máy đã có file khóa (thay đường dẫn mẫu bằng file của bạn):
+
+```powershell
+$env:FIREBASE_SERVICE_ACCOUNT_FILE = 'C:\Users\<user>\.secrets\flowerflow-admin.json'
+$env:FIREBASE_PROJECT_ID = 'web-ban-hoa-9fe0b'
+$env:AUTH_MODE = 'firebase'
+dotnet run --project aspnet/src/FlowerFlow.Api -- --check-firebase
+```
+
+Lệnh chỉ kiểm tra quyền đọc Firebase Authentication và đọc document cài đặt Firestore hiện có; không tạo tài khoản, ghi document hoặc tạo database. Kiểm tra project phải khớp frontend trước khi gọi mạng; từ chối chạy kiểm tra project thật khi đang cấu hình emulator. Kết quả thành công có `status=connected`, `authentication=true`, `firestore=true`. Khi thiếu/sai khóa hoặc lỗi kết nối, exit code là 1 và chỉ báo mã lỗi, không in khóa/chi tiết provider. Sau đó dùng cùng biến môi trường để chạy API bình thường. Kiểm tra này không thay cho cấu hình hai API key của luồng đăng nhập mật khẩu.
 
 ## Build và triển khai
 
