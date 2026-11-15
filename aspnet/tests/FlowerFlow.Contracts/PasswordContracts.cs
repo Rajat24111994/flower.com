@@ -112,10 +112,22 @@ sealed class TestFirebaseAccounts : IFirebaseAccounts
 {
     public string ProjectId => "demo-flowerflow-csharp";
     public int TokenCreations { get; private set; }
+    public Dictionary<string, FirebaseAccount> Users { get; } = new();
+    public string? LastPageToken { get; private set; }
+    public List<string> RevokedUsers { get; } = [];
+    public bool FailRevocation { get; set; }
     public void EnsureConfigured() { }
     public Task<string> GetAccessTokenAsync(CancellationToken cancellationToken) => Task.FromResult("access-token");
     public Task<string> CreateCustomTokenAsync(string uid, CancellationToken cancellationToken)
     { TokenCreations++; return Task.FromResult("custom-" + uid); }
+    public Task<FirebaseUserPage> ListUsersAsync(string? pageToken, CancellationToken cancellationToken)
+    { LastPageToken = pageToken; return Task.FromResult(new FirebaseUserPage(Users.Values.Take(100).ToList(), "next-page")); }
+    public Task<FirebaseAccount> GetUserAsync(string uid, CancellationToken cancellationToken) =>
+        Users.TryGetValue(uid, out var user) ? Task.FromResult(user) : throw new FirebaseAccountException("auth/user-not-found");
+    public Task SetCustomClaimsAsync(string uid, IDictionary<string, object> claims, CancellationToken cancellationToken)
+    { Users[uid] = Users[uid] with { CustomClaims = new Dictionary<string, object>(claims) }; return Task.CompletedTask; }
+    public Task RevokeRefreshTokensAsync(string uid, CancellationToken cancellationToken)
+    { if (FailRevocation) throw new Exception("private-provider-detail"); RevokedUsers.Add(uid); return Task.CompletedTask; }
 }
 
 sealed class TestPasswordProvider(string key) : IPasswordAuth

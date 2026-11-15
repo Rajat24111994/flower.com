@@ -181,3 +181,7 @@ Kết quả kiểm tra file 02:
 ## File 26: accounts/login.js
 
 Đích: `src/FlowerFlow.Infrastructure/Accounts/LoginHandler.cs`, `/api/login`. Giữ POST/validation, email chuẩn hóa, provider readiness trước password check, lock transaction, chỉ mint customToken sau cả hai kiểm tra thành công, Retry-After và thông báo cũ, outage giải phóng lease không tăng failures và không log mật khẩu/token. Test emulator + fake provider: khóa sau lần 5, không gọi provider/mint token khi khóa, thành công chỉ trả customToken, outage trả 503 không tăng failures hoặc lộ chi tiết. Credential scope identitytoolkit được tái sử dụng để giữ cache access token phía server.
+
+## File 27: admin/users.js
+
+Đích: `src/FlowerFlow.Infrastructure/Admin/AdminUsersHandler.cs`, `/api/admin/users` và alias `?route=audit`. SDK adapter đọc đúng một page 100 tài khoản và định dạng UTC metadata như Node; không trả password hash hoặc custom claims thô. Giữ admin permission, POST, validation pageToken, fields và nextPageToken. Test fake SDK + emulator: whitelist 8 field/tài khoản, token phân trang, từ chối token sai type và alias audit giữ header private/no-store.

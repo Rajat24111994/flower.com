@@ -444,5 +444,20 @@ static class FirestoreContracts
         AdditionalContracts.Require((await db.Collection("loginProtection").Document("http-login-" + suffix).GetSnapshotAsync()).GetValue<double>("failures") == 1,
             "Disconnect bypassed wrong-password accounting");
         Console.WriteLine("PASS: login HTTP normalization/errors, lock retry-after, no password check while locked, custom-token-only success and provider outage cleanup.");
+        var managedAccounts = new TestFirebaseAccounts();
+        managedAccounts.Users["customer-" + suffix] = new FirebaseAccount("customer-" + suffix, "customer@example.invalid", "Customer", false,
+            new Dictionary<string, object> { ["loyalty"] = true }, new[] { "password" }, "Mon, 01 Jan 2024 00:00:00 GMT", "");
+        var managedUsers = new AdminUsersHandler(managedAccounts, () => db, auditAuth, auditHandler, NullLogger<AdminUsersHandler>.Instance);
+        var userList = JsonContext("{\"pageToken\":\"previous-page\"}"); await managedUsers.HandleAsync(userList);
+        using var userListBody = JsonDocument.Parse(((MemoryStream)userList.Response.Body).ToArray());
+        AdditionalContracts.Require(userList.Response.StatusCode == 200 && managedAccounts.LastPageToken == "previous-page"
+            && userListBody.RootElement.GetProperty("nextPageToken").GetString() == "next-page"
+            && userListBody.RootElement.GetProperty("users")[0].EnumerateObject().Count() == 8, "Admin listing fields/pagination changed");
+        var invalidPage = JsonContext("{\"pageToken\":1}"); await managedUsers.HandleAsync(invalidPage);
+        AdditionalContracts.Require(invalidPage.Response.StatusCode == 400, "Non-string pagination accepted");
+        var auditAlias = ImageContext(""); auditAlias.Request.QueryString = new QueryString("?route=audit"); auditAlias.Request.Headers.Authorization = "Bearer token";
+        await managedUsers.HandleAsync(auditAlias); AdditionalContracts.Require(auditAlias.Response.StatusCode == 200
+            && auditAlias.Response.Headers.CacheControl == "private, no-store", "Admin audit route alias broken");
+        Console.WriteLine("PASS: admin account listing whitelist, pagination validation and protected legacy audit route alias.");
     }
 }
