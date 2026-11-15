@@ -3,6 +3,7 @@ using FlowerFlow.Infrastructure.Http;
 using FlowerFlow.Infrastructure.Catalog;
 using Google.Cloud.Firestore;
 using FlowerFlow.Infrastructure.Admin;
+using FlowerFlow.Infrastructure.ShopSettings;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -16,6 +17,7 @@ builder.Services.AddSingleton<Func<FirestoreDb>>(services => () => services.GetR
 builder.Services.AddSingleton<ReviewImagesHandler>();
 builder.Services.AddSingleton<ProductImagesHandler>();
 builder.Services.AddSingleton<AdminAuditHandler>();
+builder.Services.AddSingleton<BouquetWrappingHandler>();
 
 var app = builder.Build();
 
@@ -24,6 +26,7 @@ app.MapControllers();
 app.Map("/api/review-images", (HttpContext context, ReviewImagesHandler handler) => handler.HandleAsync(context));
 app.Map("/api/product-images", (HttpContext context, ProductImagesHandler handler) => handler.HandleAsync(context));
 app.Map("/api/admin/audit", (HttpContext context, AdminAuditHandler handler) => handler.HandleAsync(context));
+app.Map("/api/bouquet-wrapping", (HttpContext context, BouquetWrappingHandler handler) => handler.HandleAsync(context));
 app.Run();
 
 public partial class Program;

@@ -9,6 +9,7 @@ using System.Text.Json;
 using System.Security.Cryptography;
 using System.Text;
 using FlowerFlow.Infrastructure.Admin;
+using FlowerFlow.Infrastructure.ShopSettings;
 
 static class FirestoreContracts
 {
@@ -184,5 +185,29 @@ static class FirestoreContracts
         var noAuditToken = ImageContext(""); await auditHandler.HandleAsync(noAuditToken);
         AdditionalContracts.Require(noAuditToken.Response.StatusCode == 401, "Audit listing exposed without authentication");
         Console.WriteLine("PASS: admin audit listing fields, timestamp serialization, limit and unauthenticated access rejection.");
+        var wrapping = new BouquetWrappingHandler(() => db, auditAuth, NullLogger<BouquetWrappingHandler>.Instance);
+        var wrappingRef = db.Collection("metadata").Document("bouquetWrapping");
+        await wrappingRef.DeleteAsync();
+        var unconfigured = ImageContext(""); await wrapping.HandleAsync(unconfigured);
+        using var emptyWrapping = JsonDocument.Parse(((MemoryStream)unconfigured.Response.Body).ToArray());
+        AdditionalContracts.Require(!emptyWrapping.RootElement.GetProperty("configured").GetBoolean(), "Missing wrapping config must stay unconfigured");
+        DefaultHttpContext JsonContext(string json, string method = "POST")
+        {
+            var context = new DefaultHttpContext(); context.Request.Method = method;
+            context.Request.Headers.Authorization = "Bearer token";
+            var payload = Encoding.UTF8.GetBytes(json); context.Request.Body = new MemoryStream(payload);
+            context.Request.ContentLength = payload.Length; context.Response.Body = new MemoryStream(); return context;
+        }
+        var invalidTiers = JsonContext("{\"tiers\":[{\"maxStems\":10,\"fee\":1000}]}");
+        await wrapping.HandleAsync(invalidTiers);
+        AdditionalContracts.Require(invalidTiers.Response.StatusCode == 400 && !(await wrappingRef.GetSnapshotAsync()).Exists,
+            "Incomplete wrapping tiers were saved");
+        var saveTiers = JsonContext("{\"tiers\":[{\"maxStems\":10,\"fee\":5000},{\"maxStems\":50,\"fee\":15000}]}");
+        await wrapping.HandleAsync(saveTiers);
+        AdditionalContracts.Require(saveTiers.Response.StatusCode == 200 && (await wrappingRef.GetSnapshotAsync()).Exists,
+            "Valid wrapping tiers not saved");
+        var wrappingAudits = await db.Collection("adminAudit").WhereEqualTo("action", "bouquet-wrapping.update").GetSnapshotAsync();
+        AdditionalContracts.Require(wrappingAudits.Count > 0, "Wrapping update missing audit");
+        Console.WriteLine("PASS: wrapping configuration absent/default, tier validation, save and atomic audit.");
     }
 }

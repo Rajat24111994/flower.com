@@ -125,3 +125,7 @@ Kết quả kiểm tra file 02:
 ## File 12: admin/audit.js
 
 Đích: `src/FlowerFlow.Infrastructure/Admin/AdminAuditHandler.cs`, URL `/api/admin/audit`. Giữ GET, private/no-store, xác thực admin, thứ tự createdAt giảm dần/100 bản ghi, whitelist field và timestamp ISO, lỗi nguyên bản. Test emulator: trường trả về và giới hạn, bản ghi audit tồn tại trong kết quả, không có token bị từ chối. Alias `?route=audit` sẽ được nối khi chuyển admin/users.js.
+
+## File 13: shop-settings/bouquet-wrapping.js
+
+Đích: `src/FlowerFlow.Infrastructure/ShopSettings/BouquetWrappingHandler.cs`, kèm bản C# server-only của quy tắc bouquet-wrapping mà backend import từ frontend. Giữ metadata/bouquetWrapping, GET public/manage, POST admin, 1–10 bậc tăng dần kết thúc 50 cành, phí VND nguyên, audit cùng transaction, response/errors và URL cũ. Test emulator: chưa cấu hình, bậc thiếu bị từ chối không ghi, lưu hợp lệ và audit. Frontend không sửa. Alias query được nối khi chuyển delivery-zones.js.
