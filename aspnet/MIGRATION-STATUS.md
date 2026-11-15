@@ -129,3 +129,7 @@ Kết quả kiểm tra file 02:
 ## File 13: shop-settings/bouquet-wrapping.js
 
 Đích: `src/FlowerFlow.Infrastructure/ShopSettings/BouquetWrappingHandler.cs`, kèm bản C# server-only của quy tắc bouquet-wrapping mà backend import từ frontend. Giữ metadata/bouquetWrapping, GET public/manage, POST admin, 1–10 bậc tăng dần kết thúc 50 cành, phí VND nguyên, audit cùng transaction, response/errors và URL cũ. Test emulator: chưa cấu hình, bậc thiếu bị từ chối không ghi, lưu hợp lệ và audit. Frontend không sửa. Alias query được nối khi chuyển delivery-zones.js.
+
+## File 14: shop-settings/delivery-zones.js
+
+Đích: `src/FlowerFlow.Infrastructure/ShopSettings/DeliveryZonesHandler.cs`. Giữ coercion và validation zone, phí số nguyên, enabled boolean, trùng tỉnh/quận không phân biệt hoa/thường tiếng Việt, public/manage, upsert/delete và audit trong transaction, alias `?route=bouquet-wrapping`. Kèm adapter JS coercion dùng chung cho các bước tiếp theo. Test emulator: upsert/delete, trùng địa bàn trả 409, public ẩn vùng disabled/manage hiện đầy đủ, alias cũ hoạt động.

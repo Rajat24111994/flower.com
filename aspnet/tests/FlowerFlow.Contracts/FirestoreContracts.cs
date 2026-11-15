@@ -209,5 +209,26 @@ static class FirestoreContracts
         var wrappingAudits = await db.Collection("adminAudit").WhereEqualTo("action", "bouquet-wrapping.update").GetSnapshotAsync();
         AdditionalContracts.Require(wrappingAudits.Count > 0, "Wrapping update missing audit");
         Console.WriteLine("PASS: wrapping configuration absent/default, tier validation, save and atomic audit.");
+        var delivery = new DeliveryZonesHandler(() => db, auditAuth, wrapping, NullLogger<DeliveryZonesHandler>.Instance);
+        await db.Collection("metadata").Document("deliveryZones").DeleteAsync();
+        var upsertZone = JsonContext("{\"action\":\"upsert\",\"zone\":{\"id\":\"zone-a\",\"province\":\"Hà Nội\",\"district\":\"Ba Đình\",\"fee\":25000,\"enabled\":true}}");
+        await delivery.HandleAsync(upsertZone); AdditionalContracts.Require(upsertZone.Response.StatusCode == 200, "Zone upsert failed");
+        var duplicateZone = JsonContext("{\"action\":\"upsert\",\"zone\":{\"id\":\"zone-b\",\"province\":\"HÀ NỘI\",\"district\":\"BA ĐÌNH\",\"fee\":0,\"enabled\":true}}");
+        await delivery.HandleAsync(duplicateZone); AdditionalContracts.Require(duplicateZone.Response.StatusCode == 409, "Duplicate area accepted");
+        var disabledZone = JsonContext("{\"action\":\"upsert\",\"zone\":{\"id\":\"zone-c\",\"province\":\"Hà Nội\",\"district\":\"Tây Hồ\",\"fee\":0,\"enabled\":false}}");
+        await delivery.HandleAsync(disabledZone);
+        var publicZones = ImageContext(""); await delivery.HandleAsync(publicZones);
+        using var publicZoneBody = JsonDocument.Parse(((MemoryStream)publicZones.Response.Body).ToArray());
+        AdditionalContracts.Require(publicZoneBody.RootElement.GetProperty("zones").GetArrayLength() == 1, "Disabled zone exposed");
+        var allZones = ImageContext(""); allZones.Request.QueryString = new QueryString("?manage=1"); allZones.Request.Headers.Authorization = "Bearer token";
+        await delivery.HandleAsync(allZones);
+        using var manageZoneBody = JsonDocument.Parse(((MemoryStream)allZones.Response.Body).ToArray());
+        AdditionalContracts.Require(manageZoneBody.RootElement.GetProperty("zones").GetArrayLength() == 2, "Management zones omitted disabled area");
+        var alias = ImageContext(""); alias.Request.QueryString = new QueryString("?route=bouquet-wrapping");
+        await delivery.HandleAsync(alias); AdditionalContracts.Require(alias.Response.StatusCode == 200, "Wrapping query alias broken");
+        var deleteZone = JsonContext("{\"action\":\"delete\",\"id\":\"zone-a\"}"); await delivery.HandleAsync(deleteZone);
+        using var deletedZoneBody = JsonDocument.Parse(((MemoryStream)deleteZone.Response.Body).ToArray());
+        AdditionalContracts.Require(!deletedZoneBody.RootElement.GetProperty("configured").GetBoolean(), "Deleting enabled area kept configured=true");
+        Console.WriteLine("PASS: delivery zone upsert/delete, case-insensitive duplicate rejection, public/manage visibility and legacy route alias.");
     }
 }
