@@ -87,3 +87,7 @@ Kết quả kiểm tra file 02:
 ## File 03: catalog/image-rules.js
 
 Đích: `src/FlowerFlow.Application/Catalog/ImageRules.cs`. Giữ giới hạn 3 ảnh, 120 KiB/ảnh, JPEG SOF C0/C1/C2, kích thước 1–1600, base64 canonical và dữ liệu bytes gốc; phân biệt tham số thiếu với JSON null. Đối chiếu trực tiếp với module JS qua `image-rules-oracle.cjs` gồm ảnh thật, biên kích thước, dữ liệu sai định dạng và quá giới hạn. Không thay frontend hoặc endpoint.
+
+## File 04: shared/api-routes.js
+
+Đích: `src/FlowerFlow.Infrastructure/Http/ApiRoutes.cs`. Giữ handler mặc định khi không có query route; phân biệt hoa/thường, từ chối query lặp hoặc route không khai báo bằng HTTP 404, `{ code, error }` và no-store. Danh sách route được sao chép chỉ đọc. Tám tình huống đối chiếu trực tiếp với JavaScript, gồm route rỗng, lặp và `__proto__`.
