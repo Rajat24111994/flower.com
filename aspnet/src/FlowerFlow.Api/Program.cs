@@ -28,6 +28,7 @@ builder.Services.AddSingleton(_ => new ProductCatalog(Path.Combine(AppContext.Ba
 builder.Services.AddSingleton<ProductsHandler>();
 builder.Services.AddSingleton<DesignRequestsHandler>();
 builder.Services.AddSingleton<OrderReviews>();
+builder.Services.AddSingleton<PaymentAdmin>();
 
 var app = builder.Build();
 

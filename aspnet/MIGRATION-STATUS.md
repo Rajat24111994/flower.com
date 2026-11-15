@@ -169,3 +169,7 @@ Kết quả kiểm tra file 02:
 ## File 23: orders/reviews.js
 
 Đích: `src/FlowerFlow.Infrastructure/Orders/OrderReviews.cs`. Giữ ID review SHA-256 rút gọn 40, chủ đơn đã giao, một review/đơn trong transaction, JPEG và photoIds, tên/sản phẩm lấy từ đơn, không giả danh cửa hàng, pending moderation và own-review lookup. Test emulator: đơn chưa giao bị từ chối, hai yêu cầu đồng thời chỉ một thành công, pending/name privacy và chủ đơn đọc review. Nối action trên orders sau khi controller được chuyển.
+
+## File 24: orders/payment-admin.js
+
+Đích: `src/FlowerFlow.Infrastructure/Orders/PaymentAdmin.cs`. Giữ phân quyền với mã forbidden, đối soát QR đúng tổng tiền, xác nhận tiền trễ riêng, ghi nhận hoàn tiền một lần, audit orderPaymentAudit trong transaction và whitelist 25 bản ghi mới nhất. Test emulator: sai số tiền từ chối, xác minh/hoàn tiền lặp từ chối, audit chỉ ghi cho lần thành công, tiền trễ không tự khôi phục đơn/kho đã giải phóng. Nối action khi controller orders hoàn tất.

@@ -386,5 +386,32 @@ static class FirestoreContracts
         var ownReview = JsonContext(JsonSerializer.Serialize(new { orderId = reviewedOrder.Id })); await reviews.GetOwnReviewAsync(ownReview);
         AdditionalContracts.Require(ownReview.Response.StatusCode == 200, "Owner review lookup failed");
         Console.WriteLine("PASS: delivered-owner reviews, one review under concurrent requests, pending moderation, name protection and own review lookup.");
+        var paymentAdmin = new PaymentAdmin(() => db, photoAuth, NullLogger<PaymentAdmin>.Instance);
+        await adminRef.SetAsync(new { role = "admin" });
+        var qrOrder = db.Collection("orders").Document();
+        await qrOrder.SetAsync(new { paymentMethod = "qr", total = 100000, status = "Chờ xác nhận", inventoryState = "reserved", paymentReference = "FFPAY" });
+        var mismatch = JsonContext(JsonSerializer.Serialize(new { orderId = qrOrder.Id, amount = 99999, reconciliationReference = "BANK001" }));
+        await paymentAdmin.ReconcileQrPaymentAsync(mismatch); AdditionalContracts.Require(mismatch.Response.StatusCode == 409, "QR amount mismatch accepted");
+        var reconciliation = JsonContext(JsonSerializer.Serialize(new { orderId = qrOrder.Id, amount = "100000", reconciliationReference = "BANK001" }));
+        await paymentAdmin.ReconcileQrPaymentAsync(reconciliation); AdditionalContracts.Require(reconciliation.Response.StatusCode == 200, "QR verification failed");
+        var repeated = JsonContext(JsonSerializer.Serialize(new { orderId = qrOrder.Id, amount = 100000, reconciliationReference = "BANK001" }));
+        await paymentAdmin.ReconcileQrPaymentAsync(repeated); AdditionalContracts.Require(repeated.Response.StatusCode == 409, "QR verified twice");
+        var refund = JsonContext(JsonSerializer.Serialize(new { orderId = qrOrder.Id, refundReference = "REFUND001" }));
+        await paymentAdmin.RecordPaymentRefundAsync(refund); AdditionalContracts.Require(refund.Response.StatusCode == 200, "Refund recording failed");
+        var repeatedRefund = JsonContext(JsonSerializer.Serialize(new { orderId = qrOrder.Id, refundReference = "REFUND002" }));
+        await paymentAdmin.RecordPaymentRefundAsync(repeatedRefund); AdditionalContracts.Require(repeatedRefund.Response.StatusCode == 409, "Refund recorded twice");
+        var qrAudit = ImageContext(""); qrAudit.Request.QueryString = new QueryString("?orderId=" + qrOrder.Id); qrAudit.Request.Headers.Authorization = "Bearer token";
+        await paymentAdmin.GetQrPaymentAuditAsync(qrAudit);
+        using var qrAuditBody = JsonDocument.Parse(((MemoryStream)qrAudit.Response.Body).ToArray());
+        AdditionalContracts.Require(qrAuditBody.RootElement.GetProperty("entries").GetArrayLength() == 2, "Verification/refund audit not atomic or duplicated");
+        var lateOrder = db.Collection("orders").Document();
+        await lateOrder.SetAsync(new { paymentMethod = "qr", total = 100000, status = "Đã hủy", inventoryState = "released" });
+        var lateContext = JsonContext(JsonSerializer.Serialize(new { orderId = lateOrder.Id, amount = 100000, reconciliationReference = "LATE001" }));
+        await paymentAdmin.ReconcileQrPaymentAsync(lateContext, true);
+        var lateData = await lateOrder.GetSnapshotAsync();
+        AdditionalContracts.Require(lateContext.Response.StatusCode == 200 && lateData.GetValue<bool>("latePayment")
+            && lateData.GetValue<string>("status") == "Đã hủy" && lateData.GetValue<string>("inventoryState") == "released", "Late payment silently restored cancelled stock/order");
+        await adminRef.DeleteAsync();
+        Console.WriteLine("PASS: QR exact amount, one-time verification/refund, transactional audit and late payment without restoring released stock.");
     }
 }
