@@ -4,6 +4,7 @@ using FlowerFlow.Infrastructure.Catalog;
 using Google.Cloud.Firestore;
 using FlowerFlow.Infrastructure.Admin;
 using FlowerFlow.Infrastructure.ShopSettings;
+using FlowerFlow.Infrastructure.Orders;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -19,6 +20,7 @@ builder.Services.AddSingleton<ProductImagesHandler>();
 builder.Services.AddSingleton<AdminAuditHandler>();
 builder.Services.AddSingleton<BouquetWrappingHandler>();
 builder.Services.AddSingleton<DeliveryZonesHandler>();
+builder.Services.AddSingleton<Reservations>();
 
 var app = builder.Build();
 

@@ -10,6 +10,7 @@ using System.Security.Cryptography;
 using System.Text;
 using FlowerFlow.Infrastructure.Admin;
 using FlowerFlow.Infrastructure.ShopSettings;
+using FlowerFlow.Infrastructure.Orders;
 
 static class FirestoreContracts
 {
@@ -230,5 +231,38 @@ static class FirestoreContracts
         using var deletedZoneBody = JsonDocument.Parse(((MemoryStream)deleteZone.Response.Body).ToArray());
         AdditionalContracts.Require(!deletedZoneBody.RootElement.GetProperty("configured").GetBoolean(), "Deleting enabled area kept configured=true");
         Console.WriteLine("PASS: delivery zone upsert/delete, case-insensitive duplicate rejection, public/manage visibility and legacy route alias.");
+        var reservations = new Reservations(NullLogger<Reservations>.Instance);
+        var stockRef = db.Collection("products").Document("hold-stock-" + suffix);
+        await stockRef.SetAsync(new { quantity = 10 });
+        var expireNow = Timestamp.FromDateTime(DateTime.UtcNow);
+        var expiredAt = Timestamp.FromDateTime(DateTime.UtcNow.AddMinutes(-5));
+        var hold = db.Collection("orders").Document();
+        await hold.SetAsync(new Dictionary<string, object>
+        {
+            ["status"] = "Chờ xác nhận", ["inventoryReserved"] = true, ["reservationExpiresAt"] = expiredAt, ["paymentMethod"] = "qr",
+            ["items"] = new[] { new { id = stockRef.Id, quantity = 2 }, new { id = stockRef.Id, quantity = 3 } }
+        });
+        var expiryResults = await Task.WhenAll(reservations.ExpireOneReservationAsync(db, hold, expireNow), reservations.ExpireOneReservationAsync(db, hold, expireNow));
+        AdditionalContracts.Require(expiryResults.Count(result => result) == 1 && (await stockRef.GetSnapshotAsync()).GetValue<double>("quantity") == 15,
+            "Concurrent expiry restored stock more than once");
+        var expiredOrder = await hold.GetSnapshotAsync();
+        AdditionalContracts.Require(expiredOrder.GetValue<string>("status") == "Đã hủy"
+            && expiredOrder.GetValue<string>("paymentStatus") == "Hết hạn chờ thanh toán", "Expired QR status changed");
+        foreach (var state in new[] { (Status: "Đang chuẩn bị", Paid: false), (Status: "Chờ xác nhận", Paid: true) })
+        {
+            var preserved = db.Collection("orders").Document();
+            await preserved.SetAsync(new { status = state.Status, paymentVerified = state.Paid, inventoryReserved = true, reservationExpiresAt = expiredAt });
+            AdditionalContracts.Require(!await reservations.ExpireOneReservationAsync(db, preserved, expireNow), "Confirmed/paid order expired");
+            var retained = await preserved.GetSnapshotAsync();
+            AdditionalContracts.Require(retained.GetValue<bool>("inventoryReserved") && !retained.ContainsField("reservationExpiresAt"),
+                "Confirmed/paid hold timer not removed");
+        }
+        var txnRef = db.Collection("paymentTransactions").Document(); await txnRef.SetAsync(new { status = "pending" });
+        var vnpHold = db.Collection("orders").Document();
+        await vnpHold.SetAsync(new { status = "Chờ xác nhận", paymentMethod = "vnpay", inventoryReserved = true,
+            reservationExpiresAt = expiredAt, vnpTxnRef = txnRef.Id, items = Array.Empty<object>() });
+        AdditionalContracts.Require(await reservations.ExpireReservationsAsync(db) >= 1
+            && (await txnRef.GetSnapshotAsync()).GetValue<string>("status") == "expired", "VNPay reservation/attempt cleanup failed");
+        Console.WriteLine("PASS: reservation expiry, concurrent restore-once, duplicate lines, confirmed/paid holds and VNPay attempt expiry.");
     }
 }

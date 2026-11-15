@@ -141,3 +141,7 @@ Kết quả kiểm tra file 02:
 ## File 16: orders/pricing.js
 
 Đích: `src/FlowerFlow.Application/Orders/OrderPricing.cs`. Giữ quy đổi giá USD cũ sang VND (25949.123093), làm tròn đúng JS, giá hoa/sản phẩm, khuyến mãi và ngày Việt Nam, eligibility theo productId, tổng hợp dòng tồn kho, mã QR từ idempotency key, khu vực giao và phí bó tùy chỉnh. Kiểm thử đối chiếu trực tiếp với JS cả kết quả và mã/thông báo lỗi, các biên giá/khuyến mãi/bó tối đa 50 cành.
+
+## File 17: orders/reservations.js
+
+Đích: `src/FlowerFlow.Infrastructure/Orders/Reservations.cs`. Giữ giải phóng kho trong transaction, tổng hợp dòng sản phẩm, không hủy đơn đã xác nhận/thanh toán, xóa timer cũ, trạng thái QR/VNPay/history và attempt hết hạn, quét tối đa 500/100 mỗi batch, cleanup lỗi không chặn đặt hàng. Test emulator: hai tiến trình cleanup chỉ hoàn kho một lần, dòng trùng cộng đúng, giữ kho confirmed/paid, cleanup attempt VNPay pending.
