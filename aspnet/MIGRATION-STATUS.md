@@ -91,3 +91,7 @@ Kết quả kiểm tra file 02:
 ## File 04: shared/api-routes.js
 
 Đích: `src/FlowerFlow.Infrastructure/Http/ApiRoutes.cs`. Giữ handler mặc định khi không có query route; phân biệt hoa/thường, từ chối query lặp hoặc route không khai báo bằng HTTP 404, `{ code, error }` và no-store. Danh sách route được sao chép chỉ đọc. Tám tình huống đối chiếu trực tiếp với JavaScript, gồm route rỗng, lặp và `__proto__`.
+
+## File 05: shared/request-identity.js
+
+Đích: `src/FlowerFlow.Infrastructure/Http/RequestIdentity.cs`. Giữ khách ẩn danh, bearer nghiêm ngặt có kiểm tra thu hồi, danh tính local chỉ từ middleware server, từ chối session local sai hoặc trộn bearer/local. Port cả helper sessionCookie được export từ local-session: không có cookie trả null, cookie lặp trả chuỗi rỗng. Kiểm thử ranh giới local/bearer và cookie mơ hồ; chưa chuyển SQLite/local-server runtime.

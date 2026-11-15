@@ -4,9 +4,44 @@ using System.Text.Json.Nodes;
 using FlowerFlow.Application.Catalog;
 using FlowerFlow.Infrastructure.Http;
 using Microsoft.AspNetCore.Http;
+using FlowerFlow.Infrastructure.Firebase;
 
 static class AdditionalContracts
 {
+    public static async Task IdentityAsync()
+    {
+        using var scenario = JsonDocument.Parse("{\"claims\":{\"uid\":\"user-a\"}}");
+        var backend = new FakeBackend(scenario.RootElement);
+        var service = new RequestIdentity(backend);
+        Require(await service.OptionalCustomerAsync(new DefaultHttpContext()) is null, "Guest must stay anonymous");
+        foreach (var header in new[] { "Basic token", "Bearer ", "Bearer token extra" })
+        {
+            var context = new DefaultHttpContext(); context.Request.Headers.Authorization = header;
+            try { await service.OptionalCustomerAsync(context); throw new Exception("Invalid bearer accepted"); }
+            catch (RequestIdentityException error) { Require(error.Code == "auth/invalid-session", "Wrong invalid-session code"); }
+        }
+        var authenticated = new DefaultHttpContext(); authenticated.Request.Headers.Authorization = "bEaReR\ttoken";
+        Require((await service.OptionalCustomerAsync(authenticated))?.Uid == "user-a" && backend.CheckRevoked == true,
+            "Customer bearer must check revocation");
+        var identity = new FirebaseIdentity("local-user", new Dictionary<string, object>());
+        var local = new DefaultHttpContext(); RequestIdentity.SetLocalIdentity(local, identity, true);
+        Require(ReferenceEquals(await service.OptionalCustomerAsync(local), identity), "Trusted local identity lost");
+        local.Request.Headers.Authorization = "Bearer token";
+        try { await service.OptionalCustomerAsync(local); throw new Exception("Mixed local and bearer accepted"); }
+        catch (RequestIdentityException) { }
+        var invalid = new DefaultHttpContext(); RequestIdentity.SetLocalIdentity(invalid, null, true);
+        try { await service.OptionalCustomerAsync(invalid); throw new Exception("Invalid local session accepted"); }
+        catch (RequestIdentityException) { }
+        var guest = new DefaultHttpContext(); RequestIdentity.SetLocalIdentity(guest, null, false);
+        Require(await service.OptionalCustomerAsync(guest) is null, "Local guest rejected");
+        var cookies = new DefaultHttpContext(); Require(RequestIdentity.SessionCookie(cookies) is null, "Missing cookie changed");
+        cookies.Request.Headers.Cookie = "other=1; flower_local_session=one";
+        Require(RequestIdentity.SessionCookie(cookies) == "one", "Session cookie not read");
+        cookies.Request.Headers.Cookie = "flower_local_session=one; flower_local_session=two";
+        Require(RequestIdentity.SessionCookie(cookies) == "", "Ambiguous cookies must fail closed");
+        Console.WriteLine("PASS: customer identity, revoked-check flag, trusted local boundary and ambiguous cookies.");
+    }
+
     public static async Task<int> ApiRoutesAsync(string root)
     {
         using var cases = await OracleAsync(root, "api-routes-oracle.cjs");

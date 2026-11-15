@@ -99,6 +99,7 @@ finally
 Console.WriteLine($"PASS: {count} Firebase Admin contract/configuration scenarios; no live database operations.");
 await AdditionalContracts.ImageRulesAsync(root);
 await AdditionalContracts.ApiRoutesAsync(root);
+await AdditionalContracts.IdentityAsync();
 
 static void Assert(bool condition, string message)
 {

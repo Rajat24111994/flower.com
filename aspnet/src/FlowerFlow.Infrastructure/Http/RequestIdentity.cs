@@ -1,0 +1,55 @@
+using System.Text.RegularExpressions;
+using FirebaseAdmin.Auth;
+using FlowerFlow.Infrastructure.Firebase;
+using Microsoft.AspNetCore.Http;
+
+namespace FlowerFlow.Infrastructure.Http;
+
+public sealed class RequestIdentityException(string code, string message) : Exception(message)
+{
+    public string Code { get; } = code;
+}
+
+/// <summary>Port of shared/request-identity.js, including the server-only local identity boundary.</summary>
+public sealed class RequestIdentity(IFirebaseAdminBackend backend)
+{
+    private static readonly object LocalIdentityKey = new();
+    private sealed record LocalIdentity(FirebaseIdentity? Account, bool Presented);
+    private static readonly Regex Bearer = new(@"^Bearer\s+(\S+)$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant,
+        TimeSpan.FromSeconds(1));
+
+    // Called by trusted local-server middleware only. The key cannot be supplied by HTTP input.
+    public static void SetLocalIdentity(HttpContext context, FirebaseIdentity? account, bool presented) =>
+        context.Items[LocalIdentityKey] = new LocalIdentity(account, presented);
+
+    public static bool HasLocalIdentity(HttpContext context) => context.Items.ContainsKey(LocalIdentityKey);
+
+    public static string? SessionCookie(HttpContext context)
+    {
+        const string prefix = "flower_local_session=";
+        var cookies = context.Request.Headers.Cookie.ToString().Split(';').Select(part => part.Trim())
+            .Where(part => part.StartsWith(prefix, StringComparison.Ordinal)).Select(part => part[prefix.Length..]).ToArray();
+        return cookies.Length > 1 ? "" : cookies.FirstOrDefault();
+    }
+
+    public async Task<FirebaseIdentity?> OptionalCustomerAsync(HttpContext context)
+    {
+        var authorization = context.Request.Headers.Authorization.ToString();
+        if (context.Items.TryGetValue(LocalIdentityKey, out var value) && value is LocalIdentity local)
+        {
+            if (local.Account is null && local.Presented)
+                throw new RequestIdentityException("auth/invalid-session", "Invalid local session");
+            if (authorization.Length > 0)
+                throw new RequestIdentityException("auth/invalid-session", "Unexpected bearer token in local mode");
+            return local.Account;
+        }
+        if (authorization.Length == 0) return null;
+        var match = Bearer.Match(authorization);
+        if (!match.Success) throw new RequestIdentityException("auth/invalid-session", "Invalid authorization");
+        try { return await backend.VerifyIdTokenAsync(match.Groups[1].Value, true, context.RequestAborted); }
+        catch (FirebaseAuthException error)
+        {
+            throw new RequestIdentityException("auth/" + error.AuthErrorCode, "Invalid Firebase session");
+        }
+    }
+}
