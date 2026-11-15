@@ -227,3 +227,7 @@ Kết quả kiểm tra file 02:
 Đích: `Local/LocalAccounts.cs`. Giữ schema SQLite local, migration thêm cột không thay tài khoản/hashes/lịch sử khóa, scrypt N32768/r8/p1 cho password và p3 cho PIN/đáp án, session hash/TTL/rotation, đăng ký/đăng nhập/khóa tăng dần, reset password/PIN, đủ ba đáp án và thiết lập bảo mật cho tài khoản cũ. SQLite chỉ dành cho chế độ tài khoản local vốn có; Firebase và Firestore không bị thay thế.
 
 Kiểm tra: đối chiếu trực tiếp Node toàn bộ chuỗi thao tác và lỗi; hash Unicode khớp byte; C# mở tài khoản/session do Node tạo và Node đăng nhập bằng password C# cập nhật; carry-over ngân sách PIN cũ, PIN format cũ và enrollment thu hồi session. Dùng Microsoft.Data.Sqlite 10.0.14 và BouncyCastle.Cryptography 2.7.0, không tự viết thuật toán hash.
+
+## File 37: lib/local-account-worker.js
+
+Đích: `Local/LocalAccountWorker.cs`. Một thread riêng sở hữu SQLite/scrypt; tuần tự hóa thao tác, tối đa 16 request tính cả request đang chạy, lỗi busy 429 và đóng worker không để Task treo. Không hủy cập nhật ngân sách xác thực theo disconnect của client. Test queue đầy trước startup, xử lý queue, lỗi startup không lộ chi tiết và từ chối sau shutdown.

@@ -10,6 +10,7 @@ using Microsoft.Extensions.Logging;
 var rootArgument = args.FirstOrDefault(argument => !argument.StartsWith("--", StringComparison.Ordinal));
 var root = rootArgument is not null ? Path.GetFullPath(rootArgument) : Directory.GetCurrentDirectory();
 if (args.Contains("--local-accounts")) { await LocalAccountContracts.RunAsync(root); return; }
+if (args.Contains("--local-worker")) { await LocalWorkerContracts.RunAsync(); return; }
 var start = new ProcessStartInfo("node") { RedirectStandardOutput = true, RedirectStandardError = true };
 start.ArgumentList.Add(Path.Combine(root, "aspnet/tests/FlowerFlow.Contracts/firebase-admin-oracle.cjs"));
 using var process = Process.Start(start) ?? throw new Exception("Cannot start Node.js oracle.");
@@ -114,6 +115,7 @@ AdditionalContracts.LocalSessionCookies();
 await AdditionalContracts.LocalRateLimitAsync(root);
 await AdditionalContracts.ContentSecurityAsync(root);
 await LocalAccountContracts.RunAsync(root);
+await LocalWorkerContracts.RunAsync();
 if (args.Contains("--firestore-emulator")) await FirestoreContracts.RunAsync();
 
 static void Assert(bool condition, string message)
