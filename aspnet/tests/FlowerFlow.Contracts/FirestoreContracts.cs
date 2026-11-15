@@ -459,5 +459,37 @@ static class FirestoreContracts
         await managedUsers.HandleAsync(auditAlias); AdditionalContracts.Require(auditAlias.Response.StatusCode == 200
             && auditAlias.Response.Headers.CacheControl == "private, no-store", "Admin audit route alias broken");
         Console.WriteLine("PASS: admin account listing whitelist, pagination validation and protected legacy audit route alias.");
+        using var ownerPermissions = JsonDocument.Parse("{\"claims\":{\"uid\":\"user-a\",\"admin\":true,\"role\":\"owner\"},\"roleExists\":true,\"role\":\"owner\"}");
+        var ownerUsersAuth = new FirebaseAdminService(new FakeBackend(ownerPermissions.RootElement), NullLogger<FirebaseAdminService>.Instance);
+        var ownerUsers = new OwnerUsersHandler(managedAccounts, () => db, ownerUsersAuth, NullLogger<OwnerUsersHandler>.Instance);
+        var targetUid = "customer-" + suffix;
+        var grantAdmin = JsonContext(JsonSerializer.Serialize(new { action = "grant-admin", uid = targetUid })); await ownerUsers.HandleAsync(grantAdmin);
+        AdditionalContracts.Require(grantAdmin.Response.StatusCode == 200 && managedAccounts.Users[targetUid].Role == "admin"
+            && managedAccounts.Users[targetUid].CustomClaims.GetValueOrDefault("loyalty") is true
+            && (await db.Collection("adminRoles").Document(targetUid).GetSnapshotAsync()).Exists && managedAccounts.RevokedUsers.Contains(targetUid),
+            "Grant failed to preserve claims/mirror/revoke");
+        var removeAdmin = JsonContext(JsonSerializer.Serialize(new { action = "remove-admin", uid = targetUid })); await ownerUsers.HandleAsync(removeAdmin);
+        AdditionalContracts.Require(removeAdmin.Response.StatusCode == 200 && managedAccounts.Users[targetUid].Role == "customer"
+            && !managedAccounts.Users[targetUid].CustomClaims.ContainsKey("admin")
+            && !(await db.Collection("adminRoles").Document(targetUid).GetSnapshotAsync()).Exists, "Admin removal left a live role");
+        var selfChange = JsonContext("{\"action\":\"grant-admin\",\"uid\":\"user-a\"}"); await ownerUsers.HandleAsync(selfChange);
+        AdditionalContracts.Require(selfChange.Response.StatusCode == 400, "Owner changed own role");
+        var otherOwnerId = "owner-other-" + suffix;
+        managedAccounts.Users[otherOwnerId] = new FirebaseAccount(otherOwnerId, null, null, false,
+            new Dictionary<string, object> { ["admin"] = true, ["role"] = "owner" }, [], "", "");
+        var changeOwner = JsonContext(JsonSerializer.Serialize(new { action = "remove-admin", uid = otherOwnerId })); await ownerUsers.HandleAsync(changeOwner);
+        AdditionalContracts.Require(changeOwner.Response.StatusCode == 403, "Owner downgraded another owner");
+        managedAccounts.FailRevocation = true;
+        var partialGrant = JsonContext(JsonSerializer.Serialize(new { action = "grant-admin", uid = targetUid })); await ownerUsers.HandleAsync(partialGrant);
+        using var partialBody = JsonDocument.Parse(((MemoryStream)partialGrant.Response.Body).ToArray());
+        AdditionalContracts.Require(partialGrant.Response.StatusCode == 500 && partialBody.RootElement.GetProperty("code").GetString() == "role-updated-session-revoke-failed"
+            && managedAccounts.Users[targetUid].Role == "admin" && (await db.Collection("adminRoles").Document(targetUid).GetSnapshotAsync()).Exists,
+            "Role change partial-success error concealed applied state");
+        managedAccounts.FailRevocation = false;
+        var ownerList = JsonContext("{\"action\":\"list\"}"); await ownerUsers.HandleAsync(ownerList);
+        using var ownerListBody = JsonDocument.Parse(((MemoryStream)ownerList.Response.Body).ToArray());
+        AdditionalContracts.Require(ownerList.Response.StatusCode == 200 && ownerListBody.RootElement.GetProperty("users")[0].EnumerateObject().Count() == 5
+            && (await db.Collection("adminRoles").Document(otherOwnerId).GetSnapshotAsync()).GetValue<string>("role") == "owner", "Owner list/backfill changed");
+        Console.WriteLine("PASS: owner grant/remove, retained custom claims, live role revocation, owner protection, backfill and partial session-revoke failure.");
     }
 }

@@ -185,3 +185,7 @@ Kết quả kiểm tra file 02:
 ## File 27: admin/users.js
 
 Đích: `src/FlowerFlow.Infrastructure/Admin/AdminUsersHandler.cs`, `/api/admin/users` và alias `?route=audit`. SDK adapter đọc đúng một page 100 tài khoản và định dạng UTC metadata như Node; không trả password hash hoặc custom claims thô. Giữ admin permission, POST, validation pageToken, fields và nextPageToken. Test fake SDK + emulator: whitelist 8 field/tài khoản, token phân trang, từ chối token sai type và alias audit giữ header private/no-store.
+
+## File 28: admin/owner-users.js
+
+Đích: `src/FlowerFlow.Infrastructure/Admin/OwnerUsersHandler.cs`, `/api/owner/users`. Giữ owner authorization, list/backfill, cấp/gỡ admin giữ custom claims khác, chặn tự đổi quyền/chỉnh owner khác, mirror adminRoles, revoke rồi audit, thông báo lỗi một phần sau khi quyền đã thay đổi. Hoàn tất mirror/revoke sau khi bắt đầu thay đổi kể cả client ngắt kết nối. Test fake SDK + emulator: cấp/gỡ và giữ claim, role document, thu hồi session, bảo vệ owner, backfill và lỗi revoke không giả báo rollback.

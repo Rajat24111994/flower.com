@@ -38,6 +38,7 @@ builder.Services.AddSingleton<Func<IPasswordAuth>>(services => () => services.Ge
 builder.Services.AddSingleton<Func<LoginProtection>>(services => () => new LoginProtection(services.GetRequiredService<FirebaseAdminBackend>().GetAdminFirestore()));
 builder.Services.AddSingleton<LoginHandler>();
 builder.Services.AddSingleton<AdminUsersHandler>();
+builder.Services.AddSingleton<OwnerUsersHandler>();
 
 var app = builder.Build();
 
@@ -53,6 +54,7 @@ app.Map("/api/products", (HttpContext context, ProductsHandler handler) => handl
 app.Map("/api/design-requests", (HttpContext context, DesignRequestsHandler handler) => handler.HandleAsync(context));
 app.Map("/api/login", (HttpContext context, LoginHandler handler) => handler.HandleAsync(context));
 app.Map("/api/admin/users", (HttpContext context, AdminUsersHandler handler) => handler.HandleAsync(context));
+app.Map("/api/owner/users", (HttpContext context, OwnerUsersHandler handler) => handler.HandleAsync(context));
 app.Run();
 
 public partial class Program;
