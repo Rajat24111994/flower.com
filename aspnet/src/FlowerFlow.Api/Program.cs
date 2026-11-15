@@ -21,6 +21,7 @@ builder.Services.AddSingleton<AdminAuditHandler>();
 builder.Services.AddSingleton<BouquetWrappingHandler>();
 builder.Services.AddSingleton<DeliveryZonesHandler>();
 builder.Services.AddSingleton<Reservations>();
+builder.Services.AddSingleton<OrderTracking>();
 
 var app = builder.Build();
 

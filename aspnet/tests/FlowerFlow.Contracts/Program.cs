@@ -105,6 +105,7 @@ AdditionalContracts.AdminAuditEntry();
 await AdditionalContracts.VnpayAsync(root);
 await AdditionalContracts.OrderValidationAsync(root);
 await AdditionalContracts.PricingAsync(root);
+await AdditionalContracts.TrackingAsync(root);
 if (args.Contains("--firestore-emulator")) await FirestoreContracts.RunAsync();
 
 static void Assert(bool condition, string message)

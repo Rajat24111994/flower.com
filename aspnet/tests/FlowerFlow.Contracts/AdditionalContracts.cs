@@ -8,9 +8,35 @@ using FlowerFlow.Infrastructure.Firebase;
 using FlowerFlow.Application.Payments;
 using FlowerFlow.Application.Orders;
 using FlowerFlow.Application.Compatibility;
+using FlowerFlow.Infrastructure.Orders;
+using Google.Cloud.Firestore;
 
 static class AdditionalContracts
 {
+    public static async Task TrackingAsync(string root)
+    {
+        using var cases = await OracleAsync(root, "tracking-oracle.cjs"); var count = 0;
+        static object? Hydrate(JsonElement value)
+        {
+            if (value.ValueKind == JsonValueKind.Object && value.TryGetProperty("_seconds", out var seconds)
+                && value.TryGetProperty("_nanoseconds", out var nanos))
+                return Timestamp.FromProto(new Google.Protobuf.WellKnownTypes.Timestamp { Seconds = seconds.GetInt64(), Nanos = nanos.GetInt32() });
+            return value.ValueKind switch
+            {
+                JsonValueKind.Object => value.EnumerateObject().ToDictionary(property => property.Name, property => Hydrate(property.Value)!),
+                JsonValueKind.Array => value.EnumerateArray().Select(Hydrate).ToList(), _ => Js.Object(value)
+            };
+        }
+        foreach (var test in cases.RootElement.EnumerateArray())
+        {
+            var data = (Dictionary<string, object>)Hydrate(test.GetProperty("data"))!;
+            var actual = test.GetProperty("type").GetString() == "public" ? OrderTracking.PublicTrackingOrder("order-a", data) : OrderTracking.AccountTrackingOrder("order-a", data);
+            Require(JsonNode.DeepEquals(JsonSerializer.SerializeToNode(FirestoreValues.JsonCompatible(actual)), JsonNode.Parse(test.GetProperty("expected").GetRawText())),
+                "Tracking privacy/timestamp format differs from JS"); count++;
+        }
+        Console.WriteLine($"PASS: {count} public/account tracking, payment/refund privacy and rounded timestamp cases matched JS.");
+    }
+
     public static async Task PricingAsync(string root)
     {
         using var cases = await OracleAsync(root, "order-pricing-oracle.cjs"); var count = 0;

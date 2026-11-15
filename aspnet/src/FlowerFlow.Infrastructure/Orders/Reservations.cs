@@ -1,6 +1,7 @@
 using System.Globalization;
 using FlowerFlow.Application.Compatibility;
 using FlowerFlow.Application.Orders;
+using FlowerFlow.Infrastructure.Firebase;
 using Google.Cloud.Firestore;
 using Microsoft.Extensions.Logging;
 
@@ -23,7 +24,7 @@ public sealed class Reservations(ILogger<Reservations> logger)
         {
             transaction.Update(orderRef, new Dictionary<string, object> { ["reservationExpiresAt"] = FieldValue.Delete }); return false;
         }
-        if (!reserved || expires is not Timestamp expiresAt || expiresAt.CompareTo(now) > 0) return false;
+        if (!reserved || expires is not Timestamp expiresAt || FirestoreValues.ToMillis(expiresAt) > FirestoreValues.ToMillis(now)) return false;
         var paymentStatus = Js.StringOrEmpty(Js.Element(order.GetValueOrDefault("paymentStatus"))).Trim().ToLower(CultureInfo.GetCultureInfo("vi-VN"));
         if (order.GetValueOrDefault("paymentVerified") is true || new[] { "đã thanh toán", "paid", "da_thanh_toan", "đã hoàn tiền" }.Contains(paymentStatus))
         {

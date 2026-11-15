@@ -38,7 +38,7 @@ public sealed class AdminAuditHandler(Func<FirestoreDb> database, FirebaseAdminS
                     resourceType = Text("resourceType"), resourceId = Text("resourceId"),
                     details = details is IDictionary or IList ? details : new Dictionary<string, object>(),
                     createdAt = data.GetValueOrDefault("createdAt") is Timestamp timestamp
-                        ? timestamp.ToDateTime().ToString("yyyy-MM-dd'T'HH:mm:ss.fff'Z'", CultureInfo.InvariantCulture) : ""
+                        ? FirestoreValues.ToIso(timestamp) : ""
                 };
             }).ToList();
             await context.Response.WriteAsJsonAsync(new { entries }, context.RequestAborted);

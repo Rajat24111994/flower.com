@@ -11,6 +11,7 @@ using System.Text;
 using FlowerFlow.Infrastructure.Admin;
 using FlowerFlow.Infrastructure.ShopSettings;
 using FlowerFlow.Infrastructure.Orders;
+using FlowerFlow.Infrastructure.Http;
 
 static class FirestoreContracts
 {
@@ -264,5 +265,36 @@ static class FirestoreContracts
         AdditionalContracts.Require(await reservations.ExpireReservationsAsync(db) >= 1
             && (await txnRef.GetSnapshotAsync()).GetValue<string>("status") == "expired", "VNPay reservation/attempt cleanup failed");
         Console.WriteLine("PASS: reservation expiry, concurrent restore-once, duplicate lines, confirmed/paid holds and VNPay attempt expiry.");
+        var previousSecret = Environment.GetEnvironmentVariable("FIREBASE_SERVICE_ACCOUNT_JSON");
+        try
+        {
+            Environment.SetEnvironmentVariable("FIREBASE_SERVICE_ACCOUNT_JSON", "isolated-tracking-test-secret");
+            var tracking = new OrderTracking(() => db, new RequestIdentity(new FakeBackend(identityCase.RootElement)), NullLogger<OrderTracking>.Instance);
+            var limitContext = ImageContext(""); limitContext.Request.Headers["x-forwarded-for"] = "rate-" + suffix;
+            for (var attemptNumber = 0; attemptNumber < 20; attemptNumber++)
+                AdditionalContracts.Require((await tracking.CheckOrderLookupLimitAsync(db, limitContext)).Allowed, "Lookup quota ended too early");
+            var rejected = await tracking.CheckOrderLookupLimitAsync(db, limitContext);
+            AdditionalContracts.Require(!rejected.Allowed && rejected.RetryAfter is > 0 and <= 600, "Lookup quota not enforced");
+            var trackedOrder = db.Collection("orders").Document();
+            await trackedOrder.SetAsync(new { uid = "user-a", phone = "0901234567", address = "Private address", customerName = "Private name",
+                status = "Chờ xác nhận", paymentMethod = "qr", total = 100000, paymentReference = "FF123", createdAt = expireNow });
+            var guestLookup = JsonContext(JsonSerializer.Serialize(new { id = trackedOrder.Id, phone = "0901234567" }));
+            guestLookup.Request.Headers.Remove("Authorization"); guestLookup.Request.Headers["x-forwarded-for"] = "lookup-" + suffix;
+            await tracking.LookupOrderAsync(guestLookup);
+            using var guestBody = JsonDocument.Parse(((MemoryStream)guestLookup.Response.Body).ToArray());
+            AdditionalContracts.Require(guestLookup.Response.StatusCode == 200
+                && guestBody.RootElement.GetProperty("order").GetProperty("privacyLimited").GetBoolean()
+                && !guestBody.RootElement.GetProperty("order").TryGetProperty("address", out _), "Guest lookup leaked private fields");
+            var ownerLookup = JsonContext(JsonSerializer.Serialize(new { id = trackedOrder.Id })); ownerLookup.Request.Headers["x-forwarded-for"] = "owner-" + suffix;
+            await tracking.LookupOrderAsync(ownerLookup);
+            using var ownerBody = JsonDocument.Parse(((MemoryStream)ownerLookup.Response.Body).ToArray());
+            AdditionalContracts.Require(ownerLookup.Response.StatusCode == 200
+                && ownerBody.RootElement.GetProperty("order").GetProperty("address").GetString() == "Private address", "Account owner lookup failed");
+            var stranger = JsonContext(JsonSerializer.Serialize(new { id = trackedOrder.Id })); stranger.Request.Headers["x-forwarded-for"] = "stranger-" + suffix;
+            stranger.Request.Headers.Remove("Authorization"); RequestIdentity.SetLocalIdentity(stranger, new FirebaseIdentity("other", new Dictionary<string, object>()), true);
+            await tracking.LookupOrderAsync(stranger); AdditionalContracts.Require(stranger.Response.StatusCode == 404, "Another account saw the order");
+            Console.WriteLine("PASS: lookup quota, guest privacy, account ownership and cross-account rejection on Firestore Emulator.");
+        }
+        finally { Environment.SetEnvironmentVariable("FIREBASE_SERVICE_ACCOUNT_JSON", previousSecret); }
     }
 }

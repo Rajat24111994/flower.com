@@ -145,3 +145,7 @@ Kết quả kiểm tra file 02:
 ## File 17: orders/reservations.js
 
 Đích: `src/FlowerFlow.Infrastructure/Orders/Reservations.cs`. Giữ giải phóng kho trong transaction, tổng hợp dòng sản phẩm, không hủy đơn đã xác nhận/thanh toán, xóa timer cũ, trạng thái QR/VNPay/history và attempt hết hạn, quét tối đa 500/100 mỗi batch, cleanup lỗi không chặn đặt hàng. Test emulator: hai tiến trình cleanup chỉ hoàn kho một lần, dòng trùng cộng đúng, giữ kho confirmed/paid, cleanup attempt VNPay pending.
+
+## File 18: orders/tracking.js
+
+Đích: `src/FlowerFlow.Infrastructure/Orders/OrderTracking.cs`. Giữ dữ liệu public giới hạn riêng tư, QR/VNPay/refund, dữ liệu account, auth và local identity, tra cứu mã đơn/điện thoại, limiter HMAC từ IP trusted và service-account secret, transaction 20 lần/10 phút, đơn account tối đa 100 và thông báo lỗi. Kèm adapter Firestore timestamp/JSON tương thích Node (_seconds/_nanoseconds khi spread raw; ISO làm tròn mili giây như Timestamp.toDate). URL orders sẽ nối sau khi các service orders còn lại đã chuyển. Reverse proxy triển khai phải ghi đè x-forwarded-for như Vercel hiện tại; không dùng IP do client tự chọn để triển khai production.
