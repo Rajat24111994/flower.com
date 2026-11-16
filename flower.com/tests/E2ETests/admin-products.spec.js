@@ -209,7 +209,7 @@ test("admin uploads a product photo from the computer and the field gets its add
   });
   await setupAdmin(page);
 
-  await page.locator("#product-image-file").setInputFiles(`${__dirname}/../images/start.jpeg`);
+  await page.locator("#product-image-file").setInputFiles(`${__dirname}/../../images/start.jpeg`);
   await expect(page.locator("#product-image")).toHaveValue("/images/products/product-flower-02.webp");
   await expect(page.locator("#product-image-upload-status")).toContainText("Đã tải ảnh lên");
   await expect(page.locator("#product-image-previews img").first()).toBeVisible();
