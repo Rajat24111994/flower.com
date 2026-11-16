@@ -1,6 +1,6 @@
 // Smoke test for a deployed site: verifies HTTPS/TLS, page loads and API responses, without
 // creating orders or changing data. Run it right after each deploy:
-//   SMOKE_URL=https://your-site.vercel.app npm run smoke
+//   SMOKE_URL=https://your-site.onrender.com npm run smoke
 const tls = require("node:tls");
 const baseUrl = String(process.env.SMOKE_URL || process.argv[2] || "").replace(/\/+$/, "");
 let site;
@@ -8,7 +8,7 @@ try {
     site = new URL(baseUrl);
     if (site.protocol !== "https:" || site.username || site.password || site.port) throw new Error("invalid URL");
 } catch {
-    console.error("SMOKE_URL phải là địa chỉ HTTPS công khai cổng mặc định, ví dụ: SMOKE_URL=https://your-site.vercel.app npm run smoke");
+    console.error("SMOKE_URL phải là địa chỉ HTTPS công khai cổng mặc định, ví dụ: SMOKE_URL=https://your-site.onrender.com npm run smoke");
     process.exit(2);
 }
 const secureBaseUrl = site.origin;

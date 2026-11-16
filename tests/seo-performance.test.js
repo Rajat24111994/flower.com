@@ -3,7 +3,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const siteRoot = path.join(__dirname, "..", "flower.com");
-const siteUrl = "https://flower-com-six.vercel.app";
+const siteUrl = "https://flower-com.onrender.com";
 const htmlFiles = fs.readdirSync(siteRoot).filter((file) => file.endsWith(".html"));
 const publicPages = new Set([
   "index.html",
@@ -100,7 +100,7 @@ assert.match(productScript, /availability:/);
 assert.match(productScript, /rel="canonical"/);
 
 const robots = fs.readFileSync(path.join(siteRoot, "robots.txt"), "utf8");
-assert.match(robots, /Sitemap:\s+https:\/\/flower-com-six\.vercel\.app\/sitemap\.xml/);
+assert.match(robots, /Sitemap:\s+https:\/\/flower-com\.onrender\.com\/sitemap\.xml/);
 assert.match(robots, /Disallow: \/api\//);
 
 const sitemap = fs.readFileSync(path.join(siteRoot, "sitemap.xml"), "utf8");

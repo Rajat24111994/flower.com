@@ -109,6 +109,16 @@ if (!development)
         publicOrigins.Add(uri.GetLeftPart(UriPartial.Authority));
     }
 }
+if (!development && publicOrigins.Any(origin => origin.StartsWith("https://", StringComparison.Ordinal)))
+{
+    // UseHsts only fires for HTTPS requests; behind Render's TLS proxy the container sees HTTP,
+    // so send the same policy as the Vercel deployment when the public origin is HTTPS.
+    app.Use((context, next) =>
+    {
+        context.Response.Headers.StrictTransportSecurity = "max-age=31536000; includeSubDomains";
+        return next(context);
+    });
+}
 var serverOptions = new BackendServerOptions(frontendRoot, development, development ? authMode : null, missingLoginConfiguration)
 { PublicOrigins = publicOrigins };
 app.Use(next => new BackendServer(next, serverOptions, authMode == "local" ? app.Services.GetRequiredService<ILocalAccountWorker>() : null,
