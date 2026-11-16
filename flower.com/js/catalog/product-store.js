@@ -391,6 +391,8 @@
         const firebase = await getFirebaseApi();
         if (!firebase) return false;
         try {
+            // Refresh custom claims before writing after an administrator grants access.
+            if (firebase.auth?.currentUser) await firebase.auth.currentUser.getIdToken(true);
             const { db, firestoreSdk } = firebase;
             const previousById = new Map(previousProducts.map((product) => [String(product.id), normalizeProduct(product)]));
             const keptIds = new Set();
