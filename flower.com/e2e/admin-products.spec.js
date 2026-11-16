@@ -244,7 +244,7 @@ test("admin deletes all products only after confirmation", async ({ page }) => {
   expect(await page.evaluate(() => window.testProducts)).toHaveLength(0);
 });
 
-test("admin confirms catalog restoration with the themed dialog", async ({ page }) => {
+test("admin does not offer to add sample catalog products to the live inventory", async ({ page }) => {
   await setupAdmin(page);
   await page.evaluate(() => {
     window.missingCatalogProducts = [{
@@ -253,9 +253,8 @@ test("admin confirms catalog restoration with the themed dialog", async ({ page 
     }];
   });
   await page.locator("#product_page").click();
-  await page.locator('[data-action="restore-catalog"]').click();
-  await expect(page.locator("#admin-confirm-title")).toHaveText("Thêm sản phẩm mẫu");
-  await expect(page.locator("#admin-confirm-message")).toContainText("1 sản phẩm");
-  await page.locator("[data-confirm-cancel]").click();
+  await expect(page.locator('[data-action="restore-catalog"]')).toHaveCount(0);
+  await expect(page.locator(".product-table tbody")).not.toContainText("Hoa cẩm chướng");
+  expect(await page.evaluate(() => window.productSaveCount)).toBe(0);
   expect(await page.evaluate(() => window.testProducts)).toHaveLength(3);
 });
