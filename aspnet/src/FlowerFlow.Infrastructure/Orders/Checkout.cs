@@ -7,6 +7,7 @@ using FlowerFlow.Application.Compatibility;
 using FlowerFlow.Application.Orders;
 using FlowerFlow.Infrastructure.Firebase;
 using FlowerFlow.Infrastructure.Http;
+using FlowerFlow.Infrastructure.Catalog;
 using Google.Cloud.Firestore;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
@@ -29,11 +30,13 @@ public sealed class Checkout(Func<FirestoreDb> database, Reservations reservatio
         if (items.ValueKind != JsonValueKind.Array || !items.EnumerateArray().Any(item => Js.Number(Js.Get(item, "quantity")) > OrderConfig.MaxQuantityPerProduct)) return false;
         await Error(context, 400, "quantity-limit", $"Mỗi lựa chọn bó hoa đặt tối đa {OrderConfig.MaxQuantityPerProduct} bó. Hãy giảm số lượng, hoặc liên hệ cửa hàng nếu cần số lượng lớn."); return true;
     }
-    private static Dictionary<string, object> CartLine(Dictionary<string, object> item, DocumentSnapshot snapshot)
+    private static Dictionary<string, object> CartLine(Dictionary<string, object> item, DocumentSnapshot snapshot, WiltingPriceContext pricing)
     {
         var data = snapshot.Exists ? snapshot.ToDictionary() : new Dictionary<string, object>();
-        return new Dictionary<string, object>(item) { ["data"] = data, ["price"] = OrderPricing.GetProductPrice(Js.Element(data)),
+        var line = new Dictionary<string, object>(item) { ["data"] = data, ["price"] = OrderPricing.GetProductPrice(Js.Element(data)),
             ["stock"] = Js.Number(Js.Element(data.GetValueOrDefault("quantity"))), ["ref"] = snapshot.Reference };
+        pricing.ApplyToLine(line, snapshot.Id, data);
+        return line;
     }
     private static Dictionary<string, object> PublicItem(Dictionary<string, object> item)
     {
@@ -47,6 +50,7 @@ public sealed class Checkout(Func<FirestoreDb> database, Reservations reservatio
         if (saleType != "flower") result["priceUpdatedAt"] = "";
         else if (data.TryGetValue("priceUpdatedAt", out var updated)) result["priceUpdatedAt"] = updated;
         foreach (var name in new[] { "customBouquetId", "size", "color", "cardMessage", "personalNote" }) result[name] = FirestoreValues.Or(item, name);
+        if (item.TryGetValue("wiltingPricing", out var wilting)) result["wiltingPricing"] = wilting;
         return result;
     }
 
@@ -65,11 +69,12 @@ public sealed class Checkout(Func<FirestoreDb> database, Reservations reservatio
             var wrappingTask = db.Collection("metadata").Document("bouquetWrapping").GetSnapshotAsync(context.RequestAborted);
             await Task.WhenAll(productsTask, promotionsTask, deliveryTask, wrappingTask);
             var products = await productsTask; var promotions = await promotionsTask; var delivery = await deliveryTask; var wrapping = await wrappingTask;
+            var pricing = await WiltingPriceStore.LoadAsync(db, products.Select(product => product.Id), cancellationToken: context.RequestAborted);
             var (zone, shipping) = OrderPricing.ResolveDeliveryZone(Js.Element(delivery.ToDictionary()), (string)quote["deliveryZoneId"]);
             var shortages = new List<Dictionary<string, object>>();
             var cart = items.Select((item, index) =>
             {
-                var snapshot = products[index]; var line = CartLine(item, snapshot); var data = (Dictionary<string, object>)line["data"];
+                var snapshot = products[index]; var line = CartLine(item, snapshot, pricing); var data = (Dictionary<string, object>)line["data"];
                 var price = Numeric(line, "price"); var stock = Numeric(line, "stock");
                 var shortage = new Dictionary<string, object> { ["id"] = item["id"], ["title"] = Js.Cut(Js.StringOrEmpty(Js.Element(data.GetValueOrDefault("title"))), 120), ["available"] = 0 };
                 if (data.GetValueOrDefault("status") is "hidden") { shortage["hidden"] = true; shortages.Add(shortage); return line; }
@@ -166,11 +171,12 @@ public sealed class Checkout(Func<FirestoreDb> database, Reservations reservatio
                 var wrappingTask = transaction.GetSnapshotAsync(db.Collection("metadata").Document("bouquetWrapping"), context.RequestAborted);
                 await Task.WhenAll(productsTask, promosTask, deliveryTask, wrappingTask);
                 var snapshots = await productsTask; var promotions = await promosTask; var delivery = await deliveryTask; var wrapping = await wrappingTask;
+                var pricing = await WiltingPriceStore.LoadAsync(db, snapshots.Select(product => product.Id), transaction, context.RequestAborted);
                 var (zone, shipping) = OrderPricing.ResolveDeliveryZone(Js.Element(delivery.ToDictionary()), (string)checkout["deliveryZoneId"]);
                 var products = items.Select((item, index) =>
                 {
                     var snapshot = snapshots[index]; if (!snapshot.Exists) throw new BackendException("product-unavailable", "Một sản phẩm không còn bán.");
-                    var line = CartLine(item, snapshot); var data = (Dictionary<string, object>)line["data"];
+                    var line = CartLine(item, snapshot, pricing); var data = (Dictionary<string, object>)line["data"];
                     if (data.GetValueOrDefault("status") is "hidden") throw new BackendException("product-unavailable", $"“{Js.Cut(Js.String(Js.Element(FirestoreValues.Or(data, "title", "Sản phẩm"))), 120)}” hiện đang tạm ẩn và không thể đặt hàng.");
                     var price = Numeric(line, "price"); var stock = Numeric(line, "stock"); var title = Js.String(Js.Element(FirestoreValues.Or(data, "title", "Một sản phẩm")));
                     if (!double.IsFinite(price) || price <= 0) throw new BackendException("product-unavailable", $"“{title}” hiện chưa có giá bán. Hãy bỏ sản phẩm này khỏi giỏ.");
