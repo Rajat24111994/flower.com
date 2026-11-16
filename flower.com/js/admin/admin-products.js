@@ -1,22 +1,14 @@
 import { registerAdminFunctions } from "./admin-state.js";
 import { preparePhotos } from "../review/review-images.js?v=1";
 
-function renderRestoreCatalogNotice() {
+function renderInventoryConnectionNotice() {
    let offlineNotice = "";
    if (FlowerInventory.isFirestoreReachable() === false) {
        offlineNotice = FlowerInventory.areProductsLoaded()
            ? `<div class="restore-catalog-notice" role="alert"><p><strong>Trình duyệt không kết nối trực tiếp được Firestore</strong> (mạng có thể đang chặn Firebase). Sản phẩm đang được đọc qua máy chủ; đơn hàng, ưu đãi và thao tác lưu trên trang này có thể chưa hoạt động. Hãy thử mạng khác (ví dụ 4G) nếu cần chỉnh sửa.</p></div>`
            : `<div class="restore-catalog-notice" role="alert"><p><strong>Không đọc được kho sản phẩm</strong> cả từ trình duyệt lẫn qua máy chủ. Hãy kiểm tra mạng rồi tải lại trang.</p></div>`;
    }
-   const missingCount = FlowerInventory.getMissingCatalogProducts().length;
-   if (!missingCount) return offlineNotice;
-   return offlineNotice + `
-       <div class="restore-catalog-notice" role="status">
-           <p><strong>Có ${missingCount} sản phẩm mẫu chưa có trong kho Firestore.</strong>
-           Thao tác này chỉ thêm sản phẩm còn thiếu; sản phẩm đang có và các chỉnh sửa của cửa hàng được giữ nguyên.</p>
-           <button class="primary-btn" type="button" data-action="restore-catalog">Thêm ${missingCount} sản phẩm</button>
-       </div>
-   `;
+   return offlineNotice;
 }
 
 function showAdminConfirmation({ title, message, confirmLabel, danger = false }) {
@@ -66,25 +58,6 @@ function showAdminConfirmation({ title, message, confirmLabel, danger = false })
    });
 }
 
-async function restoreCatalog() {
-   const missingCount = FlowerInventory.getMissingCatalogProducts().length;
-   if (!missingCount || !await showAdminConfirmation({
-       title: "Thêm sản phẩm mẫu",
-       message: `Sẽ thêm ${missingCount} sản phẩm đang thiếu vào Firestore. Sản phẩm hiện có và nội dung đã chỉnh sửa sẽ được giữ nguyên.`,
-       confirmLabel: `Thêm ${missingCount} sản phẩm`
-   })) return;
-   try {
-       const restored = await FlowerInventory.restoreCatalogProducts();
-       alert(`Đã khôi phục ${restored} sản phẩm.`);
-   } catch (error) {
-       console.error("Không thể khôi phục sản phẩm:", error);
-       alert(error.message || "Chưa thể khôi phục sản phẩm. Hãy thử lại sau.");
-   }
-   const heading = main.querySelector(".panel h2")?.textContent;
-   if (heading === "Quản lý kho hoa") renderProductTab();
-   else renderDashboard();
-}
-
 function renderProductTab() {
    const products = getProducts();
    const categories = getCategories();
@@ -115,7 +88,7 @@ function renderProductTab() {
                    <h2>Quản lý kho hoa</h2>
                    <button class="delete-record" type="button" data-action="delete-all-products" ${products.length ? "" : "disabled"}>Xóa tất cả sản phẩm (${products.length})</button>
                </div>
-               ${renderRestoreCatalogNotice()}
+               ${renderInventoryConnectionNotice()}
                <form id="product-search-form" class="product-search" role="search">
                    <label class="product-filter-field" for="product-search"><span>Tìm sản phẩm</span>
                        <input id="product-search" name="search" type="search" placeholder="Tên, mô tả hoặc danh mục..." value="${escapeHtml(productSearchTerm)}">
@@ -669,4 +642,4 @@ async function toggleProductVisibility(id) {
 }
 
 
-registerAdminFunctions({ renderRestoreCatalogNotice, showAdminConfirmation, restoreCatalog, renderProductTab, renderSharedProductImageNotice, uploadProductImage, uploadProductExtraImages, renderProductImagePreviews, getProductById, saveAdminProducts, parseStockQuantity, saveProductQuantity, addNewProduct, deleteProduct, deleteAllProducts, toggleProductVisibility });
+registerAdminFunctions({ renderInventoryConnectionNotice, showAdminConfirmation, renderProductTab, renderSharedProductImageNotice, uploadProductImage, uploadProductExtraImages, renderProductImagePreviews, getProductById, saveAdminProducts, parseStockQuantity, saveProductQuantity, addNewProduct, deleteProduct, deleteAllProducts, toggleProductVisibility });
