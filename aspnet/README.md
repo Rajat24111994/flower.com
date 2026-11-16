@@ -65,6 +65,15 @@ Commit/push không chuyển deployment Vercel hiện tại sang .NET. `vercel.js
 
 ## Kiểm tra
 
+Đăng xuất Firebase có hai thao tác riêng: nút **Đăng xuất** giữ hành vi `signOut`
+trong trình duyệt; nút **Đăng xuất trên mọi thiết bị** gọi C# `POST /api/auth/logout-all`
+với Firebase Bearer token và body `{}`. Server kiểm tra thu hồi, lấy UID từ token đã
+xác minh và gọi Firebase Admin thu hồi phiên cũ của chính tài khoản đó. Không nhận
+UID từ client và không dùng cookie SQLite để xác thực endpoint này. Giới hạn token
+sao chép, độ chính xác giây, Firestore trực tiếp và Emulator được ghi tại
+[audit đăng xuất](../docs/firebase-logout-audit.md). Chưa xác minh Firebase thật;
+không triển khai production trong công việc này.
+
 Cần Node 24+ để chạy nguồn JS đối chiếu, .NET 10 SDK và Java 21 cho Firestore Emulator. Từ gốc repository, build trước rồi chạy:
 
 ```powershell

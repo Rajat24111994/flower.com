@@ -1,11 +1,13 @@
 # Firebase logout audit — 2026-11-16
 
-Baseline: `3842b36` on `origin/main`. This audit was completed before changing logout behavior.
+Audit baseline: `3842b36` on `origin/main`. This audit was completed before changing
+logout behavior. Newer main changes through `bb8406b` (Render hosting and current
+admin modules) were integrated during implementation.
 
 ## Runtime and existing behavior
 
 The current API host is ASP.NET Core/.NET 10 (`aspnet/src/FlowerFlow.Api/Program.cs`).
-`npm run dev` launches this host. Render has a separately configured deployment;
+`npm run dev` launches this host. Current main identifies Render as production;
 this task does not deploy it. `flower.com/backend` and `api` retain the earlier
 JavaScript implementation for comparison and the existing Node/Vercel path.
 The new logout endpoint is implemented in C#, not in the reference Node backend.
@@ -79,10 +81,11 @@ claim revocation completed; then the initiating browser signs out and clears its
 profile. Other devices may still display their old UI until a protected request
 or token refresh fails. Revocation is account-wide, not per device.
 
-Firebase compares `auth_time` and the user's valid-after timestamp with second
-precision. Tests must cross a second boundary before revocation. This is not a
-custom per-session invalidation guarantee, and same-second sign-in/revocation
-must not be described as stronger than the provider's semantics.
+Revocation timestamps have second precision. Firebase Admin .NET 3.7.0 compares
+the ID token's `iat` (`IssuedAtTimeSeconds`) with the user's valid-after timestamp;
+the Node SDK uses `auth_time`. Tests cross a second boundary before revocation.
+A same-second token is not guaranteed to be rejected by the SDK's strict
+less-than comparison. This is not immediate per-session invalidation.
 
 If immediate invalidation of one session is needed later, introduce an opaque
 server-issued session identifier, a server-side session registry and a check on
@@ -101,6 +104,37 @@ changes, database creation, or deployment is part of this task. Real Firebase
 verification remains unverified without a dedicated approved test project.
 
 Sources: [Firebase session management](https://firebase.google.com/docs/auth/admin/manage-sessions),
-[Auth Emulator differences](https://firebase.google.com/docs/emulator-suite/connect_auth).
+[Auth Emulator differences](https://firebase.google.com/docs/emulator-suite/connect_auth),
+[.NET 3.7.0 source](https://github.com/firebase/firebase-admin-dotnet/blob/v3.7.0/FirebaseAdmin/FirebaseAdmin/Auth/AbstractFirebaseAuth.cs).
 Emulator tokens are unsigned; emulator success does not verify production JWT
 signature/certificate validation, IAM, propagation, or provider connectivity.
+
+## Implemented behavior and recorded limits
+
+`POST /api/auth/logout-all`, `Authorization: Bearer <Firebase ID token>`, with an
+empty body or `{}` returns `{ "ok": true, "scope": "all" }` after SDK revocation.
+Wrong method: 405 with `Allow: POST`. Invalid/expired/revoked/missing token: 401.
+Any query parameter or nonempty/non-object body (including `uid`): 400 without
+revocation. Revocation service failure: sanitized 503. A local cookie cannot
+authenticate this operation. After authentication, revocation is not canceled
+merely because the initiating browser disconnects.
+
+Existing Firebase verification sites still enable revocation checks. Claims/live
+roles, public/capability access and data structures are unchanged. Only the new
+controls call this endpoint. Browser cleanup happens after confirmed success;
+server failure preserves the browser session. Cleanup failure after successful
+revocation is reported distinctly. Local SQLite users never see the new button.
+
+Seven new emulator scenarios include **two limitations reproduced, not fixed**:
+direct Firestore still accepts an allowed old ID token; Auth Emulator 13.35.1
+still accepts an old refresh grant and can issue a new ID token accepted by
+.NET's `iat` check. Its `validateRefreshToken` does not enforce the cutoff and its
+refresh grants are deterministic per user/provider. Tests use separate real SDK
+apps with in-memory persistence and distinct saved ID tokens, not two unique
+production refresh grants. Real Firebase refresh rejection remains unverified.
+See the [execution report](test-reports/2026-11-16-firebase-logout.md).
+
+Current Render configuration uses `autoDeployTrigger: checksPass`. All four
+commits contain `[skip render]` to prevent auto-deployment on push, using
+[Render's documented mechanism](https://render.com/docs/deploys#skipping-an-auto-deploy).
+No deployment hook, Render settings, credentials or production users are changed.
