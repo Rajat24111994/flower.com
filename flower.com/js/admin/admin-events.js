@@ -1,6 +1,12 @@
 import { registerAdminFunctions } from "./admin-state.js";
+import { bindLogoutAllDevices } from "../account/firebase-logout.js?v=1";
 
 function bindAdminEvents(authApi) {
+bindLogoutAllDevices({
+    button: document.getElementById("logout_all_devices"),
+    getSession: async () => authApi,
+    onError: message => alert(message)
+});
 const dashboardPage = document.getElementById("dashboard_page");
 if (dashboardPage) {
    dashboardPage.addEventListener("click", renderDashboard);

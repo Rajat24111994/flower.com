@@ -76,7 +76,7 @@ async function callApi(name, { method = "POST", body, query = {}, token, headers
     if (process.env.FLOWER_API_URL) {
         const routes = { adminUsers: "admin/users", ownerUsers: "owner/users", vnpayIpn: "vnpay-ipn",
             reviewImages: "review-images", productImages: "product-images", deliveryZones: "delivery-zones",
-            designRequests: "design-requests", flowerPrices: "flower-prices", bouquetWrapping: "bouquet-wrapping", adminAudit: "admin/audit" };
+            designRequests: "design-requests", flowerPrices: "flower-prices", bouquetWrapping: "bouquet-wrapping", adminAudit: "admin/audit", firebaseLogout: "auth/logout-all" };
         const url = new URL(`/api/${routes[name] || name}`, process.env.FLOWER_API_URL);
         if (!["127.0.0.1", "localhost"].includes(url.hostname) || url.protocol !== "http:")
             throw new Error("HTTP integration target must be a local emulator-backed host.");

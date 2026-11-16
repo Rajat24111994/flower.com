@@ -79,6 +79,29 @@ Các test `firebase-admin.test.js`, `delivery-zones-api.test.js`, `design-reques
 
 Mỗi tính năng mới viết test trước (xem `CONTRIBUTING.md`).
 
+## Đăng xuất Firebase (C#)
+
+Mock SDK/handler: `dotnet run --project aspnet/tests/FlowerFlow.Contracts --configuration Release -- --firebase-logout`.
+Firebase Emulator + HTTP tới host C#, từ gốc repository sau build Release:
+
+```sh
+node tests/node_modules/firebase-tools/lib/bin/firebase.js emulators:exec --only auth,firestore --project demo-flowerflow --config flower.com/firebase.json "node aspnet/test-api.cjs firebase-logout.test.js"
+```
+
+Runner chỉ nhận project demo và host loopback. Test lưu rồi phát lại chính ID
+token cũ, dùng hai instance SDK độc lập, kiểm tra UID giả/khác tài khoản, token hết
+hạn, quyền admin và đăng nhập lại. Chạy `node aspnet/test-api.cjs` để chạy toàn bộ
+integration C#. Lượt Node oracle thông thường đánh dấu suite C# này là skip,
+không được tính là đã chạy. Hai bài tái hiện giới hạn Firestore/refresh Emulator
+không phải bảo đảm các đường đó đã bị vô hiệu hóa. Không dùng SQLite để kết luận
+về Firebase.
+
+UI mock desktop/mobile, từ `flower.com`:
+`node node_modules/@playwright/test/cli.js test --config playwright.firebase-logout.config.js`.
+Mock chỉ chứng minh nút cũ/nút mới, xác nhận, thứ tự gọi và xử lý thất bại; không
+chứng minh thu hồi phía server. Kết quả và môi trường PowerShell:
+[báo cáo 16/11/2026](../docs/test-reports/2026-11-16-firebase-logout.md).
+
 ## Báo cáo kết quả
 
 Sau mỗi đợt chạy test, sao chép `docs/test-reports/TEMPLATE.md` thành `docs/test-reports/YYYY-MM-DD.md` (nếu cùng ngày đã có báo cáo, thêm hậu tố như `-ci` hoặc `-2`). Ghi lại commit/nhánh nếu biết, môi trường, từng lệnh đã chạy, kết quả đạt/trượt, thông báo lỗi và các bước tái hiện tối thiểu. Nếu không có test nào trượt, ghi rõ `Không có` ở mục lỗi và tái hiện. Không đưa token, mật khẩu, thông tin khách hàng hoặc bí mật môi trường vào báo cáo.

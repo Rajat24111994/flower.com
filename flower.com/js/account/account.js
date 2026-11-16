@@ -1,5 +1,6 @@
 import { firebaseConfig, connectFirebaseEmulators } from "../core/firebase-config.js";
 import { logAuthError } from "./auth-logging.js";
+import { bindLogoutAllDevices } from "./firebase-logout.js?v=1";
 import { isLocalAuth, localAuthRequest, persistLocalAccount } from "./local-auth-client.js?v=2";
 import { monitorLocalSession, invalidateLocalSession } from "./session-lifecycle.js?v=1";
 import { addQuestionFields, readQuestions, recoveryError, restrictPinInputs } from "./recovery-security.js?v=3";
@@ -55,6 +56,7 @@ function hidePrivateAccount() {
     document.querySelectorAll(".account-details dd").forEach(element => { element.textContent = ""; });
     document.querySelectorAll("#security-form input").forEach(input => { input.value = ""; });
     document.getElementById("logout-button").disabled = true;
+    document.getElementById("logout-all-button").disabled = true;
 }
 window.addEventListener("pagehide", () => { pageIsActive = false; hidePrivateAccount(); });
 window.addEventListener("pageshow", event => {
@@ -237,6 +239,21 @@ document.getElementById("logout-button").addEventListener("click", async () => {
     }
     window.location.assign("./login.html");
 });
+
+if (!isLocalAuth && account && account.role !== "admin" && account.role !== "owner") {
+    bindLogoutAllDevices({
+        button: document.getElementById("logout-all-button"),
+        async getSession() {
+            const [appSdk, authSdk] = await Promise.all([
+                import("https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js"),
+                import("https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js")
+            ]);
+            const app = appSdk.getApps().length ? appSdk.getApp() : appSdk.initializeApp(firebaseConfig);
+            return { auth: authSdk.getAuth(app), signOut: authSdk.signOut };
+        },
+        onError(message) { document.getElementById("account-message").textContent = message; }
+    });
+}
 
 if (isLocalAuth && account) {
     const pageUid = account.uid;

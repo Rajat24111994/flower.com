@@ -13,6 +13,9 @@ async function main() {
     const url = `http://127.0.0.1:${port}`;
     const env = { ...process.env, ASPNETCORE_ENVIRONMENT: "Development", AUTH_MODE: "firebase",
         FLOWER_FRONTEND_ROOT: path.join(root, "flower.com"), Logging__LogLevel__Default: "Warning" };
+    // A restricted Windows test process cannot write the OS Event Log. Keep Console logging;
+    // a logging-provider permission failure must not mask the HTTP authentication assertion.
+    if (process.platform === "win32") env.Logging__EventLog__LogLevel__Default = "None";
     delete env.PORT;
     const server = spawn("dotnet", [path.join(__dirname, "src/FlowerFlow.Api/bin/Release/net10.0/FlowerFlow.Api.dll"), "--urls", url], {
         cwd: root, env, stdio: ["ignore", "inherit", "inherit"], windowsHide: true

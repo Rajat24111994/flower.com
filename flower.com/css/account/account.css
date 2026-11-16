@@ -136,7 +136,8 @@ h1 {
 }
 
 .shop-link,
-#logout-button {
+#logout-button,
+#logout-all-button {
     min-height: 44px;
     padding: 12px 18px;
     border: 1px solid var(--line);
@@ -152,6 +153,11 @@ h1 {
 .shop-link {
     background: #fff;
     color: var(--ink);
+}
+
+#logout-all-button {
+    background: white;
+    color: var(--rose-dark);
 }
 
 #logout-button {
