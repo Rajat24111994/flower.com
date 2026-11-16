@@ -19,7 +19,7 @@ function renderDashboard() {
    main.innerHTML = `
        <section class="dashboard">
            ${ordersNotice}
-           ${renderRestoreCatalogNotice()}
+           ${renderInventoryConnectionNotice()}
            <div class="summary">
                <div class="summary-card">
                    <h3>Tổng sản phẩm</h3>
