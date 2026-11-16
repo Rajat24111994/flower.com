@@ -85,6 +85,12 @@ static class PasswordContracts
         }
         try { _ = new PasswordAuth(http, accounts, key, true, name => name == "FIREBASE_AUTH_EMULATOR_HOST" ? "127.0.0.1:9099" : null); throw new Exception("Production emulator accepted"); }
         catch (AuthUnavailableException) { }
+        // Google's current error shape names the blocked method in metadata.methodName.
+        var currentKey = "current-" + Guid.NewGuid().ToString("N");
+        using var currentHttp = new HttpClient(new StubHttpHandler(_ => Task.FromResult(Response(HttpStatusCode.Forbidden,
+            "{\"error\":{\"status\":\"PERMISSION_DENIED\",\"details\":[{\"@type\":\"type.googleapis.com/google.rpc.ErrorInfo\",\"reason\":\"API_KEY_SERVICE_BLOCKED\",\"metadata\":{\"service\":\"identitytoolkit.googleapis.com\",\"methodName\":\"google.cloud.identitytoolkit.v1.AuthenticationService.SignInWithPassword\"}},{\"@type\":\"type.googleapis.com/google.rpc.LocalizedMessage\"}]}}"))));
+        await new PasswordAuth(currentHttp, accounts, currentKey, false,
+            name => name == "FIREBASE_AUTH_PUBLIC_API_KEY" ? currentKey : name == "FIREBASE_AUTH_SERVER_API_KEY" ? "server" : null).AssertReadyAsync();
         var blockedKey = "denied-" + Guid.NewGuid().ToString("N"); var badProbes = 0;
         using var badHttp = new HttpClient(new StubHttpHandler(_ => { badProbes++; return Task.FromResult(Response(HttpStatusCode.Forbidden,
             "{\"error\":{\"details\":[{\"reason\":\"API_KEY_HTTP_REFERRER_BLOCKED\"}]}}")); }));

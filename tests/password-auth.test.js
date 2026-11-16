@@ -46,6 +46,17 @@ test("checks both public password entry points and caches only the verified resu
     assert.match(urls[1], /relyingparty\/verifyPassword/);
 });
 
+test("accepts Google's current methodName metadata for blocked password methods", async (t) => {
+    const { assertPublicPasswordSignInBlocked } = setup(t);
+    // Shape returned by Google on 2026-11-16 for both endpoints once the public key is method-restricted.
+    t.mock.method(globalThis, "fetch", async () => json(403, { error: { status: "PERMISSION_DENIED", details: [
+        { "@type": "type.googleapis.com/google.rpc.ErrorInfo", reason: "API_KEY_SERVICE_BLOCKED", metadata: {
+            service: "identitytoolkit.googleapis.com", apiName: "identitytoolkit",
+            methodName: "google.cloud.identitytoolkit.v1.AuthenticationService.SignInWithPassword" } },
+        { "@type": "type.googleapis.com/google.rpc.LocalizedMessage" }] } }));
+    await assertPublicPasswordSignInBlocked();
+});
+
 test("an unprotected current or legacy endpoint prevents login", async (t) => {
     const { assertPublicPasswordSignInBlocked } = setup(t);
     let request = 0;
