@@ -112,7 +112,10 @@ public sealed class PasswordAuth : IPasswordAuth
             if (!Js.IsString(uid) || uid.GetString()!.Length == 0 || !double.IsFinite(version)) throw new AuthUnavailableException();
             return new(uid.GetString()!, uid.GetString(), version, Js.IsTrue(Js.Get(user, "disabled")));
         }
-        var secret = _environment("FIREBASE_SERVICE_ACCOUNT_JSON"); if (string.IsNullOrEmpty(secret)) throw new AuthUnavailableException();
+        // Same service-account source as the Admin SDK: inline JSON first, then the Render Secret File.
+        string secret;
+        try { secret = FirebaseServiceAccount.ReadJson(_environment); } catch { throw new AuthUnavailableException(); }
+        if (string.IsNullOrEmpty(secret)) throw new AuthUnavailableException();
         return new("unknown-" + Convert.ToHexStringLower(HMACSHA256.HashData(Encoding.UTF8.GetBytes(secret), Encoding.UTF8.GetBytes(email))), null, 0);
     }
     public async Task<bool> VerifyPasswordAsync(string email, string password, PasswordAccount account, CancellationToken cancellationToken = default)

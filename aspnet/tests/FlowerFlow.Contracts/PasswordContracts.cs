@@ -56,6 +56,20 @@ static class PasswordContracts
         var unknown = await provider.LookupAsync("user@example.invalid");
         AdditionalContracts.Require(unknown.Uid is null && unknown.Key == "unknown-" + Convert.ToHexStringLower(HMACSHA256.HashData(
             Encoding.UTF8.GetBytes("test-hmac-secret"), Encoding.UTF8.GetBytes("user@example.invalid"))), "Unknown account HMAC changed");
+        // Render supplies the service account as a Secret File; unknown accounts must still get the HMAC key, not an outage.
+        var secretFile = Path.Combine(Path.GetTempPath(), "flowerflow-sa-" + Guid.NewGuid().ToString("N") + ".json");
+        await File.WriteAllTextAsync(secretFile, "file-hmac-secret");
+        try
+        {
+            env.Remove("FIREBASE_SERVICE_ACCOUNT_JSON"); env["FIREBASE_SERVICE_ACCOUNT_FILE"] = secretFile;
+            var fileProvider = new PasswordAuth(http, accounts, key, false, name => env.GetValueOrDefault(name), () => now);
+            var fromFile = await fileProvider.LookupAsync("user@example.invalid");
+            AdditionalContracts.Require(fromFile.Uid is null && fromFile.Key == "unknown-" + Convert.ToHexStringLower(HMACSHA256.HashData(
+                Encoding.UTF8.GetBytes("file-hmac-secret"), Encoding.UTF8.GetBytes("user@example.invalid"))), "Unknown account HMAC ignored the service-account file");
+            env["FIREBASE_SERVICE_ACCOUNT_FILE"] = secretFile + ".missing";
+            await Unavailable(() => fileProvider.LookupAsync("user@example.invalid"));
+        }
+        finally { File.Delete(secretFile); env.Remove("FIREBASE_SERVICE_ACCOUNT_FILE"); env["FIREBASE_SERVICE_ACCOUNT_JSON"] = "test-hmac-secret"; }
         lookupJson = "{\"users\":{}}"; await Unavailable(() => provider.LookupAsync("user@example.invalid"));
 
         foreach (var values in new[]
