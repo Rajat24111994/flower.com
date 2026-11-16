@@ -11,6 +11,29 @@
 
 ## Hiện trạng
 
+### Đối chiếu nhóm shared — issue #146 (16/11/2026)
+
+Đã đọc lại đủ bốn module JS trong `flower.com/backend/shared` và đối chiếu với runtime C# hiện tại, không tạo backend song song:
+
+| Nguồn JS | Bản C# đang dùng | Hợp đồng được kiểm tra |
+| --- | --- | --- |
+| `firebase-admin.js` | `Firebase/FirebaseAdminService.cs`, `FirebaseServiceAccount.cs` | SDK cùng project hiện tại, cấu hình bí mật phía server, token kiểm tra thu hồi, claim admin và live `adminRoles`, lỗi 401/403/503 |
+| `request-identity.js` | `Http/RequestIdentity.cs`, `Local/LocalSession.cs` | Khách ẩn danh, Bearer một token, phiên local do server xác minh, không trộn local với Bearer, cookie mơ hồ bị từ chối |
+| `admin-audit.js` | `Firebase/AdminAudit.cs` | Giới hạn trường, ép chuỗi như JS, giữ nguyên details/null/default, server timestamp, ghi độc lập hoặc cùng transaction của caller |
+| `api-routes.js` | `Http/ApiRoutes.cs` | Handler mặc định, alias allowlist phân biệt hoa/thường, từ chối route lặp/không tồn tại/prototype keys với 404 và no-store |
+
+Phát hiện và sửa hai khác biệt trong bản chuyển đổi: tập ký tự whitespace và điểm kết thúc regex của Bearer trong .NET không giống ECMAScript; email audit dùng `Convert.ToString` không giữ hành vi `String(value || "")` với boolean, số, array và object. `Http/BearerToken.cs` nay dùng cùng quy tắc với hai regex JS gốc, giữ sự khác nhau giữa helper quản trị và optional customer; token vẫn phải qua Firebase Admin SDK với `checkRevoked=true`. Audit dùng helper ép kiểu JS sẵn có; không đổi schema, collection, transaction hoặc giới hạn trường.
+
+Thêm `shared-helpers-oracle.cjs` chạy trực tiếp bốn module JS thật với SDK boundary giả và `SharedContracts.cs` so sánh kết quả C#. Test tái hiện trước khi sửa: `Bearer\uFEFFtoken` được JS nhận nhưng C# trả 401. Sau sửa: **118/118 ca đạt**, gồm 68 ca Bearer, 12 ca local identity, 30 ca audit và 8 ca route. Các ca cuối dòng cũng xác nhận C# không nhận thêm một LF ở cuối header mà nguồn JS từ chối.
+
+Chạy riêng từ gốc repo sau khi build Release:
+
+```powershell
+dotnet run --project aspnet/tests/FlowerFlow.Contracts --configuration Release --no-build -- --shared
+```
+
+Bộ này cũng chạy tự động trong lượt contract mặc định và CI hiện có. Build Release đạt 0 warning/0 error; bộ contract đầy đủ và Firestore Emulator kiểm tra audit nguyên tử, phân quyền, các luồng phụ thuộc đều đạt. Không sửa frontend, URL/method/body/response API, project Firebase hoặc dữ liệu production.
+
 Đã đọc và chuyển lần lượt 32 file trong `backend/` cùng 8 file server trong `lib/`, đối chiếu import/export, nhánh xử lý, điểm vào API, collection và quy tắc frontend được server import. Các bước 01–40 bên dưới ghi bản C# và kiểm thử cho từng file. Runtime ASP.NET phục vụ frontend và toàn bộ API; launcher `npm run dev` cũng khởi động C#. JS backend cũ được giữ để làm oracle; HTML/CSS/JS frontend không bị sửa. Hướng dẫn chạy/cấu hình/giới hạn triển khai ở [README.md](README.md). Chưa chuyển deployment hoặc dùng database Firebase thật.
 
 Nhánh riêng `codex/aspnet-sql-server` có `ProductsController` và `AccountController` dùng SQL Server. Các endpoint này chưa tương đương backend Firestore và không được coi là đã chuyển đổi xong. Không đưa khung SQL Server đó vào main trong bước chuyển đổi này. Main bắt đầu với project Application độc lập, không có phụ thuộc SQL Server.
