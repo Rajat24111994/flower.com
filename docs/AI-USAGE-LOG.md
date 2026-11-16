@@ -49,7 +49,12 @@ Cột **Kiểm chứng** lấy từ mô tả PR và kết quả CI khi gộp. C�
 | 11/11/2026 | PR cho #122, #125, #126, #129, #130, #119, #131 | Claude Code | Đồng bộ tài liệu, thêm unit test và Firestore giả, load test, nhật ký này, nguồn gốc code, tài liệu triển khai và nghiên cứu người dùng; bổ sung bằng chứng mới vào ma trận truy vết của #124 (ma trận chính do DoThai207 làm) | Ghi trong từng commit; unit 204/204, CI | Longg5048 |
 | 12/11/2026 | PR tách backend thành module | Claude Code | Chuyển code backend từ `api/`, `lib/` vào `backend/<module>/` theo nghiệp vụ; chia `api/orders.js` (1.338 dòng) thành 9 file; sửa CI main đỏ do coverage của 12 module giao diện admin | Script cắt theo ranh giới hàm và tự tính `require`; kiểm tra không phụ thuộc vòng; unit, tích hợp, e2e và cổng coverage từng file | Longg5048 |
 
+## Cập nhật ngày 16/11/2026
+
+| Ngày | Phạm vi | Công cụ | Phần việc | Kiểm chứng | Người chịu trách nhiệm |
+| --- | --- | --- | --- | --- | --- |
 | 16/11/2026 | Tích hợp các thay đổi còn tồn đọng | Codex | Commit riêng từng file; đối chiếu main mới, giữ tài liệu và cấu hình Firebase hiện tại; chuyển sửa giao diện admin sang module, làm mới claims trước khi lưu kho, bỏ nút thêm sản phẩm mẫu và tăng phiên bản asset | 233/233 unit, 4/4 integration quản lý sản phẩm trên Emulator, 8/8 e2e admin desktop/mobile; không thao tác database production | DoThai207 |
+| 16/11/2026 | #146 backend-share | Codex | Đối chiếu bốn module shared với JS; sửa tương thích Bearer/Unicode và ép chuỗi email audit trong C#; thêm oracle và 118 ca contract, giữ nguyên frontend/Firebase | Build Release 0 warning/0 error; test đối chiếu đỏ trước sửa và 118/118 sau sửa; bộ contract đầy đủ, Firestore Emulator và 87/87 HTTP integration đạt | DoThai207 |
 
 ## Việc thành viên cần bổ sung
 
