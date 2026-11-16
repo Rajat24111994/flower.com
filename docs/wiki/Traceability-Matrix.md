@@ -84,6 +84,13 @@ Các dòng dưới đây ghi bằng chứng mới thêm sau commit snapshot [M].
 | QT-04, QT-10, NF-12 | Unit [`api-handlers.test.js`](https://github.com/Longg5048/flower.com/blob/main/tests/api-handlers.test.js) và [`helper-modules.test.js`](https://github.com/Longg5048/flower.com/blob/main/tests/helper-modules.test.js): khu vực giao, phí gói bó, giá hoa chỉ owner, tài khoản và nhật ký quản trị, quyền admin/owner bị thu hồi | Có test, chạy trong CI |
 | NF-15 | Unit tăng từ 181 lên 204 test; coverage dòng unit 57,45% → 77,41%. Sau khi gộp thêm test #125 của DoThai207 trên main: 231 test, coverage dòng 83,80%; CI yêu cầu tối thiểu 70% và 50% cho 6 module rủi ro cao (#125) | Có test, chạy trong CI |
 
+### Giá héo #107 — kiểm tra cục bộ 16/11/2026
+
+| Phạm vi | Mã và bằng chứng | Kết quả / giới hạn |
+| --- | --- | --- |
+| QT-01, QT-03, QT-10, NF-12 | [Quy tắc Owner, ưu tiên và ngày nhập](../wilting-pricing.md); [29 contract công thức](../../aspnet/tests/FlowerFlow.Contracts/WiltingPriceContracts.cs), [API và Rules](../../tests/integration/wilting-prices.test.js), [giao diện Owner](../../flower.com/e2e/wilting-prices.spec.js) | 29 contract, 8 HTTP integration mới, 8 E2E desktop/mobile đạt; mặc định tắt, kiểm tra quyền Owner sống, xung đột cập nhật và audit. Một ngày nhập cho mỗi sản phẩm, chưa quản lý nhiều lô. |
+| KH-08, KH-10, NF-08 | Cùng bộ HTTP: giá héo trước khuyến mãi, kiểm tra lại quote trong transaction, snapshot đơn, idempotency, VNPay dùng số tiền lưu; [cache catalog](../../tests/wilting-catalog.test.js) | Toàn bộ HTTP 102/102 và unit JS 237/237 đạt. Build Release và contract Firestore Emulator đạt. Đây là kết quả máy cục bộ, chưa phải CI hay nghiệm thu production. |
+
 ## Cập nhật ma trận
 
 Khi sửa một yêu cầu: giữ nguyên mã KH/QT/NF, cập nhật user story/issue, mốc commit có mã và test, rồi gắn link run/job đúng SHA. Nếu CI đang chạy/thất bại/bị hủy, ghi đúng trạng thái; nếu thay bằng kết quả mới thì giữ ngày và SHA để có thể kiểm toán. Không thay chỉ tiêu định lượng bằng test chức năng. Các file trong `docs/wiki/` là nguồn phiên bản trong repository; việc đồng bộ sang GitHub Wiki thực hiện theo [hướng dẫn wiki](README.md).
