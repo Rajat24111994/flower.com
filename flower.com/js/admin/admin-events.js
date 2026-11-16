@@ -275,10 +275,6 @@ main.addEventListener("click", (event) => {
        renderProductTab();
        return;
    }
-   if (actionButton?.dataset.action === "restore-catalog") {
-       void restoreCatalog();
-       return;
-   }
    if (actionButton?.dataset.action === "delete-all-products") {
        void deleteAllProducts();
        return;
