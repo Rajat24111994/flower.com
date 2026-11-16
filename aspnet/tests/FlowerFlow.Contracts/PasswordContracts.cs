@@ -113,7 +113,47 @@ static class PasswordContracts
         {
             Environment.SetEnvironmentVariable("FIREBASE_AUTH_PUBLIC_API_KEY", oldPublicKey); Environment.SetEnvironmentVariable("FIREBASE_AUTH_SERVER_API_KEY", oldServerKey);
         }
+        await LoginDiagnosticsAsync();
         Console.WriteLine("PASS: public-key bypass probes/cache, private password lookup, HMAC unknown accounts, provider faults and production emulator rejection.");
+    }
+
+    // A 503 must tell operators which login step failed without exposing anything sensitive to clients or logs.
+    private static async Task LoginDiagnosticsAsync()
+    {
+        foreach (var (failure, stage, reason) in new (Exception Error, string Stage, string Reason)[]
+        {
+            (new AuthUnavailableException("public-key-mismatch"), "assert-ready", "public-key-mismatch"),
+            (new InvalidOperationException("private-provider-detail"), "assert-ready", "InvalidOperationException")
+        })
+        {
+            var logger = new LoginLogger();
+            var handler = new LoginHandler(new TestFirebaseAccounts(), () => new FailingPasswordProvider(failure), () => null!, logger);
+            var context = new Microsoft.AspNetCore.Http.DefaultHttpContext(); context.Request.Method = "POST";
+            context.Request.Body = new MemoryStream(Encoding.UTF8.GetBytes("{\"email\":\"diag-user@example.invalid\",\"password\":\"Secret-Pass-1\"}"));
+            context.Request.ContentType = "application/json"; context.Response.Body = new MemoryStream();
+            await handler.HandleAsync(context);
+            var body = Encoding.UTF8.GetString(((MemoryStream)context.Response.Body).ToArray());
+            var log = string.Join("\n", logger.Messages);
+            AdditionalContracts.Require(context.Response.StatusCode == 503 && body.Contains("auth-service-unavailable") && !body.Contains(reason),
+                "Login diagnostics changed the client response");
+            AdditionalContracts.Require(log.Contains(stage) && log.Contains(reason), "Login 503 did not log its failing stage and reason: " + log);
+            AdditionalContracts.Require(!log.Contains("diag-user") && !log.Contains("Secret-Pass-1") && !log.Contains("private-provider-detail"),
+                "Login diagnostics logged credentials or provider details");
+        }
+    }
+    private sealed class FailingPasswordProvider(Exception failure) : IPasswordAuth
+    {
+        public Task AssertReadyAsync(CancellationToken cancellationToken = default) => Task.FromException(failure);
+        public Task<PasswordAccount> LookupAsync(string email, CancellationToken cancellationToken = default) => throw new InvalidOperationException();
+        public Task<bool> VerifyPasswordAsync(string email, string password, PasswordAccount account, CancellationToken cancellationToken = default) => throw new InvalidOperationException();
+    }
+    private sealed class LoginLogger : Microsoft.Extensions.Logging.ILogger<LoginHandler>
+    {
+        public List<string> Messages { get; } = [];
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+        public bool IsEnabled(Microsoft.Extensions.Logging.LogLevel logLevel) => true;
+        public void Log<TState>(Microsoft.Extensions.Logging.LogLevel logLevel, Microsoft.Extensions.Logging.EventId eventId, TState state, Exception? exception,
+            Func<TState, Exception?, string> formatter) => Messages.Add(formatter(state, exception) + (exception is null ? "" : " " + exception));
     }
     private static HttpResponseMessage Response(HttpStatusCode status, string json) => new(status)
         { Content = new StringContent(json, Encoding.UTF8, "application/json") };
