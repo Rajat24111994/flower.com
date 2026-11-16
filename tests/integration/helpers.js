@@ -64,6 +64,24 @@ const handlers = {
 
 // Calls a Vercel-style handler in-process and returns { status, body, headers }.
 async function callApi(name, { method = "POST", body, query = {}, token, headers = {} } = {}) {
+    if (process.env.FLOWER_API_URL) {
+        const routes = { adminUsers: "admin/users", ownerUsers: "owner/users", vnpayIpn: "vnpay-ipn",
+            reviewImages: "review-images", productImages: "product-images", deliveryZones: "delivery-zones",
+            designRequests: "design-requests", flowerPrices: "flower-prices", bouquetWrapping: "bouquet-wrapping" };
+        const url = new URL(`/api/${routes[name] || name}`, process.env.FLOWER_API_URL);
+        for (const [key, value] of Object.entries(query)) {
+            for (const item of Array.isArray(value) ? value : [value]) url.searchParams.append(key, item);
+        }
+        const response = await fetch(url, {
+            method,
+            headers: { ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
+                ...(token ? { authorization: `Bearer ${token}` } : {}), ...headers },
+            ...(body !== undefined && method !== "GET" ? { body: JSON.stringify(body) } : {})
+        });
+        return { status: response.status, headers: Object.fromEntries(response.headers),
+            body: response.headers.get("content-type")?.includes("application/json")
+                ? await response.json() : Buffer.from(await response.arrayBuffer()) };
+    }
     const response = { statusCode: 200, headers: {}, body: undefined };
     const res = {
         setHeader(key, value) { response.headers[key.toLowerCase()] = value; },
