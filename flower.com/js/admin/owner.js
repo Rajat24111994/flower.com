@@ -1,4 +1,5 @@
 import { firebaseConfig } from "../core/firebase-config.js";
+import { bindLogoutAllDevices } from "../account/firebase-logout.js?v=1";
 
 const status = document.getElementById("owner-status");
 const usersBody = document.getElementById("owner-users");
@@ -158,6 +159,11 @@ document.getElementById("owner-logout").addEventListener("click", async () => {
 
 try {
     if (await initializeAuth()) {
+        bindLogoutAllDevices({
+            button: document.getElementById("owner-logout-all"),
+            getSession: async () => authApi,
+            onError(message) { status.textContent = message; }
+        });
         await loadUsers();
     }
 } catch (error) {

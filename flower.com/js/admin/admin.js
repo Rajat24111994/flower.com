@@ -9,7 +9,7 @@ import "./admin-delivery.js?v=1";
 import "./admin-orders.js?v=1";
 import "./admin-reviews.js?v=1";
 import "./admin-users.js?v=1";
-import "./admin-events.js?v=2";
+import "./admin-events.js?v=3";
 import { firebaseConfig } from "../core/firebase-config.js";
 async function initializeAdmin() {
    try {

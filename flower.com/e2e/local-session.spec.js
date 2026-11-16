@@ -58,6 +58,7 @@ test("logout clears both tabs, revokes a copied cookie and back navigation canno
   const { account, cookie } = await signedIn(page);
   await page.goto("/account.html");
   await expect(page.locator("#account-email")).toHaveText(account.email);
+  await expect(page.locator("#logout-all-button")).toBeHidden();
   const second = await context.newPage();
   await second.goto("/account.html");
   await expect(second.locator("#account-email")).toHaveText(account.email);
