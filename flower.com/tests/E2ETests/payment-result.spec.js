@@ -24,6 +24,12 @@ test("checkout defaults to VNPay and keeps COD available", async ({ page }) => {
 });
 
 test("payment result trusts server IPN status instead of VNPay redirect parameters", async ({ page }) => {
+  const storageErrors = [];
+  page.on("console", (message) => {
+    if (message.type() === "error" && message.text().includes("FlowerSafeStorage")) {
+      storageErrors.push(message.text());
+    }
+  });
   await page.route("**/api/payments?**", async (route) => {
     await route.fulfill({
       status: 200,
@@ -35,6 +41,7 @@ test("payment result trusts server IPN status instead of VNPay redirect paramete
   await page.goto(`/payment-result.html?vnp_TxnRef=${txnRef}&vnp_ResponseCode=00`);
   await expect(page.getByRole("heading", { name: "Thanh toán chưa thành công" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Thanh toán lại" })).toBeVisible();
+  expect(storageErrors).toEqual([]);
 });
 
 test("a successful server status is shown even if redirect parameters report cancellation", async ({ page }) => {

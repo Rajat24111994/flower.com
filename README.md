@@ -234,6 +234,8 @@ Hướng dẫn từng bước, bao gồm cách gán quyền Owner bằng Applica
 
 CI trên GitHub Actions chạy unit test, test tích hợp và browser E2E cho mọi Pull Request và mỗi lần push lên `main`; báo cáo coverage và ảnh/trace trình duyệt được lưu trong kết quả chạy. Chi tiết: [`tests/README.md`](flower.com/tests/README.md). Sau mỗi đợt kiểm thử, tạo báo cáo từ [mẫu báo cáo](docs/test-reports/TEMPLATE.md) trong `docs/test-reports/` ([ví dụ ngày 2026-10-28](docs/test-reports/2026-10-28.md)). Trước mỗi lần phát hành làm theo [`docs/RELEASE-CHECKLIST.md`](docs/RELEASE-CHECKLIST.md).
 
+Để cấu hình VNPay sandbox và kiểm tra giao dịch thật trước khi bật production, xem [`docs/payments-vnpay.md`](docs/payments-vnpay.md). Không commit merchant secrets; chỉ bật VNPay sau khi đã cấu hình biến môi trường trên host triển khai và xác nhận luồng IPN trên sandbox.
+
 ## Phân quyền
 
 | Vai trò | Custom claims | Quyền hạn |

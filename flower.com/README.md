@@ -26,6 +26,10 @@ flowchart LR
     Admin["admin.js"] <-->|Đọc/cập nhật đơn| Orders
     Tracking["tracking.js"] -->|Đơn tài khoản| Orders
     Tracking -->|Mã đơn + số điện thoại| OrderAPI --> Orders
+    Checkout -->|Tạo đơn, giá do server tính| Payments["/api/payments"]
+    Payments -->|Link có chữ ký| VNPay[VNPay]
+    VNPay -->|IPN đã ký| IPN["/api/vnpay-ipn"] --> Orders
+    Browser -->|Trạng thái chỉ đọc| Payments
     Checkout --> VietQR[VietQR]
     Admin["admin.js"] -->|Cập nhật sản phẩm| Store
     Admin <-->|Đơn, ưu đãi, phân loại, đánh giá| Firestore
