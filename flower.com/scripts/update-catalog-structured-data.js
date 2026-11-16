@@ -4,7 +4,7 @@ const path = require("node:path");
 const root = path.join(__dirname, "..");
 const htmlPath = path.join(root, "product.html");
 const products = require(path.join(root, "flower.json")).flower;
-const catalogUrl = "https://flower-com-six.vercel.app/product.html";
+const catalogUrl = "https://flower-com.onrender.com/product.html";
 const structuredData = {
   "@context": "https://schema.org",
   "@type": "ItemList",

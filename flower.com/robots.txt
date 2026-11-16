@@ -2,4 +2,4 @@ User-agent: *
 Allow: /
 Disallow: /api/
 
-Sitemap: https://flower-com-six.vercel.app/sitemap.xml
+Sitemap: https://flower-com.onrender.com/sitemap.xml

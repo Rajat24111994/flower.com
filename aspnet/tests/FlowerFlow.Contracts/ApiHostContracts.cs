@@ -37,6 +37,9 @@ static class ApiHostContracts
                 using var unavailable = await client.GetAsync("/api/local-auth/session");
                 AdditionalContracts.Require(unavailable.StatusCode == HttpStatusCode.NotFound, "Production enabled local account APIs");
                 AdditionalContracts.Require(!(await client.GetStringAsync("/login.html")).Contains("/__local/auth-runtime.js"), "Production injected local authentication mode");
+                using (var page = await client.GetAsync("/"))
+                    AdditionalContracts.Require(page.Headers.TryGetValues("Strict-Transport-Security", out var hsts) && hsts.Single() == "max-age=31536000; includeSubDomains",
+                        "Production behind an HTTPS proxy must send HSTS like the previous Vercel host");
                 using var request = new HttpRequestMessage(HttpMethod.Post, "/api/login") { Content = JsonContent.Create(new { }) };
                 request.Headers.Add("Origin", "https://flowerflow-contract.onrender.com");
                 using var result = await client.SendAsync(request); var diagnosticBody = await result.Content.ReadFromJsonAsync<JsonElement>();

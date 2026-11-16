@@ -6,7 +6,7 @@ on:
       url:
         description: Địa chỉ trang cần kiểm tra
         required: true
-        default: https://flower-com-six.vercel.app
+        default: https://flower-com.onrender.com
   schedule:
     - cron: "17 1 * * *"
 
@@ -25,5 +25,5 @@ jobs:
       - name: Smoke test (không tạo đơn, không đổi dữ liệu)
         working-directory: flower.com
         env:
-          SMOKE_URL: ${{ github.event.inputs.url || 'https://flower-com-six.vercel.app' }}
+          SMOKE_URL: ${{ github.event.inputs.url || 'https://flower-com.onrender.com' }}
         run: npm run smoke

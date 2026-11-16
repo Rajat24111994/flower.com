@@ -1,4 +1,17 @@
 {
+  "redirects": [
+    {
+      "source": "/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "flower-com-six.vercel.app"
+        }
+      ],
+      "destination": "https://flower-com.onrender.com/:path*",
+      "permanent": false
+    }
+  ],
   "headers": [
     {
       "source": "/(.*)",
@@ -55,12 +68,6 @@
           "value": "public, max-age=0, must-revalidate"
         }
       ]
-    }
-  ],
-  "crons": [
-    {
-      "path": "/api/orders?action=expire",
-      "schedule": "7 19 * * *"
     }
   ],
   "rewrites": [

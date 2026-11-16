@@ -1,16 +1,17 @@
-# Free preview chosen by the user. This does not change the existing Vercel production.
+# Production host: https://flower-com.onrender.com (Render Free, Docker, ASP.NET + frontend on one origin).
+# The service was created from the dashboard; keep its Branch setting on `main` to match this file.
 services:
   - type: web
-    name: flowerflow-csharp-preview
+    name: flower-com
     runtime: docker
     repo: https://github.com/Longg5048/flower.com
-    branch: asp.net
+    branch: main
     plan: free
     region: singapore
     dockerfilePath: ./aspnet/Dockerfile
     dockerContext: .
     healthCheckPath: /health
-    autoDeployTrigger: "off"
+    autoDeployTrigger: checksPass
     envVars:
       - key: ASPNETCORE_ENVIRONMENT
         value: Production

@@ -9,7 +9,7 @@ Cho issue #131. Các mục ghi **"Nhóm điền"** cần nhóm xác nhận; ph�
 | Tên dự án | FlowerFlow – website bán hoa tươi trực tuyến |
 | Học phần | Nhóm điền (tên học phần, mã lớp, giảng viên) |
 | Repository | [Longg5048/flower.com](https://github.com/Longg5048/flower.com), fork từ [Rajat24111994/flower.com](https://github.com/Rajat24111994/flower.com) (xem [`PROVENANCE.md`](../PROVENANCE.md)) |
-| Bản chạy thật | https://flower-com-six.vercel.app |
+| Bản chạy thật | https://flower-com.onrender.com |
 | Bắt đầu | 05/10/2026 (commit đầu tiên của nhóm sau điểm fork) |
 | Mốc đã đạt | v0.1.0 phát hành 14/10/2026; v0.2.0 đang phát triển trên `main` |
 | Kết thúc dự kiến | Nhóm điền (hạn nộp/bảo vệ) |

@@ -37,7 +37,7 @@ Làm lần lượt từ trên xuống cho mỗi lần phát hành. Mục nào kh
 
 - [ ] Chạy smoke test tự động (không tạo đơn, không đổi dữ liệu):
   ```sh
-  cd flower.com && SMOKE_URL=https://flower-com-six.vercel.app npm run smoke
+  cd flower.com && SMOKE_URL=https://flower-com.onrender.com npm run smoke
   ```
   hoặc trên GitHub: **Actions → Smoke test → Run workflow**.
   Smoke test kiểm tra chứng chỉ TLS còn hạn/đúng hostname, HTTP chuyển hướng sang HTTPS và các header HSTS/CSP.

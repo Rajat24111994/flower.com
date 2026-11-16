@@ -23,7 +23,7 @@ function showShoppingError(error) {
 }
 
 function updateProductStructuredData(product, productName, productDescription) {
-  const baseUrl = "https://flower-com-six.vercel.app"
+  const baseUrl = "https://flower-com.onrender.com"
   const canonicalUrl = `${baseUrl}/product.html?id=${encodeURIComponent(product.id)}`
   const imageUrl = product.image
     ? new URL(product.image, window.location.href).href
@@ -80,14 +80,14 @@ function updateCatalogStructuredData(catalog) {
     "@context": "https://schema.org",
     "@type": "ItemList",
     name: "Danh sách hoa tươi Flowerflow",
-    url: "https://flower-com-six.vercel.app/product.html",
+    url: "https://flower-com.onrender.com/product.html",
     itemListOrder: "https://schema.org/ItemListOrderAscending",
     numberOfItems: catalog.length,
     itemListElement: catalog.map((product, index) => ({
       "@type": "ListItem",
       position: index + 1,
       name: product.title || "Sản phẩm hoa",
-      url: `https://flower-com-six.vercel.app/product.html?id=${encodeURIComponent(product.id)}`
+      url: `https://flower-com.onrender.com/product.html?id=${encodeURIComponent(product.id)}`
     }))
   }).replace(/</g, "\\u003c")
 }

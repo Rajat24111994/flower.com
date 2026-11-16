@@ -6,18 +6,19 @@
 
 **Website cửa hàng hoa tươi trực tuyến: danh mục sản phẩm, giỏ hàng, thanh toán COD/VNPay và trang quản trị.**
 
-[Xem bản demo](https://flower-com-six.vercel.app) · [Kiến trúc kỹ thuật](flower.com/README.md) · [Cấu hình quản trị](docs/ADMIN-SETUP.md) · [Ghi chú phát hành](docs/RELEASE_NOTES_v0.2.0.md)
+[Xem bản demo](https://flower-com.onrender.com) · [Kiến trúc kỹ thuật](flower.com/README.md) · [Cấu hình quản trị](docs/ADMIN-SETUP.md) · [Ghi chú phát hành](docs/RELEASE_NOTES_v0.2.0.md)
 
 ![HTML5](https://img.shields.io/badge/HTML5-E34F26?logo=html5&logoColor=white)
 ![CSS3](https://img.shields.io/badge/CSS3-1572B6?logo=css3&logoColor=white)
 ![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?logo=javascript&logoColor=black)
 ![Firebase](https://img.shields.io/badge/Firebase-FFCA28?logo=firebase&logoColor=black)
-![Vercel](https://img.shields.io/badge/Vercel-000000?logo=vercel&logoColor=white)
+![ASP.NET Core](https://img.shields.io/badge/ASP.NET%20Core-.NET%2010-512BD4?logo=dotnet&logoColor=white)
+![Render](https://img.shields.io/badge/Render-46E3B7?logo=render&logoColor=black)
 ![Node.js](https://img.shields.io/badge/Node.js-24.x-339933?logo=nodedotjs&logoColor=white)
 
 </div>
 
-> **Nhánh `asp.net`:** Backend đã chuyển sang ASP.NET Core C#, giữ Firebase/Firestore và frontend hiện có. `npm run dev` khởi động backend C# và cần .NET 10 SDK. Xem [hướng dẫn ASP.NET](aspnet/README.md) và [nhật ký 40 file](aspnet/MIGRATION-STATUS.md). Deployment Vercel và công cụ Node cũ vẫn được giữ riêng; push nhánh không tự chuyển website đang chạy sang .NET.
+> **Hosting:** Website chạy trên Render tại `https://flower-com.onrender.com` bằng backend ASP.NET Core C# (Docker), giữ nguyên Firebase/Firestore và frontend. `npm run dev` khởi động backend C# và cần .NET 10 SDK. Xem [hướng dẫn ASP.NET](aspnet/README.md) và [triển khai Render](aspnet/DEPLOYMENT.md). Địa chỉ Vercel cũ `flower-com-six.vercel.app` chỉ còn chuyển hướng sang Render; backend Node trong `flower.com/api` và `flower.com/backend` được giữ làm nguồn đối chiếu test.
 
 ---
 
@@ -42,7 +43,7 @@
 FlowerFlow là website bán hoa gồm ba lớp:
 
 - **Frontend:** các trang HTML, CSS và JavaScript thuần, không framework, không cần bước build.
-- **Backend:** Vercel Functions (Node.js) dùng Firebase Admin SDK. `/api/orders` tự tính giá, ưu đãi và giữ tồn kho khi tạo đơn; `/api/flower-prices` chỉ cho Owner cập nhật giá hoa và ghi lịch sử trong cùng giao dịch.
+- **Backend:** ASP.NET Core (.NET 10) chạy trong Docker trên Render, dùng Firebase Admin SDK; phục vụ cả frontend và `/api/...` trên cùng origin. `/api/orders` tự tính giá, ưu đãi và giữ tồn kho khi tạo đơn; `/api/flower-prices` chỉ cho Owner cập nhật giá hoa và ghi lịch sử trong cùng giao dịch.
 - **Cơ sở dữ liệu:** Cloud Firestore lưu sản phẩm, đơn hàng, đánh giá, ưu đãi và phân loại, được bảo vệ bằng Security Rules; Firebase Authentication quản lý tài khoản và phân quyền.
 
 ## Tính năng
@@ -82,11 +83,11 @@ FlowerFlow là website bán hoa gồm ba lớp:
 | --- | --- |
 | Giao diện | HTML5, CSS3, JavaScript (ES modules), không framework |
 | Xác thực | Firebase Authentication (Email/Password, Google) |
-| Backend | Vercel Functions (Node.js 24), `firebase-admin`, Vercel Cron |
+| Backend | ASP.NET Core .NET 10 (Docker), Firebase Admin SDK; GitHub Actions gọi cleanup đơn hết hạn |
 | Cơ sở dữ liệu | Cloud Firestore (Security Rules, chỉ mục trong `firestore.indexes.json`) |
 | Thanh toán | VNPay (URL thanh toán + IPN ký HMAC-SHA512), COD; VietQR chỉ còn cho đơn QR tạo trước đây |
 | Kiểm thử | `node:assert` có sẵn của Node.js, không cần thư viện ngoài |
-| Hosting | Vercel |
+| Hosting | Render (Docker, region Singapore) |
 
 Ở chế độ triển khai, Firebase Authentication quản lý mật khẩu và lưu giá trị băm phía máy chủ; ở chế độ local, máy chủ dùng scrypt với salt riêng và lưu vào SQLite. Cả hai chế độ đều không ghi mật khẩu gốc vào Firestore hoặc bộ nhớ trình duyệt. Bản sao phiên `localStorage.loggedUser` chỉ chứa hồ sơ cần thiết; nhật ký xác thực chỉ ghi mã lỗi đã lọc, không ghi đối tượng lỗi hay mật khẩu.
 
@@ -120,7 +121,7 @@ FlowerFlow là website bán hoa gồm ba lớp:
 │   ├── flower.json             # Catalog rỗng; sản phẩm do cửa hàng chủ động thêm trong admin
 │   ├── firestore.rules         # Quy tắc bảo mật Firestore
 │   ├── firebase.json           # Cấu hình Firebase CLI
-│   ├── vercel.json             # Cấu hình Vercel (header bảo mật, cron)
+│   ├── vercel.json             # Header bảo mật/CSP và rewrite API (ASP.NET đọc file này); chuyển hướng địa chỉ Vercel cũ sang Render
 │   └── package.json
 ├── tests/                      # Unit test; tests/integration: test trên Firebase Emulator
 └── docs/                       # Tài liệu: cấu hình quản trị, sao lưu, phát hành, ảnh wiki, báo cáo test
@@ -208,25 +209,30 @@ cd flower.com
 firebase deploy --only firestore:rules,firestore:indexes
 ```
 
-### Biến môi trường (Vercel)
+### Biến môi trường (Render)
 
 | Biến | Bắt buộc | Mô tả |
 | --- | :---: | --- |
-| `FIREBASE_SERVICE_ACCOUNT_JSON` | ✅ | Toàn bộ nội dung file JSON của service account có vai trò *Firebase Authentication Admin* |
+| `FIREBASE_SERVICE_ACCOUNT_FILE` hoặc `FIREBASE_SERVICE_ACCOUNT_JSON` | ✅ | Đường dẫn Secret File (`/etc/secrets/firebase-service-account.json`) hoặc toàn bộ nội dung JSON của service account có vai trò *Firebase Authentication Admin* |
 | `FIREBASE_PROJECT_ID` | ➖ | Project ID của Firebase; mặc định lấy từ service account |
+| `FIREBASE_AUTH_PUBLIC_API_KEY`, `FIREBASE_AUTH_SERVER_API_KEY` | ✅ | Khóa dùng cho API đăng nhập phía server |
+| `CRON_SECRET` | ✅ | Bảo vệ `/api/orders?action=expire` |
+| `VNPAY_TMN_CODE`, `VNPAY_HASH_SECRET`, `VNPAY_ENV`, `PUBLIC_APP_URL` | ➖ | Khi bật VNPay |
+
+Danh sách đầy đủ và cách kiểm tra kết nối (`--check-firebase`) có trong [`aspnet/DEPLOYMENT.md`](aspnet/DEPLOYMENT.md).
 
 > [!CAUTION]
-> Không bao giờ commit file service account vào repository. `.gitignore` đã chặn các mẫu tên file key phổ biến; chỉ lưu key trong biến môi trường của Vercel.
+> Không bao giờ commit file service account vào repository. `.gitignore` đã chặn các mẫu tên file key phổ biến; chỉ lưu key trong Environment/Secret Files của Render.
 
 ## Triển khai
 
-1. Import repository vào [Vercel](https://vercel.com/new).
-2. Đặt **Root Directory** là `flower.com`.
-3. Thêm các biến môi trường ở trên cho môi trường **Production** (và **Preview** nếu cần).
-4. Deploy, sau đó gán quyền Owner đầu tiên bằng script `npm run set-owner`.
+1. Trên [Render](https://dashboard.render.com/), tạo Web Service kiểu Docker từ repository (hoặc Blueprint [`render.yaml`](render.yaml)): nhánh `main`, Dockerfile `aspnet/Dockerfile`, build context gốc repo, health check `/health`.
+2. Thêm biến môi trường và Secret File ở trên trong **Environment** của service.
+3. Deploy, sau đó gán quyền Owner đầu tiên bằng script `npm run set-owner`.
+4. Thêm domain Render vào **Firebase Authentication → Authorized domains** và cập nhật biến GitHub Actions `FLOWER_APP_URL`.
 5. Triển khai Firestore Security Rules và composite indexes bằng `firebase deploy --only firestore:rules,firestore:indexes` (chọn đúng Firebase project trước khi chạy).
 
-Hướng dẫn từng bước, bao gồm cách gán quyền Owner bằng Application Default Credentials mà không cần tải key, có trong [`docs/ADMIN-SETUP.md`](docs/ADMIN-SETUP.md). URL chính thức là `https://flower-com-six.vercel.app`; kết quả kiểm tra bản đang chạy và các bằng chứng còn thiếu (Firestore Rules, VNPay sandbox, Lighthouse) ghi trong [`docs/issue-119-deployment.md`](docs/issue-119-deployment.md).
+Hướng dẫn từng bước, bao gồm cách gán quyền Owner bằng Application Default Credentials mà không cần tải key, có trong [`docs/ADMIN-SETUP.md`](docs/ADMIN-SETUP.md). URL chính thức là `https://flower-com.onrender.com`; kết quả kiểm tra bản đang chạy và các bằng chứng còn thiếu (Firestore Rules, VNPay sandbox, Lighthouse) ghi trong [`docs/issue-119-deployment.md`](docs/issue-119-deployment.md).
 
 ## Kiểm thử
 
@@ -258,9 +264,9 @@ Bản **v0.1.0** đã phát hành ngày 14/10/2026 ([release](https://github.com
 - **VNPay mới kiểm thử bằng test tự động, chưa có giao dịch sandbox thật** (#39, #119). Cần tài khoản merchant sandbox để xác nhận luồng IPN trên môi trường thật.
 - Trang thanh toán chỉ còn COD và VNPay. Đơn chuyển khoản QR tạo trước đây vẫn cần admin tự kiểm tra sao kê rồi bấm “Xác nhận đã nhận tiền”.
 - Ghi nhận hoàn tiền chỉ hỗ trợ hoàn toàn bộ giá trị đơn sau khi cửa hàng đã chuyển tiền và nhập mã giao dịch. Không có chuyển tiền tự động, hoàn một phần hoặc nhiều khoản hoàn trên cùng đơn.
-- **Vercel Hobby chỉ hỗ trợ cron hằng ngày.** Cần cấu hình GitHub Actions `FLOWER_APP_URL` và `CRON_SECRET` theo [`ADMIN-SETUP.md`](ADMIN-SETUP.md) để chạy cleanup mỗi 15 phút; cron Vercel hằng ngày chỉ là dự phòng.
+- **Render Free ngủ sau 15 phút không có truy cập**; lần mở đầu tiên sau đó có thể chờ khoảng một phút. Cleanup đơn hết hạn chạy bằng GitHub Actions mỗi 15 phút, cần cấu hình `FLOWER_APP_URL` và `CRON_SECRET` theo [`ADMIN-SETUP.md`](docs/ADMIN-SETUP.md).
 - Dữ liệu cũ chỉ lưu trong `localStorage` (đơn hàng, đánh giá, lời nhắn trước khi có backend) không được chuyển lên Firestore. Phân loại cũ được tải lên ở lần đầu admin mở trang quản trị.
-- **Tài khoản tự tạo trên máy** (`AUTH_MODE=local`, chỉ khi chạy `npm run dev`) lưu trong SQLite trên máy chạy, mật khẩu/PIN băm bằng scrypt; không dùng trên bản Vercel. Bản triển khai dùng Firebase Authentication.
+- **Tài khoản tự tạo trên máy** (`AUTH_MODE=local`, chỉ khi chạy `npm run dev`) lưu trong SQLite trên máy chạy, mật khẩu/PIN băm bằng scrypt; không dùng trên bản Render. Bản triển khai dùng Firebase Authentication.
 - Khách chưa đăng nhập chỉ lưu giỏ hàng và yêu thích trên thiết bị hiện tại. Tài khoản đăng nhập được đồng bộ hai danh sách qua Firestore; khi ngoại tuyến, bản cục bộ vẫn dùng được và sẽ báo nếu đồng bộ thất bại.
 
 ## Lộ trình
