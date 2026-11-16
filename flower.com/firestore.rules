@@ -43,7 +43,13 @@ service cloud.firestore {
 
     match /metadata/{metadataId} {
       allow get: if isAdmin() || metadataId in ['activePromotions', 'storeCategories'];
-      allow list, create, update, delete: if isAdmin();
+      allow list: if isAdmin();
+      // Pricing rules are changed only through the Owner API, with validation and audit.
+      allow create, update, delete: if isAdmin() && metadataId != 'wiltingPricing';
+    }
+
+    match /productFreshness/{productId} {
+      allow read, write: if false;
     }
 
     // Customers review through /api/orders (action "review"), which checks that the order is

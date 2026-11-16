@@ -15,7 +15,7 @@ public sealed record BackendServerOptions(string Root, bool Development, string?
     public IReadOnlySet<string> ApiPaths { get; init; } = new HashSet<string>(StringComparer.Ordinal)
     {
         "/api/review-images", "/api/product-images", "/api/admin/audit", "/api/bouquet-wrapping", "/api/delivery-zones", "/api/flower-prices",
-        "/api/products", "/api/design-requests", "/api/login", "/api/auth/logout-all", "/api/admin/users", "/api/owner/users", "/api/orders", "/api/payments", "/api/vnpay-ipn"
+        "/api/products", "/api/wilting-prices", "/api/design-requests", "/api/login", "/api/auth/logout-all", "/api/admin/users", "/api/owner/users", "/api/orders", "/api/payments", "/api/vnpay-ipn"
     };
 }
 

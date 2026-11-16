@@ -76,10 +76,23 @@ public sealed class ProductsHandler(Func<FirestoreDb> database, FirebaseAdminSer
                 { await Error(403, "permission-denied", "Chỉ Admin hoặc Owner đang được cấp quyền mới xem được toàn bộ sản phẩm."); return; }
             }
             var snapshot = await db.Collection("products").GetSnapshotAsync(context.RequestAborted);
+            var pricing = await WiltingPriceStore.LoadAsync(db, snapshot.Documents.Select(doc => doc.Id), cancellationToken: context.RequestAborted);
             context.Response.Headers.CacheControl = manage ? "private, no-store" : "public, max-age=0, s-maxage=0, must-revalidate";
-            var products = snapshot.Documents.Select(document => SerializeProduct(document.Id, document.ToDictionary()))
+            var products = snapshot.Documents.Select(document =>
+                {
+                    var data = document.ToDictionary(); var product = SerializeProduct(document.Id, data);
+                    var price = pricing.Price(document.Id, data);
+                    if (price is not null)
+                    {
+                        product["basePrice"] = price.BasePrice; product["wiltingPricing"] = price.Snapshot();
+                        if (manage) product["effectivePrice"] = price.Price;
+                        else product["price"] = price.Price;
+                    }
+                    return product;
+                })
                 .Where(product => manage || product.GetValueOrDefault("status") is not "hidden").Select(FirestoreValues.JsonCompatible).ToList();
-            await context.Response.WriteAsJsonAsync(new { products }, context.RequestAborted);
+            if (pricing.Settings.Enabled) await context.Response.WriteAsJsonAsync(new { products, wiltingPricingEnabled = true }, context.RequestAborted);
+            else await context.Response.WriteAsJsonAsync(new { products }, context.RequestAborted);
         }
         catch { logger.LogError("Products API failed."); await Error(503, "product-service-unavailable", "Máy chủ chưa đọc được kho sản phẩm. Vui lòng thử lại sau."); }
     }

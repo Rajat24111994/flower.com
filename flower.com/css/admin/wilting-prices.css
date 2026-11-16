@@ -1,0 +1,12 @@
+#owner-wilting-prices { margin-top: 24px; }
+#owner-wilting-prices p { line-height: 1.6; max-width: 90ch; }
+#wilting-controls { border: 1px solid #ddd; border-radius: 8px; padding: 18px; min-width: 0; }
+#wilting-controls legend { font-weight: 600; padding: 0 8px; }
+#wilting-controls label { display: grid; gap: 6px; }
+#wilting-controls input, #wilting-controls select { font: inherit; padding: 8px; max-width: 100%; }
+#wilting-controls label:has(input[type="checkbox"]) { display: flex; align-items: center; gap: 8px; }
+.wilting-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 16px; margin-block: 20px; }
+.wilting-form button { align-self: end; }
+.wilting-actions { display: flex; gap: 12px; flex-wrap: wrap; margin-block: 20px; }
+#wilting-products td { vertical-align: middle; }
+#wilting-status { min-height: 1.5em; font-weight: 600; }

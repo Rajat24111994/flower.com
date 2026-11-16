@@ -47,6 +47,10 @@ dotnet run --project aspnet/src/FlowerFlow.Api -- --check-firebase
 
 Lệnh chỉ kiểm tra quyền đọc Firebase Authentication và đọc document cài đặt Firestore hiện có; không tạo tài khoản, ghi document hoặc tạo database. Kiểm tra project phải khớp frontend trước khi gọi mạng; từ chối chạy kiểm tra project thật khi đang cấu hình emulator. Kết quả thành công có `status=connected`, `authentication=true`, `firestore=true`. Khi thiếu/sai khóa hoặc lỗi kết nối, exit code là 1 và chỉ báo mã lỗi, không in khóa/chi tiết provider. Sau đó dùng cùng biến môi trường để chạy API bình thường. Kiểm tra này không thay cho cấu hình hai API key của luồng đăng nhập mật khẩu.
 
+## Giá héo tự động (#107)
+
+Owner cấu hình tại `owner.html`; mặc định tắt và không tự điền mức giảm. API `/api/wilting-prices` quản lý quy tắc/ngày nhập; catalog, checkout và dự toán thiết kế dùng giá theo ngày Việt Nam. Xem [công thức, dữ liệu, giới hạn và cách triển khai](../docs/wilting-pricing.md), bao gồm yêu cầu triển khai Firestore Rules trước khi bật và giới hạn một ngày nhập cho mỗi sản phẩm.
+
 ## Build và triển khai
 
 Đã có Dockerfile và Blueprint Render Free cho bước chạy thử theo lựa chọn người dùng. Xem [DEPLOYMENT.md](DEPLOYMENT.md) về build, quyền truy cập, secrets, điều kiện chuyển lưu lượng và rollback. Gói triển khai không có nghĩa production đã được chuyển khi chưa có host/credentials.

@@ -8,6 +8,7 @@ using FlowerFlow.Application.Compatibility;
 using FlowerFlow.Application.Orders;
 using FlowerFlow.Infrastructure.Firebase;
 using FlowerFlow.Infrastructure.Http;
+using FlowerFlow.Infrastructure.Catalog;
 using Google.Cloud.Firestore;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
@@ -103,6 +104,7 @@ public sealed class DesignRequestsHandler(Func<FirestoreDb> database, IFirebaseA
                 var wrappingTask = transaction.GetSnapshotAsync(db.Collection("metadata").Document("bouquetWrapping"), context.RequestAborted);
                 await Task.WhenAll(productsTask, zonesTask, wrappingTask);
                 var productSnapshots = await productsTask; var zonesSnapshot = await zonesTask; var wrappingSnapshot = await wrappingTask;
+                var pricing = await WiltingPriceStore.LoadAsync(db, productSnapshots.Select(doc => doc.Id), transaction, context.RequestAborted);
                 var (zone, _) = OrderPricing.ResolveDeliveryZone(Js.Element(zonesSnapshot.ToDictionary()), zoneId);
                 var products = stems.Select((stem, index) =>
                 {
@@ -115,9 +117,11 @@ public sealed class DesignRequestsHandler(Func<FirestoreDb> database, IFirebaseA
                     var stock = Js.Number(Js.Element(data.GetValueOrDefault("quantity"))); var quantity = Convert.ToDouble(stem["quantity"], CultureInfo.InvariantCulture);
                     if (!Js.SafeInteger(stock) || stock < quantity)
                         throw new BackendException("insufficient-stock", $"Hoa {Js.String(Js.Element(FirestoreValues.Or(data, "title", "đã chọn")))} không còn đủ số lượng.");
-                    return new Dictionary<string, object>(stem) { ["title"] = Js.Cut(Js.String(Js.Element(FirestoreValues.Or(data, "title", "Hoa"))), 120),
+                    var line = new Dictionary<string, object>(stem) { ["title"] = Js.Cut(Js.String(Js.Element(FirestoreValues.Or(data, "title", "Hoa"))), 120),
                         ["image"] = Js.Cut(Js.String(Js.Element(FirestoreValues.Or(data, "image"))), 1000), ["price"] = OrderPricing.GetProductPrice(Js.Element(data)),
                         ["priceUpdatedAt"] = Js.String(Js.Element(FirestoreValues.Or(data, "priceUpdatedAt"))), ["stock"] = stock };
+                    pricing.ApplyToLine(line, snapshot.Id, data);
+                    return line;
                 }).ToList();
                 var tiers = Js.Get(Js.Element(wrappingSnapshot.ToDictionary()), "tiers");
                 if (BouquetWrapping.NormalizeTiers(tiers) is null) throw new BackendException("bouquet-wrapping-unavailable", "Cửa hàng chưa cấu hình bậc phí bó hoa.");

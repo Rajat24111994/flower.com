@@ -1,5 +1,6 @@
 import { firebaseConfig } from "../core/firebase-config.js";
 import { bindLogoutAllDevices } from "../account/firebase-logout.js?v=1";
+import { initializeWiltingPrices } from "./wilting-prices.js?v=1";
 
 const status = document.getElementById("owner-status");
 const usersBody = document.getElementById("owner-users");
@@ -165,6 +166,7 @@ try {
             onError(message) { status.textContent = message; }
         });
         await loadUsers();
+        await initializeWiltingPrices({ root: document.getElementById("owner-wilting-prices"), getToken: () => currentUser.getIdToken() });
     }
 } catch (error) {
     console.error("Không thể xác thực trang chủ cửa hàng:", error);

@@ -327,5 +327,5 @@ Kết quả đã chạy trên SQL Server 2022 (Docker, 11/11/2026): tạo đư�
 1. **Ảnh lưu ở đâu?** Thiết kế cho phép lưu ảnh trong database (`VARBINARY`) giống hiện tại. Khi số ảnh nhiều nên chuyển sang Azure Blob Storage và chỉ lưu `Url`.
 2. **Mức giảm tối đa của ưu đãi:** đang đặt 90%. Nhóm có thể đổi con số trong `CK_Promotions_Percent`.
 3. **Giỏ hàng khách vãng lai** vẫn lưu `localStorage` như hiện tại. Có cần lưu lên server không?
-4. **Giá theo cành (`SaleType = 'flower'`)** dùng chung cơ chế `ProductPrices`. Nếu sau này làm "giá hoa héo tự động" (#107) thì thêm cột `PriceRule` hoặc một bảng riêng.
+4. **Giá theo cành (`SaleType = 'flower'`)** dùng chung cơ chế `ProductPrices`. Bản ASP.NET/Firestore đã có giá héo tự động (#107), lưu cấu hình ở `metadata/wiltingPricing`, ngày nhập ở `productFreshness/{productId}` và snapshot giá trong dòng đơn hàng; xem [quy tắc và giới hạn hiện tại](../wilting-pricing.md). Phương án SQL Server trong tài liệu này chưa triển khai các bảng tương ứng; khi chuyển đổi cần bổ sung lưu quy tắc, ngày nhập và snapshot, không ghi đè lịch sử giá gốc.
 5. **Xóa sản phẩm:** đề xuất chỉ đổi `Status = 'archived'` (xóa mềm) để không làm hỏng đơn cũ. Bảng `OrderItems` có khóa ngoại tới `Products` nên database sẽ chặn xóa cứng.
