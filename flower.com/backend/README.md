@@ -1,93 +1,138 @@
-# Backend FlowerFlow
+# FlowerFlow ASP.NET Core Web API
 
-Backend chạy dưới dạng **Vercel Functions** (Node.js), dữ liệu ở **Cloud Firestore**, đăng nhập bằng **Firebase Authentication**. Code chia thành từng **module theo nghiệp vụ**; mỗi module tự chứa phần xử lý của nó.
+> Backend độc lập dùng dữ liệu trong bộ nhớ: xem [INDEPENDENT-BACKEND.md](../docs/backend/INDEPENDENT-BACKEND.md).
+> Chạy `dotnet run --project flower.com/backend/FlowerFlow.Backend`, mở `http://localhost:5090/swagger`.
+> Host Firebase `FlowerFlow.Api` được giữ nguyên; host mới chưa thay website production.
 
-## Cách tổ chức
+Backend C# trên nhánh `asp.net` đã có bản chuyển đổi của 32 module `flower.com/backend` và 8 thư viện server `flower.com/lib`. URL API, phương thức, dữ liệu JSON, logic giá/khuyến mãi/tồn kho/đơn hàng/thanh toán và Firebase được giữ theo nguồn JS. Nhật ký từng file và kiểm thử: [MIGRATION-STATUS.md](../docs/backend/MIGRATION-STATUS.md).
 
-```text
-flower.com/
-├── api/                  # Điểm vào của Vercel: mỗi file là một URL /api/..., chỉ 1 dòng trỏ sang backend/
-└── backend/
-    ├── orders/           # Đơn hàng
-    ├── payments/         # Thanh toán VNPay
-    ├── catalog/          # Sản phẩm, ảnh, giá hoa
-    ├── shop-settings/    # Khu vực giao hàng, phí gói bó
-    ├── design-requests/  # Yêu cầu thiết kế bó hoa riêng
-    ├── accounts/         # Đăng nhập
-    ├── admin/            # Tài khoản, cấp quyền, nhật ký quản trị
-    └── shared/           # Dùng chung cho mọi module
+## Chạy trên máy
+
+Cần .NET 10 SDK. Từ gốc repository:
+
+```powershell
+dotnet build flower.com/FlowerFlow.sln --configuration Release
+dotnet run --project flower.com/backend/FlowerFlow.Api
 ```
 
-`api/` phải giữ nguyên vì Vercel lấy đường dẫn URL từ tên file trong thư mục này. Mỗi file `.js` trong `api/` là một hàm Vercel. Gói Hobby cho tối đa **12 hàm**, hiện dùng **11**. Mọi xử lý thật nằm trong `backend/`.
+Mở `http://localhost:5080/`. ASP.NET phục vụ nguyên HTML/CSS/JS hiện có cùng `/api/...`; `GET /health` kiểm tra tiến trình, không kiểm tra kết nối Firebase. Trong Development, mặc định `AUTH_MODE=local`, dùng lại SQLite tài khoản local ở `flower.com/.tools/local-auth/accounts.sqlite` khi chạy từ source project. Có thể đặt `LOCAL_ACCOUNTS_FILE` để chọn đường dẫn ổn định khác. Local không thay thế database nghiệp vụ Firestore.
 
-## URL → module
+Lệnh cũ vẫn dùng được:
 
-| URL | Điểm vào | Xử lý |
-| --- | --- | --- |
-| `/api/orders` | `api/orders.js` | `backend/orders/controller.js` |
-| `/api/payments` | `api/payments.js` | `backend/payments/payments.js` |
-| `/api/vnpay-ipn` | `api/vnpay-ipn.js` | `backend/payments/vnpay-ipn.js` |
-| `/api/products` | `api/products.js` | `backend/catalog/products.js` |
-| `/api/flower-prices` (rewrite) | `api/products.js?route=flower-prices` | `backend/catalog/flower-prices.js` |
-| `/api/product-images` | `api/product-images.js` | `backend/catalog/product-images.js` |
-| `/api/review-images` | `api/review-images.js` | `backend/catalog/review-images.js` |
-| `/api/delivery-zones` | `api/delivery-zones.js` | `backend/shop-settings/delivery-zones.js` |
-| `/api/bouquet-wrapping` (rewrite) | `api/delivery-zones.js?route=bouquet-wrapping` | `backend/shop-settings/bouquet-wrapping.js` |
-| `/api/design-requests` | `api/design-requests.js` | `backend/design-requests/controller.js` |
-| `/api/login` | `api/login.js` | `backend/accounts/login.js` |
-| `/api/admin/users` | `api/admin/users.js` | `backend/admin/users.js` |
-| `/api/admin/audit` (rewrite) | `api/admin/users.js?route=audit` | `backend/admin/audit.js` |
-| `/api/owner/users` | `api/owner/users.js` | `backend/admin/owner-users.js` |
+```powershell
+cd flower.com
+npm run dev
+```
 
-Rewrite khai báo trong `vercel.json`. Máy chủ chạy trên máy (`npm run dev`) áp dụng cùng các rewrite này.
+Lệnh này tải `.env` như trước rồi khởi động ASP.NET tại `http://127.0.0.1:3000/`. `scripts/dev.js` chỉ là launcher, không xử lý HTTP hoặc nghiệp vụ. Có thể đặt `PORT`, `AUTH_MODE=local|firebase`. Tài khoản local chỉ bật trong Development và chỉ nhận request loopback; cookie HttpOnly/SameSite Strict, session 12 giờ, mật khẩu/PIN/câu trả lời và lịch sử khóa tương thích SQLite cũ. Chế độ local cho phép thử tài khoản mà không cần Firebase; catalog, đặt hàng và quản trị vẫn cần Firestore/Firebase phù hợp như hệ thống cũ.
 
-## Từng module
+Nếu PowerShell chặn `npm.ps1`, dùng `npm.cmd run dev`.
 
-### `orders/` — đơn hàng
-Module lớn nhất, chia theo vai trò:
+## Firebase và bí mật
 
-| File | Vai trò |
+Production dùng `AUTH_MODE=firebase` (mặc định). Cấu hình phía server bằng biến môi trường hoặc kho bí mật của nền tảng:
+
+- `FIREBASE_SERVICE_ACCOUNT_JSON`: nội dung Service Account hiện tại, giữ cách cấu hình của deployment cũ.
+- Hoặc `FIREBASE_SERVICE_ACCOUNT_FILE`: đường dẫn file Service Account JSON ngoài Git/OneDrive, chỉ dùng ở server ASP.NET. Nếu đồng thời đặt JSON và FILE thì JSON được ưu tiên như cấu hình triển khai cũ. Không dùng file cấu hình Firebase Web thay cho Service Account.
+- `FIREBASE_PROJECT_ID`: tùy chọn, mặc định `project_id` trong service account; dùng project/database hiện có.
+- `FIREBASE_AUTH_PUBLIC_API_KEY`, `FIREBASE_AUTH_SERVER_API_KEY`: cấu hình password provider theo [hướng dẫn bảo vệ đăng nhập](../docs/login-protection.md). Public key phải khớp frontend và bị chặn các phương thức đăng nhập mật khẩu trực tiếp; server key phải khác public key.
+- Các biến VNPay, `CRON_SECRET` và khóa tra cứu giữ tên/cách sử dụng của backend JS; xem `.env.example` và cấu hình triển khai hiện có.
+
+`dotnet run` không tự đọc `.env`; `npm run dev` đọc file này qua Node launcher. Không đặt service account trong appsettings, frontend, repo hoặc log. SDK khởi tạo khi cần, không tạo lại database, không đổi schema Firestore. Xác thực Firebase ID token kiểm tra thu hồi; admin/owner vẫn kiểm tra live `adminRoles` và custom claims. `FIRESTORE_EMULATOR_HOST` chỉ dùng khi chủ động cấu hình emulator để thử nghiệm.
+
+Kiểm tra kết nối project thật từ máy đã có file khóa (thay đường dẫn mẫu bằng file của bạn):
+
+```powershell
+$env:FIREBASE_SERVICE_ACCOUNT_FILE = 'C:\Users\<user>\.secrets\flowerflow-admin.json'
+$env:FIREBASE_PROJECT_ID = 'web-ban-hoa-9fe0b'
+$env:AUTH_MODE = 'firebase'
+dotnet run --project flower.com/backend/FlowerFlow.Api -- --check-firebase
+```
+
+Lệnh chỉ kiểm tra quyền đọc Firebase Authentication và đọc document cài đặt Firestore hiện có; không tạo tài khoản, ghi document hoặc tạo database. Kiểm tra project phải khớp frontend trước khi gọi mạng; từ chối chạy kiểm tra project thật khi đang cấu hình emulator. Kết quả thành công có `status=connected`, `authentication=true`, `firestore=true`. Khi thiếu/sai khóa hoặc lỗi kết nối, exit code là 1 và chỉ báo mã lỗi, không in khóa/chi tiết provider. Sau đó dùng cùng biến môi trường để chạy API bình thường. Kiểm tra này không thay cho cấu hình hai API key của luồng đăng nhập mật khẩu.
+
+## Giá héo tự động (#107)
+
+Owner cấu hình tại `owner.html`; mặc định tắt và không tự điền mức giảm. API `/api/wilting-prices` quản lý quy tắc/ngày nhập; catalog, checkout và dự toán thiết kế dùng giá theo ngày Việt Nam. Xem [công thức, dữ liệu, giới hạn và cách triển khai](../../docs/wilting-pricing.md), bao gồm yêu cầu triển khai Firestore Rules trước khi bật và giới hạn một ngày nhập cho mỗi sản phẩm.
+
+## Build và triển khai
+
+Đã có Dockerfile và Blueprint Render Free cho bước chạy thử theo lựa chọn người dùng. Xem [DEPLOYMENT.md](../docs/backend/DEPLOYMENT.md) về build, quyền truy cập, secrets, điều kiện chuyển lưu lượng và rollback. Gói triển khai không có nghĩa production đã được chuyển khi chưa có host/credentials.
+
+```powershell
+dotnet publish flower.com/backend/FlowerFlow.Api --configuration Release --output flower.com/backend/.tools/publish
+```
+
+Output chứa API và bản sao nguyên trạng các file frontend công khai. Chạy `dotnet FlowerFlow.Api.dll` từ output trên host hỗ trợ ASP.NET Core/.NET 10, cấu hình `ASPNETCORE_ENVIRONMENT=Production` và `ASPNETCORE_URLS` của host. Node không cần cho tiến trình API đã publish. Giữ frontend và API cùng origin để các URL hiện tại tiếp tục hoạt động.
+
+Nếu có reverse proxy, cấu hình IP của proxy tin cậy bằng `ReverseProxy__KnownProxies__0` (và các chỉ số tiếp theo); middleware chỉ nhận X-Forwarded-For/Proto từ các IP này rồi dùng IP đã xác minh cho rate limit. TLS kết thúc tại host/proxy. Không tin trực tiếp header IP do client gửi. Lịch cleanup cũ cần tiếp tục gọi `GET /api/orders?action=expire` với `Authorization: Bearer <CRON_SECRET>` từ scheduler của nền tảng.
+
+Trên Render, origin HTTPS công khai được nhận từ `RENDER_EXTERNAL_URL` do nền tảng cấp; `PUBLIC_APP_URL` cũng được nhận nếu cấu hình domain riêng. Điều này cho phép request trình duyệt hợp lệ sau TLS proxy mà không nới quy tắc tin cậy IP hoặc nhận Origin tùy ý. Cần deploy commit mới để bản sửa có hiệu lực trên host đang chạy.
+
+Commit/push không chuyển deployment Vercel hiện tại sang .NET. `vercel.json` và các JS entry point cũ vẫn được giữ để đối chiếu và cho deployment Node cũ; muốn chạy bản C# phải triển khai output ASP.NET trên host phù hợp. Các script quản trị/maintenance Node vẫn là công cụ vận hành riêng; không được gọi bởi runtime API C#. Bản C# của export/import/mã hóa backup nằm tại `Firebase/FirestoreBackup.cs`, giữ định dạng backup cũ và không mở thêm endpoint sao lưu công khai.
+
+## Kiểm tra
+
+Đăng xuất Firebase có hai thao tác riêng: nút **Đăng xuất** giữ hành vi `signOut`
+trong trình duyệt; nút **Đăng xuất trên mọi thiết bị** gọi C# `POST /api/auth/logout-all`
+với Firebase Bearer token và body `{}`. Server kiểm tra thu hồi, lấy UID từ token đã
+xác minh và gọi Firebase Admin thu hồi phiên cũ của chính tài khoản đó. Không nhận
+UID từ client và không dùng cookie SQLite để xác thực endpoint này. Giới hạn token
+sao chép, độ chính xác giây, Firestore trực tiếp và Emulator được ghi tại
+[audit đăng xuất](../../docs/firebase-logout-audit.md). Chưa xác minh Firebase thật;
+không triển khai production trong công việc này.
+
+Cần Node 24+ để chạy nguồn JS đối chiếu, .NET 10 SDK và Java 21 cho Firestore Emulator. Từ gốc repository, build trước rồi chạy:
+
+```powershell
+dotnet run --project flower.com/tests/UnitTests/FlowerFlow.Contracts --configuration Release --no-build
+```
+
+Bộ kiểm tra bao gồm differential contracts với nguồn JS, provider giả lập, SQLite/scrypt hai chiều Node–C#, AES-GCM backup hai chiều, HTTP socket và khởi chạy executable API thật với database local tạm. Không dùng credential hay database production.
+
+Kiểm thử các API nghiệp vụ qua HTTP trên chính host ASP.NET bằng bộ integration JS hiện có:
+
+```powershell
+npm ci --prefix flower.com
+npm ci --prefix flower.com/tests
+node flower.com/node_modules/firebase-tools/lib/bin/firebase.js emulators:exec --only auth,firestore --project demo-flowerflow --config flower.com/firebase.json "node flower.com/tests/IntegrationTests/test-api.cjs"
+```
+
+Runner yêu cầu build Release trước, tự chọn cổng loopback và chỉ dùng project `demo-` với cả hai emulator. Có thể truyền tên suite, ví dụ `node flower.com/tests/IntegrationTests/test-api.cjs product-images.test.js`. Ba suite gọi trực tiếp JS local server/password provider không nằm trong lượt HTTP này; bản C# tương ứng đã có trong `FlowerFlow.Contracts`. Bốn test chuyển đổi bổ sung kiểm tra retry đơn từ JS sang C#, cấu hình wrapping/phân trang, giả mạo header IP và kiểu integer Firestore. Kết quả đối chiếu nhánh issue #141 và quyết định tích hợp: [INTEGRATION-141.md](../docs/backend/INTEGRATION-141.md).
+
+Để kiểm tra transaction Firestore, khởi động emulator ở `127.0.0.1:8787`, project `demo-flowerflow-csharp`, rồi chạy:
+
+```powershell
+dotnet run --project flower.com/tests/UnitTests/FlowerFlow.Contracts --configuration Release --no-build -- --firestore-emulator
+```
+
+Client test cố định loopback/demo project. Kiểm tra quota, idempotency, cạnh tranh tồn kho, hoàn kho một lần, quyền truy cập, audit nguyên tử, callback thanh toán và backup/import theo batch. CI `.github/workflows/aspnet.yml` tự khởi động emulator và chạy bộ này.
+
+## Cấu trúc
+
+Bốn project theo tầng, phụ thuộc một chiều: **Api → Application → Domain** và **Infrastructure → Application → Domain**. Application không tham chiếu Infrastructure; nó khai báo interface trong `Abstractions/`, Infrastructure cài đặt, Api đăng ký trong `Program.cs`.
+
+Backend độc lập của PR #152 (`FlowerFlow.Backend` → `FlowerFlow.Commerce` → `FlowerFlow.Domain`, cùng `FlowerFlow.InMemory`) không dùng Firebase/Firestore, nên Commerce là project riêng thay vì nằm trong Application; `FlowerFlow.Backend.Tests/ArchitectureTests` giữ ranh giới này.
+
+- `FlowerFlow.Api`: `Program.cs` (DI, cấu hình môi trường), `Controllers/` (mỗi URL `/api/...` gọi một service; service tự trả mã trạng thái và JSON như API cũ), `Middleware/` (`BackendServer`: file tĩnh, CSP, kiểm tra Origin, đọc JSON; `RequestIdentityMiddleware`: gắn phiên tài khoản local khi chạy trên máy).
+- `FlowerFlow.Application`: các service nghiệp vụ theo nhóm `Accounts`, `Admin`, `Catalog`, `Orders`, `Payments`, `DesignRequests`, `ShopSettings`; `Abstractions/` (interface cho Firebase, nhận diện người gọi, audit, VNPay); `Common/` (đọc JSON/Bearer, ghi lỗi `{ code, error }`, chuyển đổi giá trị Firestore, đọc service account).
+- `FlowerFlow.Domain`: `Entities/` (Product, Order, PaymentTransaction, AdminRole, AdminAudit, DesignRequest: tên collection, trạng thái, giới hạn trường), `Models/` (FirebaseIdentity, FirebaseAccount, RoleUser, PasswordAccount), `Enums/` (LoginOutcome), `Constants/` (các collection còn lại), `Rules/` (quy tắc thuần dùng chung với backend độc lập: `PricingService`, `OrderValidationService`, `OrderConfig`, `ImageRulesService`, `BouquetOptions`, `BouquetWrapping`, tương thích JS `Js`/`JsJson`), `Commerce/` (entity của backend độc lập).
+- `FlowerFlow.Infrastructure`: `Firebase/` (`FirebaseAdminService` giữ app/credential, `FirebaseAuthService` xác minh token/quyền và tài khoản, `FirestoreService`, `FirestoreBackup`), `Vnpay/VnpayGateway` (cấu hình merchant từ biến môi trường), `Security/RequestIdentityService`, `Audit/AdminAuditRepository`, `Local/` (tài khoản SQLite chỉ dùng khi chạy trên máy).
+
+Đối chiếu tên cũ → mới (chỉ đổi tên và vị trí, không đổi hành vi):
+
+| Trước | Sau |
 | --- | --- |
-| `controller.js` | Nhận request `/api/orders`, chọn service theo `action` |
-| `config.js` | Hằng số: tối đa 50 sản phẩm/loại; giữ hàng VNPay 15 phút, COD 30 phút; khung giờ giao |
-| `validation.js` | Kiểm tra số điện thoại, ngày giờ giao, giỏ hàng, dữ liệu đặt hàng |
-| `pricing.js` | Tính tiền phía máy chủ: giá, ưu đãi, phí giao theo khu vực, phí gói bó tự chọn |
-| `checkout.js` | Báo giá và tạo đơn: tính lại giá, kiểm tra kho, giữ hàng trong transaction, chống đặt trùng, giới hạn tạo đơn |
-| `reservations.js` | Hủy đơn quá hạn giữ hàng và hoàn kho (cron hoặc admin gọi `action=expire`) |
-| `tracking.js` | Tra cứu đơn công khai (mã đơn + số điện thoại, 20 lượt/10 phút/IP) và đơn của tài khoản |
-| `payment-admin.js` | Admin đối soát chuyển khoản QR, ghi nhận tiền đến trễ, hoàn tiền, xem nhật ký thanh toán |
-| `reviews.js` | Đánh giá theo đơn: chỉ chủ đơn đã giao, mỗi đơn một đánh giá |
+| `Infrastructure/*/XxxHandler` | `Application/*/XxxService` (ví dụ `ProductsHandler` → `ProductsService`) |
+| `LoginHandler`, `LoginProtection`, `PasswordAuth`, `FirebaseLogoutHandler` | `LoginService`, `LoginProtectionService`, `PasswordAuthService`, `LogoutService` |
+| `AdminUsersHandler`, `OwnerUsersHandler`, `AdminRoles`, `AdminAuditHandler` | `UsersService`, `OwnerUsersService`, `RolesService`, `AuditService` |
+| `Checkout`, `OrderPricing`, `Reservations`, `OrderTracking`, `OrderReviews`, `PaymentAdmin`, `OrderValidation` | `CheckoutService`, `PricingService`, `ReservationsService`, `TrackingService`, `ReviewsService`, `PaymentAdminService`, `OrderValidationService` |
+| `Vnpay`, `DesignValidation`, `ImageRules` | `VnpayService` (+ cấu hình ở `VnpayGateway`), `DesignRequestValidationService`, `ImageRulesService` |
+| `OrdersHandler` | `Api/Controllers/OrdersController` |
+| `FirebaseAdminBackend`, `FirebaseAdminService` (xác minh request) | `FirebaseAdminService`, `FirebaseAuthService` |
+| `RequestIdentity`, `AdminAudit` | `RequestIdentityService`, `AdminAuditRepository` |
+| `app.Map("/api/...")` trong `Program.cs` | `Api/Controllers/*Controller` |
 
-### `payments/` — VNPay
-`payments.js` tạo link thanh toán và trả trạng thái; `vnpay-ipn.js` nhận kết quả có chữ ký từ VNPay; `vnpay.js` ký và kiểm chữ ký HMAC-SHA512. Dùng `orders/reservations.js` và `orders/pricing.js` để hoàn kho khi giao dịch hết hạn.
+Kiểm chứng khi tái cấu trúc: build sạch, `FlowerFlow.Contracts` đạt toàn bộ, unit test Node đạt, và phép đối chiếu HTTP chạy song song bản trước/sau với 264 request (16 endpoint × 7 phương thức và các ca biên, cả Production lẫn Development) cho kết quả giống hệt từng byte.
 
-### `catalog/` — sản phẩm
-`products.js` (danh sách công khai, bản quản lý cho admin, sửa tên lỗi dấu và ảnh cũ), `flower-prices.js` (chỉ Owner: giá hoa theo cành và lịch sử), `product-images.js`, `review-images.js` (lưu và trả ảnh), `image-rules.js` (quy tắc kiểm tra ảnh dùng chung).
-
-### `shop-settings/` — cấu hình cửa hàng
-`delivery-zones.js` (tỉnh/quận được giao và phí), `bouquet-wrapping.js` (phí gói bó theo số cành).
-
-### `design-requests/` — thiết kế bó hoa riêng
-`controller.js` (khách gửi yêu cầu, xem và phản hồi báo giá; admin gửi báo giá), `validation.js` (lựa chọn thiết kế, màu, cành hoa, ảnh tham khảo, mã truy cập).
-
-### `accounts/` — đăng nhập
-`login.js` (API đăng nhập), `login-protection.js` (khóa sau nhiều lần sai, tăng dần thời gian khóa), `password-auth.js` (kiểm tra mật khẩu qua Firebase).
-
-### `admin/` — quản trị
-`users.js` (danh sách tài khoản), `owner-users.js` (Owner cấp/gỡ quyền admin), `audit.js` (đọc nhật ký quản trị), `roles.js` (đồng bộ bảng `adminRoles` với custom claims, dùng cả trong các script quản trị).
-
-### `shared/` — dùng chung
-`firebase-admin.js` (kết nối Firebase, `sendError`, kiểm tra token và quyền admin/owner), `request-identity.js` (khách đang gọi là ai), `admin-audit.js` (ghi nhật ký thao tác quản trị), `api-routes.js` (`withRoutes`: gộp nhiều API vào một hàm Vercel theo `?route=`).
-
-## Quy tắc phụ thuộc
-
-- Module chỉ `require` từ `shared/`, từ chính nó, hoặc service của module khác khi thật sự dùng chung quy tắc. Ví dụ `payments` và `design-requests` dùng `orders/pricing.js` và `orders/validation.js`.
-- Không module nào `require` từ `api/`.
-- Mã chỉ dùng khi chạy trên máy (máy chủ dev, tài khoản SQLite, PIN) nằm trong `lib/`, không chạy trên Vercel.
-
-## Thêm một API mới
-
-1. Viết handler trong module phù hợp ở `backend/<module>/`.
-2. Nếu cần URL riêng mà không muốn thêm hàm Vercel: đăng ký vào hàm có sẵn bằng `withRoutes` (`shared/api-routes.js`), rồi thêm `rewrites` trong `vercel.json`.
-3. Chỉ tạo file mới trong `api/` khi còn chỗ trong giới hạn 12 hàm. `tests/vercel-functions.test.js` báo đỏ nếu vượt.
-4. Viết test: unit với Firestore giả (`tests/helpers/fake-firestore.js`) và test tích hợp trên Firebase Emulator (`tests/integration/`).
+Nguồn JS backend được giữ trong `flower.com/legacy-node/` làm oracle kiểm thử. HTML/CSS/JavaScript frontend không bị chỉnh sửa. Chưa chạy thử với credentials/project Firebase thật hoặc chuyển lưu lượng production trong quá trình chuyển đổi.

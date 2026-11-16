@@ -58,7 +58,7 @@ Cần tài khoản merchant sandbox. Cài `VNPAY_TMN_CODE`, `VNPAY_HASH_SECRET`,
 | 4 | Sai số tiền | Gửi IPN có `vnp_Amount` khác số tiền đơn (sửa tham số rồi ký lại bằng hash secret sandbox) | IPN trả `04 Invalid amount`; đơn không đổi | |
 | 5 | Thanh toán sau khi đơn hết hạn | Tạo đơn, chờ quá 15 phút cho đơn bị hủy rồi mới thanh toán | IPN trả `00`, ghi `latePayment = true` để admin xử lý hoàn tiền; đơn đã hủy không tự mở lại | |
 
-Ngoài ra: chữ ký sai trả `97`, thiếu cấu hình trả `99`, mã giao dịch lạ trả `01`. Các trường hợp này đã có test tự động (`tests/vnpay.test.js`, `tests/integration/vnpay.test.js`).
+Ngoài ra: chữ ký sai trả `97`, thiếu cấu hình trả `99`, mã giao dịch lạ trả `01`. Các trường hợp này đã có test tự động (`tests/vnpay.test.js`, `flower.com/tests/IntegrationTests/vnpay.test.js`).
 
 Ghi kết quả thật vào cột cuối kèm mã giao dịch sandbox (`vnp_TransactionNo`) và ảnh chụp đơn trong trang admin; che số điện thoại và địa chỉ.
 

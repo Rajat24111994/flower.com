@@ -9,7 +9,7 @@ if (!Number.isInteger(port) || port < 1 || port > 65535) {
     console.error('AUTH_MODE phải là local hoặc firebase.'); process.exitCode = 1;
 } else {
     const root = path.resolve(__dirname, '..');
-    const project = path.resolve(root, '../aspnet/src/FlowerFlow.Api');
+    const project = path.resolve(root, 'backend/FlowerFlow.Api');
     const child = spawn('dotnet', ['run', '--project', project, '--no-launch-profile'], {
         stdio: 'inherit', windowsHide: true,
         env: { ...process.env, ASPNETCORE_ENVIRONMENT: 'Development', AUTH_MODE: mode, PORT: String(port),

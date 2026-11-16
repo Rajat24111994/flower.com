@@ -30,16 +30,16 @@ test("từ chối số điện thoại người nhận quá ngắn", () => {
     assert.equal(validateCheckout(checkout({ recipientPhone: "12" })), null);
 });
 ```
-Chạy `npm test` → đỏ. Thêm điều kiện trong `validateCheckout` (`flower.com/backend/orders/validation.js`) → xanh. Dọn code → vẫn xanh.
+Chạy `npm test` → đỏ. Thêm điều kiện trong `validateCheckout` (`flower.com/legacy-node/backend/orders/validation.js`) → xanh. Dọn code → vẫn xanh.
 
 ### Đặt test ở đâu
 
 | Thay đổi | Loại test | File |
 | --- | --- | --- |
 | Hàm tính toán, kiểm tra dữ liệu (giá, ưu đãi, trạng thái, giỏ hàng) | Unit | `tests/*.test.js` |
-| API `flower.com/api/*.js` (đặt hàng, đăng nhập, quản lý) | Feature | `tests/integration/feature-*.test.js` |
-| `firestore.rules`, kiểm tra quyền trong API | Security | `tests/integration/security-*.test.js` |
-| Luồng đi qua nhiều phần (trang → API → Firestore) | System | `tests/integration/system.test.js` |
+| API `flower.com/legacy-node/api/*.js` (đặt hàng, đăng nhập, quản lý) | Feature | `flower.com/tests/IntegrationTests/feature-*.test.js` |
+| `firestore.rules`, kiểm tra quyền trong API | Security | `flower.com/tests/IntegrationTests/security-*.test.js` |
+| Luồng đi qua nhiều phần (trang → API → Firestore) | System | `flower.com/tests/IntegrationTests/system.test.js` |
 
 Muốn hàm trong API test được thì đưa nó vào `module.exports.internals` của file đó.
 

@@ -34,11 +34,11 @@ console có assertion; không dùng `dotnet test` để suy diễn số bài c�
 
 | Bằng chứng | Lệnh | Kết quả |
 | --- | --- | --- |
-| Build C# | `dotnet build aspnet/FlowerFlow.sln --configuration Release --no-restore --verbosity minimal` | Đạt; 0 warning, 0 error; đã chạy lại sau tích hợp main |
-| Mock SDK Firebase | `dotnet run --project aspnet/tests/FlowerFlow.Contracts --configuration Release --no-build -- --firebase-logout` | 18 đạt; đã chạy lại sau tích hợp main; không gọi Firebase thật |
-| Differential/mock/local C# | `dotnet run --project aspnet/tests/FlowerFlow.Contracts --configuration Release --no-build` | Exit 0; gồm SQLite, provider mock, HTTP/executable, không dùng làm bằng chứng Firebase thật |
-| Firebase Emulator + HTTP C# | Lệnh emulator bên dưới với `node aspnet/test-api.cjs` | 94 đạt, 0 trượt, 0 skip; gồm 7 bài mới và hai bài tái hiện giới hạn; chạy trước tích hợp main |
-| Firebase Emulator sau tích hợp main | Cùng lệnh, dùng `node aspnet/test-api.cjs firebase-logout.test.js` | 7 đạt, 0 trượt, 0 skip; vẫn tái hiện hai giới hạn đã nêu |
+| Build C# | `dotnet build flower.com/FlowerFlow.sln --configuration Release --no-restore --verbosity minimal` | Đạt; 0 warning, 0 error; đã chạy lại sau tích hợp main |
+| Mock SDK Firebase | `dotnet run --project flower.com/tests/UnitTests/FlowerFlow.Contracts --configuration Release --no-build -- --firebase-logout` | 18 đạt; đã chạy lại sau tích hợp main; không gọi Firebase thật |
+| Differential/mock/local C# | `dotnet run --project flower.com/tests/UnitTests/FlowerFlow.Contracts --configuration Release --no-build` | Exit 0; gồm SQLite, provider mock, HTTP/executable, không dùng làm bằng chứng Firebase thật |
+| Firebase Emulator + HTTP C# | Lệnh emulator bên dưới với `node flower.com/tests/IntegrationTests/test-api.cjs` | 94 đạt, 0 trượt, 0 skip; gồm 7 bài mới và hai bài tái hiện giới hạn; chạy trước tích hợp main |
+| Firebase Emulator sau tích hợp main | Cùng lệnh, dùng `node flower.com/tests/IntegrationTests/test-api.cjs firebase-logout.test.js` | 7 đạt, 0 trượt, 0 skip; vẫn tái hiện hai giới hạn đã nêu |
 | UI mock Firebase | Trong `flower.com`: `node node_modules/@playwright/test/cli.js test --config playwright.firebase-logout.config.js` | 16 đạt, 0 trượt, 0 skip; đã chạy lại sau tích hợp main |
 | Local SQLite/cookie Node | `node --test tests/session-security.test.js tests/local-auth-http.test.js` | 12 đạt, 0 trượt, 0 skip; tách khỏi bằng chứng Firebase |
 | Local UI SQLite/cookie | Trong `flower.com`: `node node_modules/@playwright/test/cli.js test --config playwright.local.config.js e2e/local-session.spec.js --grep "logout clears both tabs"` | 2 đạt desktop/mobile; nút Firebase ẩn, cookie cũ bị từ chối |
@@ -47,7 +47,7 @@ console có assertion; không dùng `dotnet test` để suy diễn số bài c�
 | Sau tích hợp main | Contracts `--production-host`; `node --test tests/admin-module-split.test.js tests/seo-performance.test.js` | Host đạt; 3 bài Node đạt; giữ HSTS, SEO và module quản trị từ main |
 | Firebase thật, thiết bị thật | Chưa chạy | Không có project thử nghiệm riêng; chữ ký/certificate, refresh rejection, IAM và độ trễ thu hồi thật chưa xác minh |
 
-Windows sử dụng cache NuGet trong workspace. Runner `aspnet/test-api.cjs` tắt
+Windows sử dụng cache NuGet trong workspace. Runner `flower.com/tests/IntegrationTests/test-api.cjs` tắt
 provider Windows Event Log riêng cho test Windows vì sandbox không cho ghi OS
 Event Log; Console vẫn hoạt động và chỉ ghi thông báo cố định. Khi chạy Contracts
 trong cùng sandbox, đặt `Logging__EventLog__LogLevel__Default=None`.
@@ -61,7 +61,7 @@ $env:JAVA_HOME = Join-Path $PWD '.tools/java21/jdk-21.0.13+9-jre'
 $env:PATH = "$env:JAVA_HOME\bin;$env:PATH"
 $env:CI = 'true'
 $env:DEBUG = ''
-node tests/node_modules/firebase-tools/lib/bin/firebase.js emulators:exec --only auth,firestore --project demo-flowerflow --config flower.com/firebase.json "node aspnet/test-api.cjs"
+node tests/node_modules/firebase-tools/lib/bin/firebase.js emulators:exec --only auth,firestore --project demo-flowerflow --config flower.com/firebase.json "node flower.com/tests/IntegrationTests/test-api.cjs"
 ```
 
 `.tools` là công cụ/cache đã có tại máy, không được commit; máy khác dùng Java/.NET
@@ -89,20 +89,20 @@ Password-provider/login-protection C# có Contracts mock riêng; không tuyên b
 
 | File | Lý do |
 | --- | --- |
-| `aspnet/src/FlowerFlow.Infrastructure/Accounts/FirebaseLogoutHandler.cs` | Thu hồi chính caller đã xác minh, không nhận UID và không thêm Firestore schema |
-| `aspnet/src/FlowerFlow.Api/Program.cs` | Đăng ký dependency và route C# |
-| `aspnet/src/FlowerFlow.Infrastructure/Local/BackendServer.cs` | Whitelist route mới, giữ Host/Origin/body protection |
-| `aspnet/tests/FlowerFlow.Contracts/FirebaseLogoutContracts.cs`, `Program.cs` | 18 tình huống mock và đăng ký runner |
-| `aspnet/tests/FlowerFlow.Contracts/ApiHostContracts.cs` | Kiểm tra dependency graph/method của route mới |
-| `aspnet/test-api.cjs` | Tắt OS Event Log trong test Windows, giữ Console |
-| `tests/integration/helpers.js`, `firebase-logout.test.js` | HTTP route tới C# và test token, hai context, UID, re-login, hai giới hạn |
+| `flower.com/backend/FlowerFlow.Infrastructure/Accounts/FirebaseLogoutHandler.cs` | Thu hồi chính caller đã xác minh, không nhận UID và không thêm Firestore schema |
+| `flower.com/backend/FlowerFlow.Api/Program.cs` | Đăng ký dependency và route C# |
+| `flower.com/backend/FlowerFlow.Infrastructure/Local/BackendServer.cs` | Whitelist route mới, giữ Host/Origin/body protection |
+| `flower.com/tests/UnitTests/FlowerFlow.Contracts/FirebaseLogoutContracts.cs`, `Program.cs` | 18 tình huống mock và đăng ký runner |
+| `flower.com/tests/UnitTests/FlowerFlow.Contracts/ApiHostContracts.cs` | Kiểm tra dependency graph/method của route mới |
+| `flower.com/tests/IntegrationTests/test-api.cjs` | Tắt OS Event Log trong test Windows, giữ Console |
+| `flower.com/tests/IntegrationTests/helpers.js`, `firebase-logout.test.js` | HTTP route tới C# và test token, hai context, UID, re-login, hai giới hạn |
 | `flower.com/js/account/firebase-logout.js` | Luồng mới dùng chung, xác nhận và chỉ signOut sau thành công phía server |
 | `flower.com/js/account/account.js`, `js/admin/admin-events.js`, `js/admin/owner.js` | Gắn nút mới; giữ handler cũ và local SQLite |
 | `flower.com/account.html`, `admin.html`, `owner.html`, `js/admin/admin.js` | Nút riêng và version cache mới; giữ cập nhật admin từ main |
 | `flower.com/css/account/account.css` | Style nút mới trong layout hiện có |
-| `flower.com/e2e/firebase-logout.spec.js`, `playwright.firebase-logout.config.js` | UI mock desktop/mobile, hủy, thành công, lỗi và không đổi nút cũ |
-| `flower.com/e2e/local-session.spec.js` | Local không hiện nút Firebase |
-| `docs/firebase-logout-audit.md`, `aspnet/README.md`, `tests/README.md`, báo cáo này | Hiện trạng, inventory Firestore, phạm vi và bằng chứng |
+| `flower.com/tests/E2ETests/firebase-logout.spec.js`, `playwright.firebase-logout.config.js` | UI mock desktop/mobile, hủy, thành công, lỗi và không đổi nút cũ |
+| `flower.com/tests/E2ETests/local-session.spec.js` | Local không hiện nút Firebase |
+| `docs/firebase-logout-audit.md`, `flower.com/backend/README.md`, `tests/README.md`, báo cáo này | Hiện trạng, inventory Firestore, phạm vi và bằng chứng |
 
 ## Lỗi ban đầu và xử lý
 

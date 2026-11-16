@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <ItemGroup>
+    <Content Include="../../*.html;../../flower.json;../../favicon.svg;../../robots.txt;../../sitemap.xml;../../vercel.json" Link="frontend/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="../../js/**/*.js" Link="frontend/js/%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="../../css/**/*.css" Link="frontend/css/%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="../../images/**/*" Exclude="../../images/**/*.json;../../images/**/.*;../../images/**/*.env*;../../images/**/*.key;../../images/**/*.pem" Link="frontend/images/%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\FlowerFlow.Application\FlowerFlow.Application.csproj" />
+    <ProjectReference Include="..\FlowerFlow.Infrastructure\FlowerFlow.Infrastructure.csproj" />
+  </ItemGroup>
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <UserSecretsId>flowerflow-firestore-api-development</UserSecretsId>
+  </PropertyGroup>
+</Project>

@@ -18,7 +18,7 @@
 
 </div>
 
-> **Hosting:** Website chạy trên Render tại `https://flower-com.onrender.com` bằng backend ASP.NET Core C# (Docker), giữ nguyên Firebase/Firestore và frontend. `npm run dev` khởi động backend C# và cần .NET 10 SDK. Xem [hướng dẫn ASP.NET](aspnet/README.md) và [triển khai Render](aspnet/DEPLOYMENT.md). Địa chỉ Vercel cũ `flower-com-six.vercel.app` chỉ còn chuyển hướng sang Render; backend Node trong `flower.com/api` và `flower.com/backend` được giữ làm nguồn đối chiếu test.
+> **Hosting:** Website chạy trên Render tại `https://flower-com.onrender.com` bằng backend ASP.NET Core C# (Docker), giữ nguyên Firebase/Firestore và frontend. `npm run dev` khởi động backend C# và cần .NET 10 SDK. Xem [hướng dẫn ASP.NET](flower.com/backend/README.md) và [triển khai Render](flower.com/docs/backend/DEPLOYMENT.md). Địa chỉ Vercel cũ `flower-com-six.vercel.app` chỉ còn chuyển hướng sang Render; backend Node trong `flower.com/api` và `flower.com/backend` được giữ làm nguồn đối chiếu test.
 
 ---
 
@@ -95,36 +95,23 @@ FlowerFlow là website bán hoa gồm ba lớp:
 
 ```text
 .
-├── flower.com/                 # Gốc dự án Vercel (Root Directory)
-│   ├── api/                    # Điểm vào Vercel Functions: mỗi file = 1 URL /api/..., chỉ 1 dòng trỏ sang backend/
-│   ├── backend/                # Backend chia theo nghiệp vụ (xem flower.com/backend/README.md)
-│   │   ├── orders/             # Báo giá, tạo đơn, giữ/hoàn kho, tra cứu, đánh giá, đối soát thanh toán
-│   │   ├── payments/           # VNPay: tạo link thanh toán, nhận IPN, ký và kiểm chữ ký
-│   │   ├── catalog/            # Sản phẩm, ảnh sản phẩm/đánh giá, giá hoa
-│   │   ├── shop-settings/      # Khu vực giao hàng, phí gói bó
-│   │   ├── design-requests/    # Yêu cầu thiết kế bó hoa riêng
-│   │   ├── accounts/           # Đăng nhập, chống dò mật khẩu
-│   │   ├── admin/              # Tài khoản, cấp quyền, nhật ký quản trị
-│   │   └── shared/             # Kết nối Firebase, kiểm tra quyền, gộp route
-│   ├── lib/                    # Công cụ phát triển: máy chủ chạy trên máy, tài khoản SQLite, CSP, sao lưu
-│   ├── scripts/                # Script quản trị: gán quyền, sao lưu/khôi phục, smoke test
-│   ├── images/                 # Ảnh sản phẩm và giao diện
-│   ├── *.html                  # Các trang web (giữ ở gốc để địa chỉ như /product.html không đổi)
-│   ├── js/                     # JavaScript chạy trên trình duyệt, chia theo chức năng
-│   │   ├── core/               # Dùng chung: cấu hình Firebase, header, footer, tiền tệ, lưu trữ
-│   │   ├── catalog/            # Sản phẩm: danh sách, tìm kiếm, tùy chọn bó hoa, yêu thích
-│   │   ├── order/              # Giỏ hàng, đặt hàng, trạng thái đơn, theo dõi, kết quả thanh toán
-│   │   ├── review/             # Đánh giá và ảnh đánh giá
-│   │   ├── account/            # Đăng nhập, quên mật khẩu, tài khoản
-│   │   └── admin/              # Trang quản trị, báo cáo, xuất Excel, trang owner
-│   ├── css/                    # Giao diện, chia theo cùng nhóm: core, catalog, order, account, admin
-│   ├── flower.json             # Catalog rỗng; sản phẩm do cửa hàng chủ động thêm trong admin
-│   ├── firestore.rules         # Quy tắc bảo mật Firestore
-│   ├── firebase.json           # Cấu hình Firebase CLI
-│   ├── vercel.json             # Header bảo mật/CSP và rewrite API (ASP.NET đọc file này); chuyển hướng địa chỉ Vercel cũ sang Render
-│   └── package.json
-├── tests/                      # Unit test; tests/integration: test trên Firebase Emulator
-└── docs/                       # Tài liệu: cấu hình quản trị, sao lưu, phát hành, ảnh wiki, báo cáo test
+├── flower.com/                       # Website: frontend tĩnh + backend ASP.NET Core
+│   ├── backend/                      # Backend ASP.NET Core (Render, Docker: backend/Dockerfile)
+│   │   ├── FlowerFlow.Api/           # Tầng nhận HTTP: Program.cs, Controllers/, Middleware/
+│   │   ├── FlowerFlow.Application/   # Nghiệp vụ: Accounts, Admin, Catalog, Orders, Payments, DesignRequests, ShopSettings
+│   │   ├── FlowerFlow.Domain/        # Entities, Models, Enums, Constants (không phụ thuộc thư viện ngoài)
+│   │   └── FlowerFlow.Infrastructure/# Kết nối ngoài: Firebase, Vnpay, Security, Audit; Local (tài khoản chạy trên máy)
+│   ├── legacy-node/                  # Backend Node/Vercel cũ (api/, backend/), giữ làm bản đối chiếu cho test
+│   ├── js/                           # Frontend – giữ nguyên: account, admin, catalog, core, order, review
+│   ├── css/  images/  *.html         # Giao diện và các trang (địa chỉ như /product.html không đổi)
+│   ├── lib/                          # Hạ tầng tài khoản local và máy chủ chạy trên máy (Node)
+│   ├── scripts/                      # Công cụ quản trị và vận hành: gán quyền, sao lưu/khôi phục, smoke test
+│   ├── tests/                        # UnitTests/ (JS + FlowerFlow.Contracts .NET), IntegrationTests/ (emulator), E2ETests/ (Playwright)
+│   ├── docs/                         # Tài liệu kỹ thuật; docs/backend: triển khai, chuyển đổi ASP.NET
+│   ├── FlowerFlow.sln                # Solution ASP.NET Core
+│   ├── flower.json  firestore.rules  firebase.json  vercel.json  package.json
+├── render.yaml                       # Blueprint Render
+└── docs/                             # Tài liệu dự án: cấu hình quản trị, phát hành, wiki, báo cáo test
 ```
 
 Mô tả chi tiết kiến trúc và luồng dữ liệu nằm trong [`flower.com/README.md`](flower.com/README.md).
@@ -219,14 +206,14 @@ firebase deploy --only firestore:rules,firestore:indexes
 | `CRON_SECRET` | ✅ | Bảo vệ `/api/orders?action=expire` |
 | `VNPAY_TMN_CODE`, `VNPAY_HASH_SECRET`, `VNPAY_ENV`, `PUBLIC_APP_URL` | ➖ | Khi bật VNPay |
 
-Danh sách đầy đủ và cách kiểm tra kết nối (`--check-firebase`) có trong [`aspnet/DEPLOYMENT.md`](aspnet/DEPLOYMENT.md).
+Danh sách đầy đủ và cách kiểm tra kết nối (`--check-firebase`) có trong [`flower.com/docs/backend/DEPLOYMENT.md`](flower.com/docs/backend/DEPLOYMENT.md).
 
 > [!CAUTION]
 > Không bao giờ commit file service account vào repository. `.gitignore` đã chặn các mẫu tên file key phổ biến; chỉ lưu key trong Environment/Secret Files của Render.
 
 ## Triển khai
 
-1. Trên [Render](https://dashboard.render.com/), tạo Web Service kiểu Docker từ repository (hoặc Blueprint [`render.yaml`](render.yaml)): nhánh `main`, Dockerfile `aspnet/Dockerfile`, build context gốc repo, health check `/health`.
+1. Trên [Render](https://dashboard.render.com/), tạo Web Service kiểu Docker từ repository (hoặc Blueprint [`render.yaml`](render.yaml)): nhánh `main`, Dockerfile `flower.com/backend/Dockerfile`, build context gốc repo, health check `/health`.
 2. Thêm biến môi trường và Secret File ở trên trong **Environment** của service.
 3. Deploy, sau đó gán quyền Owner đầu tiên bằng script `npm run set-owner`.
 4. Thêm domain Render vào **Firebase Authentication → Authorized domains** và cập nhật biến GitHub Actions `FLOWER_APP_URL`.
@@ -240,12 +227,12 @@ Hướng dẫn từng bước, bao gồm cách gán quyền Owner bằng Applica
 | --- | --- | --- |
 | Unit test | `cd flower.com && npm test` | 231 test: tính giá, ưu đãi, dữ liệu đơn hàng, trạng thái đơn, giỏ hàng, danh mục, sản phẩm, cấu hình bảo mật |
 | Coverage | `cd flower.com && npm run test:coverage` | Như trên, kèm tỉ lệ dòng/nhánh/hàm được test; CI yêu cầu tối thiểu 70% coverage dòng |
-| Feature, system, security | `cd tests && npm ci && npm run integration` | 91 test: đặt hàng, đăng nhập, quản lý, luồng xuyên hệ thống và Security Rules trên Firebase Emulator (cần Java 11+) |
+| Feature, system, security | `cd flower.com/tests && npm ci && npm run integration` | 91 test: đặt hàng, đăng nhập, quản lý, luồng xuyên hệ thống và Security Rules trên Firebase Emulator (cần Java 11+) |
 | Browser E2E | `cd flower.com && npm run test:e2e:emulator` | 148 test (74 kịch bản × desktop/mobile): xem sản phẩm, giỏ hàng, đăng nhập, đặt hàng trên desktop/mobile; Firebase Emulator và Playwright |
 | Tài khoản trên máy | `cd flower.com && npm run test:e2e:local` | 24 test: đăng ký, PIN, câu hỏi khôi phục, khóa tài khoản (không cần emulator) |
 | Smoke test sau deploy | `cd flower.com && SMOKE_URL=https://... npm run smoke` | Trang và API còn chạy, không đổi dữ liệu |
 
-CI trên GitHub Actions chạy unit test, test tích hợp và browser E2E cho mọi Pull Request và mỗi lần push lên `main`; báo cáo coverage và ảnh/trace trình duyệt được lưu trong kết quả chạy. Chi tiết: [`tests/README.md`](tests/README.md). Sau mỗi đợt kiểm thử, tạo báo cáo từ [mẫu báo cáo](docs/test-reports/TEMPLATE.md) trong `docs/test-reports/` ([ví dụ ngày 2026-10-28](docs/test-reports/2026-10-28.md)). Trước mỗi lần phát hành làm theo [`docs/RELEASE-CHECKLIST.md`](docs/RELEASE-CHECKLIST.md).
+CI trên GitHub Actions chạy unit test, test tích hợp và browser E2E cho mọi Pull Request và mỗi lần push lên `main`; báo cáo coverage và ảnh/trace trình duyệt được lưu trong kết quả chạy. Chi tiết: [`tests/README.md`](flower.com/tests/README.md). Sau mỗi đợt kiểm thử, tạo báo cáo từ [mẫu báo cáo](docs/test-reports/TEMPLATE.md) trong `docs/test-reports/` ([ví dụ ngày 2026-10-28](docs/test-reports/2026-10-28.md)). Trước mỗi lần phát hành làm theo [`docs/RELEASE-CHECKLIST.md`](docs/RELEASE-CHECKLIST.md).
 
 ## Phân quyền
 

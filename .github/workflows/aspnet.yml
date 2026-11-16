@@ -4,14 +4,16 @@ on:
   push:
     branches: [main, asp.net]
     paths:
-      - 'aspnet/**'
-      - 'tests/integration/**'
-      - 'tests/package*.json'
+      - 'flower.com/FlowerFlow.sln'
+      - 'flower.com/tests/UnitTests/FlowerFlow.Contracts/**'
+      - 'flower.com/tests/IntegrationTests/**'
+      - 'flower.com/tests/package*.json'
       - 'flower.com/firebase.json'
       - 'flower.com/firestore.rules'
       - '.dockerignore'
       - 'render.yaml'
       - 'flower.com/backend/**'
+      - 'flower.com/legacy-node/**'
       - 'flower.com/lib/**'
       - 'flower.com/*.html'
       - 'flower.com/flower.json'
@@ -23,14 +25,16 @@ on:
       - '.github/workflows/aspnet.yml'
   pull_request:
     paths:
-      - 'aspnet/**'
-      - 'tests/integration/**'
-      - 'tests/package*.json'
+      - 'flower.com/FlowerFlow.sln'
+      - 'flower.com/tests/UnitTests/FlowerFlow.Contracts/**'
+      - 'flower.com/tests/IntegrationTests/**'
+      - 'flower.com/tests/package*.json'
       - 'flower.com/firebase.json'
       - 'flower.com/firestore.rules'
       - '.dockerignore'
       - 'render.yaml'
       - 'flower.com/backend/**'
+      - 'flower.com/legacy-node/**'
       - 'flower.com/lib/**'
       - 'flower.com/*.html'
       - 'flower.com/flower.json'
@@ -66,10 +70,10 @@ jobs:
           distribution: temurin
           java-version: 21
       - run: npm ci --prefix flower.com
-      - run: npm ci --prefix tests
-      - run: dotnet build aspnet/FlowerFlow.sln --configuration Release
+      - run: npm ci --prefix flower.com/tests
+      - run: dotnet build flower.com/FlowerFlow.sln --configuration Release
       - name: Exercise current ASP.NET host through the existing API integration suite
-        run: node flower.com/node_modules/firebase-tools/lib/bin/firebase.js emulators:exec --only auth,firestore --project demo-flowerflow --config flower.com/firebase.json "node aspnet/test-api.cjs"
+        run: node flower.com/node_modules/firebase-tools/lib/bin/firebase.js emulators:exec --only auth,firestore --project demo-flowerflow --config flower.com/firebase.json "node flower.com/tests/IntegrationTests/test-api.cjs"
 
   build:
     runs-on: ubuntu-latest
@@ -82,8 +86,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-      - run: dotnet build aspnet/FlowerFlow.sln --configuration Release
-      - run: dotnet publish aspnet/src/FlowerFlow.Api --configuration Release --no-restore --output "${{ runner.temp }}/flowerflow-publish"
+      - run: dotnet build flower.com/FlowerFlow.sln --configuration Release
+      - run: dotnet publish flower.com/backend/FlowerFlow.Api --configuration Release --no-restore --output "${{ runner.temp }}/flowerflow-publish"
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -98,7 +102,7 @@ jobs:
           done
           cat "$RUNNER_TEMP/firestore-emulator.log"
           exit 1
-      - run: dotnet run --project aspnet/tests/FlowerFlow.Contracts --configuration Release --no-build -- --firestore-emulator
+      - run: dotnet run --project flower.com/tests/UnitTests/FlowerFlow.Contracts --configuration Release --no-build -- --firestore-emulator
 
   container:
     needs: build
@@ -109,20 +113,20 @@ jobs:
       - name: Verify Docker context excludes private and generated files
         run: |
           set -euo pipefail
-          mkdir -p aspnet/src/FlowerFlow.Api/Properties/PublishProfiles aspnet/src/FlowerFlow.Api/bin/context-canary
+          mkdir -p flower.com/backend/FlowerFlow.Api/Properties/PublishProfiles flower.com/backend/FlowerFlow.Api/bin/context-canary
           printf 'test-only' > .env.container-canary
-          printf '{}' > aspnet/src/FlowerFlow.Api/credential-canary.json
-          printf 'test-only' > aspnet/src/FlowerFlow.Api/Properties/PublishProfiles/credential-canary.pubxml
-          printf '{}' > aspnet/src/FlowerFlow.Api/bin/context-canary/appsettings.json
+          printf '{}' > flower.com/backend/FlowerFlow.Api/credential-canary.json
+          printf 'test-only' > flower.com/backend/FlowerFlow.Api/Properties/PublishProfiles/credential-canary.pubxml
+          printf '{}' > flower.com/backend/FlowerFlow.Api/bin/context-canary/appsettings.json
           docker build -f - --output "type=local,dest=$RUNNER_TEMP/context-audit" . <<'DOCKERFILE'
           FROM scratch
           COPY . /context/
           DOCKERFILE
-          for path in .env.container-canary aspnet/src/FlowerFlow.Api/credential-canary.json aspnet/src/FlowerFlow.Api/Properties/PublishProfiles/credential-canary.pubxml aspnet/src/FlowerFlow.Api/bin/context-canary/appsettings.json; do
+          for path in .env.container-canary flower.com/backend/FlowerFlow.Api/credential-canary.json flower.com/backend/FlowerFlow.Api/Properties/PublishProfiles/credential-canary.pubxml flower.com/backend/FlowerFlow.Api/bin/context-canary/appsettings.json; do
             test ! -e "$RUNNER_TEMP/context-audit/context/$path"
           done
       - name: Build production ASP.NET image without credentials
-        run: docker build -f aspnet/Dockerfile -t flowerflow-csharp:${{ github.sha }} .
+        run: docker build -f flower.com/backend/Dockerfile -t flowerflow-csharp:${{ github.sha }} .
       - name: Smoke test production container
         env:
           IMAGE: flowerflow-csharp:${{ github.sha }}

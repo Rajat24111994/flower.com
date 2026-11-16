@@ -26,7 +26,7 @@ Ngoài ra, nút gửi ở đăng nhập và khôi phục bị vô hiệu cho đ�
 
 Môi trường: project **`demo-security-fixes`** trên Auth/Firestore emulator; SQLite thử trong bộ nhớ; Chrome headless. Không thử tấn công dịch vụ thật hoặc tạo thanh toán ngân hàng thật. Kết quả XSS dùng dữ liệu/SDK giả lập để kiểm tra DOM, không chứng minh an toàn ở mọi đường đi trên production.
 
-Các kiểm thử mới: [unit/HTTP](../../tests/security-remediation.test.js), [API tích hợp](../../tests/integration/security-remediation.test.js). Các kiểm thử tài khoản cũ được bổ sung thông tin đối chiếu theo hợp đồng API mới; kiểm thử quyền dọn đơn dùng 403 cho người đã đăng nhập nhưng không có quyền, thay cho 401 trước đây.
+Các kiểm thử mới: [unit/HTTP](../../flower.com/tests/UnitTests/security-remediation.test.js), [API tích hợp](../../flower.com/tests/IntegrationTests/security-remediation.test.js). Các kiểm thử tài khoản cũ được bổ sung thông tin đối chiếu theo hợp đồng API mới; kiểm thử quyền dọn đơn dùng 403 cho người đã đăng nhập nhưng không có quyền, thay cho 401 trước đây.
 
 Log lưu trong `flower.com/.tools/`: `security-fixes-unit-final.log`, `security-fixes-e2e-final.log`, `security-fixes-xss.log`, `security-fixes-integration-final.log`, `security-fixes-access-retest.log`, `security-fixes-integration-passed.log` (lượt tổng có timeout, tên tệp không phản ánh kết quả), `security-fixes-timeout-retest.log`. [Bằng chứng JSON sau sửa](2026-11-09-remediation-results.json) lưu các trạng thái này; không gộp số lần chạy lại thành số kịch bản mới.
 
@@ -46,7 +46,7 @@ Chạy tích hợp từ thư mục gốc sau khi khởi động emulator ở ter
 $env:FIREBASE_AUTH_EMULATOR_HOST = '127.0.0.1:9099'
 $env:FIRESTORE_EMULATOR_HOST = '127.0.0.1:8080'
 $env:GCLOUD_PROJECT = 'demo-security-fixes'
-node --test --test-timeout=60000 --test-concurrency=1 tests/integration/security-api.test.js tests/integration/security-rules.test.js tests/integration/feature-accounts.test.js tests/integration/feature-orders.test.js tests/integration/vnpay.test.js tests/integration/login-protection.test.js tests/integration/security-remediation.test.js
+node --test --test-timeout=60000 --test-concurrency=1 flower.com/tests/IntegrationTests/security-api.test.js flower.com/tests/IntegrationTests/security-rules.test.js flower.com/tests/IntegrationTests/feature-accounts.test.js flower.com/tests/IntegrationTests/feature-orders.test.js flower.com/tests/IntegrationTests/vnpay.test.js flower.com/tests/IntegrationTests/login-protection.test.js flower.com/tests/IntegrationTests/security-remediation.test.js
 ```
 
 Helper sẽ xóa dữ liệu project emulator thử trước các ca; không chạy đồng thời nhiều bộ tích hợp trên cùng project. Cần cài Chrome/Chromium cho Playwright; máy kiểm tra đặt `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` đến Chrome đã cài.

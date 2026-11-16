@@ -8,7 +8,7 @@ Làm lần lượt từ trên xuống cho mỗi lần phát hành. Mục nào kh
 - [ ] CI trên PR xanh: **Unit test + coverage** và **Feature, system và security test (Firebase Emulator)**.
 - [ ] Unit-test line coverage đạt ít nhất 50% (CI tự chặn dưới ngưỡng); so sánh thêm với lần phát hành trước.
 - [ ] Đổi file JS/CSS thì đã tăng số `?v=` trong các trang `.html` dùng file đó (tránh trình duyệt dùng bản cũ).
-- [ ] Đổi `firestore.rules` thì có test trong `tests/integration/security-rules.test.js`.
+- [ ] Đổi `firestore.rules` thì có test trong `flower.com/tests/IntegrationTests/security-rules.test.js`.
 
 ## 2. Chuẩn bị bản phát hành
 

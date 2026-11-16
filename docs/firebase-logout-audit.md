@@ -6,7 +6,7 @@ admin modules) were integrated during implementation.
 
 ## Runtime and existing behavior
 
-The current API host is ASP.NET Core/.NET 10 (`aspnet/src/FlowerFlow.Api/Program.cs`).
+The current API host is ASP.NET Core/.NET 10 (`flower.com/backend/FlowerFlow.Api/Program.cs`).
 `npm run dev` launches this host. Current main identifies Render as production;
 this task does not deploy it. `flower.com/backend` and `api` retain the earlier
 JavaScript implementation for comparison and the existing Node/Vercel path.

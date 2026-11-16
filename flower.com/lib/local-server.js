@@ -60,7 +60,7 @@ function createLocalServer({ root, resolveApi, missingLoginConfiguration = [], l
     const localAuth = localAccounts ? require("./local-auth-http").createLocalAuthHandler(localAccounts) : null;
     const runtimeMode = localAuth ? "local" : authMode === "firebase" ? "firebase" : null;
     const findApi = resolveApi || (async (route) => {
-        const filename = path.join(directory, "api", `${route}.js`);
+        const filename = path.join(directory, "legacy-node", "api", `${route}.js`);
         try { if (!(await fs.stat(filename)).isFile()) return null; }
         catch (error) { if (error.code === "ENOENT") return null; throw error; }
         return require(filename);
@@ -122,7 +122,7 @@ function createLocalServer({ root, resolveApi, missingLoginConfiguration = [], l
                 // Local requests have no trusted reverse proxy.
                 req.headers["x-forwarded-for"] = req.socket.remoteAddress;
                 if (localAccounts && !route.startsWith("local-auth/") && route !== "login") {
-                    const { LOCAL_IDENTITY, sessionCookie } = require("../backend/shared/request-identity");
+                    const { LOCAL_IDENTITY, sessionCookie } = require("../legacy-node/backend/shared/request-identity");
                     const token = sessionCookie(req);
                     req[LOCAL_IDENTITY] = { account: token ? await localAccounts.session(token) : null, presented: token !== undefined };
                 }

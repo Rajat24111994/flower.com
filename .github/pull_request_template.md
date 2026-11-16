@@ -6,7 +6,7 @@
 
 - [ ] Viết test trước và thấy test đỏ (Red → Green → Refactor)
 - [ ] `cd flower.com && npm test` đạt
-- [ ] `cd tests && npm run integration` đạt (khi đổi API, `firestore.rules` hoặc luồng đơn hàng)
+- [ ] `cd flower.com/tests && npm run integration` đạt (khi đổi API, `firestore.rules` hoặc luồng đơn hàng)
 - [ ] Đã thử trên trình duyệt (ghi trang và thao tác):
 
 ## Sử dụng AI

@@ -4,7 +4,7 @@
 
 `npm run dev` mặc định dùng `AUTH_MODE=local`: đăng ký tài khoản như `ban@demo`, không cần
 email thật, Firebase, service account hoặc API key. Tài khoản được lưu trên máy, mật khẩu được
-băm và chính sách khóa bên dưới được giữ nguyên. Xem [tài khoản local](./local-accounts.md).
+băm và chính sách khóa bên dưới được giữ nguyên. Xem [tài khoản local](local-accounts.md).
 
 ## Chạy với tài khoản Firebase thật (tùy chọn)
 
@@ -86,7 +86,7 @@ Không dùng HTTP referrer làm biện pháp thay thế: client có thể giả 
    - `FIREBASE_SERVICE_ACCOUNT_JSON` và `FIREBASE_PROJECT_ID`: cấu hình Admin SDK đã có.
      Service account cần `firebaseauth.users.get` và quyền đọc/ghi Firestore như các API hiện tại.
 3. Đặt **API method restrictions** trên key công khai. File
-   [`login-public-key-restrictions.json`](./login-public-key-restrictions.json) chứa phần `restrictions`
+   [`login-public-key-restrictions.json`](login-public-key-restrictions.json) chứa phần `restrictions`
    mẫu, giữ các phương thức cần cho đăng ký, Google, phiên custom token, hồ sơ và khôi phục mật khẩu.
    Áp dụng bằng API Keys API `PATCH .../keys/KEY_ID?updateMask=restrictions` với body
    `{ "restrictions": <nội dung file>, "etag": "<etag hiện tại>" }`.
