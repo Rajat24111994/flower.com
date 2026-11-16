@@ -173,6 +173,14 @@ static class FirestoreContracts
         foreach (var iteration in new[] { 1, 2 })
         {
             var upload = UploadContext("data:image/jpeg;base64," + Convert.ToBase64String(jpeg));
+            if (iteration == 2)
+            {
+                // The real host reads JSON before dispatch. Keep the original length but
+                // exhaust the stream to catch handlers that ignore the middleware cache.
+                using var parsed = JsonDocument.Parse(((MemoryStream)upload.Request.Body).ToArray());
+                JsonInput.Cache(upload, parsed.RootElement.Clone());
+                upload.Request.Body.Position = upload.Request.Body.Length;
+            }
             await productsHandler.HandleAsync(upload);
             AdditionalContracts.Require(upload.Response.StatusCode == 201
                 && Encoding.UTF8.GetString(((MemoryStream)upload.Response.Body).ToArray()).Contains(jpegId), "Photo upload/dedup failed");
