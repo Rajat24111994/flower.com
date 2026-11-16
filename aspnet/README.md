@@ -1,5 +1,9 @@
 # FlowerFlow ASP.NET Core Web API
 
+> Backend độc lập dùng dữ liệu trong bộ nhớ: xem [INDEPENDENT-BACKEND.md](INDEPENDENT-BACKEND.md).
+> Chạy `dotnet run --project aspnet/src/FlowerFlow.Backend`, mở `http://localhost:5090/swagger`.
+> Host Firebase `FlowerFlow.Api` được giữ nguyên; host mới chưa thay website production.
+
 Backend C# trên nhánh `asp.net` đã có bản chuyển đổi của 32 module `flower.com/backend` và 8 thư viện server `flower.com/lib`. URL API, phương thức, dữ liệu JSON, logic giá/khuyến mãi/tồn kho/đơn hàng/thanh toán và Firebase được giữ theo nguồn JS. Nhật ký từng file và kiểm thử: [MIGRATION-STATUS.md](MIGRATION-STATUS.md).
 
 ## Chạy trên máy

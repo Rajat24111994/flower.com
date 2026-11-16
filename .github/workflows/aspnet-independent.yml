@@ -1,0 +1,26 @@
+name: Independent ASP.NET backend
+on:
+  push:
+    branches: [main, feat/aspnet-independent-api]
+    paths: ['aspnet/**', '.github/workflows/aspnet-independent.yml']
+  pull_request:
+    paths: ['aspnet/**', '.github/workflows/aspnet-independent.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - run: dotnet test aspnet/tests/FlowerFlow.Backend.Tests --configuration Release --logger 'trx;LogFileName=backend.trx'
+      - run: dotnet publish aspnet/src/FlowerFlow.Backend --configuration Release --no-restore --output '${{ runner.temp }}/independent-api'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: independent-backend-test-results
+          path: aspnet/tests/FlowerFlow.Backend.Tests/TestResults/*.trx
