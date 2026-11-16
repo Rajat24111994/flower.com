@@ -10,6 +10,7 @@
     let unsubscribeCategories;
     let firestoreReachable = null;
     let productsLoaded = false;
+    let automaticPricingEnabled = false;
     let productSubscriptionTimer = null;
 
     function storage() {
@@ -40,6 +41,8 @@
             id: Number.isFinite(numericId) && numericId > 0 ? numericId : String(rawId ?? Date.now()),
             title,
             price,
+            ...(product.wiltingPricing && typeof product.wiltingPricing === "object" && Number.isSafeInteger(product.basePrice)
+                ? { basePrice: product.basePrice, wiltingPricing: { ...product.wiltingPricing } } : {}),
             quantity: Number(product.quantity ?? product.stock ?? 10),
             image: product.image || "",
             images: Array.isArray(product.images) ? product.images.filter((image) => typeof image === "string" && image) : [],
@@ -152,9 +155,20 @@
     }
 
     function readProducts() {
+        const forCurrentPage = (products) => {
+            const normalized = deduplicateProducts(products);
+            if (typeof window === "undefined" || !window.location?.pathname?.endsWith("/admin.html")) return normalized;
+            // The shared browser cache may have been filled by a customer page.
+            // Inventory editing must always start from the original selling price.
+            return normalized.map((product) => {
+                if (!product.wiltingPricing || !Number.isSafeInteger(product.basePrice)) return product;
+                const { basePrice, wiltingPricing, ...base } = product;
+                return { ...base, price: basePrice };
+            });
+        };
         try {
             if (typeof window !== "undefined" && window.FlowerSafeStorage?.readJson) {
-                return deduplicateProducts(window.FlowerSafeStorage.readJson(PRODUCT_KEY, {
+                return forCurrentPage(window.FlowerSafeStorage.readJson(PRODUCT_KEY, {
                     fallback: [],
                     validate: (value) => Array.isArray(value)
                         && value.every((product) => product
@@ -166,7 +180,7 @@
                     throwOnError: true
                 }));
             }
-            return deduplicateProducts(JSON.parse(storage()?.getItem(PRODUCT_KEY) || "[]"));
+            return forCurrentPage(JSON.parse(storage()?.getItem(PRODUCT_KEY) || "[]"));
         } catch (error) {
             console.warn("Không đọc được kho sản phẩm:", error);
             return [];
@@ -237,6 +251,10 @@
                 return null;
             }
             const result = await response.json();
+            if (Array.isArray(result.products) && !manage) {
+                automaticPricingEnabled = result.wiltingPricingEnabled === true;
+                if (automaticPricingEnabled && unsubscribeProducts) { unsubscribeProducts(); unsubscribeProducts = null; }
+            }
             return Array.isArray(result.products) ? result.products.map((product) => normalizeProduct(product)) : null;
         } catch (error) {
             console.warn("Không đọc được sản phẩm qua máy chủ:", error);
@@ -253,6 +271,7 @@
                 scheduleProductSubscription();
                 return apiProducts;
             }
+            if (automaticPricingEnabled) return null;
         }
 
         const firebase = await getFirebaseApi();
@@ -454,15 +473,17 @@
 
     // Firestore is the source of truth: the cache mirrors it exactly, including deletions.
     function subscribeToProducts() {
+        if (automaticPricingEnabled && !window.location.pathname.endsWith("/admin.html")) { scheduleApiRefresh(); return; }
         if (unsubscribeProducts) return;
         getFirebaseApi().then((firebase) => {
+            if (automaticPricingEnabled && !window.location.pathname.endsWith("/admin.html")) return;
             if (!firebase || unsubscribeProducts) return;
             const { db, firestoreSdk } = firebase;
             unsubscribeProducts = firestoreSdk.onSnapshot(
                 firestoreSdk.collection(db, "products"),
                 (snapshot) => {
                     // Snapshots served from the local cache while offline may be empty or stale.
-                    if (snapshot.metadata.fromCache) return;
+                    if (snapshot.metadata.fromCache || (automaticPricingEnabled && !window.location.pathname.endsWith("/admin.html"))) return;
                     cacheProducts(snapshot.docs.map((doc) => ({ ...doc.data(), id: doc.id })));
                 },
                 (error) => console.warn("Không nhận được cập nhật sản phẩm:", error)
@@ -520,7 +541,7 @@
     function scheduleApiRefresh() {
         if (apiRefreshTimer || typeof window === "undefined") return;
         apiRefreshTimer = window.setInterval(async () => {
-            const products = await readProductsFromApi();
+            const products = await readProductsFromApi(window.location.pathname.endsWith("/admin.html"));
             if (products) cacheProducts(products);
         }, 30000);
     }
