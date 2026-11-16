@@ -2,26 +2,126 @@ name: ASP.NET build
 
 on:
   push:
-    branches: [main]
+    branches: [main, asp.net]
     paths:
       - 'aspnet/**'
+      - '.dockerignore'
+      - 'render.yaml'
+      - 'flower.com/backend/**'
+      - 'flower.com/lib/**'
+      - 'flower.com/*.html'
+      - 'flower.com/flower.json'
+      - 'flower.com/js/**'
+      - 'flower.com/css/**'
+      - 'flower.com/images/**'
+      - 'flower.com/vercel.json'
+      - 'flower.com/scripts/dev.js'
       - '.github/workflows/aspnet.yml'
   pull_request:
     paths:
       - 'aspnet/**'
+      - '.dockerignore'
+      - 'render.yaml'
+      - 'flower.com/backend/**'
+      - 'flower.com/lib/**'
+      - 'flower.com/*.html'
+      - 'flower.com/flower.json'
+      - 'flower.com/js/**'
+      - 'flower.com/css/**'
+      - 'flower.com/images/**'
+      - 'flower.com/vercel.json'
+      - 'flower.com/scripts/dev.js'
       - '.github/workflows/aspnet.yml'
   workflow_dispatch:
 
 permissions:
   contents: read
 
+concurrency:
+  group: aspnet-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
       - run: dotnet build aspnet/FlowerFlow.sln --configuration Release
+      - run: dotnet publish aspnet/src/FlowerFlow.Api --configuration Release --no-restore --output "${{ runner.temp }}/flowerflow-publish"
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - name: Start isolated Firestore Emulator
+        run: |
+          curl -fsSL https://storage.googleapis.com/firebase-preview-drop/emulator/cloud-firestore-emulator-v1.22.0.jar -o "$RUNNER_TEMP/firestore-emulator.jar"
+          java -jar "$RUNNER_TEMP/firestore-emulator.jar" --host 127.0.0.1 --port 8787 --project_id demo-flowerflow-csharp > "$RUNNER_TEMP/firestore-emulator.log" 2>&1 &
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8787/ > /dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat "$RUNNER_TEMP/firestore-emulator.log"
+          exit 1
+      - run: dotnet run --project aspnet/tests/FlowerFlow.Contracts --configuration Release --no-build -- --firestore-emulator
+
+  container:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify Docker context excludes private and generated files
+        run: |
+          set -euo pipefail
+          mkdir -p aspnet/src/FlowerFlow.Api/Properties/PublishProfiles aspnet/src/FlowerFlow.Api/bin/context-canary
+          printf 'test-only' > .env.container-canary
+          printf '{}' > aspnet/src/FlowerFlow.Api/credential-canary.json
+          printf 'test-only' > aspnet/src/FlowerFlow.Api/Properties/PublishProfiles/credential-canary.pubxml
+          printf '{}' > aspnet/src/FlowerFlow.Api/bin/context-canary/appsettings.json
+          docker build -f - --output "type=local,dest=$RUNNER_TEMP/context-audit" . <<'DOCKERFILE'
+          FROM scratch
+          COPY . /context/
+          DOCKERFILE
+          for path in .env.container-canary aspnet/src/FlowerFlow.Api/credential-canary.json aspnet/src/FlowerFlow.Api/Properties/PublishProfiles/credential-canary.pubxml aspnet/src/FlowerFlow.Api/bin/context-canary/appsettings.json; do
+            test ! -e "$RUNNER_TEMP/context-audit/context/$path"
+          done
+      - name: Build production ASP.NET image without credentials
+        run: docker build -f aspnet/Dockerfile -t flowerflow-csharp:${{ github.sha }} .
+      - name: Smoke test production container
+        env:
+          IMAGE: flowerflow-csharp:${{ github.sha }}
+        run: |
+          set -euo pipefail
+          printf '{}' > "$RUNNER_TEMP/firebase-service-account.json"
+          sudo chown 0:1000 "$RUNNER_TEMP/firebase-service-account.json"
+          sudo chmod 0440 "$RUNNER_TEMP/firebase-service-account.json"
+          docker run -d --name flowerflow-smoke -p 127.0.0.1:18080:8080 -v "$RUNNER_TEMP/firebase-service-account.json:/etc/secrets/firebase-service-account.json:ro" -e PORT=8080 -e RENDER_EXTERNAL_URL=https://flowerflow-contract.onrender.com "$IMAGE"
+          trap 'docker rm -f flowerflow-smoke >/dev/null 2>&1 || true' EXIT
+          ready=0
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:18080/health > "$RUNNER_TEMP/health.json"; then ready=1; break; fi
+            sleep 1
+          done
+          if [ "$ready" -ne 1 ]; then docker logs flowerflow-smoke; exit 1; fi
+          python3 -c 'import json,os; assert json.load(open(os.environ["RUNNER_TEMP"]+"/health.json"))["status"] == "ok"'
+          curl -fsS http://127.0.0.1:18080/login.html > "$RUNNER_TEMP/login.html"
+          grep -q 'id="signIn"' "$RUNNER_TEMP/login.html"
+          if grep -q '/__local/auth-runtime.js' "$RUNNER_TEMP/login.html"; then exit 1; fi
+          curl -fsS http://127.0.0.1:18080/js/core/firebase-config.js > "$RUNNER_TEMP/firebase-config.js"
+          cmp flower.com/js/core/firebase-config.js "$RUNNER_TEMP/firebase-config.js"
+          test "$(curl -sS -o /dev/null -w '%{http_code}' http://127.0.0.1:18080/api/local-auth/session)" = 404
+          test "$(curl -sS -o "$RUNNER_TEMP/origin.json" -w '%{http_code}' -X POST -H 'Content-Type: application/json' -H 'Origin: https://flowerflow-contract.onrender.com' --data '{}' http://127.0.0.1:18080/api/login)" = 400
+          python3 -c 'import json,os; assert json.load(open(os.environ["RUNNER_TEMP"]+"/origin.json"))["code"] == "invalid-argument"'
+          test "$(curl -sS -o /dev/null -w '%{http_code}' -X POST -H 'Content-Type: application/json' -H 'Origin: https://attacker.invalid' -H 'X-Forwarded-Proto: https' --data '{}' http://127.0.0.1:18080/api/login)" = 403
+          if docker run --rm "$IMAGE" --check-firebase > "$RUNNER_TEMP/firebase-check.json"; then exit 1; fi
+          python3 -c 'import json,os; assert json.load(open(os.environ["RUNNER_TEMP"]+"/firebase-check.json"))["code"] == "firebase-credentials-missing"'
+          test "$(docker exec flowerflow-smoke id -u)" != 0
+          test "$(docker exec flowerflow-smoke id -g)" = 1000
+          docker exec flowerflow-smoke sh -c 'test -r /etc/secrets/firebase-service-account.json'

@@ -17,6 +17,8 @@
 
 </div>
 
+> **Nhánh `asp.net`:** Backend đã chuyển sang ASP.NET Core C#, giữ Firebase/Firestore và frontend hiện có. `npm run dev` khởi động backend C# và cần .NET 10 SDK. Xem [hướng dẫn ASP.NET](aspnet/README.md) và [nhật ký 40 file](aspnet/MIGRATION-STATUS.md). Deployment Vercel và công cụ Node cũ vẫn được giữ riêng; push nhánh không tự chuyển website đang chạy sang .NET.
+
 ---
 
 ## Mục lục

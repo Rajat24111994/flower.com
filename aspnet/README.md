@@ -1,35 +1,91 @@
 # FlowerFlow ASP.NET Core Web API
 
-Khung .NET 10 để chuyển backend Node.js sang C# từng file, giữ nguyên frontend, Firebase Authentication và Cloud Firestore hiện tại.
-
-## Cấu trúc
-
-```text
-aspnet/
-  FlowerFlow.sln
-  src/
-    FlowerFlow.Api/              # HTTP controller và cấu hình ứng dụng
-    FlowerFlow.Application/      # Quy tắc nghiệp vụ và use case
-      Orders/OrderConfig.cs     # File nghiệp vụ đầu tiên đã chuyển
-    FlowerFlow.Domain/           # Dành cho kiểu dữ liệu nghiệp vụ, chưa có model mới
-    FlowerFlow.Infrastructure/   # Dành cho Firebase Admin/Firestore và dịch vụ ngoài
-```
-
-Chiều phụ thuộc: Api → Application và Infrastructure; Infrastructure → Application; Application → Domain. Khung hiện chưa cài Firebase SDK, chưa kết nối database và chưa có API nghiệp vụ được chuyển lưu lượng. Không có EF Core, SQL Server hoặc database migration trong khung này.
+Backend C# trên nhánh `asp.net` đã có bản chuyển đổi của 32 module `flower.com/backend` và 8 thư viện server `flower.com/lib`. URL API, phương thức, dữ liệu JSON, logic giá/khuyến mãi/tồn kho/đơn hàng/thanh toán và Firebase được giữ theo nguồn JS. Nhật ký từng file và kiểm thử: [MIGRATION-STATUS.md](MIGRATION-STATUS.md).
 
 ## Chạy trên máy
 
 Cần .NET 10 SDK. Từ gốc repository:
 
 ```powershell
-dotnet build aspnet/FlowerFlow.sln
+dotnet build aspnet/FlowerFlow.sln --configuration Release
 dotnet run --project aspnet/src/FlowerFlow.Api
 ```
 
-`GET http://localhost:5080/health` trả `{"status":"ok","service":"flowerflow-api"}`. Đây chỉ là kiểm tra tiến trình HTTP, không phải kiểm tra kết nối Firebase. URL `/api/...` hiện tại vẫn thuộc backend Node.js; chưa đổi frontend hoặc cấu hình Vercel.
+Mở `http://localhost:5080/`. ASP.NET phục vụ nguyên HTML/CSS/JS hiện có cùng `/api/...`; `GET /health` kiểm tra tiến trình, không kiểm tra kết nối Firebase. Trong Development, mặc định `AUTH_MODE=local`, dùng lại SQLite tài khoản local ở `flower.com/.tools/local-auth/accounts.sqlite` khi chạy từ source project. Có thể đặt `LOCAL_ACCOUNTS_FILE` để chọn đường dẫn ổn định khác. Local không thay thế database nghiệp vụ Firestore.
 
-## Các bước tiếp theo
+Lệnh cũ vẫn dùng được:
 
-Đọc [MIGRATION-STATUS.md](MIGRATION-STATUS.md) để theo dõi từng file. Firebase Admin SDK, xác minh ID token có kiểm tra thu hồi, quyền trong `adminRoles` và Google.Cloud.Firestore sẽ được tích hợp ở bước chuyển file nền tảng Firebase; không triển khai endpoint nghiệp vụ có bảo vệ trước khi bước này được kiểm chứng.
+```powershell
+cd flower.com
+npm run dev
+```
 
-Service account chỉ được cấu hình phía server, thông qua biến môi trường `FIREBASE_SERVICE_ACCOUNT_JSON` và `FIREBASE_PROJECT_ID` tương thích backend hiện tại hoặc kho bí mật triển khai. Không đưa khóa vào appsettings, frontend, repository, log hoặc tài liệu. Khung hiện chưa đọc các biến này; cấu hình bí mật khi file kết nối Firebase được chuyển.
+Lệnh này tải `.env` như trước rồi khởi động ASP.NET tại `http://127.0.0.1:3000/`. `scripts/dev.js` chỉ là launcher, không xử lý HTTP hoặc nghiệp vụ. Có thể đặt `PORT`, `AUTH_MODE=local|firebase`. Tài khoản local chỉ bật trong Development và chỉ nhận request loopback; cookie HttpOnly/SameSite Strict, session 12 giờ, mật khẩu/PIN/câu trả lời và lịch sử khóa tương thích SQLite cũ. Chế độ local cho phép thử tài khoản mà không cần Firebase; catalog, đặt hàng và quản trị vẫn cần Firestore/Firebase phù hợp như hệ thống cũ.
+
+Nếu PowerShell chặn `npm.ps1`, dùng `npm.cmd run dev`.
+
+## Firebase và bí mật
+
+Production dùng `AUTH_MODE=firebase` (mặc định). Cấu hình phía server bằng biến môi trường hoặc kho bí mật của nền tảng:
+
+- `FIREBASE_SERVICE_ACCOUNT_JSON`: nội dung Service Account hiện tại, giữ cách cấu hình của deployment cũ.
+- Hoặc `FIREBASE_SERVICE_ACCOUNT_FILE`: đường dẫn file Service Account JSON ngoài Git/OneDrive, chỉ dùng ở server ASP.NET. Nếu đồng thời đặt JSON và FILE thì JSON được ưu tiên như cấu hình triển khai cũ. Không dùng file cấu hình Firebase Web thay cho Service Account.
+- `FIREBASE_PROJECT_ID`: tùy chọn, mặc định `project_id` trong service account; dùng project/database hiện có.
+- `FIREBASE_AUTH_PUBLIC_API_KEY`, `FIREBASE_AUTH_SERVER_API_KEY`: cấu hình password provider theo [hướng dẫn bảo vệ đăng nhập](../docs/login-protection.md). Public key phải khớp frontend và bị chặn các phương thức đăng nhập mật khẩu trực tiếp; server key phải khác public key.
+- Các biến VNPay, `CRON_SECRET` và khóa tra cứu giữ tên/cách sử dụng của backend JS; xem `.env.example` và cấu hình triển khai hiện có.
+
+`dotnet run` không tự đọc `.env`; `npm run dev` đọc file này qua Node launcher. Không đặt service account trong appsettings, frontend, repo hoặc log. SDK khởi tạo khi cần, không tạo lại database, không đổi schema Firestore. Xác thực Firebase ID token kiểm tra thu hồi; admin/owner vẫn kiểm tra live `adminRoles` và custom claims. `FIRESTORE_EMULATOR_HOST` chỉ dùng khi chủ động cấu hình emulator để thử nghiệm.
+
+Kiểm tra kết nối project thật từ máy đã có file khóa (thay đường dẫn mẫu bằng file của bạn):
+
+```powershell
+$env:FIREBASE_SERVICE_ACCOUNT_FILE = 'C:\Users\<user>\.secrets\flowerflow-admin.json'
+$env:FIREBASE_PROJECT_ID = 'web-ban-hoa-9fe0b'
+$env:AUTH_MODE = 'firebase'
+dotnet run --project aspnet/src/FlowerFlow.Api -- --check-firebase
+```
+
+Lệnh chỉ kiểm tra quyền đọc Firebase Authentication và đọc document cài đặt Firestore hiện có; không tạo tài khoản, ghi document hoặc tạo database. Kiểm tra project phải khớp frontend trước khi gọi mạng; từ chối chạy kiểm tra project thật khi đang cấu hình emulator. Kết quả thành công có `status=connected`, `authentication=true`, `firestore=true`. Khi thiếu/sai khóa hoặc lỗi kết nối, exit code là 1 và chỉ báo mã lỗi, không in khóa/chi tiết provider. Sau đó dùng cùng biến môi trường để chạy API bình thường. Kiểm tra này không thay cho cấu hình hai API key của luồng đăng nhập mật khẩu.
+
+## Build và triển khai
+
+Đã có Dockerfile và Blueprint Render Free cho bước chạy thử theo lựa chọn người dùng. Xem [DEPLOYMENT.md](DEPLOYMENT.md) về build, quyền truy cập, secrets, điều kiện chuyển lưu lượng và rollback. Gói triển khai không có nghĩa production đã được chuyển khi chưa có host/credentials.
+
+```powershell
+dotnet publish aspnet/src/FlowerFlow.Api --configuration Release --output aspnet/.tools/publish
+```
+
+Output chứa API và bản sao nguyên trạng các file frontend công khai. Chạy `dotnet FlowerFlow.Api.dll` từ output trên host hỗ trợ ASP.NET Core/.NET 10, cấu hình `ASPNETCORE_ENVIRONMENT=Production` và `ASPNETCORE_URLS` của host. Node không cần cho tiến trình API đã publish. Giữ frontend và API cùng origin để các URL hiện tại tiếp tục hoạt động.
+
+Nếu có reverse proxy, cấu hình IP của proxy tin cậy bằng `ReverseProxy__KnownProxies__0` (và các chỉ số tiếp theo); middleware chỉ nhận X-Forwarded-For/Proto từ các IP này rồi dùng IP đã xác minh cho rate limit. TLS kết thúc tại host/proxy. Không tin trực tiếp header IP do client gửi. Lịch cleanup cũ cần tiếp tục gọi `GET /api/orders?action=expire` với `Authorization: Bearer <CRON_SECRET>` từ scheduler của nền tảng.
+
+Trên Render, origin HTTPS công khai được nhận từ `RENDER_EXTERNAL_URL` do nền tảng cấp; `PUBLIC_APP_URL` cũng được nhận nếu cấu hình domain riêng. Điều này cho phép request trình duyệt hợp lệ sau TLS proxy mà không nới quy tắc tin cậy IP hoặc nhận Origin tùy ý. Cần deploy commit mới để bản sửa có hiệu lực trên host đang chạy.
+
+Commit/push không chuyển deployment Vercel hiện tại sang .NET. `vercel.json` và các JS entry point cũ vẫn được giữ để đối chiếu và cho deployment Node cũ; muốn chạy bản C# phải triển khai output ASP.NET trên host phù hợp. Các script quản trị/maintenance Node vẫn là công cụ vận hành riêng; không được gọi bởi runtime API C#. Bản C# của export/import/mã hóa backup nằm tại `Firebase/FirestoreBackup.cs`, giữ định dạng backup cũ và không mở thêm endpoint sao lưu công khai.
+
+## Kiểm tra
+
+Cần Node 24+ để chạy nguồn JS đối chiếu, .NET 10 SDK và Java 21 cho Firestore Emulator. Từ gốc repository, build trước rồi chạy:
+
+```powershell
+dotnet run --project aspnet/tests/FlowerFlow.Contracts --configuration Release --no-build
+```
+
+Bộ kiểm tra bao gồm differential contracts với nguồn JS, provider giả lập, SQLite/scrypt hai chiều Node–C#, AES-GCM backup hai chiều, HTTP socket và khởi chạy executable API thật với database local tạm. Không dùng credential hay database production.
+
+Để kiểm tra transaction Firestore, khởi động emulator ở `127.0.0.1:8787`, project `demo-flowerflow-csharp`, rồi chạy:
+
+```powershell
+dotnet run --project aspnet/tests/FlowerFlow.Contracts --configuration Release --no-build -- --firestore-emulator
+```
+
+Client test cố định loopback/demo project. Kiểm tra quota, idempotency, cạnh tranh tồn kho, hoàn kho một lần, quyền truy cập, audit nguyên tử, callback thanh toán và backup/import theo batch. CI `.github/workflows/aspnet.yml` tự khởi động emulator và chạy bộ này.
+
+## Cấu trúc
+
+- `FlowerFlow.Api`: host, DI, routes, frontend công khai và cấu hình môi trường.
+- `FlowerFlow.Application`: validation, giá/khuyến mãi, VNPay signing và các quy tắc JS tương thích.
+- `FlowerFlow.Infrastructure`: Firebase Auth/Firestore, các handler, transaction, local accounts/server và backup.
+- `FlowerFlow.Domain`: khung domain; không có SQL Server/EF migration trong bản chuyển đổi này.
+
+Nguồn JS backend được giữ làm oracle kiểm thử. HTML/CSS/JavaScript frontend không bị chỉnh sửa. Chưa chạy thử với credentials/project Firebase thật hoặc chuyển lưu lượng production trong quá trình chuyển đổi.
