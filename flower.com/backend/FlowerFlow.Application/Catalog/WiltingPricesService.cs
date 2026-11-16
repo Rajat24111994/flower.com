@@ -3,6 +3,8 @@ using Google.Cloud.Firestore;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 
+using FlowerFlow.Domain.Entities;
+
 namespace FlowerFlow.Application.Catalog;
 
 public sealed class WiltingPricesService(Func<FirestoreDb> database, IFirebaseAuthService authentication, ILogger<WiltingPricesService> logger, IAdminAuditRepository audit)
@@ -30,8 +32,8 @@ public sealed class WiltingPricesService(Func<FirestoreDb> database, IFirebaseAu
                 {
                     var data = doc.ToDictionary(); var price = pricing.Price(doc.Id, data);
                     return new { id = doc.Id, title = data.GetValueOrDefault("title") as string ?? doc.Id,
-                        receivedDate = dates.GetValueOrDefault(doc.Id, ""), basePrice = Application.Orders.PricingService.GetProductPrice(Js.Element(data)),
-                        effectivePrice = (double?)price?.Price ?? Application.Orders.PricingService.GetProductPrice(Js.Element(data)),
+                        receivedDate = dates.GetValueOrDefault(doc.Id, ""), basePrice = PricingService.GetProductPrice(Js.Element(data)),
+                        effectivePrice = (double?)price?.Price ?? PricingService.GetProductPrice(Js.Element(data)),
                         ruleId = price?.RuleId ?? "", quantity = data.GetValueOrDefault("quantity") ?? 0 };
                 }).OrderBy(product => product.title, StringComparer.Ordinal).ToArray();
                 await context.Response.WriteAsJsonAsync(new { settings = WiltingPriceStore.SettingsData(config), today = WiltingPricing.Today(), products }, context.RequestAborted); return;

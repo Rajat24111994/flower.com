@@ -1,3 +1,5 @@
+using FlowerFlow.Domain.Entities;
+
 namespace FlowerFlow.Application.Abstractions;
 
 /// <summary>Firebase Admin SDK operations used to verify callers (implemented in Infrastructure).</summary>

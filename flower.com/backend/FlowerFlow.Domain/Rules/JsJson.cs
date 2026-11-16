@@ -3,7 +3,7 @@ using System.Globalization;
 using System.Text;
 using System.Text.Json;
 
-namespace FlowerFlow.Application.Compatibility;
+namespace FlowerFlow.Domain.Rules;
 
 /// <summary>JSON.stringify compatibility for checkout fingerprints shared with the Node backend.</summary>
 public static class JsJson

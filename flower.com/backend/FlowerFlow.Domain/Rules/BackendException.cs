@@ -1,4 +1,4 @@
-namespace FlowerFlow.Application.Compatibility;
+namespace FlowerFlow.Domain.Rules;
 
 public sealed class BackendException(string code, string message, int? retryAfter = null) : Exception(message)
 {

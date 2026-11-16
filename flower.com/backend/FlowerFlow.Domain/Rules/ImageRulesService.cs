@@ -2,7 +2,7 @@ using System.Buffers.Binary;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 
-namespace FlowerFlow.Application.Catalog;
+namespace FlowerFlow.Domain.Rules;
 
 /// <summary>Port of backend/catalog/image-rules.js. Validates bytes without decoding/re-encoding images.</summary>
 public static class ImageRulesService

@@ -1,7 +1,7 @@
 using System.Globalization;
 using System.Text.Json;
 
-namespace FlowerFlow.Application.Compatibility;
+namespace FlowerFlow.Domain.Rules;
 
 /// <summary>Explicit JS coercions used by the legacy backend; HTTP input is never trusted as a typed DTO.</summary>
 public static class Js

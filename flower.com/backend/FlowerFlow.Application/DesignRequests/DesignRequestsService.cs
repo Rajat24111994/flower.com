@@ -7,6 +7,8 @@ using Google.Cloud.Firestore;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 
+using FlowerFlow.Domain.Entities;
+
 namespace FlowerFlow.Application.DesignRequests;
 
 /// <summary>Port of backend/design-requests/controller.js. Design requests do not reserve product stock.</summary>

@@ -2,7 +2,7 @@ using System.Globalization;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 
-namespace FlowerFlow.Application.Orders;
+namespace FlowerFlow.Domain.Rules;
 
 /// <summary>Port of backend/orders/validation.js.</summary>
 public static class OrderValidationService

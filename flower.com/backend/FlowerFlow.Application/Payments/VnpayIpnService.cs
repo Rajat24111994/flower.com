@@ -5,6 +5,8 @@ using Google.Cloud.Firestore;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 
+using FlowerFlow.Domain.Entities;
+
 namespace FlowerFlow.Application.Payments;
 
 /// <summary>Port of backend/payments/vnpay-ipn.js. Only a signed gateway callback can confirm a VNPay payment.</summary>

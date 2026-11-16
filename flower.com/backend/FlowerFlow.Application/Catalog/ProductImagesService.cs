@@ -6,6 +6,8 @@ using Grpc.Core;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 
+using FlowerFlow.Domain.Entities;
+
 namespace FlowerFlow.Application.Catalog;
 
 /// <summary>Port of backend/catalog/product-images.js; image bytes remain in Firestore, addressed by SHA-1.</summary>

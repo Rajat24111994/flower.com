@@ -1,0 +1,43 @@
+@baseUrl = http://localhost:5090
+@user = owner
+
+### Swagger UI: {{baseUrl}}/swagger
+GET {{baseUrl}}/health
+
+### Public products; use manage=true + admin identity to include hidden products
+GET {{baseUrl}}/api/v1/products?page=1&pageSize=20
+
+### New category (repeating this name returns 409)
+POST {{baseUrl}}/api/v1/categories
+X-Development-User: {{user}}
+Content-Type: application/json
+
+{"name":"Hoa tốt nghiệp"}
+
+### Owner-only flower price; reread product version before submitting again
+PUT {{baseUrl}}/api/v1/products/stem-rose/flower-price
+X-Development-User: {{user}}
+Content-Type: application/json
+
+{"price":30000,"expectedVersion":1}
+
+### Save the customer's cart (expectedVersion=0 for its initial empty cart)
+PUT {{baseUrl}}/api/v1/cart
+X-Development-User: customer-a
+Content-Type: application/json
+
+{"items":[{"id":"bouquet-rose","quantity":2}],"expectedVersion":0}
+
+### Authoritative quote; prices never come from client cart storage
+POST {{baseUrl}}/api/v1/quotes
+Content-Type: application/json
+
+{"items":[{"id":"bouquet-rose","quantity":2}],"promotionId":"demo10","deliveryZoneId":"hcm-q1"}
+
+### Owner role management in simulated identities only
+GET {{baseUrl}}/api/v1/admin/users
+X-Development-User: {{user}}
+
+### Every successful mutation has an audit entry where applicable
+GET {{baseUrl}}/api/v1/admin/audit?page=1&pageSize=25
+X-Development-User: {{user}}

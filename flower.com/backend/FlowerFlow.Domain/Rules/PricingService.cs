@@ -1,7 +1,7 @@
 using System.Globalization;
 using System.Text.Json;
 
-namespace FlowerFlow.Application.Orders;
+namespace FlowerFlow.Domain.Rules;
 
 /// <summary>Port of backend/orders/pricing.js. All amounts remain whole VND using JS rounding/order of operations.</summary>
 public static class PricingService

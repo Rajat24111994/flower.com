@@ -4,6 +4,8 @@ using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 
+using FlowerFlow.Domain.Entities;
+
 namespace FlowerFlow.Application.DesignRequests;
 
 /// <summary>Port of backend/design-requests/validation.js.</summary>

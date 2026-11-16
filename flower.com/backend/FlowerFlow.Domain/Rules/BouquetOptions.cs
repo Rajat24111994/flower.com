@@ -1,6 +1,6 @@
 using System.Text.Json;
 
-namespace FlowerFlow.Application.Catalog;
+namespace FlowerFlow.Domain.Rules;
 
 /// <summary>Server rules imported by orders/validation.js and checkout.js; browser source remains untouched.</summary>
 public static class BouquetOptions

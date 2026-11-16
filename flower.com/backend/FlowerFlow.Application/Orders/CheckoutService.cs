@@ -6,6 +6,8 @@ using Google.Cloud.Firestore;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 
+using FlowerFlow.Domain.Entities;
+
 namespace FlowerFlow.Application.Orders;
 
 public sealed record OrderCreationLimit(int Maximum, DocumentReference Ref);

@@ -1,5 +1,9 @@
 # FlowerFlow ASP.NET Core Web API
 
+> Backend độc lập dùng dữ liệu trong bộ nhớ: xem [INDEPENDENT-BACKEND.md](../docs/backend/INDEPENDENT-BACKEND.md).
+> Chạy `dotnet run --project flower.com/backend/FlowerFlow.Backend`, mở `http://localhost:5090/swagger`.
+> Host Firebase `FlowerFlow.Api` được giữ nguyên; host mới chưa thay website production.
+
 Backend C# trên nhánh `asp.net` đã có bản chuyển đổi của 32 module `flower.com/backend` và 8 thư viện server `flower.com/lib`. URL API, phương thức, dữ liệu JSON, logic giá/khuyến mãi/tồn kho/đơn hàng/thanh toán và Firebase được giữ theo nguồn JS. Nhật ký từng file và kiểm thử: [MIGRATION-STATUS.md](../docs/backend/MIGRATION-STATUS.md).
 
 ## Chạy trên máy
@@ -108,9 +112,11 @@ Client test cố định loopback/demo project. Kiểm tra quota, idempotency, c
 
 Bốn project theo tầng, phụ thuộc một chiều: **Api → Application → Domain** và **Infrastructure → Application → Domain**. Application không tham chiếu Infrastructure; nó khai báo interface trong `Abstractions/`, Infrastructure cài đặt, Api đăng ký trong `Program.cs`.
 
+Backend độc lập của PR #152 (`FlowerFlow.Backend` → `FlowerFlow.Commerce` → `FlowerFlow.Domain`, cùng `FlowerFlow.InMemory`) không dùng Firebase/Firestore, nên Commerce là project riêng thay vì nằm trong Application; `FlowerFlow.Backend.Tests/ArchitectureTests` giữ ranh giới này.
+
 - `FlowerFlow.Api`: `Program.cs` (DI, cấu hình môi trường), `Controllers/` (mỗi URL `/api/...` gọi một service; service tự trả mã trạng thái và JSON như API cũ), `Middleware/` (`BackendServer`: file tĩnh, CSP, kiểm tra Origin, đọc JSON; `RequestIdentityMiddleware`: gắn phiên tài khoản local khi chạy trên máy).
-- `FlowerFlow.Application`: các service nghiệp vụ theo nhóm `Accounts`, `Admin`, `Catalog`, `Orders`, `Payments`, `DesignRequests`, `ShopSettings`; `Abstractions/` (interface cho Firebase, nhận diện người gọi, audit, VNPay); `Common/` (đọc JSON/Bearer, ghi lỗi `{ code, error }`, chuyển đổi giá trị Firestore, đọc service account); `Compatibility/` (quy tắc tương thích JS).
-- `FlowerFlow.Domain`: `Entities/` (Product, Order, PaymentTransaction, AdminRole, AdminAudit, DesignRequest: tên collection, trạng thái, giới hạn trường), `Models/` (FirebaseIdentity, FirebaseAccount, RoleUser, PasswordAccount), `Enums/` (LoginOutcome), `Constants/` (các collection còn lại).
+- `FlowerFlow.Application`: các service nghiệp vụ theo nhóm `Accounts`, `Admin`, `Catalog`, `Orders`, `Payments`, `DesignRequests`, `ShopSettings`; `Abstractions/` (interface cho Firebase, nhận diện người gọi, audit, VNPay); `Common/` (đọc JSON/Bearer, ghi lỗi `{ code, error }`, chuyển đổi giá trị Firestore, đọc service account).
+- `FlowerFlow.Domain`: `Entities/` (Product, Order, PaymentTransaction, AdminRole, AdminAudit, DesignRequest: tên collection, trạng thái, giới hạn trường), `Models/` (FirebaseIdentity, FirebaseAccount, RoleUser, PasswordAccount), `Enums/` (LoginOutcome), `Constants/` (các collection còn lại), `Rules/` (quy tắc thuần dùng chung với backend độc lập: `PricingService`, `OrderValidationService`, `OrderConfig`, `ImageRulesService`, `BouquetOptions`, `BouquetWrapping`, tương thích JS `Js`/`JsJson`), `Commerce/` (entity của backend độc lập).
 - `FlowerFlow.Infrastructure`: `Firebase/` (`FirebaseAdminService` giữ app/credential, `FirebaseAuthService` xác minh token/quyền và tài khoản, `FirestoreService`, `FirestoreBackup`), `Vnpay/VnpayGateway` (cấu hình merchant từ biến môi trường), `Security/RequestIdentityService`, `Audit/AdminAuditRepository`, `Local/` (tài khoản SQLite chỉ dùng khi chạy trên máy).
 
 Đối chiếu tên cũ → mới (chỉ đổi tên và vị trí, không đổi hành vi):

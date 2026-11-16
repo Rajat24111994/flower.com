@@ -1,4 +1,4 @@
-namespace FlowerFlow.Application.Orders;
+namespace FlowerFlow.Domain.Rules;
 
 /// <summary>
 /// Exact business constants from flower.com/backend/orders/config.js.

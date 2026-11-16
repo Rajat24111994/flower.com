@@ -6,6 +6,8 @@ using Google.Cloud.Firestore;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 
+using FlowerFlow.Domain.Entities;
+
 namespace FlowerFlow.Application.Orders;
 
 /// <summary>Port of backend/orders/reviews.js. A deterministic review id permits one review per delivered order.</summary>

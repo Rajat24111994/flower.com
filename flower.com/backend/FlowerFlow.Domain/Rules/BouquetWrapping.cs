@@ -1,7 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace FlowerFlow.Application.Catalog;
+namespace FlowerFlow.Domain.Rules;
 
 public sealed record BouquetTier([property: JsonPropertyName("maxStems")] int MaxStems,
     [property: JsonPropertyName("fee")] long Fee)

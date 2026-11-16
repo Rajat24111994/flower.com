@@ -2,6 +2,8 @@ using System.Globalization;
 using Google.Cloud.Firestore;
 using Microsoft.Extensions.Logging;
 
+using FlowerFlow.Domain.Entities;
+
 namespace FlowerFlow.Application.Orders;
 
 /// <summary>Port of backend/orders/reservations.js. Stock release is idempotent and transactional.</summary>

@@ -5,6 +5,8 @@ using Google.Cloud.Firestore;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 
+using FlowerFlow.Domain.Entities;
+
 namespace FlowerFlow.Application.Orders;
 
 /// <summary>Port of backend/orders/payment-admin.js: manual bank reconciliation and refunds, not gateway refund execution.</summary>
