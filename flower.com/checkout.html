@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+  <meta charset="UTF-8">
+  <script src="./js/core/safe-storage.js?v=3"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="description" content="Nhập thông tin nhận hoa và xác nhận thanh toán đơn hàng Flowerflow.">
+  <link rel="icon" type="image/svg+xml" href="./favicon.svg">
+  <title>Thanh toán</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./css/core/store-header.css?v=5">
+  <link rel="stylesheet" href="./css/order/checkout.css?v=6">
+  <link rel="stylesheet" href="./css/core/accessibility.css?v=1">
+  <link rel="stylesheet" href="./css/core/store-footer.css?v=4">
+<link rel="stylesheet" href="./css/core/contact-tools.css?v=4">
+</head>
+
+<body>
+  <script src="./js/core/store-header.js?v=9"></script>
+
+  <main class="checkout-page">
+    <header class="checkout-heading">
+      <p class="checkout-eyebrow">FLOWERFLOW · GỬI TRỌN YÊU THƯƠNG</p>
+      <h1>Hoàn tất đơn hàng</h1>
+      <p>Điền thông tin nhận hoa, chọn cách thanh toán và kiểm tra đơn hàng của bạn.</p>
+      <div class="checkout-progress" aria-label="Tiến trình đặt hàng">
+        <span class="checkout-progress-step is-complete"><span>1</span> Giỏ hàng</span>
+        <span class="checkout-progress-line" aria-hidden="true"></span>
+        <span class="checkout-progress-step is-current" aria-current="step"><span>2</span> Thanh toán</span>
+        <span class="checkout-progress-line" aria-hidden="true"></span>
+        <span class="checkout-progress-step"><span>3</span> Xác nhận</span>
+      </div>
+    </header>
+
+    <form id="checkout-form" class="checkout-layout">
+      <div class="checkout-details">
+        <section class="checkout-panel" aria-labelledby="customer-heading">
+          <div class="checkout-section-heading">
+            <span class="checkout-step">01</span>
+            <div>
+              <h2 id="customer-heading">Người gửi & người nhận</h2>
+              <p>Thông tin liên hệ, địa chỉ và lịch giao hoa</p>
+            </div>
+          </div>
+
+          <div class="checkout-fields">
+            <label class="checkout-field">
+              <span>Họ và tên</span>
+              <input type="text" name="customerName" autocomplete="name" maxlength="100" placeholder="Nguyễn Thị Hoa" required>
+            </label>
+            <label class="checkout-field">
+              <span>Số điện thoại</span>
+              <input type="tel" name="phone" inputmode="tel" autocomplete="tel" maxlength="20" placeholder="0912 345 678" required>
+            </label>
+            <label class="checkout-field checkout-field-wide">
+              <span>Số nhà, tên đường, phường / xã</span>
+              <textarea name="address" autocomplete="street-address" rows="3" maxlength="500" placeholder="Số nhà, tên đường, phường / xã" required></textarea>
+            </label>
+            <fieldset class="checkout-field checkout-field-wide checkout-recipient">
+              <legend>Thông tin người nhận</legend>
+              <label class="checkout-checkbox">
+                <input type="checkbox" name="customerIsRecipient" id="customer-is-recipient">
+                <span>Tôi là người nhận</span>
+              </label>
+              <div id="recipient-fields" class="checkout-fields checkout-recipient-fields">
+                <label class="checkout-field">
+                  <span>Tên người nhận</span>
+                  <input type="text" name="recipientName" autocomplete="off" maxlength="120" placeholder="Tên người nhận hoa">
+                </label>
+                <label class="checkout-field">
+                  <span>Số điện thoại người nhận</span>
+                  <input type="tel" name="recipientPhone" inputmode="tel" pattern="\+?[0-9]{8,15}" placeholder="Số điện thoại người nhận">
+                </label>
+              </div>
+            </fieldset>
+            <label class="checkout-field">
+              <span>Tỉnh / thành phố giao hàng</span>
+              <select name="deliveryProvince" id="delivery-province" required>
+                <option value="">Đang tải khu vực…</option>
+              </select>
+            </label>
+            <label class="checkout-field">
+              <span>Quận / huyện giao hàng</span>
+              <select name="deliveryDistrict" id="delivery-district" required disabled>
+                <option value="">Chọn tỉnh / thành phố trước</option>
+              </select>
+            </label>
+            <p id="delivery-zone-message" class="checkout-field-wide checkout-zone-message" role="status" aria-live="polite"></p>
+            <label class="checkout-field">
+              <span>Ngày giao mong muốn</span>
+              <input type="date" name="deliveryDate" id="delivery-date" required>
+            </label>
+            <label class="checkout-field" for="delivery-time">
+              <span>Khung giờ giao</span>
+              <select name="deliveryTime" id="delivery-time" required>
+                <option value="">Chọn khung giờ</option>
+                <option>08:00–11:00</option><option>11:00–14:00</option><option>14:00–17:00</option><option>17:00–20:00</option>
+              </select>
+            </label>
+            <p id="delivery-schedule-message" class="checkout-field-wide checkout-schedule-message" role="status" aria-live="polite">Đơn giao trong ngày cần được đặt trước 15:00 (giờ Việt Nam).</p>
+            <div class="checkout-field checkout-field-wide">
+              <label for="greeting-template">Lời chúc trên thiệp <small>(không bắt buộc)</small></label>
+              <select name="greetingTemplate" id="greeting-template" aria-label="Chọn lời chúc gợi ý">
+                <option value="">Chọn lời chúc gợi ý hoặc tự viết bên dưới</option>
+                <option value="Chúc mừng sinh nhật! Chúc bạn luôn rạng rỡ và hạnh phúc.">Chúc mừng sinh nhật</option>
+                <option value="Chúc mừng ngày đặc biệt của chúng mình. Mong yêu thương luôn nở hoa.">Chúc mừng kỷ niệm</option>
+                <option value="Chúc bạn luôn bình an, mạnh khỏe và ngập tràn niềm vui.">Chúc bình an và hạnh phúc</option>
+                <option value="Cảm ơn bạn vì luôn ở bên và mang đến thật nhiều yêu thương.">Lời cảm ơn</option>
+              </select>
+              <label for="greeting-card">Nội dung thiệp</label>
+              <textarea name="greetingCard" id="greeting-card" rows="2" maxlength="300" aria-describedby="greeting-card-counter" placeholder="Nhập lời chúc ngắn gửi kèm bó hoa"></textarea>
+              <small class="checkout-note-counter" id="greeting-card-counter" aria-live="polite">0/300 ký tự</small>
+              <label class="checkout-checkbox">
+                <input type="checkbox" name="anonymousGreetingCard" id="anonymous-greeting-card">
+                <span>Ẩn tên người gửi trên thiệp</span>
+              </label>
+            </div>
+            <label class="checkout-field checkout-field-wide">
+              <span>Gói quà / ruy băng <small>(không bắt buộc)</small></span>
+              <select name="giftWrap">
+                <option value="none">Không yêu cầu thêm</option>
+                <option value="pastel">Giấy gói pastel, ruy băng kem</option>
+                <option value="classic">Giấy kraft, ruy băng đỏ</option>
+              </select>
+            </label>
+            <label class="checkout-field checkout-field-wide">
+              <span>Ghi chú cho cửa hàng <small>(không bắt buộc)</small></span>
+              <textarea name="orderNote" rows="3" maxlength="500" aria-describedby="order-note-counter" placeholder="Lời nhắn hoặc lưu ý khi giao hoa"></textarea>
+              <small class="checkout-note-counter" id="order-note-counter" aria-live="polite">0/500 ký tự</small>
+            </label>
+          </div>
+        </section>
+
+        <section class="checkout-panel" aria-labelledby="payment-heading">
+          <div class="checkout-section-heading">
+            <span class="checkout-step">02</span>
+            <div>
+              <h2 id="payment-heading">Phương thức thanh toán</h2>
+              <p>Chọn cách thanh toán phù hợp với bạn</p>
+            </div>
+          </div>
+          <div class="payment-options">
+            <label class="payment-option">
+              <input type="radio" name="paymentMethod" value="cod" required>
+              <span class="payment-option-icon" aria-hidden="true">₫</span>
+              <span><strong>Thanh toán khi nhận hàng</strong><small>Thanh toán trực tiếp khi nhận hoa</small></span>
+            </label>
+            <label class="payment-option">
+              <input type="radio" name="paymentMethod" value="vnpay" checked>
+              <span class="payment-option-icon" aria-hidden="true">↗</span>
+              <span><strong>Thanh toán online qua VNPay</strong><small>Chuyển đến cổng thanh toán bảo mật của VNPay</small></span>
+            </label>
+          </div>
+          <div id="payment-online-panel" class="payment-online-panel" hidden>
+            <p>Đơn sẽ được tạo với tổng tiền do máy chủ xác nhận, sau đó bạn được chuyển đến VNPay để thanh toán.</p>
+            <p class="payment-online-note">Đơn chưa được coi là đã thanh toán khi bạn quay lại trang này. Cửa hàng chỉ xác nhận tiền sau khi nhận IPN hợp lệ từ VNPay.</p>
+            <p class="payment-online-note"><strong>Hàng được giữ trong 15 phút.</strong> Nếu thanh toán chưa hoàn tất đúng hạn, đơn sẽ tự hủy và tồn kho được hoàn lại.</p>
+          </div>
+        </section>
+      </div>
+
+      <aside class="checkout-summary" aria-labelledby="summary-heading">
+        <section class="checkout-panel summary-panel">
+          <div class="checkout-section-heading">
+            <span class="checkout-step">03</span>
+            <div>
+              <h2 id="summary-heading">Sản phẩm & tổng tiền</h2>
+              <p><span id="checkout-item-count">0</span> sản phẩm</p>
+            </div>
+          </div>
+
+          <div id="product-container" class="checkout-items" aria-live="polite"></div>
+          <p id="checkout-empty" class="checkout-empty" hidden>Giỏ hàng đang trống. Hãy chọn hoa trước khi đặt hàng.</p>
+
+          <label class="checkout-promotion">
+            <span>Chọn ưu đãi</span>
+            <select id="promotion-select" name="promotionId">
+              <option value="">Không áp dụng ưu đãi</option>
+            </select>
+          </label>
+          <p id="promotion-message" class="checkout-promotion-message">Ưu đãi chỉ áp dụng cho những sản phẩm được chọn trong chương trình.</p>
+
+          <dl class="checkout-totals">
+            <div><dt>Giá gốc</dt><dd id="originalprice">0 ₫</dd></div>
+            <div><dt>Tiền giảm</dt><dd id="savings">0 ₫</dd></div>
+            <div><dt>Phí bó hoa tùy chỉnh</dt><dd id="bouquetWrappingCharge">0 ₫</dd></div>
+            <div><dt>Phí giao hàng</dt><dd id="deliveryCharge">Chọn khu vực</dd></div>
+            <div class="checkout-grand-total"><dt>Tổng tiền <small>(đã gồm VAT)</small></dt><dd id="total">0 ₫</dd></div>
+          </dl>
+
+          <div id="price-change-confirmation" class="checkout-message" role="alert" aria-live="assertive" hidden>
+            <p id="price-change-details"></p>
+            <button type="button" id="confirm-price-changes">Xác nhận giá mới</button>
+          </div>
+          <button class="checkout-submit" type="submit">Đặt hàng</button>
+          <a class="continue-shopping" href="./product.html">Tiếp tục chọn hoa</a>
+          <button type="button" id="retry-quote" hidden>Thử lại kiểm tra giá và tồn kho</button>
+          <p id="checkout-message" class="checkout-message" role="status" aria-live="polite"></p>
+        </section>
+      </aside>
+    </form>
+  </main>
+  <script src="./js/core/store-footer.js?v=4"></script>
+  <script src="./js/catalog/bouquet-options.js?v=1"></script>
+  <script src="./js/core/currency.js?v=12"></script>
+  <script src="./js/order/order-store.js?v=25"></script>
+  <script src="./js/order/checkout.js?v=1"></script>
+<script src="./js/core/contact-tools.js?v=1"></script>
+</body>
+</html>

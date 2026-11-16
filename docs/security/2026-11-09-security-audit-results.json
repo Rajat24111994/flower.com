@@ -1,0 +1,444 @@
+{
+    "auditDate":  "2026-11-09",
+    "timezone":  "Asia/Bangkok",
+    "revision":  "ac0fb9bcf595d31e436b529e3833b382b3b12fe5",
+    "environment":  {
+                        "project":  "demo-security-audit",
+                        "storage":  "Auth/Firestore emulators and in-memory SQLite",
+                        "browser":  "Chrome headless",
+                        "liveServicesAttacked":  false
+                    },
+    "regressionTests":  {
+                            "unit":  {
+                                         "passed":  154,
+                                         "failed":  0,
+                                         "skipped":  0,
+                                         "durationMs":  47936.8979
+                                     },
+                            "orderPaymentAccessIntegration":  {
+                                                                  "passed":  56,
+                                                                  "failed":  0,
+                                                                  "skipped":  0,
+                                                                  "durationMs":  32359.5294
+                                                              },
+                            "loginIntegration":  {
+                                                     "passed":  3,
+                                                     "failed":  0,
+                                                     "skipped":  0,
+                                                     "durationMs":  6204.7852
+                                                 }
+                        },
+    "apiObservations":  [
+                            {
+                                "id":  "account-enumeration",
+                                "knownStatus":  200,
+                                "unknownStatus":  401,
+                                "publicQuestionCount":  3
+                            },
+                            {
+                                "id":  "weak-recovery-design",
+                                "prerequisite":  "account chose the same common two-character answer for all questions",
+                                "recoverPinStatus":  200,
+                                "passwordResetStatus":  200,
+                                "newPasswordLoginStatus":  200
+                            },
+                            {
+                                "id":  "forced-pin-recovery-by-outsider",
+                                "unauthenticatedAttemptStatuses":  [
+                                                                       401,
+                                                                       401,
+                                                                       401,
+                                                                       401,
+                                                                       403
+                                                                   ],
+                                "correctPinStatus":  403,
+                                "code":  "pin-reset-required"
+                            },
+                            {
+                                "id":  "unthrottled-sync-registration",
+                                "duplicateStatuses":  [
+                                                          409,
+                                                          409
+                                                      ],
+                                "baselinePageMs":  3,
+                                "pageMsDuringTwoDuplicates":  1388
+                            },
+                            {
+                                "id":  "local-response-headers",
+                                "csp":  null,
+                                "frameOptions":  "DENY",
+                                "contentTypeOptions":  "nosniff"
+                            },
+                            {
+                                "id":  "local-order-identity-gap",
+                                "validLocalSession":  true,
+                                "orderStatus":  201,
+                                "storedUid":  "",
+                                "expectedUid":  "local-f35447f7-b4c2-4c22-8a82-3b837ad8b8f1",
+                                "identityBound":  false
+                            },
+                            {
+                                "id":  "anonymous-stock-reservation",
+                                "unauthenticatedOrderStatus":  201,
+                                "remainingStock":  0,
+                                "reservationHours":  24,
+                                "nextCustomerQuoteStatus":  409
+                            },
+                            {
+                                "id":  "anonymous-repeat-orders",
+                                "statuses":  [
+                                                 201,
+                                                 201,
+                                                 201
+                                             ]
+                            },
+                            {
+                                "id":  "stale-admin-cleanup-claim",
+                                "prerequisite":  "live admin role removed but old ID token not yet revoked",
+                                "cleanupStatus":  200,
+                                "reconciliationStatus":  403
+                            }
+                        ],
+    "browser":  {
+                    "checks":  42,
+                    "results":  [
+                                    {
+                                        "page":  "login-error",
+                                        "viewport":  1280,
+                                        "payload":  1,
+                                        "literalTextRendered":  true,
+                                        "executed":  0,
+                                        "injectedElements":  0
+                                    },
+                                    {
+                                        "page":  "product-name-description-category",
+                                        "viewport":  1280,
+                                        "payload":  1,
+                                        "literalTextRendered":  true,
+                                        "executed":  0,
+                                        "injectedElements":  0
+                                    },
+                                    {
+                                        "page":  "cart",
+                                        "viewport":  1280,
+                                        "payload":  1,
+                                        "literalTextRendered":  true,
+                                        "executed":  0,
+                                        "injectedElements":  0
+                                    },
+                                    {
+                                        "page":  "checkout",
+                                        "viewport":  1280,
+                                        "payload":  1,
+                                        "literalTextRendered":  true,
+                                        "executed":  0,
+                                        "injectedElements":  0
+                                    },
+                                    {
+                                        "page":  "order-confirmation",
+                                        "viewport":  1280,
+                                        "payload":  1,
+                                        "literalTextRendered":  true,
+                                        "executed":  0,
+                                        "injectedElements":  0
+                                    },
+                                    {
+                                        "page":  "tracking-private-fields",
+                                        "viewport":  1280,
+                                        "payload":  1,
+                                        "literalTextRendered":  true,
+                                        "executed":  0,
+                                        "injectedElements":  0
+                                    },
+                                    {
+                                        "page":  "payment-result",
+                                        "viewport":  1280,
+                                        "payload":  1,
+                                        "literalTextRendered":  true,
+                                        "executed":  0,
+                                        "injectedElements":  0
+                                    },
+                                    {
+                                        "page":  "login-error",
+                                        "viewport":  1280,
+                                        "payload":  2,
+                                        "literalTextRendered":  true,
+                                        "executed":  0,
+                                        "injectedElements":  0
+                                    },
+                                    {
+                                        "page":  "product-name-description-category",
+                                        "viewport":  1280,
+                                        "payload":  2,
+                                        "literalTextRendered":  true,
+                                        "executed":  0,
+                                        "injectedElements":  0
+                                    },
+                                    {
+                                        "page":  "cart",
+                                        "viewport":  1280,
+                                        "payload":  2,
+                                        "literalTextRendered":  true,
+                                        "executed":  0,
+                                        "injectedElements":  0
+                                    },
+                                    {
+                                        "page":  "checkout",
+                                        "viewport":  1280,
+                                        "payload":  2,
+                                        "literalTextRendered":  true,
+                                        "executed":  0,
+                                        "injectedElements":  0
+                                    },
+                                    {
+                                        "page":  "order-confirmation",
+                                        "viewport":  1280,
+                                        "payload":  2,
+                                        "literalTextRendered":  true,
+                                        "executed":  0,
+                                        "injectedElements":  0
+                                    },
+                                    {
+                                        "page":  "tracking-private-fields",
+                                        "viewport":  1280,
+                                        "payload":  2,
+                                        "literalTextRendered":  true,
+                                        "executed":  0,
+                                        "injectedElements":  0
+                                    },
+                                    {
+                                        "page":  "payment-result",
+                                        "viewport":  1280,
+                                        "payload":  2,
+                                        "literalTextRendered":  true,
+                                        "executed":  0,
+                                        "injectedElements":  0
+                                    },
+                                    {
+                                        "page":  "login-error",
+                                        "viewport":  1280,
+                                        "payload":  3,
+                                        "literalTextRendered":  true,
+                                        "executed":  0,
+                                        "injectedElements":  0
+                                    },
+                                    {
+                                        "page":  "product-name-description-category",
+                                        "viewport":  1280,
+                                        "payload":  3,
+                                        "literalTextRendered":  true,
+                                        "executed":  0,
+                                        "injectedElements":  0
+                                    },
+                                    {
+                                        "page":  "cart",
+                                        "viewport":  1280,
+                                        "payload":  3,
+                                        "literalTextRendered":  true,
+                                        "executed":  0,
+                                        "injectedElements":  0
+                                    },
+                                    {
+                                        "page":  "checkout",
+                                        "viewport":  1280,
+                                        "payload":  3,
+                                        "literalTextRendered":  true,
+                                        "executed":  0,
+                                        "injectedElements":  0
+                                    },
+                                    {
+                                        "page":  "order-confirmation",
+                                        "viewport":  1280,
+                                        "payload":  3,
+                                        "literalTextRendered":  true,
+                                        "executed":  0,
+                                        "injectedElements":  0
+                                    },
+                                    {
+                                        "page":  "tracking-private-fields",
+                                        "viewport":  1280,
+                                        "payload":  3,
+                                        "literalTextRendered":  true,
+                                        "executed":  0,
+                                        "injectedElements":  0
+                                    },
+                                    {
+                                        "page":  "payment-result",
+                                        "viewport":  1280,
+                                        "payload":  3,
+                                        "literalTextRendered":  true,
+                                        "executed":  0,
+                                        "injectedElements":  0
+                                    },
+                                    {
+                                        "page":  "login-error",
+                                        "viewport":  390,
+                                        "payload":  1,
+                                        "literalTextRendered":  true,
+                                        "executed":  0,
+                                        "injectedElements":  0
+                                    },
+                                    {
+                                        "page":  "product-name-description-category",
+                                        "viewport":  390,
+                                        "payload":  1,
+                                        "literalTextRendered":  true,
+                                        "executed":  0,
+                                        "injectedElements":  0
+                                    },
+                                    {
+                                        "page":  "cart",
+                                        "viewport":  390,
+                                        "payload":  1,
+                                        "literalTextRendered":  true,
+                                        "executed":  0,
+                                        "injectedElements":  0
+                                    },
+                                    {
+                                        "page":  "checkout",
+                                        "viewport":  390,
+                                        "payload":  1,
+                                        "literalTextRendered":  true,
+                                        "executed":  0,
+                                        "injectedElements":  0
+                                    },
+                                    {
+                                        "page":  "order-confirmation",
+                                        "viewport":  390,
+                                        "payload":  1,
+                                        "literalTextRendered":  true,
+                                        "executed":  0,
+                                        "injectedElements":  0
+                                    },
+                                    {
+                                        "page":  "tracking-private-fields",
+                                        "viewport":  390,
+                                        "payload":  1,
+                                        "literalTextRendered":  true,
+                                        "executed":  0,
+                                        "injectedElements":  0
+                                    },
+                                    {
+                                        "page":  "payment-result",
+                                        "viewport":  390,
+                                        "payload":  1,
+                                        "literalTextRendered":  true,
+                                        "executed":  0,
+                                        "injectedElements":  0
+                                    },
+                                    {
+                                        "page":  "login-error",
+                                        "viewport":  390,
+                                        "payload":  2,
+                                        "literalTextRendered":  true,
+                                        "executed":  0,
+                                        "injectedElements":  0
+                                    },
+                                    {
+                                        "page":  "product-name-description-category",
+                                        "viewport":  390,
+                                        "payload":  2,
+                                        "literalTextRendered":  true,
+                                        "executed":  0,
+                                        "injectedElements":  0
+                                    },
+                                    {
+                                        "page":  "cart",
+                                        "viewport":  390,
+                                        "payload":  2,
+                                        "literalTextRendered":  true,
+                                        "executed":  0,
+                                        "injectedElements":  0
+                                    },
+                                    {
+                                        "page":  "checkout",
+                                        "viewport":  390,
+                                        "payload":  2,
+                                        "literalTextRendered":  true,
+                                        "executed":  0,
+                                        "injectedElements":  0
+                                    },
+                                    {
+                                        "page":  "order-confirmation",
+                                        "viewport":  390,
+                                        "payload":  2,
+                                        "literalTextRendered":  true,
+                                        "executed":  0,
+                                        "injectedElements":  0
+                                    },
+                                    {
+                                        "page":  "tracking-private-fields",
+                                        "viewport":  390,
+                                        "payload":  2,
+                                        "literalTextRendered":  true,
+                                        "executed":  0,
+                                        "injectedElements":  0
+                                    },
+                                    {
+                                        "page":  "payment-result",
+                                        "viewport":  390,
+                                        "payload":  2,
+                                        "literalTextRendered":  true,
+                                        "executed":  0,
+                                        "injectedElements":  0
+                                    },
+                                    {
+                                        "page":  "login-error",
+                                        "viewport":  390,
+                                        "payload":  3,
+                                        "literalTextRendered":  true,
+                                        "executed":  0,
+                                        "injectedElements":  0
+                                    },
+                                    {
+                                        "page":  "product-name-description-category",
+                                        "viewport":  390,
+                                        "payload":  3,
+                                        "literalTextRendered":  true,
+                                        "executed":  0,
+                                        "injectedElements":  0
+                                    },
+                                    {
+                                        "page":  "cart",
+                                        "viewport":  390,
+                                        "payload":  3,
+                                        "literalTextRendered":  true,
+                                        "executed":  0,
+                                        "injectedElements":  0
+                                    },
+                                    {
+                                        "page":  "checkout",
+                                        "viewport":  390,
+                                        "payload":  3,
+                                        "literalTextRendered":  true,
+                                        "executed":  0,
+                                        "injectedElements":  0
+                                    },
+                                    {
+                                        "page":  "order-confirmation",
+                                        "viewport":  390,
+                                        "payload":  3,
+                                        "literalTextRendered":  true,
+                                        "executed":  0,
+                                        "injectedElements":  0
+                                    },
+                                    {
+                                        "page":  "tracking-private-fields",
+                                        "viewport":  390,
+                                        "payload":  3,
+                                        "literalTextRendered":  true,
+                                        "executed":  0,
+                                        "injectedElements":  0
+                                    },
+                                    {
+                                        "page":  "payment-result",
+                                        "viewport":  390,
+                                        "payload":  3,
+                                        "literalTextRendered":  true,
+                                        "executed":  0,
+                                        "injectedElements":  0
+                                    }
+                                ],
+                    "cspInlineAllowed":  true
+                }
+}

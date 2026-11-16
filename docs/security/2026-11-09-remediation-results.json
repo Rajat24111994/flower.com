@@ -1,0 +1,76 @@
+{
+  "date": "2026-11-09",
+  "baselineRevision": "ac0fb9bcf595d31e436b529e3833b382b3b12fe5",
+  "sourceState": "uncommitted security remediation",
+  "environment": {
+    "project": "demo-security-fixes",
+    "realServicesAttacked": false,
+    "localAccountStorage": "in-memory SQLite for tests"
+  },
+  "unit": {
+    "log": "security-fixes-unit-final.log",
+    "tests": 160,
+    "pass": 160,
+    "fail": 0,
+    "cancelled": 0,
+    "skipped": 0,
+    "duration_ms": 152005.9172
+  },
+  "browserAccounts": {
+    "passed": 14,
+    "log": "security-fixes-e2e-final.log"
+  },
+  "xss": {
+    "checks": 42,
+    "executedPayloads": 0,
+    "injectedElements": 0,
+    "cspInlineAllowed": false
+  },
+  "integration": {
+    "confirmedDistinctCases": 63,
+    "singleCleanFullRun": false,
+    "initialFullRun": {
+      "log": "security-fixes-integration-final.log",
+      "tests": 63,
+      "pass": 62,
+      "fail": 1,
+      "cancelled": 0,
+      "skipped": 0,
+      "duration_ms": 65861.0384
+    },
+    "authorizationRetestAfterExpectedStatusUpdate": {
+      "log": "security-fixes-access-retest.log",
+      "tests": 11,
+      "pass": 11,
+      "fail": 0,
+      "cancelled": 0,
+      "skipped": 0,
+      "duration_ms": 5988.8068
+    },
+    "repeatedFullRunWithTimeouts": {
+      "log": "security-fixes-integration-passed.log",
+      "tests": 63,
+      "pass": 61,
+      "fail": 1,
+      "cancelled": 1,
+      "skipped": 0,
+      "duration_ms": 1080916.158
+    },
+    "timeoutCasesRetest": {
+      "log": "security-fixes-timeout-retest.log",
+      "tests": 2,
+      "pass": 2,
+      "fail": 0,
+      "cancelled": 0,
+      "skipped": 0,
+      "duration_ms": 2406.6076
+    },
+    "note": "The initial 403-vs-401 expectation was updated for the shared live-role guard. All 11 authorization cases passed afterward. The two cases affected by timeouts in a repeated full run passed in isolation. Counts of repeated cases are not added to the 63 distinct cases."
+  },
+  "remainingLimitations": [
+    "Profile details are not independent proof of ownership. Short PIN/security questions remain a prototype recovery design.",
+    "Existing hashed answers cannot be strengthened automatically.",
+    "Order quotas do not verify phone ownership or stop all distributed abuse.",
+    "Local login needs no Firebase; the existing order data backend still needs its own configuration."
+  ]
+}
