@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <script src="./js/core/safe-storage.js?v=3"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#fbf8f3">
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="description" content="Tra cứu trạng thái và hành trình giao hoa cho đơn hàng Flowerflow.">
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg">
+    <title>Theo dõi đơn hàng | Flowerflow</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="./css/core/store-header.css?v=5">
+    <link rel="stylesheet" href="./css/order/tracking.css?v=9">
+    <link rel="stylesheet" href="./css/core/accessibility.css?v=1">
+    <link rel="stylesheet" href="./css/core/store-footer.css?v=4">
+<link rel="stylesheet" href="./css/core/contact-tools.css?v=4">
+</head>
+<body>
+    <script src="./js/core/store-header.js?v=9"></script>
+
+    <main class="tracking-main">
+        <section class="tracking-heading">
+            <p class="tracking-eyebrow">FLOWERFLOW · ĐƠN HÀNG</p>
+            <h1>Theo dõi đơn hàng</h1>
+            <p id="tracking-intro">Tra cứu hành trình giao hoa bằng mã đơn hàng và số điện thoại đặt hàng. <a href="./login.html">Đăng nhập</a> để xem ngay tất cả đơn hàng của bạn.</p>
+        </section>
+
+        <section class="my-orders" id="my-orders" hidden aria-labelledby="my-orders-title">
+            <div class="my-orders-header">
+                <h2 id="my-orders-title">Đơn hàng của bạn</h2>
+                <div class="my-orders-tabs" role="tablist" aria-label="Lọc đơn hàng theo trạng thái">
+                    <button type="button" role="tab" class="my-orders-tab" data-group="active" aria-selected="true">Đang xử lý <span class="my-orders-count" id="count-active">0</span></button>
+                    <button type="button" role="tab" class="my-orders-tab" data-group="done" aria-selected="false">Đã hoàn thành <span class="my-orders-count" id="count-done">0</span></button>
+                    <button type="button" role="tab" class="my-orders-tab" data-group="cancelled" aria-selected="false" hidden>Đã hủy <span class="my-orders-count" id="count-cancelled">0</span></button>
+                </div>
+            </div>
+            <div class="my-orders-list" id="my-orders-list" role="tabpanel"></div>
+        </section>
+
+        <button class="tracking-lookup-toggle" id="tracking-lookup-toggle" type="button" hidden aria-expanded="false" aria-controls="tracking-search">Tra cứu đơn hàng khác bằng mã đơn và số điện thoại</button>
+
+        <form class="tracking-search" id="tracking-search">
+            <label for="tracking-order-id">Mã đơn hàng</label>
+            <input id="tracking-order-id" name="orderId" type="text" inputmode="numeric" autocomplete="off" required>
+            <label id="tracking-phone-label" for="tracking-phone">Số điện thoại đặt hàng</label>
+            <input id="tracking-phone" name="phone" type="tel" autocomplete="tel" required>
+            <button type="submit">Tra cứu đơn hàng</button>
+        </form>
+        <p class="tracking-message" id="tracking-message" role="status" aria-live="polite"></p>
+
+        <section class="tracking-results" id="tracking-results" hidden aria-live="polite">
+            <div class="tracking-overview">
+                <div>
+                    <p class="tracking-eyebrow">ĐƠN HÀNG <span id="result-order-id"></span></p>
+                    <h2 id="result-status"></h2>
+                    <p class="current-location" id="result-location"></p>
+                </div>
+                <div class="eta-block">
+                    <span>Dự kiến giao đến</span>
+                    <strong id="result-eta"></strong>
+                </div>
+            </div>
+
+            <section class="tracking-payment" id="tracking-payment" hidden aria-labelledby="tracking-payment-title">
+                <div>
+                    <h2 id="tracking-payment-title">Chuyển khoản để hoàn tất đơn</h2>
+                    <p class="tracking-payment-deadline" id="tracking-payment-deadline"></p>
+                    <dl>
+                        <div><dt>Số tiền</dt><dd id="tracking-payment-amount"></dd></div>
+                        <div><dt>Ngân hàng</dt><dd>Vietcombank · STK 1063118243 · DO BA THAI</dd></div>
+                        <div><dt>Nội dung</dt><dd id="tracking-payment-reference"></dd></div>
+                    </dl>
+                    <p class="tracking-payment-note">Cửa hàng sẽ xác nhận sau khi đối chiếu giao dịch. Quá hạn mà chưa nhận được tiền, đơn sẽ tự hủy để trả hàng về kho.</p>
+                </div>
+                <img id="tracking-payment-qr" alt="Mã QR chuyển khoản Vietcombank" width="200" height="200">
+            </section>
+
+            <section class="tracking-panel order-progress-panel" aria-labelledby="order-progress-title">
+                <h2 id="order-progress-title">Tiến độ đơn hàng</h2>
+                <p id="order-cancelled-note" role="status" hidden>Đơn hàng đã hủy. Các bước tiếp theo sẽ không được thực hiện.</p>
+                <ol id="order-progress" class="order-progress" aria-label="Các bước xử lý đơn hàng"></ol>
+            </section>
+
+            <p class="tracking-privacy-note" id="tracking-privacy-note" hidden>Để bảo vệ thông tin cá nhân, tra cứu bằng mã đơn và số điện thoại chỉ hiển thị tiến độ. Đăng nhập đúng tài khoản để xem thông tin nhận hàng và sản phẩm.</p>
+
+            <div class="tracking-details">
+                <section class="tracking-panel">
+                    <h2>Lịch sử cập nhật đơn hàng</h2>
+                    <ol class="tracking-timeline" id="tracking-timeline"></ol>
+                </section>
+                <section class="tracking-panel order-details">
+                    <h2>Thông tin nhận hàng</h2>
+                    <dl>
+                        <div><dt>Người đặt</dt><dd id="result-sender"></dd></div>
+                        <div><dt>Số điện thoại người đặt</dt><dd id="result-sender-phone"></dd></div>
+                        <div><dt>Người nhận</dt><dd id="result-customer"></dd></div>
+                        <div><dt>Người đặt cũng là người nhận</dt><dd id="result-self-recipient"></dd></div>
+                        <div><dt>Số điện thoại</dt><dd id="result-phone"></dd></div>
+                        <div><dt>Địa chỉ</dt><dd id="result-address"></dd></div>
+                        <div><dt>Khu vực giao hàng</dt><dd id="result-delivery-zone"></dd></div>
+                        <div><dt>Ngày giao</dt><dd id="result-delivery-date"></dd></div>
+                        <div><dt>Khung giờ</dt><dd id="result-delivery-time"></dd></div>
+                        <div><dt>Thiệp chúc mừng</dt><dd id="result-greeting-card"></dd></div>
+                        <div><dt>Ẩn tên người gửi trên thiệp</dt><dd id="result-anonymous-greeting"></dd></div>
+                        <div><dt>Gói quà</dt><dd id="result-gift-wrap"></dd></div>
+                        <div><dt>Phí gói bó hoa</dt><dd id="result-wrapping-fee"></dd></div>
+                        <div><dt>Phí giao hàng</dt><dd id="result-shipping-fee"></dd></div>
+                        <div><dt>Tổng tiền</dt><dd id="result-total"></dd></div>
+                        <div><dt>Ghi chú</dt><dd id="result-order-note"></dd></div>
+                        <div><dt>Thanh toán</dt><dd id="result-payment-status"></dd></div>
+                        <div id="result-note-row" hidden><dt>Lời nhắn của bạn</dt><dd id="result-note"></dd></div>
+                        <div id="result-reply-row" hidden><dt>Cửa hàng trả lời</dt><dd id="result-reply"></dd></div>
+                    </dl>
+                    <h3>Sản phẩm</h3>
+                    <div class="tracking-products" id="tracking-products"></div>
+                </section>
+            </div>
+
+            <section class="tracking-panel review-panel" id="review-panel" hidden>
+                <h2>Đánh giá đơn hàng</h2>
+                <form id="order-review-form">
+                    <fieldset class="review-rating">
+                        <legend>Chọn số sao</legend>
+                        <div class="rating-stars" role="group" aria-label="Đánh giá từ 1 đến 5 sao">
+                            <button type="button" class="rating-star" data-rating="1" aria-label="1 sao" aria-pressed="false">★</button>
+                            <button type="button" class="rating-star" data-rating="2" aria-label="2 sao" aria-pressed="false">★</button>
+                            <button type="button" class="rating-star" data-rating="3" aria-label="3 sao" aria-pressed="false">★</button>
+                            <button type="button" class="rating-star" data-rating="4" aria-label="4 sao" aria-pressed="false">★</button>
+                            <button type="button" class="rating-star" data-rating="5" aria-label="5 sao" aria-pressed="false">★</button>
+                        </div>
+                    </fieldset>
+                    <label class="review-comment-label" for="review-comment">Nhận xét của bạn</label>
+                    <textarea id="review-comment" name="comment" maxlength="1000" placeholder="Chia sẻ cảm nhận về đơn hàng..." required></textarea>
+                    <label class="review-comment-label" for="review-photos">Ảnh sau khi nhận hoa (không bắt buộc)</label>
+                    <input id="review-photos" type="file" accept="image/jpeg,image/png,image/webp" multiple aria-describedby="review-photo-help">
+                    <p id="review-photo-help">Tối đa 3 ảnh JPG, PNG hoặc WebP, mỗi ảnh gốc không quá 5 MB. Ảnh được thu nhỏ và bỏ metadata trước khi gửi.</p>
+                    <div id="review-photo-preview" class="review-photos"></div>
+                    <button id="review-clear-photos" type="button" hidden>Bỏ các ảnh đã chọn</button>
+                    <p>Đánh giá và ảnh chỉ hiển thị trên sản phẩm sau khi được duyệt. Cửa hàng có thể trả lời hoặc ẩn, không được sửa nội dung của bạn.</p>
+                    <button class="review-submit" type="submit">Gửi đánh giá</button>
+                </form>
+                <div id="existing-review-photos" class="review-photos"></div>
+                <p class="review-feedback" id="review-feedback" role="status" aria-live="polite"></p>
+            </section>
+        </section>
+    </main>
+
+    <script src="./js/review/review-store.js?v=6"></script>
+    <script src="./js/order/order-store.js?v=25"></script>
+    <script src="./js/catalog/bouquet-options.js?v=1"></script>
+    <script type="module" src="./js/order/tracking.js?v=22"></script>
+    <script src="./js/core/store-footer.js?v=4"></script>
+<script src="./js/core/contact-tools.js?v=1"></script>
+</body>
+</html>

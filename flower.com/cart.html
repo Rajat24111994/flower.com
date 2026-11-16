@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <script src="./js/core/safe-storage.js?v=3"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="description" content="Kiểm tra hoa đã chọn và tổng tiền trong giỏ hàng Flowerflow.">
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg">
+    <title>Giỏ hàng</title>
+    <link rel="stylesheet" href="./css/core/store-header.css?v=5" />
+    <link rel="stylesheet" href="./css/order/cart.css?v=9" />
+    <link rel="stylesheet" href="./css/core/accessibility.css?v=1" />
+    <link rel="stylesheet" href="./css/core/store-footer.css?v=4" />
+  <link rel="stylesheet" href="./css/core/contact-tools.css?v=4">
+  </head>
+  <body>
+    <script src="./js/core/store-header.js?v=9"></script>
+
+    <main class="nav">
+      <div id="product-container"></div>
+      <div class="checkout">
+        <div class="checkout-heading">
+          <span class="checkout-eyebrow">Flowerflow · Giỏ hàng</span>
+          <h1>Tóm tắt đơn hàng</h1>
+          <p>Kiểm tra chi phí trước khi bạn gửi yêu thương. Giỏ hàng chỉ lưu trên trình duyệt này, không đồng bộ giữa thiết bị.</p>
+        </div>
+        <div class="details">
+          <div class="summary-row">
+            <div><p>Giá gốc</p></div>
+            <div id="originalprice">0</div>
+          </div>
+          <div class="summary-row summary-row--savings">
+            <div><p>Ưu đãi <small>(tự áp dụng mức giảm cao nhất ở bước thanh toán)</small></p></div>
+            <div id="savings">0</div>
+          </div>
+          <div class="summary-row">
+            <div><p>Phí gói bó hoa tùy chỉnh</p></div>
+            <div id="bouquetWrappingCharge">Đang xác minh</div>
+          </div>
+          <div class="summary-row">
+            <div><p>Phí giao hàng</p></div>
+            <div id="deliveryCharge">Miễn phí</div>
+          </div>
+          <div class="summary-row summary-row--total">
+            <div><p>Tổng tiền <small>(đã gồm VAT)</small></p></div>
+            <div id="total">0</div>
+          </div>
+        </div>
+        <div id="check">
+          <p class="cart-action-message" id="cart-action-message" role="status" aria-live="polite" hidden></p>
+          <a class="checkout-continue" href="./checkout.html">Tiến hành thanh toán <span aria-hidden="true">→</span></a>
+        </div>
+      </div>
+    </main>
+
+    <script src="./js/core/store-footer.js?v=4"></script>
+    <script src="./js/catalog/bouquet-options.js?v=1"></script>
+    <script src="./js/catalog/bouquet-wrapping.js?v=1"></script>
+    <script src="./js/core/currency.js?v=12"></script>
+    <script src="./js/order/order-store.js?v=25"></script>
+    <script src="./js/order/cart.js?v=1"></script>
+    <script defer src="./js/core/contact-tools.js?v=1"></script>
+  </body>
+</html>

@@ -1,0 +1,275 @@
+    let CartContainer = document.getElementById("product-container");
+    let pendingSubmission = FlowerSafeStorage.readJson("flowerPendingOrder", { fallback: null, storage: "session" });
+    const legacyPendingSubmission = FlowerSafeStorage.readJson("flowerPendingOrder", { fallback: null });
+    if (!pendingSubmission && legacyPendingSubmission) {
+      pendingSubmission = legacyPendingSubmission;
+      FlowerSafeStorage.writeJson("flowerPendingOrder", pendingSubmission, { required: true, storage: "session" });
+    }
+    FlowerSafeStorage.remove("flowerPendingOrder");
+    FlowerSafeStorage.remove("flowerCheckout");
+    FlowerSafeStorage.remove("flowerPaymentReference");
+    let Cart = FlowerSafeStorage.readJson("cart", {
+      fallback: [],
+      validate: (value) => Array.isArray(value)
+        && value.every((item) => item && typeof item === "object" && !Array.isArray(item) && item.id !== undefined)
+    });
+    if (pendingSubmission?.cart) Cart = pendingSubmission.cart;
+    const checkoutData = FlowerSafeStorage.readJson("flowerCheckout", {
+      fallback: null,
+      validate: (value) => value !== null && typeof value === "object" && !Array.isArray(value),
+      storage: "session"
+    }) || pendingSubmission?.order || null;
+    document.querySelector(".nav").classList.toggle("is-empty", !checkoutData);
+    const paymentButton = document.querySelector(".placeorder > button");
+    const paymentNote = document.getElementById("payment-confirmation-note");
+    const reviewDetails = document.getElementById("order-review-details");
+    const reviewTotals = document.getElementById("order-review-totals");
+    document.getElementById("order-review-empty").hidden = Boolean(checkoutData);
+    let serverQuote = null;
+    document.getElementById("retry-quote").addEventListener("click", verifyOrderBeforeConfirmation);
+    let orderSubmissionInProgress = false;
+    paymentButton.disabled = true;
+    if (checkoutData) {
+      const fields = [
+        ["Người đặt", checkoutData.customerName], ["Điện thoại", checkoutData.phone],
+        ["Địa chỉ giao", checkoutData.address],
+        ["Người nhận", checkoutData.customerIsRecipient ? "Người đặt (tôi là người nhận)" : checkoutData.recipientName || checkoutData.customerName],
+        ["Thanh toán", checkoutData.paymentMethod === "qr" ? "Chuyển khoản QR"
+          : checkoutData.paymentMethod === "vnpay" ? "VNPay"
+            : "Thanh toán khi nhận hàng"],
+        ["Điện thoại người nhận", checkoutData.recipientPhone || checkoutData.phone],
+        ["Khu vực giao hàng", [checkoutData.deliveryDistrict, checkoutData.deliveryProvince].filter(Boolean).join(", ")],
+        ["Ngày giao", checkoutData.deliveryDate], ["Khung giờ", checkoutData.deliveryTime],
+        ["Thiệp chúc mừng", checkoutData.greetingCard || "Không có"],
+        ["Ẩn tên người gửi trên thiệp", checkoutData.anonymousGreetingCard ? "Có" : "Không"],
+        ["Gói quà", checkoutData.giftWrap === "pastel" ? "Pastel, ruy băng kem" : checkoutData.giftWrap === "classic" ? "Kraft, ruy băng đỏ" : "Không yêu cầu"],
+        ["Ghi chú giao hàng", checkoutData.orderNote || "Không có"]
+      ];
+      fields.forEach(([label, value]) => {
+        const row = document.createElement("div");
+        const term = document.createElement("dt");
+        const description = document.createElement("dd");
+        term.textContent = label;
+        description.textContent = value || "—";
+        row.append(term, description);
+        reviewDetails.append(row);
+      });
+      const quotedTotals = pendingSubmission?.totals || checkoutData.quotedTotals || {};
+      const shippingFee = Number(quotedTotals.shippingFee) || 0;
+      reviewTotals.textContent = `Phí bó hoa: ${formatVnd(quotedTotals.wrappingFee || 0)} · Phí giao hàng: ${formatVnd(shippingFee)} · Tổng dự kiến: ${formatVnd(quotedTotals.total || 0)} · Sẽ xác minh lại trước khi gửi đơn.`;
+    }
+    if (checkoutData?.paymentMethod === "qr") {
+      paymentButton.textContent = "Gửi đơn hàng chờ xác minh";
+      paymentNote.textContent = `Quét mã Vietcombank để chuyển khoản · STK 1063118243 · DO BA THAI. Nội dung: ${checkoutData.paymentReference || "mã đơn của bạn"}. Gửi đơn không xác nhận đã nhận tiền; cửa hàng cần đối chiếu giao dịch. Hàng được giữ 30 phút sau khi gửi đơn, quá hạn chưa nhận được tiền đơn sẽ tự hủy.`;
+    } else if (checkoutData?.paymentMethod === "vnpay") {
+      paymentButton.textContent = "Xác nhận và đến VNPay";
+      paymentNote.textContent = "Đơn sẽ được tạo với tổng tiền đã xác minh và giữ hàng trong 15 phút. Thanh toán chỉ được xác nhận sau khi máy chủ nhận IPN hợp lệ từ VNPay.";
+    } else if (checkoutData?.paymentMethod === "cod") {
+      paymentNote.textContent = "Đơn COD được giữ hàng trong 30 phút chờ cửa hàng xác nhận. Nếu chưa được xác nhận khi hết hạn, hàng sẽ được trả về kho.";
+    }
+
+    async function saveOrderToAdmin() {
+      if (orderSubmissionInProgress) return;
+      if (!Cart.length && !pendingSubmission) {
+        alert("Giỏ hàng đang trống.");
+        return;
+      }
+
+      if (!checkoutData?.customerName || !checkoutData?.phone || !checkoutData?.address || !checkoutData?.paymentMethod || !checkoutData?.idempotencyKey) {
+        alert("Vui lòng hoàn tất thông tin giao hàng và thanh toán trước.");
+        window.location.assign("./checkout.html");
+        return;
+      }
+      if (!checkoutData.deliveryDate || !checkoutData.deliveryTime || !checkoutData.deliveryZoneId) {
+        alert("Vui lòng quay lại chọn ngày và khung giờ giao hoa.");
+        window.location.assign("./checkout.html");
+        return;
+      }
+      if (!serverQuote) {
+        alert("Chưa xác minh được giá và tồn kho. Hãy thử tải lại trang.");
+        return;
+      }
+
+      const { customerName, phone, address } = checkoutData;
+      const order = pendingSubmission?.order || {
+        customerName,
+        phone,
+        address,
+        recipientName: checkoutData.recipientName || customerName,
+        recipientPhone: checkoutData.recipientPhone || phone,
+        customerIsRecipient: checkoutData.customerIsRecipient === true,
+        deliveryDate: checkoutData.deliveryDate,
+        deliveryTime: checkoutData.deliveryTime,
+        deliveryZoneId: checkoutData.deliveryZoneId,
+        deliveryProvince: checkoutData.deliveryProvince || "",
+        deliveryDistrict: checkoutData.deliveryDistrict || "",
+        greetingCard: checkoutData.greetingCard || "",
+        anonymousGreetingCard: checkoutData.anonymousGreetingCard === true,
+        giftWrap: checkoutData.giftWrap || "none",
+        orderNote: String(checkoutData.orderNote || "").trim(),
+        paymentMethod: checkoutData.paymentMethod,
+        promotionId: checkoutData.promotionId || "",
+        idempotencyKey: checkoutData.idempotencyKey,
+        items: Cart.map((item) => ({ id: item.id, productId: item.productId, customBouquetId: item.customBouquetId, size: item.size, color: item.color, cardMessage: item.cardMessage, personalNote: item.personalNote, quantity: Math.max(1, Number(item.quantity) || 1) }))
+      };
+
+      let orderId;
+      let paymentUrl = "";
+      orderSubmissionInProgress = true;
+      paymentButton.disabled = true;
+      try {
+        pendingSubmission = pendingSubmission || { order, totals: serverQuote.totals, cart: Cart };
+        FlowerSafeStorage.writeJson("flowerPendingOrder", pendingSubmission, { required: true, storage: "session" });
+        orderId = await window.FlowerOrderStore.create(pendingSubmission.order, pendingSubmission.totals);
+        if (checkoutData.paymentMethod === "vnpay") {
+          const payment = await window.FlowerOrderStore.createPaymentLink(orderId, checkoutData.paymentReference);
+          paymentUrl = payment.paymentUrl;
+        }
+      } catch (error) {
+        console.error("Không thể lưu đơn hàng tập trung:", error);
+        orderSubmissionInProgress = false;
+        if (["insufficient-stock", "product-unavailable", "price-changed", "invalid-checkout", "invalid-delivery-schedule", "delivery-zone-unavailable", "invalid-promotion", "invalid-custom-bouquet", "bouquet-quantity-limit", "bouquet-wrapping-unavailable", "note-too-long", "quantity-limit"].includes(error.code)) {
+          // The shop refused this request for good: forget it (so it is not resent as "pending"),
+          // keep the button locked and show the new prices or stock instead.
+          if (FlowerSafeStorage.remove("flowerPendingOrder", { storage: "session" })) pendingSubmission = null;
+          serverQuote = null;
+          paymentButton.disabled = true;
+          document.getElementById("retry-quote").hidden = false;
+          paymentNote.textContent = checkoutData.paymentMethod === "qr"
+            ? `Đơn chưa được tạo. ĐỪNG chuyển khoản: ${error.message}`
+            : `Đơn chưa được tạo: ${error.message}`;
+          alert(`Đơn chưa được tạo.\n\n${error.message}`);
+          void verifyOrderBeforeConfirmation({ keepNote: true });
+          return;
+        }
+        if (checkoutData.paymentMethod === "vnpay" && orderId) {
+          paymentButton.disabled = false;
+          paymentNote.textContent = `Đơn hàng đã được lưu nhưng chưa tạo được liên kết VNPay. Bấm nút để thử lại, đơn sẽ không bị tạo trùng. ${error.message || ""}`;
+          return;
+        }
+        // Network or server trouble: the same request can be sent again without a duplicate order.
+        paymentButton.disabled = false;
+        paymentNote.textContent = error.message || "Mất kết nối khi gửi đơn. Bấm xác nhận để thử lại cùng yêu cầu; giỏ hàng vẫn được giữ.";
+        return;
+      }
+
+      const cleanupSucceeded = ["cart", "flowerCheckout", "flowerSelectedPromotion", "flowerPaymentReference", "flowerPendingOrder"]
+        .map((key) => FlowerSafeStorage.remove(key))
+        .every(Boolean)
+        && ["flowerCheckout", "flowerPendingOrder"]
+          .map((key) => FlowerSafeStorage.remove(key, { storage: "session" }))
+          .every(Boolean);
+      const successMessage = checkoutData.paymentMethod === "qr"
+        ? "Đã nhận đơn hàng. Cửa hàng sẽ đối chiếu giao dịch trước khi xác nhận thanh toán."
+        : "Đặt hàng thành công! Đơn hàng đã được gửi tới cửa hàng.";
+      if (paymentUrl) {
+        window.location.assign(paymentUrl);
+        return;
+      }
+      alert(cleanupSucceeded
+        ? successMessage
+        : `${successMessage}\n\nĐơn đã được lưu, nhưng trình duyệt chưa xóa được giỏ hàng. Đừng gửi lại đơn này; hãy theo dõi mã đơn ở trang tiếp theo.`);
+      window.location.href = `./tracking.html?id=${encodeURIComponent(orderId)}`;
+    }
+
+    async function verifyOrderBeforeConfirmation({ keepNote = false } = {}) {
+      document.getElementById("retry-quote").hidden = true;
+      if (pendingSubmission?.order?.idempotencyKey === checkoutData?.idempotencyKey && pendingSubmission?.order) {
+        serverQuote = {
+          totals: pendingSubmission.totals,
+          deliveryZone: { id: pendingSubmission.order.deliveryZoneId }
+        };
+        reviewTotals.textContent = `Phí bó hoa: ${formatVnd(pendingSubmission.totals.wrappingFee || 0)} · Phí giao hàng: ${formatVnd(pendingSubmission.totals.shippingFee || 0)} · Tổng thanh toán: ${formatVnd(pendingSubmission.totals.total)}`;
+        paymentNote.textContent = "Lần gửi trước chưa nhận được kết quả. Bấm xác nhận để thử lại cùng yêu cầu, không tạo thêm đơn.";
+        paymentButton.disabled = false;
+        return;
+      }
+      paymentButton.disabled = true;
+      if (!Cart.length) {
+        paymentNote.textContent = "Giỏ hàng đang trống.";
+        return;
+      }
+      try {
+        serverQuote = await window.FlowerOrderStore.quote(
+          Cart.map((item) => ({ id: item.id, productId: item.productId, customBouquetId: item.customBouquetId, size: item.size, color: item.color, cardMessage: item.cardMessage, personalNote: item.personalNote, quantity: Math.max(1, Number(item.quantity) || 1) })),
+          checkoutData?.promotionId || "",
+          checkoutData?.deliveryZoneId || ""
+        );
+        serverQuote.items.forEach((quotedItem) => {
+          const cartItem = Cart.find((item) => String(item.id) === String(quotedItem.id));
+          if (!cartItem) return;
+          cartItem.title = quotedItem.title;
+          cartItem.image = quotedItem.image;
+          cartItem.price = quotedItem.price;
+        });
+        reviewTotals.textContent = `Tiền hàng ${formatVnd(serverQuote.totals.subtotal)} · Giảm ${formatVnd(serverQuote.totals.savings)} · Phí bó hoa ${formatVnd(serverQuote.totals.wrappingFee || 0)} · Phí giao hàng ${formatVnd(serverQuote.totals.shippingFee || 0)} · Tổng thanh toán ${formatVnd(serverQuote.totals.total)}`;
+        DisplayProduct();
+        const previousQuote = checkoutData?.quotedTotals;
+        const amountChanged = previousQuote && ["subtotal", "savings", "tax", "wrappingFee", "shippingFee", "total"].some(
+          (key) => Number(previousQuote[key] ?? 0) !== Number(serverQuote.totals[key] ?? 0)
+        );
+        const previousPrices = new Map((checkoutData?.quotedPrices || [])
+          .map((item) => [String(item.id), Number(item.price)]));
+        const itemPriceChanged = serverQuote.items.some((item) => previousPrices.has(String(item.id))
+          && previousPrices.get(String(item.id)) !== Number(item.price));
+        if (amountChanged || itemPriceChanged || (!previousQuote && ["qr", "vnpay"].includes(checkoutData?.paymentMethod))) {
+          const newTotal = formatVnd(serverQuote.totals.total);
+          if (!keepNote) {
+            paymentNote.textContent = checkoutData?.paymentMethod === "qr"
+              ? `Giá hoặc ưu đãi đã thay đổi từ lúc tạo mã QR (tổng mới ${newTotal}). ĐỪNG chuyển khoản theo mã cũ; hãy quay lại trang thanh toán để lấy mã QR mới.`
+              : checkoutData?.paymentMethod === "vnpay"
+                ? `Giá hoặc ưu đãi đã thay đổi (tổng mới ${newTotal}). Hãy quay lại trang thanh toán để xác nhận đơn với tổng tiền mới.`
+              : `Giá hoặc ưu đãi đã thay đổi (tổng mới ${newTotal}). Hãy quay lại trang thanh toán để kiểm tra trước khi đặt hàng.`;
+          }
+          paymentButton.disabled = true;
+          return;
+        }
+        if (keepNote) {
+          paymentButton.disabled = true;
+          return;
+        }
+        const amountText = formatVnd(serverQuote.totals.total);
+        paymentNote.textContent = checkoutData?.paymentMethod === "qr"
+          ? `Số tiền đã xác minh: ${amountText} · STK 1063118243 · DO BA THAI · Nội dung: ${checkoutData.paymentReference || "mã đơn của bạn"}. Cửa hàng sẽ đối chiếu giao dịch trước khi xác nhận thanh toán.`
+          : `Giá và tồn kho đã xác minh từ cửa hàng · Tổng tiền: ${amountText}`;
+        paymentButton.disabled = false;
+      } catch (error) {
+        console.error("Không xác minh được giá và tồn kho:", error);
+        document.getElementById("retry-quote").hidden = false;
+        if (!keepNote) {
+          const reason = error.message || "Không thể xác minh giá và tồn kho.";
+          paymentNote.textContent = checkoutData?.paymentMethod === "qr"
+            ? `ĐỪNG chuyển khoản: ${reason} Hãy quay lại trang thanh toán.`
+            : `${reason} Hãy quay lại trang thanh toán.`;
+        }
+        paymentButton.disabled = true;
+      }
+    }
+
+    document.querySelector(".placeorder > button").addEventListener("click", saveOrderToAdmin);
+
+    function DisplayProduct() {
+      CartContainer.innerHTML = "";
+      const cartTotal = document.getElementById("cartTotal");
+      if (cartTotal) cartTotal.textContent = FlowerSafeStorage.countCartUnits(Cart);
+
+      Cart.forEach((product) => {
+        let image = document.createElement("img");
+        let details = document.createElement("p");
+        let price = document.createElement("h3");
+        let card = document.createElement("div");
+        let quantity = document.createElement("span");
+
+        image.src = product.image;
+        const productQuantity = Math.max(1, Number(product.quantity) || 1);
+        details.textContent = (product.title || "Sản phẩm hoa") + (FlowerBouquetOptions.summary(product) ? " · " + FlowerBouquetOptions.summary(product) : "");
+        price.textContent = formatVnd(Number(product.price) * productQuantity);
+        quantity.textContent = `${productQuantity} sản phẩm`;
+
+        card.append(image, details, quantity, price);
+        CartContainer.append(card);
+      });
+    }
+
+    DisplayProduct();
+    void verifyOrderBeforeConfirmation();

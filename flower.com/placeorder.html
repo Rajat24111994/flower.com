@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+    <script src="./js/core/safe-storage.js?v=3"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="description" content="Xem xác nhận và hướng dẫn thanh toán đơn hàng Flowerflow.">
+  <link rel="icon" type="image/svg+xml" href="./favicon.svg">
+  <title>Xác nhận đơn hàng</title>
+  <link rel="stylesheet" href="./css/core/store-header.css?v=5">
+  <link rel="stylesheet" href="./css/order/cart.css?v=9">
+  <link rel="stylesheet" href="./css/core/accessibility.css?v=1">
+  <link rel="stylesheet" href="./css/core/store-footer.css?v=4">
+<link rel="stylesheet" href="./css/core/contact-tools.css?v=4">
+</head>
+
+<body>
+  <script src="./js/core/store-header.js?v=9"></script>
+
+  <main class="nav order-review-page">
+    <div id="product-container"></div>
+
+    <section class="order-review" aria-labelledby="order-review-title">
+      <h1 id="order-review-title">Kiểm tra thông tin giao hoa</h1>
+      <p class="order-review-empty" id="order-review-empty" hidden>Chưa có thông tin đơn hàng để xác nhận. Hãy quay lại trang thanh toán để nhập thông tin giao hàng và kiểm tra đơn của bạn.</p>
+      <dl id="order-review-details"></dl>
+      <div id="order-review-totals"></div>
+      <p class="order-review-vat">Giá sản phẩm và phí giao hàng đã gồm thuế VAT.</p>
+    </section>
+
+    <div class="placeorder">
+      <button type="button">Xác nhận đặt hàng</button>
+      <p id="payment-confirmation-note" role="status"></p>
+      <div><button type="button" id="retry-quote" hidden>Thử lại kiểm tra giá và tồn kho</button></div>
+      <a href="./checkout.html">Sửa thông tin hoặc giỏ hàng</a>
+    </div>
+  </main>
+
+  <script src="./js/core/store-footer.js?v=4"></script>
+  <script src="./js/catalog/bouquet-options.js?v=1"></script>
+  <script src="./js/core/currency.js?v=12"></script>
+  <script src="./js/order/order-store.js?v=25"></script>
+  <script src="./js/order/placeorder.js?v=1"></script>
+<script src="./js/core/contact-tools.js?v=1"></script>
+</body>
+</html>

@@ -1,0 +1,682 @@
+  const CartContainer = document.getElementById("product-container");
+  const checkoutForm = document.getElementById("checkout-form");
+  const checkoutMessage = document.getElementById("checkout-message");
+  FlowerSafeStorage.remove("flowerCheckout");
+  FlowerSafeStorage.remove("flowerPaymentReference");
+  const orderNoteInput = checkoutForm.querySelector('textarea[name="orderNote"]');
+  const orderNoteCounter = document.getElementById("order-note-counter");
+  const greetingCardInput = document.getElementById("greeting-card");
+  const greetingTemplateInput = document.getElementById("greeting-template");
+  const greetingCardCounter = document.getElementById("greeting-card-counter");
+  const selfRecipientInput = document.getElementById("customer-is-recipient");
+  const recipientFields = document.getElementById("recipient-fields");
+  const recipientNameInput = checkoutForm.querySelector('input[name="recipientName"]');
+  const recipientPhoneInput = checkoutForm.querySelector('input[name="recipientPhone"]');
+  const deliveryProvinceInput = document.getElementById("delivery-province");
+  const deliveryDistrictInput = document.getElementById("delivery-district");
+  const deliveryZoneMessage = document.getElementById("delivery-zone-message");
+  const deliveryScheduleMessage = document.getElementById("delivery-schedule-message");
+  const deliveryTimeInput = document.getElementById("delivery-time");
+  let deliveryZones = [];
+  let selectedDeliveryZoneId = "";
+  let deliveryZonesConfigured = false;
+  let deliveryZonesLoaded = false;
+  function updateOrderNoteCounter() {
+    const length = orderNoteInput.value.length;
+    orderNoteCounter.textContent = length >= 500 ? "500/500 ký tự · Đã đạt giới hạn" : `${length}/500 ký tự`;
+  }
+  orderNoteInput.addEventListener("input", updateOrderNoteCounter);
+  greetingCardInput.addEventListener("input", () => {
+    greetingCardCounter.textContent = `${greetingCardInput.value.length}/300 ký tự`;
+    greetingTemplateInput.value = "";
+  });
+  greetingTemplateInput.addEventListener("change", () => {
+    if (!greetingTemplateInput.value) return;
+    greetingCardInput.value = greetingTemplateInput.value;
+    greetingCardCounter.textContent = `${greetingCardInput.value.length}/300 ký tự`;
+  });
+  function syncRecipientFields() {
+    const isSelfRecipient = selfRecipientInput.checked;
+    recipientFields.hidden = isSelfRecipient;
+    recipientNameInput.required = false;
+    recipientPhoneInput.required = false;
+    if (isSelfRecipient) {
+      recipientNameInput.value = checkoutForm.elements.customerName.value;
+      recipientPhoneInput.value = checkoutForm.elements.phone.value;
+    }
+  }
+  selfRecipientInput.addEventListener("change", syncRecipientFields);
+  syncRecipientFields();
+  checkoutForm.elements.customerName.addEventListener("input", () => {
+    if (selfRecipientInput.checked) recipientNameInput.value = checkoutForm.elements.customerName.value;
+  });
+  checkoutForm.elements.phone.addEventListener("input", () => {
+    if (selfRecipientInput.checked) recipientPhoneInput.value = checkoutForm.elements.phone.value;
+  });
+  const promotionSelect = document.getElementById("promotion-select");
+  const promotionMessage = document.getElementById("promotion-message");
+  let Cart = FlowerSafeStorage.readJson("cart", {
+    fallback: [],
+    validate: (value) => Array.isArray(value)
+      && value.every((item) => item && typeof item === "object" && !Array.isArray(item) && item.id !== undefined)
+  });
+  // Same limit as the order API (api/orders.js MAX_QUANTITY_PER_PRODUCT).
+  const MAX_QUANTITY_PER_PRODUCT = 50;
+  const MAX_BOUQUET_STEMS = 50;
+  let serverQuote = null;
+  let quoteRequestId = 0;
+  let pendingPriceChanges = [];
+  let priceChangesConfirmed = false;
+  const paymentOnlinePanel = document.getElementById("payment-online-panel");
+  function createOrderRequestId() {
+    if (!window.crypto?.getRandomValues) {
+      throw new Error("Trình duyệt không hỗ trợ tạo mã đặt hàng an toàn. Hãy dùng HTTPS hoặc localhost.");
+    }
+    const bytes = new Uint8Array(16);
+    window.crypto.getRandomValues(bytes);
+    bytes[6] = (bytes[6] & 0x0f) | 0x40;
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+    const hex = Array.from(bytes, (value) => value.toString(16).padStart(2, "0")).join("");
+    return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+  }
+
+  let pendingOrder = FlowerSafeStorage.readJson("flowerPendingOrder", { fallback: null, storage: "session" });
+  if (!pendingOrder) {
+    pendingOrder = FlowerSafeStorage.readJson("flowerPendingOrder", { fallback: null });
+    if (pendingOrder) FlowerSafeStorage.writeJson("flowerPendingOrder", pendingOrder, { required: true, storage: "session" });
+  }
+  FlowerSafeStorage.remove("flowerPendingOrder");
+  if (pendingOrder?.order?.idempotencyKey) window.location.replace("./placeorder.html");
+  const orderRequestId = createOrderRequestId();
+  const paymentReference = `FF${orderRequestId.replaceAll("-", "").slice(0, 12).toUpperCase()}`;
+  const deliveryDateInput = document.getElementById("delivery-date");
+  const vnClock = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Ho_Chi_Minh",
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", hourCycle: "h23"
+  });
+  function getVietnamTime() {
+    const values = Object.fromEntries(vnClock.formatToParts(new Date()).map((part) => [part.type, part.value]));
+    return {
+      date: `${values.year}-${values.month}-${values.day}`,
+      hour: Number(values.hour),
+      minute: Number(values.minute)
+    };
+  }
+  function addDateDays(value, days) {
+    const date = new Date(`${value}T00:00:00Z`);
+    date.setUTCDate(date.getUTCDate() + days);
+    return date.toISOString().slice(0, 10);
+  }
+  function updateDeliveryAvailability() {
+    const now = getVietnamTime();
+    const minimumDate = now.hour >= 15 ? addDateDays(now.date, 1) : now.date;
+    deliveryDateInput.min = minimumDate;
+    if (!deliveryDateInput.value || deliveryDateInput.value < minimumDate) {
+      deliveryDateInput.value = minimumDate;
+    }
+    let remaining = 0;
+    [...deliveryTimeInput.options].slice(1).forEach((option) => {
+      const startHour = Number(option.value.slice(0, 2));
+      const hasStarted = deliveryDateInput.value === now.date && startHour <= now.hour;
+      option.hidden = hasStarted;
+      option.disabled = hasStarted;
+      if (!hasStarted) remaining += 1;
+    });
+    if (deliveryTimeInput.selectedOptions[0]?.disabled) deliveryTimeInput.value = "";
+    deliveryScheduleMessage.textContent = now.hour >= 15 && deliveryDateInput.value === minimumDate
+      ? "Đã qua 15:00 tại Việt Nam; ngày giao trong ngày không còn khả dụng."
+      : deliveryDateInput.value === now.date
+        ? "Đơn giao trong ngày cần được đặt trước 15:00 (giờ Việt Nam). Khung giờ đã bắt đầu sẽ không thể chọn."
+        : "Ngày giao phải từ hôm nay trở đi. Đơn giao trong ngày cần được đặt trước 15:00 (giờ Việt Nam).";
+    return remaining;
+  }
+  deliveryDateInput.addEventListener("change", updateDeliveryAvailability);
+  updateDeliveryAvailability();
+  window.setInterval(updateDeliveryAvailability, 60000);
+
+  function renderProvinceOptions() {
+    const previousProvince = deliveryProvinceInput.value;
+    const previousZoneId = selectedDeliveryZoneId || deliveryDistrictInput.value;
+    const provinces = [...new Set(deliveryZones.map((zone) => zone.province))]
+      .sort((left, right) => left.localeCompare(right, "vi"));
+    deliveryProvinceInput.replaceChildren(new Option(
+      provinces.length ? "Chọn tỉnh / thành phố" : "Chưa có khu vực giao hàng",
+      ""
+    ));
+    provinces.forEach((province) => deliveryProvinceInput.add(new Option(province, province)));
+    deliveryProvinceInput.disabled = provinces.length === 0;
+    deliveryDistrictInput.replaceChildren(new Option("Chọn tỉnh / thành phố trước", ""));
+    deliveryDistrictInput.disabled = true;
+    selectedDeliveryZoneId = "";
+    if (provinces.includes(previousProvince)) {
+      deliveryProvinceInput.value = previousProvince;
+      const districts = deliveryZones.filter((zone) => zone.province === previousProvince)
+        .sort((left, right) => left.district.localeCompare(right.district, "vi"));
+      deliveryDistrictInput.replaceChildren(new Option("Chọn quận / huyện", ""));
+      districts.forEach((zone) => deliveryDistrictInput.add(new Option(zone.district, zone.id)));
+      deliveryDistrictInput.disabled = false;
+      if (districts.some((zone) => zone.id === previousZoneId)) {
+        deliveryDistrictInput.value = previousZoneId;
+        selectedDeliveryZoneId = previousZoneId;
+      }
+    }
+
+    if (!deliveryZonesLoaded) {
+      deliveryZoneMessage.textContent = "Đang tải khu vực giao hàng…";
+    } else if (!deliveryZonesConfigured) {
+      deliveryZoneMessage.textContent = "Cửa hàng chưa cấu hình khu vực giao hàng. Vui lòng liên hệ cửa hàng; quản trị viên cần thêm tỉnh/thành, quận/huyện và phí trong mục “Giao hàng” trước khi nhận đơn.";
+    } else {
+      deliveryZoneMessage.textContent = "Chọn khu vực đã được cửa hàng cấu hình. Phí giao hàng sẽ được xác nhận từ hệ thống.";
+    }
+  }
+  deliveryProvinceInput.addEventListener("change", () => {
+    const districts = deliveryZones.filter((zone) => zone.province === deliveryProvinceInput.value);
+    deliveryDistrictInput.replaceChildren(new Option(
+      districts.length ? "Chọn quận / huyện" : "Chọn tỉnh / thành phố trước",
+      ""
+    ));
+    districts.sort((left, right) => left.district.localeCompare(right.district, "vi"))
+      .forEach((zone) => deliveryDistrictInput.add(new Option(zone.district, zone.id)));
+    deliveryDistrictInput.disabled = districts.length === 0;
+    selectedDeliveryZoneId = "";
+    void refreshServerQuote();
+  });
+  deliveryDistrictInput.addEventListener("change", () => {
+    selectedDeliveryZoneId = deliveryDistrictInput.value;
+    void refreshServerQuote();
+  });
+
+  function updatePaymentOnlinePanel() {
+    paymentOnlinePanel.hidden = checkoutForm.querySelector('input[name="paymentMethod"]:checked')?.value !== "vnpay";
+  }
+
+  checkoutForm.querySelectorAll('input[name="paymentMethod"]').forEach((input) => {
+    input.addEventListener("change", updatePaymentOnlinePanel);
+  });
+
+  function hasOverstockItem() {
+    return Cart.some((product) => {
+      const stock = Number(product.stockQuantity);
+      return Number.isFinite(stock) && stock >= 0
+        && FlowerBouquetOptions.demand(Cart, product.productId ?? product.id) > stock;
+    });
+  }
+
+  // The promotion that saves the customer the most on the current cart, or "" when none applies.
+  function getBestPromotionId(availablePromotions) {
+    let bestId = "";
+    let bestSavings = 0;
+    availablePromotions.forEach((promotion) => {
+      const { savings } = calculateCartTotals(Cart, promotion.id);
+      if (savings > bestSavings) {
+        bestSavings = savings;
+        bestId = String(promotion.id);
+      }
+    });
+    return bestId;
+  }
+
+  function renderPromotionOptions() {
+    const availablePromotions = getAvailableCartPromotions(Cart);
+    // Only one promotion applies per order: always start from the one that saves the most.
+    // The customer can still pick another one until the cart changes.
+    const bestPromotionId = getBestPromotionId(availablePromotions);
+    promotionSelect.replaceChildren(new Option("Không áp dụng ưu đãi", ""));
+
+    availablePromotions.forEach((promotion) => {
+      const isBest = String(promotion.id) === bestPromotionId;
+      promotionSelect.add(new Option(
+        `${promotion.name} · Giảm ${Number(promotion.discountPercent)}%${promotionAppliesToAllProducts(promotion) ? " · Tất cả hoa" : ""}${isBest ? " · Tiết kiệm nhất" : ""}`,
+        String(promotion.id)
+      ));
+    });
+
+    promotionSelect.value = bestPromotionId;
+    if (bestPromotionId) {
+      FlowerSafeStorage.writeText("flowerSelectedPromotion", bestPromotionId);
+    } else {
+      FlowerSafeStorage.remove("flowerSelectedPromotion");
+    }
+    promotionMessage.textContent = bestPromotionId
+      ? "Đã tự áp dụng ưu đãi giảm nhiều nhất cho giỏ hàng của bạn. Mỗi đơn áp dụng một ưu đãi."
+      : availablePromotions.length
+        ? "Ưu đãi chỉ áp dụng cho những sản phẩm được chọn trong chương trình."
+        : "Hiện không có ưu đãi đang áp dụng cho sản phẩm trong giỏ hàng.";
+  }
+
+  promotionSelect.addEventListener("change", () => {
+    if (promotionSelect.value) {
+      FlowerSafeStorage.writeText("flowerSelectedPromotion", promotionSelect.value);
+    } else {
+      FlowerSafeStorage.remove("flowerSelectedPromotion");
+    }
+    void refreshServerQuote();
+  });
+
+  function saveCart(nextCart) {
+    try {
+      FlowerSafeStorage.writeJson("cart", nextCart, { required: true });
+      Cart = nextCart;
+      DisplayProduct();
+    } catch (error) {
+      console.error("Không thể lưu giỏ hàng:", error);
+      checkoutMessage.textContent = "Chưa thể lưu thay đổi giỏ hàng. Hãy kiểm tra dung lượng hoặc quyền lưu trữ của trình duyệt rồi thử lại.";
+    }
+  }
+
+  function updatePriceChangeConfirmation() {
+    const panel = document.getElementById("price-change-confirmation");
+    const details = document.getElementById("price-change-details");
+    const confirmButton = document.getElementById("confirm-price-changes");
+    const submitButton = checkoutForm.querySelector(".checkout-submit");
+    panel.hidden = pendingPriceChanges.length === 0;
+    if (pendingPriceChanges.length) {
+      details.textContent = priceChangesConfirmed
+        ? "Bạn đã xác nhận mức giá mới cho các sản phẩm trong giỏ."
+        : `Giá bán đã thay đổi: ${pendingPriceChanges.map((item) => `${item.title}: ${formatVnd(item.oldPrice)} → ${formatVnd(item.newPrice)}`).join("; ")}. Vui lòng xác nhận giá mới trước khi đặt hàng.`;
+      confirmButton.hidden = priceChangesConfirmed;
+    }
+    submitButton.disabled = !serverQuote || !selectedDeliveryZoneId || !deliveryZonesLoaded
+      || !deliveryZonesConfigured || (pendingPriceChanges.length > 0 && !priceChangesConfirmed);
+  }
+
+  function DisplayProduct({ refreshQuote = true } = {}) {
+    CartContainer.innerHTML = "";
+    document.getElementById("checkout-item-count").textContent = Cart.reduce(
+      (count, product) => count + Math.max(1, Number(product.quantity) || 1),
+      0
+    );
+
+    const bouquetNumbers = new Map();
+    Cart.forEach((product) => {
+      if (product.customBouquetId && !bouquetNumbers.has(product.customBouquetId)) {
+        bouquetNumbers.set(product.customBouquetId, bouquetNumbers.size + 1);
+      }
+      const itemQuantity = Math.max(1, Number(product.quantity) || 1);
+      const card = document.createElement("article");
+      const image = document.createElement("img");
+      const details = document.createElement("div");
+      const name = document.createElement("h3");
+      const unitPrice = document.createElement("p");
+      const controls = document.createElement("div");
+      const decrease = document.createElement("button");
+      const quantity = document.createElement("span");
+      const increase = document.createElement("button");
+      const lineTotal = document.createElement("strong");
+      const remove = document.createElement("button");
+      const stock = Number(product.stockQuantity);
+      const hasStockLimit = Number.isFinite(stock) && stock >= 0;
+      const requestedStock = FlowerBouquetOptions.demand(Cart, product.productId ?? product.id);
+      const requestedBouquetStems = product.customBouquetId
+        ? Cart.filter((item) => item.customBouquetId === product.customBouquetId)
+          .reduce((sum, item) => sum + Math.max(1, Number(item.quantity) || 1), 0)
+        : 0;
+      const exceedsStock = hasStockLimit && requestedStock > stock;
+
+      card.className = "checkout-item";
+      image.src = product.image || "";
+      image.alt = product.title || "Sản phẩm hoa";
+      image.loading = "lazy";
+      name.textContent = product.title || "Sản phẩm hoa";
+      unitPrice.className = "checkout-unit-price";
+      unitPrice.textContent = `${formatVnd(product.price)} / ${product.saleType === "flower" ? "cành" : "bó"}`;
+      details.className = "checkout-item-details";
+      controls.className = "checkout-quantity";
+      decrease.type = "button";
+      decrease.className = "quantity-button";
+      decrease.textContent = "−";
+      decrease.setAttribute("aria-label", `Giảm số lượng ${name.textContent}`);
+      decrease.disabled = itemQuantity <= 1;
+      quantity.textContent = itemQuantity;
+      increase.type = "button";
+      increase.className = "quantity-button";
+      increase.textContent = "+";
+      increase.setAttribute("aria-label", `Tăng số lượng ${name.textContent}`);
+      increase.disabled = itemQuantity >= MAX_QUANTITY_PER_PRODUCT
+        || (hasStockLimit && requestedStock >= stock)
+        || (product.customBouquetId && requestedBouquetStems >= MAX_BOUQUET_STEMS);
+      lineTotal.className = "checkout-item-total";
+      lineTotal.textContent = formatVnd(Number(product.price) * itemQuantity);
+      remove.type = "button";
+      remove.className = "checkout-remove";
+      remove.textContent = "Xóa";
+
+      decrease.addEventListener("click", () => {
+        saveCart(Cart.map((item) => item.id === product.id
+          ? { ...item, quantity: itemQuantity - 1 }
+          : item));
+      });
+      increase.addEventListener("click", () => {
+        if (product.customBouquetId && requestedBouquetStems >= MAX_BOUQUET_STEMS) {
+          checkoutMessage.textContent = `Mỗi bó tùy chỉnh tối đa ${MAX_BOUQUET_STEMS} cành.`;
+          return;
+        }
+        if (itemQuantity >= MAX_QUANTITY_PER_PRODUCT) {
+          checkoutMessage.textContent = `Mỗi lựa chọn bó hoa đặt tối đa ${MAX_QUANTITY_PER_PRODUCT} bó.`;
+          return;
+        }
+        if (hasStockLimit && requestedStock >= stock) {
+          checkoutMessage.textContent = `Chỉ còn ${stock} sản phẩm trong kho.`;
+          return;
+        }
+        saveCart(Cart.map((item) => item.id === product.id
+          ? { ...item, quantity: itemQuantity + 1 }
+          : item));
+      });
+      remove.addEventListener("click", () => {
+        saveCart(Cart.filter((item) => item.id !== product.id));
+      });
+
+      controls.append(decrease, quantity, increase, remove);
+      details.append(name, unitPrice);
+      const selectionSummary = document.createElement("p");
+      selectionSummary.className = "bouquet-line-summary";
+      const optionSummary = FlowerBouquetOptions.summary(product);
+      selectionSummary.textContent = product.customBouquetId
+        ? `Bó tùy chỉnh ${bouquetNumbers.get(product.customBouquetId)} · ${optionSummary}`
+        : optionSummary;
+      details.append(selectionSummary);
+      if (hasStockLimit) {
+        const stockMessage = document.createElement("p");
+        stockMessage.className = "checkout-stock";
+        stockMessage.textContent = exceedsStock
+          ? `Số lượng trong giỏ vượt tồn kho (${stock}).`
+          : `Tồn kho: ${stock}`;
+        details.append(stockMessage);
+      }
+      details.append(controls);
+      card.append(image, details, lineTotal);
+      CartContainer.append(card);
+    });
+
+    const isCartEmpty = Cart.length === 0;
+    document.getElementById("checkout-empty").hidden = !isCartEmpty;
+    const overstocked = hasOverstockItem();
+    checkoutForm.querySelector(".checkout-submit").disabled = isCartEmpty || overstocked;
+    renderPromotionOptions();
+    if (overstocked) {
+      checkoutMessage.textContent = "Giảm số lượng sản phẩm vượt tồn kho trước khi đặt hàng.";
+    } else if (checkoutMessage.textContent.includes("tồn kho")) {
+      checkoutMessage.textContent = "";
+    }
+    renderCartSummary(Cart);
+    updatePaymentOnlinePanel();
+    const cartTotal = document.getElementById("cartTotal");
+    if (cartTotal) cartTotal.textContent = FlowerSafeStorage.countCartUnits(Cart);
+    if (refreshQuote) void refreshServerQuote();
+  }
+
+  document.getElementById("retry-quote").addEventListener("click", refreshServerQuote);
+  async function refreshServerQuote() {
+    document.getElementById("retry-quote").hidden = true;
+    const requestId = ++quoteRequestId;
+    serverQuote = null;
+    updatePaymentOnlinePanel();
+    const submitButton = checkoutForm.querySelector(".checkout-submit");
+    submitButton.disabled = true;
+    if (!Cart.length) {
+      renderCartSummary(Cart);
+      checkoutMessage.textContent = "Giỏ hàng đang trống.";
+      return;
+    }
+
+    try {
+      const quote = await window.FlowerOrderStore.quote(
+        Cart.map((item) => ({ id: item.id, productId: item.productId, customBouquetId: item.customBouquetId, size: item.size, color: item.color, cardMessage: item.cardMessage, personalNote: item.personalNote, quantity: Math.max(1, Number(item.quantity) || 1) })),
+        promotionSelect.value,
+        selectedDeliveryZoneId
+      );
+      if (requestId !== quoteRequestId) return;
+      serverQuote = quote;
+      const currentCartIds = new Set(Cart.map((item) => String(item.id)));
+      const changesById = new Map(pendingPriceChanges
+        .filter((item) => currentCartIds.has(item.id))
+        .map((item) => [item.id, item]));
+      let foundNewPriceChange = false;
+      quote.items.forEach((quotedItem) => {
+        const cartItem = Cart.find((item) => String(item.id) === String(quotedItem.id));
+        if (cartItem) {
+          const previousPrice = Number(cartItem.price);
+          const id = String(quotedItem.id);
+          const priorChange = changesById.get(id);
+          if (priorChange) {
+            if (quotedItem.price === priorChange.oldPrice) {
+              changesById.delete(id);
+            } else {
+              if (previousPrice !== quotedItem.price) foundNewPriceChange = true;
+              changesById.set(id, {
+                ...priorChange,
+                title: quotedItem.title || cartItem.title || priorChange.title,
+                newPrice: quotedItem.price
+              });
+            }
+          } else if (Number.isSafeInteger(previousPrice) && previousPrice > 0 && previousPrice !== quotedItem.price) {
+            foundNewPriceChange = true;
+            changesById.set(id, {
+              id,
+              title: quotedItem.title || cartItem.title || "Sản phẩm",
+              oldPrice: previousPrice,
+              newPrice: quotedItem.price
+            });
+          }
+          cartItem.price = quotedItem.price;
+          cartItem.title = quotedItem.title;
+          cartItem.image = quotedItem.image;
+          cartItem.saleType = quotedItem.saleType;
+          cartItem.priceUpdatedAt = quotedItem.priceUpdatedAt;
+          if (Number.isInteger(quotedItem.stock)) cartItem.stockQuantity = quotedItem.stock;
+        }
+      });
+      pendingPriceChanges = [...changesById.values()];
+      if (foundNewPriceChange) priceChangesConfirmed = false;
+      FlowerSafeStorage.writeJson("cart", Cart);
+      const totals = quote.totals;
+      document.getElementById("originalprice").textContent = formatVnd(totals.subtotal);
+      document.getElementById("savings").textContent = formatVnd(totals.savings);
+      document.getElementById("bouquetWrappingCharge").textContent = formatVnd(totals.wrappingFee || 0);
+      document.getElementById("deliveryCharge").textContent = quote.deliveryZone
+        ? formatVnd(totals.shippingFee || 0)
+        : "Chọn khu vực";
+      document.getElementById("total").textContent = formatVnd(totals.total);
+      Cart.forEach((item, index) => {
+        const card = CartContainer.children[index];
+        if (!card) return;
+        const productName = card.querySelector("h3");
+        const productImage = card.querySelector("img");
+        if (productName) productName.textContent = item.title || "Sản phẩm hoa";
+        if (productImage) {
+          productImage.src = item.image || "";
+          productImage.alt = item.title || "Sản phẩm hoa";
+        }
+        card.querySelector(".checkout-unit-price").textContent = `${formatVnd(item.price)} / ${item.saleType === "flower" ? "cành" : "bó"}`;
+        card.querySelector(".checkout-item-total").textContent = formatVnd(item.price * Math.max(1, Number(item.quantity) || 1));
+        const stockMessage = card.querySelector(".checkout-stock");
+        if (stockMessage && Number.isInteger(item.stockQuantity)) stockMessage.textContent = `Tồn kho: ${item.stockQuantity}`;
+      });
+      checkoutMessage.textContent = pendingPriceChanges.length
+        ? "Giá, ưu đãi và tồn kho đã được xác minh. Cần xác nhận thay đổi giá trước khi đặt hàng."
+        : "Giá, ưu đãi và tồn kho đã được xác minh từ cửa hàng.";
+      updatePriceChangeConfirmation();
+      updatePaymentOnlinePanel();
+    } catch (error) {
+      if (requestId !== quoteRequestId) return;
+      document.getElementById("retry-quote").hidden = false;
+      if (error.code === "insufficient-stock" && error.items?.length) {
+        // Show the real stock on each line so the customer sees which product to reduce.
+        error.items.forEach((shortage) => {
+          const cartItem = Cart.find((item) => String(item.id) === String(shortage.id));
+          if (cartItem) cartItem.stockQuantity = Math.max(0, Number(shortage.available) || 0);
+        });
+        FlowerSafeStorage.writeJson("cart", Cart);
+        DisplayProduct({ refreshQuote: false });
+      }
+
+      document.getElementById("confirm-price-changes").addEventListener("click", () => {
+        if (!pendingPriceChanges.length || !serverQuote) return;
+        priceChangesConfirmed = true;
+        updatePriceChangeConfirmation();
+      });
+      checkoutMessage.textContent = error.message || "Không thể xác minh giá và tồn kho. Vui lòng thử lại.";
+      renderCartSummary(Cart);
+      updatePaymentOnlinePanel();
+    }
+  }
+
+  // Zones and promotions load together and the page is drawn once, so a customer who fills the
+  // form quickly (or lets the browser autofill it) keeps what they chose. The form is marked
+  // data-ready when this is done (browser tests wait for it).
+  async function initializeCheckout() {
+    const [zonesResult, promotionsResult] = await Promise.allSettled([
+      window.FlowerOrderStore.getDeliveryZones(),
+      window.FlowerOrderStore.getPromotions()
+    ]);
+    if (zonesResult.status === "fulfilled") {
+      const result = zonesResult.value;
+      deliveryZones = Array.isArray(result.zones) ? result.zones.filter((zone) => zone?.enabled === true) : [];
+      deliveryZonesConfigured = result.configured === true && deliveryZones.length > 0;
+      deliveryZonesLoaded = true;
+      renderProvinceOptions();
+    } else {
+      deliveryZones = [];
+      deliveryZonesConfigured = false;
+      deliveryZonesLoaded = true;
+      renderProvinceOptions();
+      deliveryZoneMessage.textContent = zonesResult.reason?.message || "Chưa thể tải khu vực giao hàng. Vui lòng thử lại sau.";
+      console.error("Không thể tải khu vực giao hàng:", zonesResult.reason);
+    }
+    if (promotionsResult.status === "fulfilled") {
+      setTrustedPromotions(promotionsResult.value);
+    } else {
+      console.error("Không thể tải ưu đãi từ Firestore:", promotionsResult.reason);
+      setTrustedPromotions([]);
+    }
+    renderPromotionOptions();
+    DisplayProduct();
+    checkoutForm.dataset.ready = "true";
+  }
+
+  // Checks what the server will check, but next to the field and in Vietnamese, so the customer
+  // does not learn about a too-long name or an all-spaces address only on the next page.
+  const PHONE_ALLOWED = /^\+?[0-9 .-]+$/;
+  function phoneError(value, required) {
+    const text = value.trim();
+    if (!text) return required ? "Vui lòng nhập số điện thoại." : "";
+    const digits = text.replace(/\D/g, "");
+    if (!PHONE_ALLOWED.test(text) || digits.length < 8 || digits.length > 15) {
+      return "Số điện thoại gồm 8–15 chữ số, có thể có dấu cách hoặc dấu chấm (ví dụ 0912 345 678).";
+    }
+    return "";
+  }
+
+  function validateCheckoutFields() {
+    const field = (name) => checkoutForm.elements[name];
+    const checks = [
+      [field("customerName"), field("customerName").value.trim() ? "" : "Vui lòng nhập họ và tên."],
+      [field("phone"), phoneError(field("phone").value, true)],
+      [field("address"), field("address").value.trim() ? "" : "Vui lòng nhập địa chỉ giao hàng."],
+      [field("recipientPhone"), phoneError(field("recipientPhone").value, false)]
+    ];
+    checks.forEach(([input, message]) => input.setCustomValidity(message));
+    const firstInvalid = checks.find(([, message]) => message);
+    if (firstInvalid) {
+      firstInvalid[0].reportValidity();
+      checkoutMessage.textContent = firstInvalid[1];
+      return false;
+    }
+    return true;
+  }
+
+  ["customerName", "phone", "address", "recipientPhone"].forEach((name) => {
+    checkoutForm.elements[name].addEventListener("input", (event) => event.target.setCustomValidity(""));
+  });
+
+  checkoutForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    updateDeliveryAvailability();
+    if (!Cart.length) {
+      checkoutMessage.textContent = "Giỏ hàng đang trống. Hãy chọn hoa trước khi đặt hàng.";
+      return;
+    }
+    if (hasOverstockItem()) {
+      checkoutMessage.textContent = "Giảm số lượng sản phẩm vượt tồn kho trước khi đặt hàng.";
+      return;
+    }
+    if (!serverQuote) {
+      checkoutMessage.textContent = "Chờ xác minh giá và tồn kho từ cửa hàng trước khi đặt hàng.";
+      return;
+    }
+    if (pendingPriceChanges.length && !priceChangesConfirmed) {
+      checkoutMessage.textContent = "Vui lòng xác nhận giá bán mới trước khi đặt hàng.";
+      updatePriceChangeConfirmation();
+      return;
+    }
+    if (!deliveryZonesLoaded || !deliveryZonesConfigured || !selectedDeliveryZoneId) {
+      checkoutMessage.textContent = "Chọn khu vực giao hàng đã được cửa hàng cấu hình trước khi đặt hàng.";
+      deliveryProvinceInput.focus();
+      return;
+    }
+    if (deliveryDistrictInput.selectedOptions[0]?.disabled
+      || serverQuote.deliveryZone?.id !== selectedDeliveryZoneId) {
+      checkoutMessage.textContent = "Hãy chọn lại khu vực để xác nhận phí giao hàng từ cửa hàng.";
+      return;
+    }
+    if (!deliveryTimeInput.value || deliveryTimeInput.selectedOptions[0]?.disabled) {
+      checkoutMessage.textContent = "Khung giờ giao đã bắt đầu hoặc không còn khả dụng. Hãy chọn lại.";
+      deliveryTimeInput.focus();
+      return;
+    }
+
+    if (!validateCheckoutFields()) return;
+
+    const formData = new FormData(event.currentTarget);
+    const checkout = {
+      customerName: String(formData.get("customerName") || "").trim(),
+      address: String(formData.get("address") || "").trim(),
+      phone: String(formData.get("phone") || "").trim(),
+      paymentMethod: formData.get("paymentMethod"),
+      paymentReference,
+      idempotencyKey: orderRequestId,
+      promotionId: promotionSelect.value,
+      quotedTotals: serverQuote.totals,
+      quotedPrices: serverQuote.items.map((item) => ({ id: String(item.id), price: item.price })),
+      recipientName: String(formData.get("recipientName") || "").trim(),
+      recipientPhone: String(formData.get("recipientPhone") || "").trim(),
+      customerIsRecipient: formData.get("customerIsRecipient") === "on",
+      deliveryDate: String(formData.get("deliveryDate") || ""),
+      deliveryTime: String(formData.get("deliveryTime") || ""),
+      deliveryZoneId: selectedDeliveryZoneId,
+      deliveryProvince: deliveryProvinceInput.value,
+      deliveryDistrict: deliveryDistrictInput.selectedOptions[0]?.textContent || "",
+      greetingCard: String(formData.get("greetingCard") || "").trim(),
+      anonymousGreetingCard: formData.get("anonymousGreetingCard") === "on",
+      giftWrap: String(formData.get("giftWrap") || "none"),
+      orderNote: String(formData.get("orderNote") || "").trim()
+    };
+
+    try {
+      FlowerSafeStorage.remove("flowerCheckout");
+      FlowerSafeStorage.remove("flowerPaymentReference");
+      FlowerSafeStorage.writeJson("flowerCheckout", checkout, { required: true, storage: "session" });
+      window.location.assign("./placeorder.html");
+    } catch (error) {
+      console.error("Không thể lưu thông tin thanh toán:", error);
+      checkoutMessage.textContent = "Không thể lưu thông tin đặt hàng. Vui lòng thử lại.";
+    }
+  });
+
+  function refreshCartFromStorage() {
+    Cart = FlowerSafeStorage.readJson("cart", {
+      fallback: [],
+      validate: (value) => Array.isArray(value)
+        && value.every((item) => item && typeof item === "object" && !Array.isArray(item) && item.id !== undefined)
+    });
+    DisplayProduct();
+  }
+  window.addEventListener("storage", (event) => {
+    if (event.key === "cart") refreshCartFromStorage();
+  });
+  window.addEventListener("flowerstoragechange", (event) => {
+    if (event.detail?.source === "sync" && event.detail.key === "cart") refreshCartFromStorage();
+  });
+  void initializeCheckout();
