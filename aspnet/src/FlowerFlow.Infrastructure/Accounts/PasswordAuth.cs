@@ -92,7 +92,9 @@ public sealed class PasswordAuth : IPasswordAuth
             var details = Js.Get(Js.Get(data, "error"), "details");
             var blocked = status == HttpStatusCode.Forbidden && details.ValueKind == JsonValueKind.Array && details.EnumerateArray().Any(detail =>
                 Js.Get(detail, "reason").ValueKind == JsonValueKind.String && Js.Get(detail, "reason").GetString() == "API_KEY_SERVICE_BLOCKED"
-                && Regex.IsMatch(Js.StringOrEmpty(Js.Get(Js.Get(detail, "metadata"), "method")), @"(?:SignInWithPassword|VerifyPassword|verifyPassword)$"));
+                // Google reports the blocked method as metadata.methodName; keep the older metadata.method.
+                && new[] { "methodName", "method" }.Select(name => Js.StringOrEmpty(Js.Get(Js.Get(detail, "metadata"), name))).FirstOrDefault(value => value.Length > 0) is { } method
+                && Regex.IsMatch(method, @"(?:SignInWithPassword|VerifyPassword|verifyPassword)$"));
             if (!blocked) throw new AuthUnavailableException();
         }
     }
@@ -112,7 +114,10 @@ public sealed class PasswordAuth : IPasswordAuth
             if (!Js.IsString(uid) || uid.GetString()!.Length == 0 || !double.IsFinite(version)) throw new AuthUnavailableException();
             return new(uid.GetString()!, uid.GetString(), version, Js.IsTrue(Js.Get(user, "disabled")));
         }
-        var secret = _environment("FIREBASE_SERVICE_ACCOUNT_JSON"); if (string.IsNullOrEmpty(secret)) throw new AuthUnavailableException();
+        // Same service-account source as the Admin SDK: inline JSON first, then the Render Secret File.
+        string secret;
+        try { secret = FirebaseServiceAccount.ReadJson(_environment); } catch { throw new AuthUnavailableException(); }
+        if (string.IsNullOrEmpty(secret)) throw new AuthUnavailableException();
         return new("unknown-" + Convert.ToHexStringLower(HMACSHA256.HashData(Encoding.UTF8.GetBytes(secret), Encoding.UTF8.GetBytes(email))), null, 0);
     }
     public async Task<bool> VerifyPasswordAsync(string email, string password, PasswordAccount account, CancellationToken cancellationToken = default)

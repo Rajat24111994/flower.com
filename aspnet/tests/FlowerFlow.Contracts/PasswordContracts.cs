@@ -56,6 +56,20 @@ static class PasswordContracts
         var unknown = await provider.LookupAsync("user@example.invalid");
         AdditionalContracts.Require(unknown.Uid is null && unknown.Key == "unknown-" + Convert.ToHexStringLower(HMACSHA256.HashData(
             Encoding.UTF8.GetBytes("test-hmac-secret"), Encoding.UTF8.GetBytes("user@example.invalid"))), "Unknown account HMAC changed");
+        // Render supplies the service account as a Secret File; unknown accounts must still get the HMAC key, not an outage.
+        var secretFile = Path.Combine(Path.GetTempPath(), "flowerflow-sa-" + Guid.NewGuid().ToString("N") + ".json");
+        await File.WriteAllTextAsync(secretFile, "file-hmac-secret");
+        try
+        {
+            env.Remove("FIREBASE_SERVICE_ACCOUNT_JSON"); env["FIREBASE_SERVICE_ACCOUNT_FILE"] = secretFile;
+            var fileProvider = new PasswordAuth(http, accounts, key, false, name => env.GetValueOrDefault(name), () => now);
+            var fromFile = await fileProvider.LookupAsync("user@example.invalid");
+            AdditionalContracts.Require(fromFile.Uid is null && fromFile.Key == "unknown-" + Convert.ToHexStringLower(HMACSHA256.HashData(
+                Encoding.UTF8.GetBytes("file-hmac-secret"), Encoding.UTF8.GetBytes("user@example.invalid"))), "Unknown account HMAC ignored the service-account file");
+            env["FIREBASE_SERVICE_ACCOUNT_FILE"] = secretFile + ".missing";
+            await Unavailable(() => fileProvider.LookupAsync("user@example.invalid"));
+        }
+        finally { File.Delete(secretFile); env.Remove("FIREBASE_SERVICE_ACCOUNT_FILE"); env["FIREBASE_SERVICE_ACCOUNT_JSON"] = "test-hmac-secret"; }
         lookupJson = "{\"users\":{}}"; await Unavailable(() => provider.LookupAsync("user@example.invalid"));
 
         foreach (var values in new[]
@@ -71,6 +85,12 @@ static class PasswordContracts
         }
         try { _ = new PasswordAuth(http, accounts, key, true, name => name == "FIREBASE_AUTH_EMULATOR_HOST" ? "127.0.0.1:9099" : null); throw new Exception("Production emulator accepted"); }
         catch (AuthUnavailableException) { }
+        // Google's current error shape names the blocked method in metadata.methodName.
+        var currentKey = "current-" + Guid.NewGuid().ToString("N");
+        using var currentHttp = new HttpClient(new StubHttpHandler(_ => Task.FromResult(Response(HttpStatusCode.Forbidden,
+            "{\"error\":{\"status\":\"PERMISSION_DENIED\",\"details\":[{\"@type\":\"type.googleapis.com/google.rpc.ErrorInfo\",\"reason\":\"API_KEY_SERVICE_BLOCKED\",\"metadata\":{\"service\":\"identitytoolkit.googleapis.com\",\"methodName\":\"google.cloud.identitytoolkit.v1.AuthenticationService.SignInWithPassword\"}},{\"@type\":\"type.googleapis.com/google.rpc.LocalizedMessage\"}]}}"))));
+        await new PasswordAuth(currentHttp, accounts, currentKey, false,
+            name => name == "FIREBASE_AUTH_PUBLIC_API_KEY" ? currentKey : name == "FIREBASE_AUTH_SERVER_API_KEY" ? "server" : null).AssertReadyAsync();
         var blockedKey = "denied-" + Guid.NewGuid().ToString("N"); var badProbes = 0;
         using var badHttp = new HttpClient(new StubHttpHandler(_ => { badProbes++; return Task.FromResult(Response(HttpStatusCode.Forbidden,
             "{\"error\":{\"details\":[{\"reason\":\"API_KEY_HTTP_REFERRER_BLOCKED\"}]}}")); }));

@@ -54,7 +54,8 @@ async function assertPublicPasswordSignInBlocked() {
             });
             const blocked = response.status === 403 && data.error?.details?.some((detail) =>
                 detail.reason === "API_KEY_SERVICE_BLOCKED"
-                && /(?:SignInWithPassword|VerifyPassword|verifyPassword)$/.test(detail.metadata?.method || ""));
+                // Google reports the blocked method as metadata.methodName; keep the older metadata.method.
+                && /(?:SignInWithPassword|VerifyPassword|verifyPassword)$/.test(detail.metadata?.methodName || detail.metadata?.method || ""));
             if (!blocked) throw unavailable();
         }
     })();
