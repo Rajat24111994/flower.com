@@ -28,6 +28,33 @@ public sealed class ApiTests
     }
 
     [Fact]
+    public async Task OpenApi_distinguishes_public_actions_from_protected_actions()
+    {
+        await using var factory = new Factory(); using var client = factory.CreateClient();
+        var specification = await client.GetFromJsonAsync<JsonElement>("/openapi/v1.json");
+        var paths = specification.GetProperty("paths");
+        Assert.Equal(0, paths.GetProperty("/api/v1/products").GetProperty("get").GetProperty("security").GetArrayLength());
+        Assert.Equal(0, paths.GetProperty("/api/v1/orders/{orderId}/payments").GetProperty("post").GetProperty("security").GetArrayLength());
+        Assert.Equal(1, specification.GetProperty("security").GetArrayLength());
+        var protectedAction = paths.GetProperty("/api/v1/products").GetProperty("post");
+        Assert.False(protectedAction.TryGetProperty("security", out var security) && security.GetArrayLength() == 0);
+    }
+
+    [Fact]
+    public async Task Authentication_and_routing_errors_use_structured_problem_details()
+    {
+        await using var factory = new Factory(); using var client = factory.CreateClient();
+        using var unauthorized = await client.GetAsync("/api/v1/cart");
+        Assert.Equal(HttpStatusCode.Unauthorized, unauthorized.StatusCode);
+        var authProblem = await unauthorized.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("unauthenticated", authProblem.GetProperty("code").GetString());
+        Assert.True(authProblem.TryGetProperty("traceId", out _));
+        using var missing = await client.GetAsync("/api/v1/unknown-resource");
+        Assert.Equal(HttpStatusCode.NotFound, missing.StatusCode);
+        Assert.Equal("not-found", (await missing.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("code").GetString());
+    }
+
+    [Fact]
     public async Task Anonymous_and_customer_cannot_write_and_admin_cannot_set_flower_price()
     {
         await using var factory = new Factory(); using var client = factory.CreateClient();

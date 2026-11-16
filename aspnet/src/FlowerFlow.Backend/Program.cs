@@ -5,6 +5,7 @@ using FlowerFlow.InMemory;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.OpenApi;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Logging.ClearProviders();
@@ -48,30 +49,44 @@ builder.Services.AddControllers().ConfigureApiBehaviorOptions(options =>
 builder.Services.AddProblemDetails(options => options.CustomizeProblemDetails = context =>
     context.ProblemDetails.Extensions["traceId"] = context.HttpContext.TraceIdentifier);
 builder.Services.AddExceptionHandler<ApiExceptionHandler>();
-builder.Services.AddOpenApi(options => options.AddDocumentTransformer((document, _, _) =>
+builder.Services.AddOpenApi(options =>
 {
-    document.Info = new OpenApiInfo { Title = "FlowerFlow independent backend", Version = "v1",
-        Description = "In-memory data. Development identities only. Existing website and Firebase are unchanged." };
-    document.Components ??= new();
-    document.Components.SecuritySchemes ??= new Dictionary<string, IOpenApiSecurityScheme>();
-    document.Components.SecuritySchemes["DevelopmentUser"] = new OpenApiSecurityScheme
+    options.AddDocumentTransformer((document, _, _) =>
     {
-        Type = SecuritySchemeType.ApiKey, In = ParameterLocation.Header, Name = "X-Development-User",
-        Description = "Local testing: owner, admin, customer-a or customer-b. This is NOT production authentication."
-    };
-    document.Security ??= [];
-    document.Security.Add(new OpenApiSecurityRequirement
-    { [new OpenApiSecuritySchemeReference("DevelopmentUser", document)] = [] });
-    return Task.CompletedTask;
-}));
+        document.Info = new OpenApiInfo { Title = "FlowerFlow independent backend", Version = "v1",
+            Description = "In-memory data. Development identities only. Existing website and Firebase are unchanged." };
+        document.Components ??= new();
+        document.Components.SecuritySchemes ??= new Dictionary<string, IOpenApiSecurityScheme>();
+        document.Components.SecuritySchemes["DevelopmentUser"] = new OpenApiSecurityScheme
+        {
+            Type = SecuritySchemeType.ApiKey, In = ParameterLocation.Header, Name = "X-Development-User",
+            Description = "Local testing: owner, admin, customer-a or customer-b. This is NOT production authentication."
+        };
+        document.Security ??= [];
+        document.Security.Add(new OpenApiSecurityRequirement
+        { [new OpenApiSecuritySchemeReference("DevelopmentUser", document)] = [] });
+        return Task.CompletedTask;
+    });
+    options.AddOperationTransformer((operation, context, _) =>
+    {
+        var metadata = context.Description.ActionDescriptor.EndpointMetadata;
+        if (!metadata.OfType<IAuthorizeData>().Any() || metadata.OfType<IAllowAnonymous>().Any())
+            operation.Security = [];
+        return Task.CompletedTask;
+    });
+});
 
 var app = builder.Build();
 app.UseExceptionHandler();
 app.UseStatusCodePages(async status =>
 {
     var context = status.HttpContext;
+    var code = context.Response.StatusCode switch
+    {
+        401 => "unauthenticated", 403 => "forbidden", 404 => "not-found", 405 => "method-not-allowed", _ => "http-error"
+    };
     await Results.Problem(statusCode: context.Response.StatusCode,
-        extensions: new Dictionary<string, object?> { ["traceId"] = context.TraceIdentifier }).ExecuteAsync(context);
+        extensions: new Dictionary<string, object?> { ["code"] = code, ["traceId"] = context.TraceIdentifier }).ExecuteAsync(context);
 });
 // Do not expose development identity impersonation on a non-loopback interface.
 app.Use(async (context, next) =>

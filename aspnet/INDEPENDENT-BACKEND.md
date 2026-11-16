@@ -214,6 +214,12 @@ trong bộ nhớ với những điều kiện cần trước khi thay backend ch
 
 ## Ghi chú kiểm tra ban đầu
 
+Kết quả kiểm tra local ngày 16/11/2026: solution build Release có 0 lỗi/0 cảnh báo;
+42 kiểm thử xUnit đạt. Bản publish được khởi động riêng và trả `/health` InMemory,
+Swagger HTTP 200, OpenAPI 37 đường dẫn. Output publish không có assembly Firebase,
+Google.Cloud, SQLite, EF Core hoặc SqlClient. Những kết quả này xác nhận phạm vi
+in-memory, không xác nhận production hoặc toàn bộ parity backend cũ.
+
 `FlowerFlow.Api/Program.cs` ánh xạ nghiệp vụ bằng handler trong Infrastructure;
 `HealthController` là controller ban đầu. `Domain` trước thay đổi này chỉ có csproj.
 `LocalAccounts` dùng SQLite cho tài khoản local; host mới không tham chiếu nó.
