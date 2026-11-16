@@ -1,0 +1,30 @@
+name: Expire unpaid orders
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  expire:
+    name: Release expired reservations
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Call the authenticated cleanup API
+        env:
+          FLOWER_APP_URL: ${{ vars.FLOWER_APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          test -n "$FLOWER_APP_URL" || { echo "Configure the FLOWER_APP_URL repository variable."; exit 1; }
+          test -n "$CRON_SECRET" || { echo "Configure the CRON_SECRET repository secret."; exit 1; }
+          case "$FLOWER_APP_URL" in
+            https://*) ;;
+            *) echo "FLOWER_APP_URL must use HTTPS."; exit 1 ;;
+          esac
+          curl --fail-with-body --silent --show-error --max-time 30 --retry 2 --retry-all-errors \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            "${FLOWER_APP_URL%/}/api/orders?action=expire"

@@ -13,6 +13,9 @@ Thư mục này chứa nội dung và ảnh sơ đồ cho [wiki của dự án](
 | `Functional-Requirements.md` | Functional Requirements |
 | `Non-Functional-Requirements.md` | Non‐Functional Requirements |
 | `Software-Architecture-Document.md` | Software Architecture Document |
+| `Traceability-Matrix.md` | Traceability Matrix |
+
+Ma trận truy vết ghi ngày đối chiếu, commit và link CI cụ thể; cập nhật các thông tin này khi thay bằng chứng kiểm thử. Các thay đổi file trong repository không tự đồng bộ sang GitHub Wiki.
 
 ## Ảnh
 

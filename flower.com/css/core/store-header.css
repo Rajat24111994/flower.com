@@ -391,7 +391,8 @@ a {
   }
 
   .header-action {
-    min-width: 70px;
+    flex: 1 1 0;
+    min-width: 0;
   }
 
   .header-action > span:last-child,
@@ -401,8 +402,8 @@ a {
 
   .menu-toggle {
     display: flex;
-    width: 38px;
-    height: 38px;
+    width: 44px;
+    height: 44px;
     flex-direction: column;
     align-items: center;
     justify-content: center;
@@ -448,6 +449,19 @@ a {
 @media (max-width: 800px) {
   .announcement { flex-wrap: wrap; gap: 4px 12px; padding: 8px 12px; font-size: 12px; line-height: 1.5; text-align: center; }
   .header-main { min-width: 0; }
+}
+
+.shopping-sync-notice {
+  margin: 0;
+  padding: 10px 16px;
+  color: #7c2d12;
+  background: #fff7ed;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  text-align: center;
+}
+
+@media (max-width: 800px) {
   .menu-toggle { width: 48px; height: 48px; }
   .header-actions { gap: 4px; }
   .header-action { flex: 1; min-width: 0; min-height: 48px; padding: 6px 0; font-size: 13px; }

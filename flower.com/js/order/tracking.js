@@ -39,6 +39,7 @@ window.addEventListener("pagehide", clearReviewPhotos);
 const searchForm = document.getElementById("tracking-search");
 const orderIdInput = document.getElementById("tracking-order-id");
 const phoneInput = document.getElementById("tracking-phone");
+const phoneLabel = document.getElementById("tracking-phone-label");
 const message = document.getElementById("tracking-message");
 const results = document.getElementById("tracking-results");
 const reviewPanel = document.getElementById("review-panel");
@@ -186,7 +187,11 @@ function renderProducts(items) {
     const container = document.getElementById("tracking-products");
     container.replaceChildren();
 
+    const bouquetNumbers = new Map();
     (Array.isArray(items) ? items : []).forEach((product) => {
+        if (product.customBouquetId && !bouquetNumbers.has(product.customBouquetId)) {
+            bouquetNumbers.set(product.customBouquetId, bouquetNumbers.size + 1);
+        }
         const row = makeElement("div", "tracking-product");
         const image = document.createElement("img");
         image.src = product.image || "";
@@ -199,9 +204,12 @@ function renderProducts(items) {
         row.append(
             image,
             makeElement("span", "tracking-product-name", product.title || "Sản phẩm"),
-            makeElement("span", "tracking-product-quantity", `× ${Math.max(1, Number(product.quantity) || 1)}`)
+            makeElement("span", "tracking-product-quantity", `× ${Math.max(1, Number(product.quantity) || 1)} ${product.unit || "bó"}`)
         );
         const selection = window.FlowerBouquetOptions.summary(product);
+        if (product.customBouquetId) {
+            row.append(makeElement("span", "tracking-product-options", `Bó tùy chỉnh ${bouquetNumbers.get(product.customBouquetId)}`));
+        }
         if (selection) row.append(makeElement("span", "tracking-product-options", selection));
         container.append(row);
     });
@@ -306,6 +314,8 @@ function renderOrder(order) {
     document.getElementById("result-anonymous-greeting").textContent = order.anonymousGreetingCard === true ? "Có" : "Không";
     document.getElementById("result-gift-wrap").textContent = GIFT_WRAP_LABELS[order.giftWrap] || order.giftWrap || "Không yêu cầu thêm";
     const formatVnd = (amount) => new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(Number(amount) || 0);
+    document.getElementById("result-wrapping-fee").textContent = formatVnd(order.wrappingFee);
+    document.getElementById("result-wrapping-fee").parentElement.hidden = order.privacyLimited === true && order.wrappingFee === undefined;
     document.getElementById("result-shipping-fee").textContent = formatVnd(order.shippingFee);
     document.getElementById("result-total").textContent = formatOrderTotal(order);
     document.getElementById("result-order-note").textContent = order.orderNote || "";
@@ -314,11 +324,13 @@ function renderOrder(order) {
         da_thanh_toan: "Đã thanh toán",
         that_bai: "Thanh toán thất bại"
     };
-    document.getElementById("result-payment-status").textContent = order.paymentMethod === "qr"
-        ? (["Hết hạn chờ thanh toán", "Đã thanh toán"].includes(order.paymentStatus) ? order.paymentStatus : "Chờ cửa hàng xác minh")
-        : order.paymentMethod === "vnpay"
-            ? vnpayPaymentLabels[order.paymentStatus] || "Đang chờ VNPay xác nhận"
-            : order.paymentStatus || "Thanh toán khi nhận hàng";
+    document.getElementById("result-payment-status").textContent = order.paymentStatus === "Đã hoàn tiền"
+        ? "Đã hoàn tiền"
+        : order.paymentMethod === "qr"
+            ? (["Hết hạn chờ thanh toán", "Đã thanh toán"].includes(order.paymentStatus) ? order.paymentStatus : "Chờ cửa hàng xác minh")
+            : order.paymentMethod === "vnpay"
+                ? vnpayPaymentLabels[order.paymentStatus] || "Đang chờ VNPay xác nhận"
+                : order.paymentStatus || "Thanh toán khi nhận hàng";
     // The note and the shop's reply are only present for the signed-in owner of the order.
     const note = String(order.orderNote || "").trim();
     const reply = String(order.orderNoteReply || "").trim();
@@ -433,7 +445,8 @@ function createOrderCard(order) {
     const quantity = items.reduce((sum, item) => sum + Math.max(1, Number(item.quantity) || 1), 0);
     const firstTitle = items[0]?.title || "Sản phẩm";
     const summary = items.length > 1 ? `${firstTitle} và ${items.length - 1} sản phẩm khác` : firstTitle;
-    products.append(makeElement("span", "my-order-summary", `${summary} · ${quantity} món`));
+    const orderType = order.orderType === "custom_bouquet" ? "Bó hoa theo yêu cầu" : "Bó làm sẵn";
+    products.append(makeElement("span", "my-order-summary", `${orderType} · ${summary} · ${quantity} món`));
 
     const footer = makeElement("div", "my-order-footer");
     footer.append(makeElement("strong", "", formatOrderTotal(order)), makeElement("span", "my-order-link", "Xem chi tiết →"));
@@ -456,6 +469,12 @@ function renderMyOrders() {
     myOrdersSection.hidden = !account;
     lookupToggle.hidden = !account;
     searchForm.hidden = Boolean(account) && lookupToggle.getAttribute("aria-expanded") !== "true";
+    const requiresPhone = !account?.uid;
+    phoneInput.required = requiresPhone;
+    phoneInput.hidden = !requiresPhone;
+    phoneLabel.hidden = !requiresPhone;
+    if (account?.uid) lookupToggle.textContent = "Tra cứu đơn hàng khác bằng mã đơn";
+    else lookupToggle.textContent = "Tra cứu đơn hàng khác bằng mã đơn và số điện thoại";
     if (!account) {
         trackingIntro.innerHTML = guestIntro;
         return [];
@@ -494,13 +513,18 @@ function renderMyOrders() {
 async function searchOrder() {
     const orderId = orderIdInput.value.trim().replace(/^#/, "");
     const phone = phoneInput.value.replace(/\D/g, "");
-    if (!orderId || phone.length < 8) {
-        message.textContent = "Nhập mã đơn hàng và số điện thoại đã dùng khi đặt hàng.";
+    const account = getLoggedAccount();
+    if (!orderId || (!account?.uid && phone.length < 8)) {
+        message.textContent = account?.uid
+            ? "Nhập mã đơn hàng."
+            : "Nhập mã đơn hàng và số điện thoại đã dùng khi đặt hàng.";
         return;
     }
 
     let order = accountOrdersCache.find((item) => String(item.id) === orderId
-        && String(item.phone || "").replace(/\D/g, "") === phone);
+        && (account?.uid
+            ? belongsToAccount(item, account)
+            : String(item.phone || "").replace(/\D/g, "") === phone));
     try {
         if (!order) order = await window.FlowerOrderStore.getPublicOrder(orderId, phone);
     } catch (error) {
@@ -509,9 +533,11 @@ async function searchOrder() {
         reviewPanel.hidden = true;
         message.textContent = error.code === "order-not-found"
             ? "Không tìm thấy đơn hàng. Hãy kiểm tra lại mã đơn và số điện thoại đặt hàng."
-            : error.code === "rate-limited"
-                ? "Bạn đã tra cứu quá nhiều lần. Vui lòng đợi một chút rồi thử lại."
-                : "Chưa thể tra cứu đơn hàng dùng chung. Hãy thử lại sau.";
+            : error.code === "unauthenticated"
+                ? "Phiên đăng nhập đã hết hạn. Hãy đăng nhập lại để xem đơn hàng của tài khoản."
+                : error.code === "rate-limited"
+                    ? "Bạn đã tra cứu quá nhiều lần. Vui lòng đợi một chút rồi thử lại."
+                    : "Chưa thể tra cứu đơn hàng dùng chung. Hãy thử lại sau.";
         return;
     }
 
@@ -558,7 +584,7 @@ reviewForm.addEventListener("submit", async (event) => {
     const items = Array.isArray(currentOrder.items) ? currentOrder.items : [];
     const review = {
         orderId: currentOrder.id,
-        productIds: [...new Set(items.map((item) => item.id).filter((id) => id !== undefined && id !== null).map(String))],
+        productIds: [...new Set(items.map((item) => item.productId ?? item.id).filter((id) => id !== undefined && id !== null).map(String))],
         customerName: currentOrder.customerName || "Khách hàng",
         productName: items.map((item) => item.title).filter(Boolean).join(", ") || `Đơn hàng #${currentOrder.id}`,
         rating: selectedRating,

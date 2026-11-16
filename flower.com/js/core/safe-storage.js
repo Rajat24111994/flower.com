@@ -52,7 +52,8 @@
       fallback = null,
       validate = () => true,
       onError,
-      throwOnError = false
+      throwOnError = false,
+      storage = "local"
     } = options;
 
     function fail(code, cause) {
@@ -69,7 +70,7 @@
 
     let raw;
     try {
-      raw = root.localStorage.getItem(key);
+      raw = getStorage(storage).getItem(key);
     } catch (error) {
       return fail("storage-unavailable", error);
     }
@@ -93,7 +94,7 @@
   }
 
   function writeJson(key, value, options = {}) {
-    const { required = false } = options;
+    const { required = false, storage = "local" } = options;
     let serialized;
     try {
       serialized = JSON.stringify(value);
@@ -102,16 +103,18 @@
       return failWrite(key, cause, required);
     }
     try {
-      root.localStorage.setItem(key, serialized);
+      getStorage(storage).setItem(key, serialized);
+      if (storage === "local") dispatchShoppingChange(key);
       return true;
     } catch (cause) {
       return failWrite(key, cause, required);
     }
   }
 
-  function readText(key, fallback = null) {
+  function readText(key, fallback = null, options = {}) {
+    const { storage = "local" } = options;
     try {
-      const value = root.localStorage.getItem(key);
+      const value = getStorage(storage).getItem(key);
       return value === null ? fallback : value;
     } catch (cause) {
       failWrite(key, cause, false, "read");
@@ -120,9 +123,9 @@
   }
 
   function writeText(key, value, options = {}) {
-    const { required = false } = options;
+    const { required = false, storage = "local" } = options;
     try {
-      root.localStorage.setItem(key, String(value));
+      getStorage(storage).setItem(key, String(value));
       return true;
     } catch (cause) {
       return failWrite(key, cause, required);
@@ -130,13 +133,20 @@
   }
 
   function remove(key, options = {}) {
-    const { required = false } = options;
+    const { required = false, storage = "local" } = options;
     try {
-      root.localStorage.removeItem(key);
+      getStorage(storage).removeItem(key);
+      if (storage === "local") dispatchShoppingChange(key);
       return true;
     } catch (cause) {
       return failWrite(key, cause, required, "remove");
     }
+  }
+
+  function getStorage(storage) {
+    if (storage === "session") return root.sessionStorage;
+    if (storage === "local") return root.localStorage;
+    throw new TypeError("Phạm vi lưu trữ không hợp lệ.");
   }
 
   function failWrite(key, cause, required, action = "write") {
@@ -151,7 +161,20 @@
     return false;
   }
 
-  root.FlowerSafeStorage = { readJson, readText, writeJson, writeText, remove };
+  function countCartUnits(cart) {
+    if (!Array.isArray(cart)) return 0;
+    return cart.reduce((total, item) => {
+      const quantity = Number(item?.quantity ?? 1);
+      return total + (Number.isSafeInteger(quantity) && quantity > 0 ? quantity : 1);
+    }, 0);
+  }
+
+  function dispatchShoppingChange(key) {
+    if (!["cart", "wish"].includes(key) || typeof root.dispatchEvent !== "function" || typeof root.CustomEvent !== "function") return;
+    root.dispatchEvent(new root.CustomEvent("flowerstoragechange", { detail: { key } }));
+  }
+
+  root.FlowerSafeStorage = { readJson, readText, writeJson, writeText, remove, countCartUnits };
 
   // Each account keeps its own cart and wishlist on a shared browser (F48). The active lists stay
   // in "cart"/"wish"; when the signed-in account changes, the old account's lists are put away
@@ -185,7 +208,10 @@
     const wish = readList("wish");
     if (cart.length) writeJson(`flowerCart_${uid}`, cart); else remove(`flowerCart_${uid}`);
     if (wish.length) writeJson(`flowerWish_${uid}`, wish); else remove(`flowerWish_${uid}`);
-    ["cart", "wish", "flowerCheckout", "flowerSelectedPromotion", "flowerPaymentReference", "flowerPendingOrder"].forEach((key) => remove(key));
+    ["cart", "wish", "flowerCheckout", "flowerSelectedPromotion", "flowerPaymentReference", "flowerPendingOrder"].forEach((key) => {
+      remove(key);
+      if (["flowerCheckout", "flowerPendingOrder"].includes(key)) remove(key, { storage: "session" });
+    });
   }
 
   function bringBack(uid) {

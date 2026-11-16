@@ -6,9 +6,9 @@ Làm lần lượt từ trên xuống cho mỗi lần phát hành. Mục nào kh
 
 - [ ] Mọi thay đổi đi qua Pull Request, có ít nhất 1 người review (xem `CONTRIBUTING.md`).
 - [ ] CI trên PR xanh: **Unit test + coverage** và **Feature, system và security test (Firebase Emulator)**.
-- [ ] Coverage không giảm so với lần phát hành trước (xem bảng trong trang kết quả CI).
+- [ ] Unit-test line coverage đạt ít nhất 50% (CI tự chặn dưới ngưỡng); so sánh thêm với lần phát hành trước.
 - [ ] Đổi file JS/CSS thì đã tăng số `?v=` trong các trang `.html` dùng file đó (tránh trình duyệt dùng bản cũ).
-- [ ] Đổi `firestore.rules` thì có test trong `tests/integration/security-rules.test.js`.
+- [ ] Đổi `firestore.rules` thì có test trong `flower.com/tests/IntegrationTests/security-rules.test.js`.
 
 ## 2. Chuẩn bị bản phát hành
 
@@ -23,10 +23,13 @@ Làm lần lượt từ trên xuống cho mỗi lần phát hành. Mục nào kh
 ## 3. Triển khai
 
 - [ ] Gộp PR vào `main` (Vercel tự deploy).
-- [ ] Có thay đổi `firestore.rules`, index hoặc dữ liệu mẫu thì chạy:
+- [ ] Với deployment Vercel, xác nhận chứng chỉ TLS được cấp hợp lệ và truy cập HTTP chuyển hướng sang HTTPS (smoke test ở bước 4 kiểm tra tự động).
+- [ ] Có thay đổi firestore.rules hoặc index thì triển khai lên đúng Firebase project sau khi test và được phê duyệt:
   ```sh
-  cd flower.com && npm run setup-firestore
+  cd flower.com && firebase deploy --only firestore:rules,firestore:indexes
   ```
+- [ ] Chỉ chạy migration/catalog nếu bản phát hành có thay đổi dữ liệu cần xử lý.
+- [ ] Không chạy script seed/ghi dữ liệu production như một phần của kiểm thử.
 - [ ] Biến môi trường trên Vercel còn đủ: `FIREBASE_SERVICE_ACCOUNT_JSON`, `CRON_SECRET`.
 - [ ] Lần chạy gần nhất của workflow **Sao lưu Firestore** xanh (có bản sao lưu trước khi phát hành).
 
@@ -34,9 +37,10 @@ Làm lần lượt từ trên xuống cho mỗi lần phát hành. Mục nào kh
 
 - [ ] Chạy smoke test tự động (không tạo đơn, không đổi dữ liệu):
   ```sh
-  cd flower.com && SMOKE_URL=https://flower-com-six.vercel.app npm run smoke
+  cd flower.com && SMOKE_URL=https://flower-com.onrender.com npm run smoke
   ```
   hoặc trên GitHub: **Actions → Smoke test → Run workflow**.
+  Smoke test kiểm tra chứng chỉ TLS còn hạn/đúng hostname, HTTP chuyển hướng sang HTTPS và các header HSTS/CSP.
 - [ ] Kiểm tra tay 5 phút trên điện thoại và máy tính:
   - [ ] Trang chủ và danh sách hoa hiện đủ sản phẩm, có ảnh.
   - [ ] Thêm vào giỏ → thanh toán → báo giá đúng, ưu đãi tự áp dụng.

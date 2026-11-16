@@ -2,13 +2,14 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <script src="./js/core/safe-storage.js?v=2"></script>
+    <script src="./js/core/safe-storage.js?v=3"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="robots" content="noindex, nofollow">
     <meta name="description" content="Khu vực quản lý chủ cửa hàng Flowerflow.">
     <link rel="icon" type="image/svg+xml" href="./favicon.svg">
     <title>Quản lý chủ cửa hàng</title>
     <link rel="stylesheet" href="./css/admin/admin.css?v=13">
+    <link rel="stylesheet" href="./css/admin/wilting-prices.css?v=1">
     <link rel="stylesheet" href="./css/core/accessibility.css?v=1">
 </head>
 <body>
@@ -18,6 +19,7 @@
             <span class="owner-role-badge">Đang đăng nhập với quyền Owner</span>
             <a href="./admin.html">Quản lý cửa hàng</a>
             <button id="owner-logout" class="danger-btn" type="button">Đăng xuất</button>
+            <button id="owner-logout-all" class="danger-btn" type="button" hidden disabled>Đăng xuất trên mọi thiết bị</button>
         </div>
     </nav>
     <main>
@@ -47,7 +49,8 @@
             <p class="users-status" id="owner-status" role="status" aria-live="polite">Đang xác thực Owner...</p>
             <button class="secondary-btn" id="load-more-users" type="button" hidden>Tải thêm</button>
         </section>
+        <section class="panel" id="owner-wilting-prices" aria-label="Quản lý giá héo"></section>
     </main>
-    <script type="module" src="./js/admin/owner.js?v=1"></script>
+    <script type="module" src="./js/admin/owner.js?v=3"></script>
 </body>
 </html>

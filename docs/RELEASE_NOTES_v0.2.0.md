@@ -4,9 +4,9 @@ Ngày phát hành: chưa phát hành
 
 ## Tính năng
 
-- Đặt hàng có backend thật (`/api/orders`): máy chủ báo giá, kiểm tra tồn kho, giữ hàng, chống đặt trùng và tự hủy đơn hết hạn (QR 30 phút, COD 24 giờ).
+- Đặt hàng có backend thật (`/api/orders`): máy chủ báo giá, kiểm tra tồn kho, giữ hàng, chống đặt trùng và tự hủy đơn hết hạn (VNPay 15 phút, COD 30 phút; đơn QR cũ 30 phút).
 - Đơn hàng, sản phẩm, ưu đãi, phân loại, đánh giá và lời nhắn lưu trên Firestore, bảo vệ bằng Security Rules.
-- Thanh toán QR: trang theo dõi đơn hiện lại mã QR, số tiền, nội dung chuyển khoản và hạn chuyển; admin xác nhận tiền hoặc ghi nhận tiền chuyển trễ.
+- Thanh toán: trang thanh toán có COD và VNPay (URL thanh toán, IPN kiểm tra chữ ký HMAC-SHA512 và số tiền). Đơn chuyển khoản QR tạo trước đây vẫn hiện lại mã QR trên trang theo dõi; admin xác nhận tiền hoặc ghi nhận tiền chuyển trễ.
 - Thông tin người nhận, ngày giờ giao, thiệp và gói quà.
 - Ưu đãi tự áp dụng mức giảm cao nhất.
 - Giá lưu và hiển thị bằng số nguyên VND, làm tròn tới 1.000 ₫; tổng giỏ đúng bằng tổng từng dòng (#40).
@@ -33,7 +33,7 @@ Ngày phát hành: chưa phát hành
 
 ## Hạn chế đã biết
 
-- Thanh toán QR chưa đối soát tự động; admin phải kiểm tra sao kê rồi xác nhận.
+- VNPay chưa kiểm thử bằng giao dịch sandbox thật (#39). Đơn QR cũ chưa đối soát tự động; admin phải kiểm tra sao kê rồi xác nhận.
 - Nhiều sản phẩm còn dùng chung ảnh (F27).
 - Giỏ hàng và danh sách yêu thích chỉ lưu theo trình duyệt.
 

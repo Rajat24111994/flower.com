@@ -26,6 +26,7 @@
         const colorsText = String(input.colors || "");
         const occasionsText = String(input.occasions || "");
         const status = String(input.status || "active");
+        const saleType = String(input.saleType || "ready_made");
         const errors = {};
 
         if (!title) errors.title = "Vui lòng nhập tên sản phẩm.";
@@ -48,6 +49,7 @@
         if (colorsText.length > 200) errors.colors = "Thông tin màu hoa không được vượt quá 200 ký tự.";
         if (occasionsText.length > 300) errors.occasions = "Dịp tặng không được vượt quá 300 ký tự.";
         if (!PRODUCT_STATUSES.includes(status)) errors.status = "Trạng thái sản phẩm không hợp lệ.";
+        if (!["flower", "ready_made"].includes(saleType)) errors.saleType = "Loại hình bán không hợp lệ.";
 
         if (Object.keys(errors).length) return { product: null, errors };
 
@@ -64,7 +66,8 @@
                 meaning,
                 colors: splitTags(colorsText),
                 occasions: splitTags(occasionsText),
-                status
+                status,
+                saleType
             },
             errors
         };

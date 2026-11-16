@@ -75,8 +75,8 @@
     if (!category) return true;
     if (category.sameDayDeliveryOnly) return product.sameDayDelivery === true;
     if (category.saleOnly) return product.onSale === true;
-    if (product.categoryKey) return product.categoryKey === category.categoryKey;
     if (key === "flowers") return !/(plant|succulent|cactus|bonsai|cay canh)/.test(normalize(product.category));
+    if (product.categoryKey) return product.categoryKey === category.categoryKey;
     if (!category.keywords.length) return true;
 
     const details = normalize([

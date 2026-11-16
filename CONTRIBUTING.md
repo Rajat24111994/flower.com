@@ -10,7 +10,7 @@
    cd ../tests && npm run integration   # khi đổi API, firestore.rules hoặc luồng đơn hàng
    ```
 4. Push nhánh và mở Pull Request vào `main`, điền đủ mẫu PR.
-5. Chờ CI xanh và ít nhất **1 người review đồng ý** rồi mới gộp. Không push thẳng lên `main`.
+5. Mời một thành viên khác review, chờ CI xanh và ít nhất **1 review Approve** rồi mới gộp. Comment góp ý có nội dung là một phần của review nhưng không thay thế approval bắt buộc. Không tự duyệt PR của mình và không push thẳng lên `main`.
 
 ## Test-driven development: Red → Green → Refactor
 
@@ -30,16 +30,16 @@ test("từ chối số điện thoại người nhận quá ngắn", () => {
     assert.equal(validateCheckout(checkout({ recipientPhone: "12" })), null);
 });
 ```
-Chạy `npm test` → đỏ. Thêm điều kiện trong `validateCheckout` (`flower.com/api/orders.js`) → xanh. Dọn code → vẫn xanh.
+Chạy `npm test` → đỏ. Thêm điều kiện trong `validateCheckout` (`flower.com/legacy-node/backend/orders/validation.js`) → xanh. Dọn code → vẫn xanh.
 
 ### Đặt test ở đâu
 
 | Thay đổi | Loại test | File |
 | --- | --- | --- |
 | Hàm tính toán, kiểm tra dữ liệu (giá, ưu đãi, trạng thái, giỏ hàng) | Unit | `tests/*.test.js` |
-| API `flower.com/api/*.js` (đặt hàng, đăng nhập, quản lý) | Feature | `tests/integration/feature-*.test.js` |
-| `firestore.rules`, kiểm tra quyền trong API | Security | `tests/integration/security-*.test.js` |
-| Luồng đi qua nhiều phần (trang → API → Firestore) | System | `tests/integration/system.test.js` |
+| API `flower.com/legacy-node/api/*.js` (đặt hàng, đăng nhập, quản lý) | Feature | `flower.com/tests/IntegrationTests/feature-*.test.js` |
+| `firestore.rules`, kiểm tra quyền trong API | Security | `flower.com/tests/IntegrationTests/security-*.test.js` |
+| Luồng đi qua nhiều phần (trang → API → Firestore) | System | `flower.com/tests/IntegrationTests/system.test.js` |
 
 Muốn hàm trong API test được thì đưa nó vào `module.exports.internals` của file đó.
 
@@ -48,6 +48,8 @@ Muốn hàm trong API test được thì đưa nó vào `module.exports.internal
 Người mở PR:
 - PR nhỏ, một mục đích. Mô tả **vì sao** đổi và **cách đã kiểm tra**.
 - Tự đọc lại diff trước khi nhờ review.
+- Chọn reviewer khác tác giả; không dùng tài khoản phụ của chính mình để duyệt. Nếu tác giả là Code Owner, mời một thành viên khác có quyền review.
+- Khi thêm thành viên hoặc dùng alias commit mới, cập nhật [danh sách thành viên](docs/TEAM.md) sau khi người đó xác nhận thông tin được phép công khai.
 
 Người review kiểm tra:
 - [ ] Code làm đúng điều PR mô tả; có test cho hành vi mới hoặc lỗi được sửa.
@@ -57,6 +59,10 @@ Người review kiểm tra:
 - [ ] Thông báo cho người dùng bằng tiếng Việt, dễ hiểu.
 
 Góp ý cụ thể, kèm lý do. Chỉ "Approve" khi đã chạy hoặc đọc kỹ phần test.
+
+## Sử dụng AI
+
+Được dùng công cụ AI (Claude Code, Copilot, Codex…), nhưng người tạo PR phải hiểu và giải thích được mọi dòng được gộp. Điền mục **"Sử dụng AI"** trong mẫu PR và thêm một dòng vào [`docs/AI-USAGE-LOG.md`](docs/AI-USAGE-LOG.md) sau khi gộp. Không đưa secret, mật khẩu hay dữ liệu khách hàng thật vào công cụ AI.
 
 ## Quality gates (bắt buộc trước khi gộp)
 
@@ -69,6 +75,8 @@ Góp ý cụ thể, kèm lý do. Chỉ "Approve" khi đã chạy hoặc đọc k
 | Không còn góp ý chưa giải quyết | GitHub branch protection |
 
 ### Bật bảo vệ nhánh `main` (chủ repo làm một lần)
+
+Xem cấu hình có thể áp dụng và cách kiểm tra tại [bảo vệ nhánh main](docs/branch-protection.md). Cấu hình trong Git chỉ là đầu vào; cần áp dụng trên GitHub để có hiệu lực.
 
 GitHub → repo → **Settings → Branches → Add branch ruleset** (hoặc *Add rule*) cho `main`:
 - ✅ Require a pull request before merging → *Required approvals: 1*, ✅ Dismiss stale approvals, ✅ Require review from Code Owners

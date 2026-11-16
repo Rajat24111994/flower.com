@@ -28,6 +28,9 @@ jobs:
       - name: Cài thư viện
         working-directory: flower.com
         run: npm ci
+      - name: Build kiểm tra dữ liệu SEO và CSP
+        working-directory: flower.com
+        run: npm run check:generated
       - name: Kiểm tra cú pháp các file JavaScript
         working-directory: flower.com
         run: |
@@ -41,7 +44,7 @@ jobs:
         if: always()
         run: |
           if [ -f flower.com/coverage/lcov.info ]; then
-            node tests/coverage-summary.js flower.com/coverage/lcov.info "Coverage – unit test" >> "$GITHUB_STEP_SUMMARY"
+            node flower.com/tests/UnitTests/coverage-summary.js flower.com/coverage/lcov.info "Coverage – unit test" --min-lines=70 >> "$GITHUB_STEP_SUMMARY"
           fi
       - uses: actions/upload-artifact@v4
         if: always()
@@ -66,30 +69,30 @@ jobs:
           cache: npm
           cache-dependency-path: |
             flower.com/package-lock.json
-            tests/package-lock.json
+            flower.com/tests/package-lock.json
       - name: Cache Firebase Emulator
         uses: actions/cache@v4
         with:
           path: ~/.cache/firebase/emulators
-          key: firebase-emulators-${{ hashFiles('tests/package-lock.json') }}
+          key: firebase-emulators-${{ hashFiles('flower.com/tests/package-lock.json') }}
       - name: Cài thư viện
         run: |
           npm ci --prefix flower.com
-          npm ci --prefix tests
+          npm ci --prefix flower.com/tests
       - name: Chạy test trên Firebase Emulator (có coverage)
-        working-directory: tests
+        working-directory: flower.com/tests
         run: npm run integration
       - name: Báo cáo coverage
         if: always()
         run: |
-          if [ -f tests/coverage/lcov.info ]; then
-            node tests/coverage-summary.js tests/coverage/lcov.info "Coverage – test tích hợp (API)" >> "$GITHUB_STEP_SUMMARY"
+          if [ -f flower.com/tests/coverage/lcov.info ]; then
+            node flower.com/tests/UnitTests/coverage-summary.js flower.com/tests/coverage/lcov.info "Coverage – test tích hợp (API)" >> "$GITHUB_STEP_SUMMARY"
           fi
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: coverage-integration
-          path: tests/coverage/lcov.info
+          path: flower.com/tests/coverage/lcov.info
           if-no-files-found: ignore
 
   browser-e2e:
@@ -113,6 +116,11 @@ jobs:
       - name: Cài Chromium
         working-directory: flower.com
         run: npx playwright install --with-deps chromium
+      - name: Chạy tài khoản tự tạo trên máy
+        working-directory: flower.com
+        run: npm run test:e2e:local
+        env:
+          CI: true
       - name: Chạy Playwright trên Firebase Emulator
         working-directory: flower.com
         run: npm run test:e2e:emulator
@@ -124,6 +132,29 @@ jobs:
           name: browser-test-artifacts
           path: |
             test-results/
+            test-results-local/
             flower.com/playwright-report/
+            flower.com/playwright-report-local/
           if-no-files-found: ignore
           retention-days: 14
+
+  critical-module-coverage:
+    name: Critical module coverage
+    needs: [unit, integration]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: actions/download-artifact@v4
+        with:
+          name: coverage-unit
+          path: coverage-unit
+      - uses: actions/download-artifact@v4
+        with:
+          name: coverage-integration
+          path: coverage-integration
+      - name: Enforce coverage for the high-risk modules
+        run: node flower.com/tests/UnitTests/coverage-targets.js coverage-unit/lcov.info coverage-integration/lcov.info --min-lines=50 >> "$GITHUB_STEP_SUMMARY"

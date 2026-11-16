@@ -106,9 +106,16 @@
       return readList("wish");
     }
 
-    function addToCart(product, requestedQuantity = 1) {
+    function addToCart(product, requestedQuantity = 1, options = {}) {
       const productId = String(product.productId ?? getProductId(product));
-      const selection = bouquet?.normalize(product);
+      const generatedBouquetId = product.saleType === "flower"
+        ? `bouquet_${root.crypto?.randomUUID?.() || `${Date.now()}_${Math.random().toString(36).slice(2, 12)}`}`
+        : "";
+      const customBouquetId = String(options.customBouquetId || generatedBouquetId);
+      const selection = bouquet?.normalize(customBouquetId ? { ...product, productId } : product);
+      if (customBouquetId && !/^[A-Za-z0-9_-]{1,80}$/.test(customBouquetId)) {
+        throw new ShoppingStoreError("Mã bó hoa không hợp lệ.", "invalid-custom-bouquet");
+      }
       if (selection === null) throw new ShoppingStoreError("Lựa chọn bó hoa không hợp lệ.", "invalid-options");
       const quantity = Number(requestedQuantity);
       const stock = Number(product.quantity);
@@ -141,7 +148,8 @@
       }
 
       const matching = cart.filter((item) => String(item.productId ?? item.id) === productId
-        && JSON.stringify(bouquet?.normalize(item) || {}) === JSON.stringify(selection || {}));
+        && JSON.stringify(bouquet?.normalize(item) || {}) === JSON.stringify(selection || {})
+        && String(item.customBouquetId || "") === customBouquetId);
       const lineQuantity = matching.reduce((sum, item) => sum + Number(item.quantity ?? 1), 0);
       if (lineQuantity + quantity > MAX_QUANTITY_PER_PRODUCT) {
         const remaining = Math.max(0, MAX_QUANTITY_PER_PRODUCT - lineQuantity);
@@ -152,12 +160,16 @@
           "quantity-limit"
         );
       }
-      const lineId = matching[0]?.id || (selection?.productId ? `line_${root.crypto.randomUUID()}` : product.id);
+      const lineId = matching[0]?.id || (selection?.productId || customBouquetId
+        ? `line_${root.crypto?.randomUUID?.() || `${Date.now()}_${Math.random().toString(36).slice(2, 12)}`}`
+        : product.id);
       const nextCart = cart.filter((item) => !matching.includes(item));
       nextCart.push({
         ...product,
         ...selection,
         id: lineId,
+        ...(customBouquetId ? { productId } : {}),
+        ...(customBouquetId ? { customBouquetId } : {}),
         price,
         stockQuantity: stock,
         quantity: lineQuantity + quantity

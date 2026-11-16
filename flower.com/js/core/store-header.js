@@ -117,7 +117,7 @@ function updateShoppingHeaderCounts() {
         }
 
         const cartCount = document.getElementById("cartTotal");
-        if (cartCount) cartCount.textContent = String(cart.length);
+        if (cartCount) cartCount.textContent = String(FlowerSafeStorage.countCartUnits(cart));
         document.querySelectorAll(".favorite-count").forEach((count) => {
             count.textContent = String(wishlist.length);
         });
@@ -131,6 +131,32 @@ window.addEventListener("storage", (event) => {
     if (event.key === "cart" || event.key === "wish" || event.key === null) {
         updateShoppingHeaderCounts();
     }
+});
+
+window.addEventListener("flowerstoragechange", (event) => {
+    if (event.detail?.key === "cart" || event.detail?.key === "wish") {
+        updateShoppingHeaderCounts();
+    }
+});
+
+window.addEventListener("flowershoppingsync", (event) => {
+    const state = event.detail?.state;
+    let notice = document.getElementById("shopping-sync-notice");
+    if (state === "synced") {
+        notice?.remove();
+        return;
+    }
+    if (!notice) {
+        notice = document.createElement("p");
+        notice.id = "shopping-sync-notice";
+        notice.className = "shopping-sync-notice";
+        notice.setAttribute("role", state === "error" ? "alert" : "status");
+        document.querySelector(".site-header")?.insertAdjacentElement("afterend", notice);
+    }
+    notice.textContent = state === "error"
+        ? "Chưa đồng bộ được giỏ hàng với tài khoản. Dữ liệu vẫn còn trên thiết bị; hãy kiểm tra kết nối rồi thử lại."
+        : "Đang đồng bộ giỏ hàng với tài khoản…";
+    if (state === "error") console.warn("Đồng bộ giỏ hàng thất bại:", event.detail.error?.code || event.detail.error?.message);
 });
 
 const accountNav = document.querySelector(".signin");
@@ -172,15 +198,33 @@ if (accountNav) {
 // (password reset, account disabled or deleted, token revoked) clear the copy, so pages stop
 // showing the account and new orders are not silently placed as a guest.
 async function verifyStoredSession() {
+    if (["localhost", "127.0.0.1"].includes(window.location.hostname) && window.FlowerAuthMode !== "firebase") {
+        try {
+            const { monitorLocalSession } = await import("../account/session-lifecycle.js?v=1");
+            monitorLocalSession({ onVerified(account) {
+                FlowerSafeStorage.syncShoppingOwner?.();
+                updateShoppingHeaderCounts();
+                const label = document.querySelector(".signin h5");
+                if (label) label.textContent = account.name || account.email;
+            }, onExpired: () => expireStoredSession(true) });
+        } catch {
+            console.warn("Chưa kiểm tra được phiên tài khoản trên máy.");
+        }
+        return;
+    }
     if (!getCurrentAccount()) return;
     let auth;
+    let app;
+    let appSdk;
+    let configModule;
+    let authSdk;
     try {
-        const [configModule, appSdk, authSdk] = await Promise.all([
+        [configModule, appSdk, authSdk] = await Promise.all([
             import("./firebase-config.js"),
             import("https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js"),
             import("https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js")
         ]);
-        const app = appSdk.getApps().length ? appSdk.getApp() : appSdk.initializeApp(configModule.firebaseConfig);
+        app = appSdk.getApps().length ? appSdk.getApp() : appSdk.initializeApp(configModule.firebaseConfig);
         auth = authSdk.getAuth(app);
         // Same Auth as the rest of the page: in browser tests that is the Auth Emulator.
         configModule.connectFirebaseEmulators?.(app, auth, null, authSdk);
@@ -191,8 +235,36 @@ async function verifyStoredSession() {
     }
     const account = getCurrentAccount();
     const user = auth.currentUser;
-    if (!account || (user && (!account.uid || user.uid === account.uid))) return;
+    if (!account) return;
+    if (user && (!account.uid || user.uid === account.uid)) {
+        if (account.uid && user.uid === account.uid) {
+            try {
+                const [firestoreSdk, syncModule] = await Promise.all([
+                    import("https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js"),
+                    import("./shopping-sync.js?v=1")
+                ]);
+                const firestore = firestoreSdk.getFirestore(app);
+                configModule.connectFirebaseEmulators?.(app, auth, firestore, authSdk, firestoreSdk);
+                const stopSync = syncModule.startShoppingSync({
+                    uid: user.uid,
+                    db: firestore,
+                    firestoreSdk
+                });
+                window.addEventListener("pagehide", stopSync, { once: true });
+            } catch (error) {
+                console.warn("Không thể khởi động đồng bộ giỏ hàng:", error.code || error.message);
+                window.dispatchEvent(new CustomEvent("flowershoppingsync", {
+                    detail: { state: "error", error }
+                }));
+            }
+        }
+        return;
+    }
 
+    expireStoredSession();
+}
+
+function expireStoredSession(alreadyCleared = false) {
     try {
         FlowerSafeStorage.remove("loggedUser");
         FlowerSafeStorage.remove("loggedAdmin");
@@ -204,12 +276,13 @@ async function verifyStoredSession() {
     }
     const label = document.querySelector(".signin h5");
     if (label) label.textContent = "Tài khoản";
+    if (document.querySelector(".session-expired-notice")) return;
     const notice = document.createElement("p");
     notice.className = "session-expired-notice";
     notice.setAttribute("role", "status");
     notice.innerHTML = 'Phiên đăng nhập đã hết hạn. <a href="./login.html">Đăng nhập lại</a> để xem đơn hàng và lưu đơn vào tài khoản.';
     document.querySelector("main")?.prepend(notice);
-    window.dispatchEvent(new CustomEvent("flowersessionexpired"));
+    if (!alreadyCleared) window.dispatchEvent(new CustomEvent("flowersessionexpired"));
 }
 
 void verifyStoredSession();

@@ -18,6 +18,20 @@ const LEGACY_ORDER_STATUSES = {
 
 export const ORDER_FLOW = Object.freeze(ORDER_STATUSES.filter((status) => status !== "Đã hủy"));
 
+const NEXT_ORDER_STATUSES = Object.freeze({
+    "Chờ xác nhận": Object.freeze(["Đang chuẩn bị", "Đã hủy"]),
+    "Đang chuẩn bị": Object.freeze(["Đang giao", "Đã hủy"]),
+    "Đang giao": Object.freeze(["Đã giao", "Đã hủy"]),
+    "Đã giao": Object.freeze(["Đã hủy"]),
+    "Đã hủy": Object.freeze(["Chờ xác nhận"])
+});
+
+export function canTransitionOrderStatus(currentStatus, nextStatus) {
+    const current = normalizeOrderStatus(currentStatus);
+    const next = normalizeOrderStatus(nextStatus);
+    return current === next || Boolean(NEXT_ORDER_STATUSES[current]?.includes(next));
+}
+
 export function orderStatusLabel(status) {
     const value = normalizeOrderStatus(status);
     return value === "Đã giao" ? "Hoàn thành" : value;

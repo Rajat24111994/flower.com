@@ -1,0 +1,24 @@
+{
+  "apiTargets": [
+    {
+      "service": "identitytoolkit.googleapis.com",
+      "methods": [
+        "google.cloud.identitytoolkit.v1.AuthenticationService.CreateAuthUri",
+        "google.cloud.identitytoolkit.v1.AuthenticationService.GetRecaptchaParam",
+        "google.cloud.identitytoolkit.v1.AuthenticationService.SignInWithCustomToken",
+        "google.cloud.identitytoolkit.v1.AuthenticationService.SignInWithIdp",
+        "google.cloud.identitytoolkit.v1.AuthenticationService.SignUp",
+        "google.cloud.identitytoolkit.v1.AccountManagementService.GetAccountInfo",
+        "google.cloud.identitytoolkit.v1.AccountManagementService.GetOobCode",
+        "google.cloud.identitytoolkit.v1.AccountManagementService.ResetPassword",
+        "google.cloud.identitytoolkit.v1.AccountManagementService.SetAccountInfo",
+        "google.cloud.identitytoolkit.v1.AccountManagementService.DeleteAccount",
+        "google.cloud.identitytoolkit.v1.ProjectConfigService.GetProjectConfig",
+        "GetRecaptchaConfig"
+      ]
+    },
+    { "service": "securetoken.googleapis.com" },
+    { "service": "firestore.googleapis.com" },
+    { "service": "firebaseinstallations.googleapis.com" }
+  ]
+}

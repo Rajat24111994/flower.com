@@ -70,7 +70,7 @@ Admin có thể thay ảnh từng sản phẩm bằng URL đúng và xem trướ
 
 1. Tại `flower.com`: `npm.cmd test` → **77 đạt, 0 thất bại** sau thay đổi store/Rules.
 2. `npm.cmd run test:e2e -- admin-products.spec.js catalog-search.spec.js bouquet-options.spec.js mobile-layout.spec.js` → **14 đạt, 0 thất bại** sau sửa bố cục. Hai lượt Admin bấm nút thật, có kiểm tra reload, hủy xóa, chống double submit, URL hỏng và lỗi lưu. Các browser test dùng fixture SDK/store/API; không coi đây là bằng chứng ghi production.
-3. `firebase emulators:exec ... "node --test --test-concurrency=1 tests/integration/*.test.js"` → **54 đạt, 0 thất bại, 0 bỏ qua** trong 26,5 giây. Suite chạy project `demo-flowerflow`, Auth/Firestore cục bộ. Bài mới thực thi mã `product-store.js` thật với Firebase SDK thật và Security Rules thật; chỉ thay phần nạp dependency và localStorage. Nhánh lỗi transport được giả lập rõ ràng, không phải mất mạng vật lý. Log cục bộ: `.tools/product-integration.log` (Git bỏ qua).
+3. `firebase emulators:exec ... "node --test --test-concurrency=1 flower.com/tests/IntegrationTests/*.test.js"` → **54 đạt, 0 thất bại, 0 bỏ qua** trong 26,5 giây. Suite chạy project `demo-flowerflow`, Auth/Firestore cục bộ. Bài mới thực thi mã `product-store.js` thật với Firebase SDK thật và Security Rules thật; chỉ thay phần nạp dependency và localStorage. Nhánh lỗi transport được giả lập rõ ràng, không phải mất mạng vật lý. Log cục bộ: `.tools/product-integration.log` (Git bỏ qua).
 4. `node --check flower.com/admin.js`, `node --check flower.com/product-store.js`, `git diff --check` → đạt, không lỗi cú pháp/whitespace. Có cảnh báo Node phân loại module và Playwright NO_COLOR/FORCE_COLOR, không làm test thất bại.
 5. Đã xem ảnh chụp Admin mobile 320px sau sửa; báo ảnh thiếu đọc được, form vừa chiều ngang, bảng cuộn trong khung. Ảnh browser nằm trong `test-results/` (Git bỏ qua).
 
@@ -81,7 +81,7 @@ Lệnh integration từ thư mục gốc (PowerShell, Java đã có trong `.tool
 ```powershell
 $env:JAVA_HOME = (Resolve-Path '.tools/java21/jdk-21.0.13.0.2+1').Path
 $env:PATH = "$env:JAVA_HOME\bin;$env:PATH"
-node flower.com/node_modules/firebase-tools/lib/bin/firebase.js emulators:exec --project demo-flowerflow --config flower.com/firebase.json --only auth,firestore "node --test --test-concurrency=1 tests/integration/*.test.js"
+node flower.com/node_modules/firebase-tools/lib/bin/firebase.js emulators:exec --project demo-flowerflow --config flower.com/firebase.json --only auth,firestore "node --test --test-concurrency=1 flower.com/tests/IntegrationTests/*.test.js"
 ```
 
 ## E. File thay đổi
@@ -95,8 +95,8 @@ node flower.com/node_modules/firebase-tools/lib/bin/firebase.js emulators:exec -
 | flower.com/firestore.rules | Validation sản phẩm khi tạo/sửa, giữ nguyên quyền hiện có |
 | flower.com/product.html | Dùng product-store v23 |
 | flower.com/wish.html | Đồng bộ product-store v23 |
-| flower.com/e2e/admin-products.spec.js | Form/lọc/ảnh/mạng/double submit, reload/xóa thực tế, ảnh 320px |
-| tests/integration/product-management.test.js | CRUD bền, cache, API công khai, snapshot đơn, xung đột, Rules và lỗi lưu |
+| flower.com/tests/E2ETests/admin-products.spec.js | Form/lọc/ảnh/mạng/double submit, reload/xóa thực tế, ảnh 320px |
+| flower.com/tests/IntegrationTests/product-management.test.js | CRUD bền, cache, API công khai, snapshot đơn, xung đột, Rules và lỗi lưu |
 | docs/test-reports/2026-11-02-product-management.md | Báo cáo này |
 
 ## F. Vấn đề còn tồn tại và giới hạn

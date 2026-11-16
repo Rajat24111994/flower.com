@@ -1,0 +1,23 @@
+# Production host: https://flower-com.onrender.com (Render Free, Docker, ASP.NET + frontend on one origin).
+# The service was created from the dashboard; keep its Branch setting on `main` to match this file.
+services:
+  - type: web
+    name: flower-com
+    runtime: docker
+    repo: https://github.com/Longg5048/flower.com
+    branch: main
+    plan: free
+    region: singapore
+    dockerfilePath: ./flower.com/backend/Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    autoDeployTrigger: checksPass
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: AUTH_MODE
+        value: firebase
+      - key: FIREBASE_PROJECT_ID
+        value: web-ban-hoa-9fe0b
+    # Supply private Firebase, password-provider, payment and cron settings in Render.
+    # No credential is committed or baked into the Docker image. See flower.com/docs/backend/DEPLOYMENT.md.
