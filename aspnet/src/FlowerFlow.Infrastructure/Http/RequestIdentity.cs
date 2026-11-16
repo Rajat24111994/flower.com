@@ -1,4 +1,3 @@
-using System.Text.RegularExpressions;
 using FirebaseAdmin.Auth;
 using FlowerFlow.Infrastructure.Firebase;
 using Microsoft.AspNetCore.Http;
@@ -16,8 +15,6 @@ public sealed class RequestIdentity(IFirebaseAdminBackend backend)
 {
     private static readonly object LocalIdentityKey = new();
     private sealed record LocalIdentity(FirebaseIdentity? Account, bool Presented);
-    private static readonly Regex Bearer = new(@"^Bearer\s+(\S+)$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant,
-        TimeSpan.FromSeconds(1));
 
     // Called by trusted local-server middleware only. The key cannot be supplied by HTTP input.
     public static void SetLocalIdentity(HttpContext context, FirebaseIdentity? account, bool presented) =>
@@ -39,9 +36,9 @@ public sealed class RequestIdentity(IFirebaseAdminBackend backend)
             return local.Account;
         }
         if (authorization.Length == 0) return null;
-        var match = Bearer.Match(authorization);
-        if (!match.Success) throw new RequestIdentityException("auth/invalid-session", "Invalid authorization");
-        try { return await backend.VerifyIdTokenAsync(match.Groups[1].Value, true, context.RequestAborted); }
+        var token = BearerToken.Read(authorization, singleToken: true);
+        if (token is null) throw new RequestIdentityException("auth/invalid-session", "Invalid authorization");
+        try { return await backend.VerifyIdTokenAsync(token, true, context.RequestAborted); }
         catch (FirebaseAuthException error)
         {
             throw new RequestIdentityException("auth/" + error.AuthErrorCode, "Invalid Firebase session");
