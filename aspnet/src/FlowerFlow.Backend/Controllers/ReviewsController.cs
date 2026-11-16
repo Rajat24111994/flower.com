@@ -8,7 +8,8 @@ namespace FlowerFlow.Backend.Controllers;
 public sealed class ReviewsController(ReviewService service) : ControllerBase
 {
     [HttpGet] public Task<IReadOnlyList<ReviewResponse>> List(CancellationToken ct, string? productId = null, bool manage = false) => service.ListAsync(productId, manage, ct);
-    [HttpPost, Authorize] public async Task<ActionResult<ReviewResponse>> Create(ReviewRequest request, CancellationToken ct)
+    [HttpPost, Authorize, ProducesResponseType<ReviewResponse>(StatusCodes.Status201Created)]
+    public async Task<ActionResult<ReviewResponse>> Create(ReviewRequest request, CancellationToken ct)
     { var review = await service.CreateAsync(request, ct); return Created($"/api/v1/reviews?productId={Uri.EscapeDataString(review.ProductIds[0])}", review); }
     [HttpGet("own/{orderId}"), Authorize] public Task<ReviewResponse?> Own(string orderId, CancellationToken ct) => service.OwnAsync(orderId, ct);
     [HttpPut("{id}/moderation"), Authorize(Policy = "Admin")]

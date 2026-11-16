@@ -9,6 +9,7 @@ namespace FlowerFlow.Backend.Controllers;
 public sealed class PaymentsController(PaymentService service) : ControllerBase
 {
     [HttpPost("orders/{orderId}/payments"), AllowAnonymous]
+    [ProducesResponseType<PaymentAttemptResponse>(StatusCodes.Status201Created)]
     public async Task<ActionResult<PaymentAttemptResponse>> Create(string orderId, CancellationToken ct,
         [FromHeader(Name = "X-Payment-Reference")] string? reference = null)
     { var result = await service.CreateAttemptAsync(orderId, ct, reference); return Created($"/api/v1/payments/{result.Id}", result.ToResponse()); }

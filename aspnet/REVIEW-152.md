@@ -26,7 +26,17 @@ Sau sửa, năm regression tests đều đạt. Validator không chỉ trả `tr
 nó trả một biểu diễn chuẩn để tránh mỗi lớp hiểu cùng dữ liệu theo cách khác.
 Đó là lý do báo giá, fingerprint, idempotency và giữ kho phải dùng chung biểu diễn này.
 
-## Các giới hạn vẫn giữ nguyên
+## Bước 2: chốt hợp đồng hiện tại
+
+Đã ghi rõ DTO/JSON, phân quyền, số tiền VND, version, idempotency, vòng đời giữ kho,
+quyền riêng tư và mã HTTP trong API-CONTRACT.md. Không đổi URL/body/response đang
+dùng của frontend; baseline này chỉ dành cho `/api/v1` trên host mới.
+
+Phát hiện thêm OpenAPI mặc định ghi 200 cho các action thực tế trả 201/204.
+Tám kiểm thử schema đã tái hiện vấn đề trước khi thêm ProducesResponseType;
+khai báo status và DTO tường minh giúp Swagger phản ánh đúng hành vi HTTP.
+
+## Phạm vi của đợt nâng cấp
 
 Các source cũ chỉ được đọc làm căn cứ. Chưa kết nối SQL/EF, chưa dùng gateway thật,
 chưa triển khai danh tính thật và chưa chuyển production sang host mới.

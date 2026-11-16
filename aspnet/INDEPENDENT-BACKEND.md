@@ -122,6 +122,9 @@ Bộ `FlowerFlow.Contracts` cũ vẫn giữ để đối chiếu hành vi backen
 
 ## API hiện có
 
+Hợp đồng hiện tại: [API-CONTRACT.md](API-CONTRACT.md). Nhật ký rà soát và các lỗi
+đã tái hiện/sửa: [REVIEW-152.md](REVIEW-152.md).
+
 Các đường dẫn sau đều bắt đầu bằng `/api/v1`. Truy cập Swagger để xem schema và gửi request.
 
 | Nhóm | API chính | Quyền ghi |

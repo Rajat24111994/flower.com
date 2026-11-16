@@ -14,6 +14,7 @@ public sealed class ProductsController(CatalogService service) : ControllerBase
     [HttpGet("{id}")]
     public Task<ProductResponse> Get(string id, CancellationToken ct, bool manage = false) => service.ProductAsync(id, manage, ct);
     [HttpPost, Authorize(Policy = "Admin")]
+    [ProducesResponseType<ProductResponse>(StatusCodes.Status201Created)]
     public async Task<ActionResult<ProductResponse>> Create(ProductRequest request, CancellationToken ct)
     {
         var product = await service.SaveProductAsync(null, request, ct);
@@ -22,6 +23,7 @@ public sealed class ProductsController(CatalogService service) : ControllerBase
     [HttpPut("{id}"), Authorize(Policy = "Admin")]
     public Task<ProductResponse> Update(string id, ProductRequest request, CancellationToken ct) => service.SaveProductAsync(id, request, ct);
     [HttpDelete("{id}"), Authorize(Policy = "Admin")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> Hide(string id, [FromQuery] long expectedVersion, CancellationToken ct)
     { await service.HideProductAsync(id, expectedVersion, ct); return NoContent(); }
     [HttpPut("{id}/flower-price"), Authorize(Policy = "Owner")]

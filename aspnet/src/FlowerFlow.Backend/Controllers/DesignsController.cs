@@ -7,7 +7,8 @@ namespace FlowerFlow.Backend.Controllers;
 [ApiController, Route("api/v1/design-requests")]
 public sealed class DesignsController(DesignService service) : ControllerBase
 {
-    [HttpPost] public async Task<ActionResult<CreatedDesign>> Create(CreateDesignRequest request, CancellationToken ct)
+    [HttpPost, ProducesResponseType<CreatedDesign>(StatusCodes.Status201Created)]
+    public async Task<ActionResult<CreatedDesign>> Create(CreateDesignRequest request, CancellationToken ct)
     { var created = await service.CreateAsync(request, ct); return Created($"/api/v1/design-requests/{created.Request.Id}", created); }
     [HttpGet, Authorize] public Task<IReadOnlyList<DesignResponse>> List(CancellationToken ct, bool manage = false) => service.ListAsync(manage, ct);
     [HttpGet("{id}")] public Task<DesignResponse> Get(string id, CancellationToken ct,

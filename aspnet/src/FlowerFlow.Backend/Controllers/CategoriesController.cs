@@ -15,6 +15,7 @@ public sealed class CategoriesController(CatalogService service) : ControllerBas
     public async Task<ActionResult<CategoryResponse>> Get(string id, CancellationToken ct) =>
         (await service.CategoriesAsync(ct)).FirstOrDefault(item => item.Id == id) is { } category ? Ok(category.ToResponse()) : NotFound();
     [HttpPost, Authorize(Policy = "Admin")]
+    [ProducesResponseType<CategoryResponse>(StatusCodes.Status201Created)]
     public async Task<ActionResult<CategoryResponse>> Create(CategoryRequest request, CancellationToken ct)
     {
         var category = await service.SaveCategoryAsync(null, request, ct);
@@ -24,6 +25,7 @@ public sealed class CategoriesController(CatalogService service) : ControllerBas
     public async Task<CategoryResponse> Update(string id, CategoryRequest request, CancellationToken ct) =>
         (await service.SaveCategoryAsync(id, request, ct)).ToResponse();
     [HttpDelete("{id}"), Authorize(Policy = "Admin")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> Delete(string id, CancellationToken ct)
     { await service.DeleteCategoryAsync(id, ct); return NoContent(); }
 }

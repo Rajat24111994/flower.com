@@ -8,7 +8,8 @@ namespace FlowerFlow.Backend.Controllers;
 [ApiController, Route("api/v1/orders")]
 public sealed class OrdersController(OrderService service) : ControllerBase
 {
-    [HttpPost] public async Task<ActionResult<CreatedOrder>> Create(CheckoutRequest request, CancellationToken ct)
+    [HttpPost, ProducesResponseType<CreatedOrder>(StatusCodes.Status201Created)]
+    public async Task<ActionResult<CreatedOrder>> Create(CheckoutRequest request, CancellationToken ct)
     {
         var order = await service.CreateAsync(request, ct);
         return Created($"/api/v1/orders/{order.Id}", order);
