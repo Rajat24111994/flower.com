@@ -14,6 +14,17 @@ trực tiếp, các bài C# được đánh dấu bỏ qua. Kết quả/bảo đ
 
 ## Yêu cầu
 
+Các bài bổ sung FF-06–FF-09:
+
+- `IntegrationTests/customer-browser.test.js`: Chromium chạy order-store.js thật → C# HTTP → Firestore Emulator; identity browser là fixture token emulator.
+- `UnitTests/FlowerFlow.Api.Tests`: xUnit cho host Firebase native; chạy `dotnet test flower.com/FlowerFlow.sln` từ gốc repo.
+- `IntegrationTests/api-performance.test.js`: baseline HTTP C# đọc/quote, lưu JSON trong artifacts; không thử tải production.
+- `E2ETests/page-performance.spec.js`: catalog fixture 5 lần/viewport với budget local 5 giây; không đại diện Lighthouse production.
+
+Browser E2E dùng project `demo-flowerflow-browser`; cấu hình Firebase thay trong
+response của test server, không sửa file production. Chạy `npm run test:e2e:emulator`
+để có Auth/Firestore Emulator; các UI test fixture có thể chạy Playwright riêng.
+
 - Node.js 24.x (kiểm tra bằng `node --version`).
 - Unit test không cần cài thư viện riêng; các test dùng `node:assert` và Node.js Test Runner.
 - Test tích hợp (feature, system, security) cần thêm Java 11+ cho Firebase Emulator và `npm ci` trong thư mục `tests`.

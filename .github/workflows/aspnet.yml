@@ -6,6 +6,7 @@ on:
     paths:
       - 'flower.com/FlowerFlow.sln'
       - 'flower.com/tests/UnitTests/FlowerFlow.Contracts/**'
+      - 'flower.com/tests/UnitTests/FlowerFlow.Api.Tests/**'
       - 'flower.com/tests/IntegrationTests/**'
       - 'flower.com/tests/package*.json'
       - 'flower.com/firebase.json'
@@ -27,6 +28,7 @@ on:
     paths:
       - 'flower.com/FlowerFlow.sln'
       - 'flower.com/tests/UnitTests/FlowerFlow.Contracts/**'
+      - 'flower.com/tests/UnitTests/FlowerFlow.Api.Tests/**'
       - 'flower.com/tests/IntegrationTests/**'
       - 'flower.com/tests/package*.json'
       - 'flower.com/firebase.json'
@@ -71,9 +73,18 @@ jobs:
           java-version: 21
       - run: npm ci --prefix flower.com
       - run: npm ci --prefix flower.com/tests
+      - name: Install browser for frontend-to-C# integration
+        working-directory: flower.com
+        run: npx playwright install --with-deps chromium
       - run: dotnet build flower.com/FlowerFlow.sln --configuration Release
       - name: Exercise current ASP.NET host through the existing API integration suite
         run: node flower.com/node_modules/firebase-tools/lib/bin/firebase.js emulators:exec --only auth,firestore --project demo-flowerflow --config flower.com/firebase.json "node flower.com/tests/IntegrationTests/test-api.cjs"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: native-http-latency
+          path: artifacts/ff-09/http-latency.json
+          if-no-files-found: ignore
 
   build:
     runs-on: ubuntu-latest
@@ -87,6 +98,8 @@ jobs:
         with:
           node-version: 24
       - run: dotnet build flower.com/FlowerFlow.sln --configuration Release
+      - name: Native Firebase API unit and host integration tests
+        run: dotnet test flower.com/tests/UnitTests/FlowerFlow.Api.Tests --configuration Release --no-build --logger "trx;LogFileName=native-api.trx" --results-directory artifacts/native-api-tests
       - run: dotnet publish flower.com/backend/FlowerFlow.Api --configuration Release --no-restore --output "${{ runner.temp }}/flowerflow-publish"
       - uses: actions/setup-java@v4
         with:
@@ -103,6 +116,12 @@ jobs:
           cat "$RUNNER_TEMP/firestore-emulator.log"
           exit 1
       - run: dotnet run --project flower.com/tests/UnitTests/FlowerFlow.Contracts --configuration Release --no-build -- --firestore-emulator
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: native-api-test-results
+          path: artifacts/native-api-tests
+          if-no-files-found: ignore
 
   container:
     needs: build

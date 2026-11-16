@@ -7,8 +7,9 @@ signed `/api/vnpay-ipn` callback can mark the order paid. Browser redirects are 
 ## Sandbox configuration
 
 1. Register a merchant sandbox account at [VNPay's developer registration page](https://pay.vnpaytest.vn/dev-registration).
-2. In Vercel Project Settings → Environment Variables, configure these for Preview/Production as
-   appropriate. Do not put merchant secrets in source code or commit them.
+2. In the staging host's secret manager (Render Environment for the current ASP.NET
+   deployment), configure the following. Use a separate test Firebase project and merchant
+   sandbox; do not put merchant secrets in source code or commit them.
 
    | Variable | Value |
    | --- | --- |
@@ -50,3 +51,9 @@ reopened.
 
 - [VNPay sandbox payment integration](https://sandbox.vnpayment.vn/apis/docs/thanh-toan-pay/pay.html)
 - [Vercel Cron usage and pricing](https://vercel.com/docs/cron-jobs/usage-and-pricing)
+
+## Verification status
+
+Local signed callbacks and Emulator tests do not prove a real VNPay IPN delivery.
+Issue #160 remains open until a merchant sandbox transaction and callback are observed;
+see [the FF-05 report](test-reports/2026-11-17-ff-05-vnpay-real-sandbox.md).

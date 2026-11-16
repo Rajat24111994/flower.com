@@ -9,11 +9,13 @@ const policy = require("../../lib/content-security").withSecurityPolicy(producti
   .replace("connect-src 'self'", "connect-src 'self' http://127.0.0.1:8080 http://127.0.0.1:9099")
   .replace("frame-src ", "frame-src http://127.0.0.1:9099 ");
 let loginHandler;
+const emulatorProject = process.env.GCLOUD_PROJECT || "demo-flowerflow-browser";
 if (process.env.FIREBASE_AUTH_EMULATOR_HOST && process.env.FIRESTORE_EMULATOR_HOST) {
   // The test server only runs this API against local emulators. No real credentials
   // or production data are needed, and the API keeps its normal server-side checks.
   const { generateKeyPairSync } = require("node:crypto");
-  const projectId = process.env.GCLOUD_PROJECT || "web-ban-hoa-9fe0b";
+  const projectId = emulatorProject;
+  if (!projectId.startsWith("demo-")) throw new Error("Browser tests require a demo- Firebase Emulator project.");
   const { privateKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
   process.env.FIREBASE_PROJECT_ID = projectId;
   process.env.FIREBASE_SERVICE_ACCOUNT_JSON = JSON.stringify({
@@ -49,6 +51,12 @@ http.createServer(async (req, res) => {
     const file = path.resolve(root, "." + (pathname === "/" ? "/index.html" : pathname));
     if (!file.startsWith(root + path.sep)) { res.writeHead(403).end(); return; }
     let data = await fs.readFile(file);
+    if (pathname === "/js/core/firebase-config.js" && loginHandler) {
+      // Change only the served test response, never the production configuration file.
+      data = Buffer.from(data.toString("utf8")
+        .replace(/projectId: "[^"]+"/, `projectId: "${emulatorProject}"`)
+        .replace(/authDomain: "[^"]+"/, `authDomain: "${emulatorProject}.firebaseapp.com"`));
+    }
     if (path.extname(file) === ".html") {
       data = Buffer.from(data.toString("utf8").replace(/<head(?:\s[^>]*)?>/i,
         '$&\n<script src="/__e2e/firebase-runtime.js"></script>'));

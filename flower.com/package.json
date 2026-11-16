@@ -21,7 +21,7 @@
         "test:e2e": "playwright test",
         "test:auth-visibility": "playwright test --config playwright.auth-visibility.config.js",
         "test:e2e:local": "playwright test --config playwright.local.config.js",
-        "test:e2e:emulator": "firebase emulators:exec --project web-ban-hoa-9fe0b --only auth,firestore \"npm run test:e2e\""
+        "test:e2e:emulator": "firebase emulators:exec --project demo-flowerflow-browser --only auth,firestore \"npm run test:e2e\""
     },
     "dependencies": {
         "firebase-admin": "^14.5.0"

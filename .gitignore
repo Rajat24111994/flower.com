@@ -18,6 +18,10 @@ backups/
 *.json.enc
 
 # Test coverage reports
+/artifacts/
+**/bin/
+**/obj/
+**/TestResults/
 coverage/
 test-results/
 test-results-local/

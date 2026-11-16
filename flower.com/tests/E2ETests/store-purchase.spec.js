@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 
-const FIRESTORE = "http://127.0.0.1:8080/v1/projects/web-ban-hoa-9fe0b/databases/(default)/documents";
+const FIRESTORE = `http://127.0.0.1:8080/v1/projects/${process.env.GCLOUD_PROJECT || "demo-flowerflow-browser"}/databases/(default)/documents`;
 const catalog = [{
   id: 1,
   title: "Bó hoa xuân dịu dàng",

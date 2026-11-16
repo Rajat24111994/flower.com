@@ -81,7 +81,7 @@ test.describe("recovery form", () => {
 test("locked customer can request recovery, reset the password and sign in again", async ({ page, request }) => {
   test.skip(!process.env.FIREBASE_AUTH_EMULATOR_HOST || !process.env.FIRESTORE_EMULATOR_HOST,
     "Run with Firebase Auth and Firestore emulators.");
-  const project = process.env.GCLOUD_PROJECT || "web-ban-hoa-9fe0b";
+  const project = process.env.GCLOUD_PROJECT || "demo-flowerflow-browser";
   const authOrigin = `http://${process.env.FIREBASE_AUTH_EMULATOR_HOST}`;
   const authApi = `${authOrigin}/identitytoolkit.googleapis.com/v1`;
   const email = `recovery-${randomUUID()}@example.test`;
