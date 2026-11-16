@@ -220,7 +220,7 @@ function renderDashboard() {
    main.innerHTML = `
        <section class="dashboard">
            ${ordersNotice}
-           ${renderRestoreCatalogNotice()}
+           ${renderInventoryConnectionNotice()}
            <div class="summary">
                <div class="summary-card">
                    <h3>Tổng sản phẩm</h3>
@@ -281,22 +281,14 @@ function renderRevenueTab() {
 }
 
 // Explain when the browser must rely on the server because Firestore is blocked.
-function renderRestoreCatalogNotice() {
+function renderInventoryConnectionNotice() {
    let offlineNotice = "";
    if (FlowerInventory.isFirestoreReachable() === false) {
        offlineNotice = FlowerInventory.areProductsLoaded()
            ? `<div class="restore-catalog-notice" role="alert"><p><strong>Trình duyệt không kết nối trực tiếp được Firestore</strong> (mạng có thể đang chặn Firebase). Sản phẩm đang được đọc qua máy chủ; đơn hàng, ưu đãi và thao tác lưu trên trang này có thể chưa hoạt động. Hãy thử mạng khác (ví dụ 4G) nếu cần chỉnh sửa.</p></div>`
            : `<div class="restore-catalog-notice" role="alert"><p><strong>Không đọc được kho sản phẩm</strong> cả từ trình duyệt lẫn qua máy chủ. Hãy kiểm tra mạng rồi tải lại trang.</p></div>`;
    }
-   const missingCount = FlowerInventory.getMissingCatalogProducts().length;
-   if (!missingCount) return offlineNotice;
-   return offlineNotice + `
-       <div class="restore-catalog-notice" role="status">
-           <p><strong>Cửa hàng đang thiếu ${missingCount} sản phẩm so với danh mục gốc.</strong>
-           Sản phẩm có thể đã bị xóa do lỗi lưu kho trước đây. Khôi phục sẽ thêm lại các sản phẩm còn thiếu với tồn kho ban đầu; sản phẩm đang có giữ nguyên.</p>
-           <button class="primary-btn" type="button" data-action="restore-catalog">Khôi phục ${missingCount} sản phẩm</button>
-       </div>
-   `;
+   return offlineNotice;
 }
 
 function showAdminConfirmation({ title, message, confirmLabel, danger = false }) {
@@ -346,25 +338,6 @@ function showAdminConfirmation({ title, message, confirmLabel, danger = false })
    });
 }
 
-async function restoreCatalog() {
-   const missingCount = FlowerInventory.getMissingCatalogProducts().length;
-   if (!missingCount || !await showAdminConfirmation({
-       title: "Khôi phục sản phẩm",
-       message: `Sẽ thêm lại ${missingCount} sản phẩm còn thiếu từ danh mục gốc. Sản phẩm hiện có sẽ được giữ nguyên.`,
-       confirmLabel: `Khôi phục ${missingCount} sản phẩm`
-   })) return;
-   try {
-       const restored = await FlowerInventory.restoreCatalogProducts();
-       alert(`Đã khôi phục ${restored} sản phẩm.`);
-   } catch (error) {
-       console.error("Không thể khôi phục sản phẩm:", error);
-       alert(error.message || "Chưa thể khôi phục sản phẩm. Hãy thử lại sau.");
-   }
-   const heading = main.querySelector(".panel h2")?.textContent;
-   if (heading === "Quản lý kho hoa") renderProductTab();
-   else renderDashboard();
-}
-
 function renderProductTab() {
    const products = getProducts();
    const categories = getCategories();
@@ -395,7 +368,7 @@ function renderProductTab() {
                    <h2>Quản lý kho hoa</h2>
                    <button class="delete-record" type="button" data-action="delete-all-products" ${products.length ? "" : "disabled"}>Xóa tất cả sản phẩm (${products.length})</button>
                </div>
-               ${renderRestoreCatalogNotice()}
+               ${renderInventoryConnectionNotice()}
                <form id="product-search-form" class="product-search" role="search">
                    <label class="product-filter-field" for="product-search"><span>Tìm sản phẩm</span>
                        <input id="product-search" name="search" type="search" placeholder="Tên, mô tả hoặc danh mục..." value="${escapeHtml(productSearchTerm)}">
@@ -2728,10 +2701,6 @@ main.addEventListener("click", (event) => {
        renderProductTab();
        return;
    }
-   if (actionButton?.dataset.action === "restore-catalog") {
-       void restoreCatalog();
-       return;
-   }
    if (actionButton?.dataset.action === "delete-all-products") {
        void deleteAllProducts();
        return;
@@ -2913,7 +2882,7 @@ async function initializeAdmin() {
            return;
        }
 
-       const token = await currentUser.getIdTokenResult();
+       const token = await currentUser.getIdTokenResult(true);
        if (token.claims.admin !== true) {
            await authSdk.signOut(auth);
            window.FlowerSafeStorage.remove("loggedUser");
