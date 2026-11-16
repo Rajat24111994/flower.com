@@ -3,11 +3,13 @@ using FlowerFlow.Application.Compatibility;
 using FlowerFlow.Infrastructure.Firebase;
 using FlowerFlow.Infrastructure.Http;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
 
 namespace FlowerFlow.Infrastructure.Accounts;
 
 /// <summary>Port of backend/accounts/login.js. Only a protected, successful password check can mint a custom token.</summary>
-public sealed class LoginHandler(IFirebaseAccounts accounts, Func<IPasswordAuth> passwordProvider, Func<LoginProtection> protection)
+public sealed class LoginHandler(IFirebaseAccounts accounts, Func<IPasswordAuth> passwordProvider, Func<LoginProtection> protection,
+    ILogger<LoginHandler>? logger = null)
 {
     private static readonly IReadOnlyDictionary<string, string> Messages = new Dictionary<string, string>
     {
@@ -45,21 +47,25 @@ public sealed class LoginHandler(IFirebaseAccounts accounts, Func<IPasswordAuth>
         // Node's password flow has its own provider timeout, not a client-disconnect signal.
         // Finish the serialized check even if the caller disconnects so failures cannot evade accounting.
         var policyCancellation = CancellationToken.None;
+        var stage = "configuration";
         try
         {
-            accounts.EnsureConfigured(); var provider = passwordProvider(); guard = protection();
-            await provider.AssertReadyAsync(policyCancellation);
-            var account = await provider.LookupAsync(email, policyCancellation);
-            attempt = await guard.AcquireAsync(account.Key, account.PasswordUpdatedAt, policyCancellation);
+            accounts.EnsureConfigured(); stage = "provider-setup"; var provider = passwordProvider(); guard = protection();
+            stage = "assert-ready"; await provider.AssertReadyAsync(policyCancellation);
+            stage = "account-lookup"; var account = await provider.LookupAsync(email, policyCancellation);
+            stage = "lockout-acquire"; attempt = await guard.AcquireAsync(account.Key, account.PasswordUpdatedAt, policyCancellation);
             if (attempt.Code is not null) { await RespondAsync(context, attempt); return; }
-            var valid = await provider.VerifyPasswordAsync(email, password.GetString()!, account, policyCancellation);
-            var result = await guard.FinishAsync(attempt, valid ? "success" : "invalid", policyCancellation); attempt = null;
+            stage = "password-check"; var valid = await provider.VerifyPasswordAsync(email, password.GetString()!, account, policyCancellation);
+            stage = "lockout-finish"; var result = await guard.FinishAsync(attempt, valid ? "success" : "invalid", policyCancellation); attempt = null;
             if (result.Status != 200) { await RespondAsync(context, result); return; }
-            var token = await accounts.CreateCustomTokenAsync(account.Uid!, policyCancellation);
+            stage = "custom-token"; var token = await accounts.CreateCustomTokenAsync(account.Uid!, policyCancellation);
             await context.Response.WriteAsJsonAsync(new { customToken = token }, context.RequestAborted);
         }
-        catch
+        catch (Exception error)
         {
+            // Log only the failing step and a fixed reason/type name: never the exception message, email, password or keys.
+            logger?.LogWarning("Password login unavailable at {Stage}: {Reason}", stage,
+                error is AuthUnavailableException unavailable ? unavailable.Reason : error.GetType().Name);
             if (attempt?.LeaseId is not null && guard is not null)
             {
                 // Release an in-flight provider attempt without counting an outage as a wrong password.
