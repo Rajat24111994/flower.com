@@ -1,6 +1,6 @@
 # Giá héo tự động (#107)
 
-Tính năng chạy trên backend ASP.NET (`aspnet/`). Mặc định **tắt**, không tự tạo cấu hình hay sửa dữ liệu khi khởi động. Owner phải nhập mức giảm và giá sàn trước khi bật ở `owner.html`. Firebase vẫn dùng project hiện tại `web-ban-hoa-9fe0b`.
+Tính năng chạy trên backend ASP.NET (`flower.com/backend/`). Mặc định **tắt**, không tự tạo cấu hình hay sửa dữ liệu khi khởi động. Owner phải nhập mức giảm và giá sàn trước khi bật ở `owner.html`. Firebase vẫn dùng project hiện tại `web-ban-hoa-9fe0b`.
 
 ## Quy tắc đã thống nhất
 
@@ -77,8 +77,8 @@ Triển khai backend ASP.NET và frontend cùng phiên bản; JS backend cũ ch�
 Chạy kiểm tra công thức độc lập:
 
 ```powershell
-dotnet run --project aspnet/tests/FlowerFlow.Contracts --configuration Release -- --wilting
+dotnet run --project flower.com/tests/UnitTests/FlowerFlow.Contracts --configuration Release -- --wilting
 node --test tests/wilting-catalog.test.js
 ```
 
-Chạy `tests/integration/wilting-prices.test.js` qua `aspnet/test-api.cjs` trong Firebase Auth/Firestore Emulator; chạy giao diện bằng `playwright test e2e/wilting-prices.spec.js` tại `flower.com`. Kiểm thử chỉ dùng project demo, không thao tác database production.
+Chạy `flower.com/tests/IntegrationTests/wilting-prices.test.js` qua `flower.com/tests/IntegrationTests/test-api.cjs` trong Firebase Auth/Firestore Emulator; chạy giao diện bằng `playwright test e2e/wilting-prices.spec.js` tại `flower.com`. Kiểm thử chỉ dùng project demo, không thao tác database production.

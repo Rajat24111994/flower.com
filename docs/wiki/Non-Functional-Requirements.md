@@ -67,7 +67,7 @@ Chưa bật MFA trong issue này. Luồng đăng nhập mật khẩu hiện đi 
 | Kiểm thử | Hiện trạng |
 | --- | --- |
 | Khôi phục dữ liệu từ bản sao lưu | ✅ Test tự động trên emulator |
-| Tải tăng 10–20 lần | ⚠️ Có kịch bản `cd tests && npm run load` trên emulator; phát hiện lỗi khi nhiều người cùng mua một sản phẩm |
+| Tải tăng 10–20 lần | ⚠️ Có kịch bản `cd flower.com/tests && npm run load` trên emulator; phát hiện lỗi khi nhiều người cùng mua một sản phẩm |
 | Đo thời gian tải trang và thanh toán | ⚠️ Đã đo Lighthouse; chưa đo thanh toán |
 | Nhiều người cùng mua sản phẩm cuối cùng | ✅ Không bán vượt kho với 5–200 người cùng mua (load test); ⚠️ có thể báo lỗi 503 oan khi ≥ 100 người |
 | Quyền của khách, quản lý, chủ cửa hàng | ✅ Có test tự động |

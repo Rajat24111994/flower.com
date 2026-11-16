@@ -1,0 +1,22 @@
+// Project-wide usings for the layered FlowerFlow namespaces.
+global using FlowerFlow.Application.Abstractions;
+global using FlowerFlow.Application.Accounts;
+global using FlowerFlow.Application.Admin;
+global using FlowerFlow.Application.Catalog;
+global using FlowerFlow.Application.Common.Configuration;
+global using FlowerFlow.Application.Common.Firestore;
+global using FlowerFlow.Application.Common.Http;
+global using FlowerFlow.Application.Compatibility;
+global using FlowerFlow.Application.DesignRequests;
+global using FlowerFlow.Application.Orders;
+global using FlowerFlow.Application.Payments;
+global using FlowerFlow.Application.ShopSettings;
+global using FlowerFlow.Domain.Constants;
+global using FlowerFlow.Domain.Entities;
+global using FlowerFlow.Domain.Enums;
+global using FlowerFlow.Domain.Models;
+global using FlowerFlow.Infrastructure.Audit;
+global using FlowerFlow.Infrastructure.Firebase;
+global using FlowerFlow.Infrastructure.Local;
+global using FlowerFlow.Infrastructure.Security;
+global using FlowerFlow.Infrastructure.Vnpay;

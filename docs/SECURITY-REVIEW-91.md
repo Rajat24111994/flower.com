@@ -22,7 +22,7 @@ Không phát hiện lỗ hổng khai thác được trong phạm vi đã rà so�
 | Truy cập trái phép dữ liệu đơn hàng | Không phát hiện quyền đọc chéo tài khoản trong phạm vi được rà soát. | Quy tắc Firestore giới hạn đọc đơn hàng theo tài khoản hoặc quyền quản trị; tra cứu khách vãng lai được giới hạn tốc độ và chỉ trả dữ liệu tối thiểu. |
 | Thanh toán và tạo đơn | Không phát hiện rủi ro bổ sung trong luồng đã rà soát. | Giữ việc xác minh giá, tồn kho và dữ liệu đơn hàng ở phía máy chủ; tiếp tục chạy kiểm thử API và quy tắc Firestore trên emulator trước khi phát hành thay đổi liên quan. |
 
-Do không phát hiện lỗ hổng, không có thay đổi mã khắc phục trong đợt này. Các biện pháp hiện có cần được duy trì; phạm vi kiểm thử emulator chưa được chạy cục bộ và được ghi rõ trong [báo cáo kiểm thử](./test-reports/2026-11-09-issue-91.md).
+Do không phát hiện lỗ hổng, không có thay đổi mã khắc phục trong đợt này. Các biện pháp hiện có cần được duy trì; phạm vi kiểm thử emulator chưa được chạy cục bộ và được ghi rõ trong [báo cáo kiểm thử](test-reports/2026-11-09-issue-91.md).
 
 ## Phạm vi kiểm thử
 

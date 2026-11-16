@@ -12,8 +12,8 @@ Các đường dẫn nguồn/test trong báo cáo là tương đối với gốc
 
 Đã có VNPay và COD trong checkout, tạo URL từ tổng tiền máy chủ, xác thực IPN/chữ ký/số tiền, xử lý gửi trùng, kết quả/thanh toán lại và hoàn kho đơn hết hạn.
 
-- [x] Đối chiếu `flower.com/api/payments.js`, `flower.com/api/vnpay-ipn.js`, `flower.com/lib/vnpay.js`, `flower.com/api/orders.js` và `flower.com/checkout.html`.
-- [x] Có test `tests/vnpay.test.js` và `tests/integration/vnpay.test.js`; integration gồm thành công, sai số tiền, IPN trùng/thất bại và đơn hết hạn. [Commit triển khai VNPay](https://github.com/Longg5048/flower.com/commit/b0d193f664a08bb6f973babe63787629cbf83e36).
+- [x] Đối chiếu `flower.com/legacy-node/api/payments.js`, `flower.com/legacy-node/api/vnpay-ipn.js`, `flower.com/lib/vnpay.js`, `flower.com/legacy-node/api/orders.js` và `flower.com/checkout.html`.
+- [x] Có test `tests/vnpay.test.js` và `flower.com/tests/IntegrationTests/vnpay.test.js`; integration gồm thành công, sai số tiền, IPN trùng/thất bại và đơn hết hạn. [Commit triển khai VNPay](https://github.com/Longg5048/flower.com/commit/b0d193f664a08bb6f973babe63787629cbf83e36).
 - [ ] Còn lại: xác nhận tài khoản merchant sandbox và biến bí mật trên hosting; lưu bằng chứng giao dịch qua VNPay sandbox thật, IPN tới URL triển khai và các kịch bản lỗi. Test emulator không thay thế sandbox. Phối hợp #119; không đưa khóa/log nhạy cảm lên issue.
 
 ## #42 — Đóng
@@ -26,7 +26,7 @@ Hoàn thành tiêu chí loại bỏ tài nguyên hotlink thương hiệu khác. 
 
 ## #94 — Đóng
 
-- [x] Firebase Authentication xử lý mật khẩu Firebase; `flower.com/api/login.js` không log body, mật khẩu, token hoặc response upstream.
+- [x] Firebase Authentication xử lý mật khẩu Firebase; `flower.com/legacy-node/api/login.js` không log body, mật khẩu, token hoặc response upstream.
 - [x] Tài khoản local dùng `scryptSync` với salt ngẫu nhiên và so sánh hash trong `flower.com/lib/local-accounts.js`; không lưu mật khẩu gốc trong SQLite hoặc dữ liệu phiên trả về.
 - [x] Test `tests/local-accounts.test.js` kiểm tra dữ liệu lưu không chứa secret gốc, đăng nhập, đặt lại mật khẩu và thu hồi phiên; `tests/password-auth.test.js` kiểm tra lỗi/password và không trả token upstream; `tests/login-security.test.js` kiểm tra thông báo lỗi không tiết lộ chi tiết lạ. Tất cả đạt trong lượt unit mới.
 - [x] Chính sách mật khẩu mới và gợi ý đã có test riêng `tests/password-policy.test.js`. [Commit chính sách local](https://github.com/Longg5048/flower.com/commit/e62b98e).

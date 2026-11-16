@@ -14,4 +14,4 @@ Kiểm tra:
 
 - `cd flower.com; npm.cmd test`: các test logic, giá, giỏ hàng và xác thực dữ liệu.
 - `npm.cmd run test:e2e -- bouquet-options.spec.js`: giao diện desktop/mobile với dữ liệu API giả lập, không cần Firebase Emulator.
-- Test tích hợp `tests/integration/feature-orders.test.js`: lưu cấu hình vào Firestore, giá server và trừ/hoàn tồn kho gộp; cần Java và Firebase Emulator.
+- Test tích hợp `flower.com/tests/IntegrationTests/feature-orders.test.js`: lưu cấu hình vào Firestore, giá server và trừ/hoàn tồn kho gộp; cần Java và Firebase Emulator.

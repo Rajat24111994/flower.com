@@ -61,11 +61,11 @@ Phạm vi: mã nguồn hiện có tại `main`; không triển khai production, 
 
 ## 4. Tệp đã sửa
 
-- `flower.com/api/admin/audit.js` — bắt buộc role mirror còn hiệu lực.
-- `flower.com/api/bouquet-wrapping.js` — cùng guard cho quản trị đọc/ghi.
-- `flower.com/api/design-requests.js` — cùng guard cho quản trị đọc/cập nhật.
+- `flower.com/legacy-node/api/admin/audit.js` — bắt buộc role mirror còn hiệu lực.
+- `flower.com/legacy-node/api/bouquet-wrapping.js` — cùng guard cho quản trị đọc/ghi.
+- `flower.com/legacy-node/api/design-requests.js` — cùng guard cho quản trị đọc/cập nhật.
 - `flower.com/package.json`, `flower.com/package-lock.json` — Firebase Admin `^14.5.0`.
-- `tests/integration/helpers.js`, `tests/integration/security-api.test.js` — đăng ký handler và regression tests cho admin đang hoạt động/đã thu hồi.
+- `flower.com/tests/IntegrationTests/helpers.js`, `flower.com/tests/IntegrationTests/security-api.test.js` — đăng ký handler và regression tests cho admin đang hoạt động/đã thu hồi.
 - `docs/security/2026-11-09-deep-technical-audit.md` — báo cáo này.
 
 ## 5. Kiểm thử thật đã chạy

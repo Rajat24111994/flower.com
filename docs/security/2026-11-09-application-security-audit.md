@@ -29,7 +29,7 @@ Các bảo vệ đã xác nhận bằng kiểm thử:
 
 **Mức độ: Cao nếu API đặt hàng được mở ra Internet. Đã tái hiện trên emulator.**
 
-- Vị trí: [orders.js:703](../../flower.com/api/orders.js#L703), [orders.js:848](../../flower.com/api/orders.js#L848), [orders.js:887](../../flower.com/api/orders.js#L887); thời gian giữ COD 24 giờ tại [orders.js:13](../../flower.com/api/orders.js#L13).
+- Vị trí: [orders.js:703](../../flower.com/legacy-node/api/orders.js#L703), [orders.js:848](../../flower.com/legacy-node/api/orders.js#L848), [orders.js:887](../../flower.com/legacy-node/api/orders.js#L887); thời gian giữ COD 24 giờ tại [orders.js:13](../../flower.com/legacy-node/api/orders.js#L13).
 - Bằng chứng: không có token vẫn tạo được đơn COD lấy toàn bộ 10 sản phẩm fixture, HTTP `201`; tồn kho về `0`; giữ hàng 24 giờ; báo giá cho khách kế tiếp trả `409`. Ba đơn mới liên tiếp với idempotency key khác nhau đều trả `201`.
 - Ảnh hưởng: kẻ xấu có thể tạo đơn giả để hàng không còn khả dụng cho người mua thật. Idempotency chỉ ngăn gửi trùng cùng yêu cầu; giới hạn tra cứu hiện có không giới hạn tạo đơn.
 - Khắc phục: đặt quota tạo đơn/giữ hàng theo nhiều tín hiệu như tài khoản, phiên, số điện thoại và nguồn truy cập; áp dụng thử thách khi có dấu hiệu tự động hóa; giới hạn số đơn chưa xác nhận. Tách giữ hàng ngắn hạn với giữ hàng COD đã được cửa hàng xác nhận. Với website không dùng email thật, không lấy chuỗi có `@` làm bằng chứng danh tính đã xác minh.
@@ -79,7 +79,7 @@ Các bảo vệ đã xác nhận bằng kiểm thử:
 
 **Mức độ: Thấp; chỉ xảy ra khi có token admin cũ còn hợp lệ sau khi xóa quyền trong Firestore và chưa thu hồi token thành công. Đã tái hiện điều kiện này.**
 
-- Vị trí: [orders.js:1231](../../flower.com/api/orders.js#L1231), đối chiếu helper kiểm tra quyền hiện hành [orders.js:320](../../flower.com/api/orders.js#L320). Luồng thu hồi tại [owner/users.js:99](../../flower.com/api/owner/users.js#L99).
+- Vị trí: [orders.js:1231](../../flower.com/legacy-node/api/orders.js#L1231), đối chiếu helper kiểm tra quyền hiện hành [orders.js:320](../../flower.com/legacy-node/api/orders.js#L320). Luồng thu hồi tại [owner/users.js:99](../../flower.com/legacy-node/api/owner/users.js#L99).
 - Bằng chứng: xóa `adminRoles/{uid}` nhưng giữ ID token admin chưa bị thu hồi; gọi `GET /api/orders?action=expire` trả `200`, trong khi thao tác đối soát QR với cùng token trả `403`.
 - Giới hạn ảnh hưởng: mới xác nhận quyền kích hoạt dọn các reservation đã hết hạn; chưa chứng minh đọc được đơn riêng, xác nhận tiền hoặc hủy tùy ý đơn chưa hết hạn. Luồng thu hồi bình thường có gọi `revokeRefreshTokens`; `verifyIdToken(..., true)` vẫn chặn token đã thu hồi thành công.
 - Khắc phục: nhánh người quản trị sử dụng chung helper kiểm tra cả token và `adminRoles`; giữ nhánh cron secret riêng. Không chỉ dựa vào custom claim còn thời hạn.
@@ -98,7 +98,7 @@ Các bảo vệ đã xác nhận bằng kiểm thử:
 
 **Khoảng trống tích hợp; chưa chứng minh được truy cập trái phép hoặc lộ thông tin đơn. Cần xử lý trước khi dùng tài khoản local cho đơn hàng thật.**
 
-- Vị trí: [order-store.js:203](../../flower.com/js/order/order-store.js#L203), [order-store.js:210](../../flower.com/js/order/order-store.js#L210), [orders.js:694](../../flower.com/api/orders.js#L694), [orders.js:848](../../flower.com/api/orders.js#L848).
+- Vị trí: [order-store.js:203](../../flower.com/js/order/order-store.js#L203), [order-store.js:210](../../flower.com/js/order/order-store.js#L210), [orders.js:694](../../flower.com/legacy-node/api/orders.js#L694), [orders.js:848](../../flower.com/legacy-node/api/orders.js#L848).
 - Bằng chứng: cookie phiên local hợp lệ được gửi cùng yêu cầu tạo đơn, nhưng handler chỉ xác thực Firebase bearer token; đơn được tạo `201` với `uid: ""`, thay vì UID local. Thử trên backend Firestore emulator có cấu hình đầy đủ. Không suy ra server local thiếu cấu hình Firebase hiện tại vẫn lưu được đơn.
 - Ảnh hưởng: đơn của khách đã đăng nhập local bị xem như đơn khách vãng lai; không có liên kết sở hữu tài khoản như luồng Firebase. Rules vẫn không cho tài khoản khác đọc đơn này chỉ bằng cách đổi UID.
 - Khắc phục: thống nhất lớp xác thực phía máy chủ cho các API, lấy danh tính từ phiên đã kiểm chứng, rồi lưu UID người tạo. Nếu chỉ hỗ trợ local, cần một backend đơn hàng/phân quyền tương ứng. Không lấy `loggedUser` trong localStorage hoặc `uid` do client gửi làm bằng chứng quyền sở hữu. Khi có thông tin phiên không hợp lệ, tránh âm thầm hạ thành khách vãng lai.
@@ -131,7 +131,7 @@ npm.cmd --prefix flower.com test
 $env:FIREBASE_AUTH_EMULATOR_HOST = '127.0.0.1:9099'
 $env:FIRESTORE_EMULATOR_HOST = '127.0.0.1:8080'
 $env:GCLOUD_PROJECT = 'demo-security-audit'
-node --test --test-concurrency=1 tests/integration/security-api.test.js tests/integration/security-rules.test.js tests/integration/feature-accounts.test.js tests/integration/feature-orders.test.js tests/integration/vnpay.test.js tests/integration/login-protection.test.js
+node --test --test-concurrency=1 flower.com/tests/IntegrationTests/security-api.test.js flower.com/tests/IntegrationTests/security-rules.test.js flower.com/tests/IntegrationTests/feature-accounts.test.js flower.com/tests/IntegrationTests/feature-orders.test.js flower.com/tests/IntegrationTests/vnpay.test.js flower.com/tests/IntegrationTests/login-protection.test.js
 node tests/security-audit/api-probes.cjs
 $env:PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH = 'C:\Program Files\Google\Chrome\Application\chrome.exe'
 node tests/security-audit/browser-probes.cjs
@@ -139,8 +139,8 @@ node tests/security-audit/browser-probes.cjs
 
 Chạy các kiểm thử dùng cùng project emulator **lần lượt**: helper sẽ xóa dữ liệu project thử. Helper từ chối chạy nếu thiếu emulator hoặc project không bắt đầu bằng `demo-`. Không trỏ biến emulator tới dịch vụ thật. Nếu dùng Chromium đã cài bởi Playwright, có thể bỏ biến đường dẫn Chrome.
 
-- [api-probes.cjs](../../tests/security-audit/api-probes.cjs): tái hiện các quan sát API; dùng cho rà soát revision hiện tại, không phải regression test yêu cầu giữ nguyên hành vi có rủi ro.
-- [browser-probes.cjs](../../tests/security-audit/browser-probes.cjs): kiểm tra đường hiển thị DOM và fixture CSP.
+- [api-probes.cjs](../../flower.com/tests/IntegrationTests/security-audit/api-probes.cjs): tái hiện các quan sát API; dùng cho rà soát revision hiện tại, không phải regression test yêu cầu giữ nguyên hành vi có rủi ro.
+- [browser-probes.cjs](../../flower.com/tests/IntegrationTests/security-audit/browser-probes.cjs): kiểm tra đường hiển thị DOM và fixture CSP.
 - [security-audit-results.json](2026-11-09-security-audit-results.json): bản lưu kết quả máy đọc được của lần chạy này.
 - Log thô trên máy tại `flower.com/.tools/security-audit-{integration,login-integration,unit,api,browser}.log` (được gitignore). Kết quả JSON gốc cũng nằm trong `.tools`.
 

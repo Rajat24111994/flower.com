@@ -6,7 +6,7 @@ Email/password sign-in is handled by Firebase Authentication. The browser's `log
 
 ## Deployment target
 
-The site runs on Render as one Docker web service (`aspnet/Dockerfile`, Blueprint `render.yaml`, branch `main`) that serves both the frontend in `flower.com/` and every `/api/...` route. See `aspnet/DEPLOYMENT.md` for the full list of environment variables and the read-only `--check-firebase` connection check. The old Vercel address only redirects to Render.
+The site runs on Render as one Docker web service (`flower.com/backend/Dockerfile`, Blueprint `render.yaml`, branch `main`) that serves both the frontend in `flower.com/` and every `/api/...` route. See `flower.com/docs/backend/DEPLOYMENT.md` for the full list of environment variables and the read-only `--check-firebase` connection check. The old Vercel address only redirects to Render.
 
 For local testing, run `npm run dev` from `flower.com` (requires the .NET 10 SDK). A plain static HTTP server can serve the pages but cannot run `/api/admin/users` or `/api/owner/users`.
 

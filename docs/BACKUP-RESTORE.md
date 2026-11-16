@@ -82,7 +82,7 @@ File mới nằm trong `flower.com/backups/`.
 
 ## Diễn tập phục hồi
 
-Mỗi quý, chạy bước 3 với một bản sao lưu gần đây để chắc chắn mật khẩu còn đúng và file mở được. Muốn diễn tập cả bước 4 thì làm trên Firebase Emulator, **không** làm trên dữ liệu thật. Test tự động `tests/integration/backup.test.js` cũng diễn tập toàn bộ vòng sao lưu → mất dữ liệu → khôi phục trên emulator mỗi lần CI chạy.
+Mỗi quý, chạy bước 3 với một bản sao lưu gần đây để chắc chắn mật khẩu còn đúng và file mở được. Muốn diễn tập cả bước 4 thì làm trên Firebase Emulator, **không** làm trên dữ liệu thật. Test tự động `flower.com/tests/IntegrationTests/backup.test.js` cũng diễn tập toàn bộ vòng sao lưu → mất dữ liệu → khôi phục trên emulator mỗi lần CI chạy.
 
 ## Tùy chọn khi có gói Blaze
 

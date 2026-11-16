@@ -8,7 +8,7 @@ services:
     branch: main
     plan: free
     region: singapore
-    dockerfilePath: ./aspnet/Dockerfile
+    dockerfilePath: ./flower.com/backend/Dockerfile
     dockerContext: .
     healthCheckPath: /health
     autoDeployTrigger: checksPass
@@ -20,4 +20,4 @@ services:
       - key: FIREBASE_PROJECT_ID
         value: web-ban-hoa-9fe0b
     # Supply private Firebase, password-provider, payment and cron settings in Render.
-    # No credential is committed or baked into the Docker image. See aspnet/DEPLOYMENT.md.
+    # No credential is committed or baked into the Docker image. See flower.com/docs/backend/DEPLOYMENT.md.

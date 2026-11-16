@@ -27,9 +27,9 @@ Các nguyên tắc kiểm tra hạn và hủy phiên ở máy chủ phù hợp [
 | Tài khoản và phiên local trên desktop/mobile | **24/24 đạt**, gồm 10 ca phiên mới và 14 ca PIN/tài khoản hiện có |
 | Tương thích giao diện Firebase dùng mock | **12/12 đạt**; không kiểm tra thu hồi token trên Firebase thật |
 
-- [Kiểm thử HTTP/SQLite](../../tests/session-security.test.js): ranh giới 12 giờ chính xác, không gia hạn khi đọc, phát lại cookie cũ vào API bảo vệ, xoay vòng khi đăng nhập lại, logout idempotent, chặn GET/khác Origin, cookie trùng, thu hồi khi khôi phục và sau khi mở lại database.
+- [Kiểm thử HTTP/SQLite](../../flower.com/tests/UnitTests/session-security.test.js): ranh giới 12 giờ chính xác, không gia hạn khi đọc, phát lại cookie cũ vào API bảo vệ, xoay vòng khi đăng nhập lại, logout idempotent, chặn GET/khác Origin, cookie trùng, thu hồi khi khôi phục và sau khi mở lại database.
 - Nhánh phát/xóa cookie HTTPS được kiểm tra với transport TLS giả lập ở mức handler; localhost HTTP được kiểm tra qua HTTP thật. Không tuyên bố đã chạy trình duyệt trên một deployment HTTPS thật.
-- [Kiểm thử trình duyệt](../../flower.com/e2e/local-session.spec.js): hết hạn 12 giờ bằng đồng hồ kiểm soát, hai tab đăng xuất, Back/Forward, lỗi xác minh phiên, logout thất bại và phát lại cookie ở API tài khoản. Đồng hồ thử thuộc fixture trong tiến trình kiểm thử, không có API công khai để đổi giờ máy chủ.
+- [Kiểm thử trình duyệt](../../flower.com/tests/E2ETests/local-session.spec.js): hết hạn 12 giờ bằng đồng hồ kiểm soát, hai tab đăng xuất, Back/Forward, lỗi xác minh phiên, logout thất bại và phát lại cookie ở API tài khoản. Đồng hồ thử thuộc fixture trong tiến trình kiểm thử, không có API công khai để đổi giờ máy chủ.
 - Các luồng PIN và khôi phục cũ được chạy lại cùng bộ local; tương thích giao diện Firebase được kiểm tra bằng SDK/API giả lập, không liên hệ tài khoản Firebase thật.
 
 Log cục bộ: `flower.com/.tools/session-unit-final.log`, `session-browser-final.log`, `session-firebase-compatibility.log`; coverage ở `flower.com/coverage/lcov.info`. [Kết quả JSON](2026-11-09-session-security-results.json) được lưu cùng thư mục báo cáo.
