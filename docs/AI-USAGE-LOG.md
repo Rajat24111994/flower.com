@@ -55,6 +55,7 @@ Cột **Kiểm chứng** lấy từ mô tả PR và kết quả CI khi gộp. C�
 | --- | --- | --- | --- | --- | --- |
 | 16/11/2026 | Tích hợp các thay đổi còn tồn đọng | Codex | Commit riêng từng file; đối chiếu main mới, giữ tài liệu và cấu hình Firebase hiện tại; chuyển sửa giao diện admin sang module, làm mới claims trước khi lưu kho, bỏ nút thêm sản phẩm mẫu và tăng phiên bản asset | 233/233 unit, 4/4 integration quản lý sản phẩm trên Emulator, 8/8 e2e admin desktop/mobile; không thao tác database production | DoThai207 |
 | 16/11/2026 | #146 backend-share | Codex | Đối chiếu bốn module shared với JS; sửa tương thích Bearer/Unicode và ép chuỗi email audit trong C#; thêm oracle và 118 ca contract, giữ nguyên frontend/Firebase | Build Release 0 warning/0 error; test đối chiếu đỏ trước sửa và 118/118 sau sửa; bộ contract đầy đủ, Firestore Emulator và 87/87 HTTP integration đạt | DoThai207 |
+| 16/11/2026 | #107 giá héo tự động | Codex | Triển khai công thức được người dùng duyệt (mặc định tắt), API Owner có revision/audit, ngày nhập theo sản phẩm, catalog/checkout/thiết kế, snapshot giá và giao diện Owner; cập nhật Rules và tài liệu | Build Release; 29 contract công thức và toàn bộ contract Firestore Emulator; 237/237 unit JS, 102/102 HTTP integration, 8/8 E2E Owner desktop/mobile trên máy cục bộ; không thao tác database production | DoThai207 |
 
 ## Việc thành viên cần bổ sung
 
