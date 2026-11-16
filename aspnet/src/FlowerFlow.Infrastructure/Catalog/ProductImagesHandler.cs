@@ -3,6 +3,7 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using FlowerFlow.Application.Catalog;
 using FlowerFlow.Infrastructure.Firebase;
+using FlowerFlow.Infrastructure.Http;
 using Google.Cloud.Firestore;
 using Grpc.Core;
 using Microsoft.AspNetCore.Http;
@@ -42,12 +43,10 @@ public sealed class ProductImagesHandler(Func<FirestoreDb> database, FirebaseAdm
             await FirebaseAdminService.SendErrorAsync(context, 403, "permission-denied", "Chỉ Admin hoặc Owner đang được cấp quyền mới tải được ảnh sản phẩm."); return;
         }
         JsonElement photo = default;
-        if (context.Request.ContentLength is not 0)
-        {
-            using var document = await JsonDocument.ParseAsync(context.Request.Body, cancellationToken: context.RequestAborted);
-            if (document.RootElement.ValueKind == JsonValueKind.Object && document.RootElement.TryGetProperty("photo", out var value))
-                photo = value.Clone();
-        }
+        // BackendServer has already consumed and cached the JSON request body.
+        var body = await JsonInput.ReadAsync(context);
+        if (body.ValueKind == JsonValueKind.Object && body.TryGetProperty("photo", out var value))
+            photo = value.Clone();
         var photos = photo.ValueKind == JsonValueKind.Undefined
             ? JsonSerializer.SerializeToElement(new object?[] { null }) : JsonSerializer.SerializeToElement(new[] { photo });
         var bytes = ImageRules.ValidateReviewPhotos(photos)?.FirstOrDefault();
