@@ -36,7 +36,26 @@ Phát hiện thêm OpenAPI mặc định ghi 200 cho các action thực tế tr�
 Tám kiểm thử schema đã tái hiện vấn đề trước khi thêm ProducesResponseType;
 khai báo status và DTO tường minh giúp Swagger phản ánh đúng hành vi HTTP.
 
-## Phạm vi của đợt nâng cấp
+## Bước 3: kiểm thử xuyên suốt HTTP
+
+Đã thêm CheckoutWorkflowTests dùng WebApplicationFactory và TimeProvider giả lập,
+không chờ thật 15/30 phút và không kết nối database. Các luồng mới:
+
+1. Báo giá với ID/ưu đãi/khu vực có khoảng trắng → checkout → gửi lại với cùng key
+   đã trim: nhận cùng đơn, cùng tổng, kho chỉ giảm một lần.
+2. Cập nhật đơn đang chờ xác nhận sau 10 phút → deadline không đổi → quá hạn →
+   cleanup hai lần: chỉ lần đầu hoàn kho.
+3. Thanh toán thất bại → hết hạn → retry giữ kho lại → thành công → gửi kết quả
+   thành công trùng → tiền đến thêm từ attempt cũ: không trừ/hoàn kho lặp và có cảnh báo đối soát.
+
+Suite còn giữ luồng HTTP đặt hàng → đối soát QR → chuẩn bị → giao → đánh giá →
+kiểm duyệt công khai, cùng các kiểm thử chống oversell, sai giá và quyền sở hữu.
+
+Kết quả local sau bước 3: 58/58 tests đạt; build toàn solution Release 0 lỗi,
+0 cảnh báo. Các bước được commit/push riêng lên nhánh PR #152; chưa merge main.
+Đề xuất cho giai đoạn lưu trữ bền nằm trong NEXT-STAGE.md, chưa thực hiện SQL/EF.
+
+## Giới hạn
 
 Các source cũ chỉ được đọc làm căn cứ. Chưa kết nối SQL/EF, chưa dùng gateway thật,
 chưa triển khai danh tính thật và chưa chuyển production sang host mới.
