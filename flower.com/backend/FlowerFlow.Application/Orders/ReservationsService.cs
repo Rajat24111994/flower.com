@@ -10,10 +10,10 @@ namespace FlowerFlow.Application.Orders;
 public sealed class ReservationsService(ILogger<ReservationsService> logger)
 {
     public Task<bool> ExpireOneReservationAsync(FirestoreDb db, DocumentReference orderRef, Timestamp now,
-        CancellationToken cancellationToken = default) => db.RunTransactionAsync(async transaction =>
+        CancellationToken cancellationToken = default) => InventoryTransactions.RunAsync(() => db.RunTransactionAsync(async transaction =>
     {
         var snapshot = await transaction.GetSnapshotAsync(orderRef, cancellationToken);
-        if (!snapshot.Exists) return false;
+        if (!snapshot.Exists) return InventoryTransactions.ReadOnly(false);
         var order = snapshot.ToDictionary();
         var expires = order.GetValueOrDefault("reservationExpiresAt");
         var reserved = order.GetValueOrDefault("inventoryReserved") is true;
@@ -23,7 +23,7 @@ public sealed class ReservationsService(ILogger<ReservationsService> logger)
         {
             transaction.UpdateJs(orderRef, new Dictionary<string, object> { ["reservationExpiresAt"] = FieldValue.Delete }); return false;
         }
-        if (!reserved || expires is not Timestamp expiresAt || FirestoreValues.ToMillis(expiresAt) > FirestoreValues.ToMillis(now)) return false;
+        if (!reserved || expires is not Timestamp expiresAt || FirestoreValues.ToMillis(expiresAt) > FirestoreValues.ToMillis(now)) return InventoryTransactions.ReadOnly(false);
         var paymentStatus = Js.StringOrEmpty(Js.Element(order.GetValueOrDefault("paymentStatus"))).Trim().ToLower(CultureInfo.GetCultureInfo("vi-VN"));
         if (order.GetValueOrDefault("paymentVerified") is true || new[] { "đã thanh toán", "paid", "da_thanh_toan", "đã hoàn tiền" }.Contains(paymentStatus))
         {
@@ -64,7 +64,7 @@ public sealed class ReservationsService(ILogger<ReservationsService> logger)
         if (attempt?.Exists == true && attempt.ToDictionary().GetValueOrDefault("status") is "pending")
             transaction.UpdateJs(attemptRef!, new Dictionary<string, object> { ["status"] = "expired", ["processedAt"] = now });
         return true;
-    }, cancellationToken: cancellationToken);
+    }, cancellationToken: cancellationToken), cancellationToken);
 
     public async Task<int> ExpireReservationsAsync(FirestoreDb db, int maxOrders = 500, CancellationToken cancellationToken = default)
     {

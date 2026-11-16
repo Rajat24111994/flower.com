@@ -4,7 +4,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const { initializeTestEnvironment, assertFails, assertSucceeds } = require("@firebase/rules-unit-testing");
-const { doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, addDoc, collection, query, where, serverTimestamp } = require("firebase/firestore");
+const { doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, addDoc, collection, query, where, serverTimestamp, runTransaction } = require("firebase/firestore");
 const h = require("./helpers");
 
 let env;
@@ -226,5 +226,71 @@ test("không client nào được đọc, sửa hoặc xóa trạng thái khóa 
         await assertFails(getDoc(ref));
         await assertFails(setDoc(ref, { failures: 0, lockedUntil: 0, resetRequired: false }));
         await assertFails(deleteDoc(ref));
+    }
+});
+
+test("stock quantity must remain a nonnegative JavaScript-safe integer", async () => {
+    for (const quantity of [-1, 0.5, "5", 9007199254740992]) {
+        await assertFails(updateDoc(doc(admin(), "products/1"), { quantity }));
+        await assertFails(setDoc(doc(admin(), "products/unsafe"), {
+            title: "Hoa", price: 15000, image: "/flower.webp", description: "Hoa thử", quantity
+        }));
+    }
+    await assertSucceeds(updateDoc(doc(admin(), "products/1"), { quantity: 0 }));
+    await assertSucceeds(updateDoc(doc(admin(), "products/1"), { quantity: 7 }));
+});
+
+test("inventory flags cannot contradict order state or use untyped reservation fields", async () => {
+    await env.withSecurityRulesDisabled(async context => {
+        await updateDoc(doc(context.firestore(), "orders/o1"), { inventoryState: "reserved", inventoryReserved: true });
+    });
+    const ref = doc(admin(), "orders/o1");
+    for (const changes of [
+        { inventoryReserved: "false" }, { inventoryReserved: false }, { inventoryState: "unknown" },
+        { inventoryState: "released", inventoryReserved: false }, { salesCounted: "true" },
+        { reservationExpiresAt: "2099-01-01" }, { reservationExpiredAt: 0 },
+        { status: "Đã hủy" }
+    ]) await assertFails(updateDoc(ref, changes));
+    await assertSucceeds(updateDoc(ref, { status: "Đang chuẩn bị", inventoryState: "reserved", inventoryReserved: true }));
+    await assertSucceeds(updateDoc(ref, { status: "Đang giao" }));
+    await assertSucceeds(updateDoc(ref, { status: "Đã giao", inventoryState: "sold", inventoryReserved: false, salesCounted: true }));
+    await assertSucceeds(updateDoc(ref, { status: "Đã hủy", inventoryState: "released", inventoryReserved: false, salesCounted: false }));
+    await assertSucceeds(updateDoc(ref, { status: "Chờ xác nhận", inventoryState: "reserved", inventoryReserved: true,
+        reservationExpiresAt: require("firebase/firestore").Timestamp.fromMillis(Date.now() + 60_000) }));
+});
+
+test("a rejected stock write rolls back the order change in the same client transaction", async () => {
+    const db = admin(), order = doc(db, "orders/o1"), product = doc(db, "products/1");
+    await assertFails(runTransaction(db, async transaction => {
+        await transaction.get(order); await transaction.get(product);
+        transaction.update(order, { status: "Đã hủy", inventoryState: "released", inventoryReserved: false });
+        transaction.update(product, { quantity: -1 });
+    }));
+    assert.equal((await getDoc(order)).data().status, "Chờ xác nhận");
+    assert.equal((await getDoc(product)).data().quantity, 5);
+    await assertSucceeds(runTransaction(db, async transaction => {
+        await transaction.get(order); const stock = await transaction.get(product);
+        transaction.update(order, { status: "Đã hủy", inventoryState: "released", inventoryReserved: false });
+        transaction.update(product, { quantity: stock.data().quantity + 2 });
+    }));
+    assert.equal((await getDoc(order)).data().inventoryState, "released");
+    assert.equal((await getDoc(product)).data().quantity, 7);
+});
+
+test("server-only inventory, payment and audit collections deny every client role", async () => {
+    const names = ["orderRequests", "orderCreationLimits", "orderLookupLimits", "paymentTransactions",
+        "orderPaymentAudit", "loginProtection", "designRequests", "adminAudit", "priceHistory", "productFreshness",
+        "adminRoles", "productImages", "reviewImages"];
+    await env.withSecurityRulesDisabled(async context => {
+        for (const name of names) await setDoc(doc(context.firestore(), name, "private"), { secret: true });
+    });
+    for (const db of [guest(), alice(), admin(), owner(), revokedAdmin()]) {
+        for (const name of names) {
+            await assertFails(getDoc(doc(db, name, "private")));
+            await assertFails(getDocs(collection(db, name)));
+            await assertFails(setDoc(doc(db, name, "new"), { forged: true }));
+            await assertFails(updateDoc(doc(db, name, "private"), { secret: false }));
+            await assertFails(deleteDoc(doc(db, name, "private")));
+        }
     }
 });

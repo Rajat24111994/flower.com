@@ -132,7 +132,7 @@ public sealed class CheckoutService(Func<FirestoreDb> database, ReservationsServ
             var items = (List<Dictionary<string, object>>)checkout["items"]; var productRefs = items.Select(item => db.Collection(Product.Collection).Document(ProductId(item))).ToList();
             var nowMillis = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(); var nowIso = DateTimeOffset.FromUnixTimeMilliseconds(nowMillis).UtcDateTime.ToString("yyyy-MM-dd'T'HH:mm:ss.fff'Z'", CultureInfo.InvariantCulture);
             var hash = RequestHash(checkout, note, uid);
-            var order = await db.RunTransactionAsync(async transaction =>
+            var order = await InventoryTransactions.RunAsync(() => db.RunTransactionAsync(async transaction =>
             {
                 var previous = await transaction.GetSnapshotAsync(idempotencyRef, context.RequestAborted);
                 if (previous.Exists)
@@ -146,7 +146,7 @@ public sealed class CheckoutService(Func<FirestoreDb> database, ReservationsServ
                     var data = old.ToDictionary(); var result = new Dictionary<string, object> { ["id"] = old.Id,
                         ["shippingFee"] = Js.NumberOrZero(Js.Element(data.GetValueOrDefault("shippingFee"))), ["wrappingFee"] = Js.NumberOrZero(Js.Element(data.GetValueOrDefault("wrappingFee"))) };
                     foreach (var field in new[] { "paymentReference", "subtotal", "savings", "total" }) if (data.TryGetValue(field, out var value)) result[field] = value;
-                    return result;
+                    return InventoryTransactions.ReadOnly(result);
                 }
                 var limitSnapshots = await transaction.GetAllSnapshotsAsync(limits.Select(limit => limit.Ref), context.RequestAborted);
                 var limitUpdates = limits.Select((limit, index) =>
@@ -213,7 +213,7 @@ public sealed class CheckoutService(Func<FirestoreDb> database, ReservationsServ
                 foreach (var item in products) if (reserved.Add(ProductId(item))) transaction.UpdateJs((DocumentReference)item["ref"], new Dictionary<string, object> { ["quantity"] = Numeric(item, "stock") - BouquetOptions.Demand(items, ProductId(item)) });
                 transaction.CreateJs(orderRef, dataOrder); transaction.CreateJs(idempotencyRef, new Dictionary<string, object> { ["orderId"] = orderRef.Id, ["requestHash"] = hash, ["uid"] = uid, ["createdAt"] = FieldValue.ServerTimestamp });
                 return new Dictionary<string, object>(dataOrder) { ["id"] = orderRef.Id, ["createdAt"] = nowIso };
-            }, cancellationToken: context.RequestAborted);
+            }, cancellationToken: context.RequestAborted), context.RequestAborted);
             var responseOrder = new Dictionary<string, object> { ["id"] = order["id"] }; if (order.TryGetValue("paymentReference", out var paymentReference)) responseOrder["paymentReference"] = paymentReference;
             var responseTotals = new Dictionary<string, object>(); foreach (var name in new[] { "subtotal", "savings", "wrappingFee", "shippingFee", "total" }) if (order.TryGetValue(name, out var value)) responseTotals[name] = value;
             context.Response.StatusCode = 201; await context.Response.WriteAsJsonAsync(new { order = responseOrder, totals = responseTotals }, context.RequestAborted);

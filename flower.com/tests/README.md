@@ -1,5 +1,17 @@
 # Hướng dẫn kiểm thử
 
+Firestore Rules và tranh chấp tồn kho trên host C# được kiểm tra bằng
+`IntegrationTests/security-rules.test.js` và `IntegrationTests/stock-transactions.test.js`.
+Sau khi build solution Release, chạy từ gốc repository:
+
+```sh
+node flower.com/node_modules/firebase-tools/lib/bin/firebase.js emulators:exec --only auth,firestore --project demo-flowerflow --config flower.com/firebase.json "node flower.com/tests/IntegrationTests/test-api.cjs security-rules.test.js stock-transactions.test.js"
+```
+
+`stock-transactions` cần HTTP host C# do runner này khởi động; khi chạy Node legacy
+trực tiếp, các bài C# được đánh dấu bỏ qua. Kết quả/bảo đảm và giới hạn Rules nằm ở
+[báo cáo FF-04](../../docs/test-reports/2026-11-17-ff-04-firestore-stock.md).
+
 ## Yêu cầu
 
 - Node.js 24.x (kiểm tra bằng `node --version`).
