@@ -1,15 +1,15 @@
 ﻿import "./admin-state.js";
 import "./admin-data.js?v=1";
 import "./admin-lifecycle.js?v=1";
-import "./admin-dashboard.js?v=1";
-import "./admin-products.js?v=1";
+import "./admin-dashboard.js?v=2";
+import "./admin-products.js?v=2";
 import "./admin-categories.js?v=1";
 import "./admin-promotions.js?v=1";
 import "./admin-delivery.js?v=1";
 import "./admin-orders.js?v=1";
 import "./admin-reviews.js?v=1";
 import "./admin-users.js?v=1";
-import "./admin-events.js?v=1";
+import "./admin-events.js?v=2";
 import { firebaseConfig } from "../core/firebase-config.js";
 async function initializeAdmin() {
    try {
@@ -35,7 +35,7 @@ async function initializeAdmin() {
            return;
        }
 
-       const token = await currentUser.getIdTokenResult();
+       const token = await currentUser.getIdTokenResult(true);
        if (token.claims.admin !== true) {
            await authSdk.signOut(auth);
            window.FlowerSafeStorage.remove("loggedUser");
