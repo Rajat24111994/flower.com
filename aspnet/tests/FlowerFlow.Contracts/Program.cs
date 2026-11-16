@@ -16,6 +16,7 @@ if (args.Contains("--server")) { await BackendServerContracts.RunAsync(root); re
 if (args.Contains("--api-host")) { await ApiHostContracts.RunAsync(root); return; }
 if (args.Contains("--production-host")) { await ApiHostContracts.RunAsync(root, true); return; }
 if (args.Contains("--firebase-connection")) { await FirebaseConnectionContracts.RunAsync(root); return; }
+if (args.Contains("--firebase-logout")) { await FirebaseLogoutContracts.RunAsync(); return; }
 if (args.Contains("--backup"))
 {
     await BackupContracts.RunAsync(root);
@@ -126,6 +127,7 @@ await AdditionalContracts.PricingAsync(root);
 await AdditionalContracts.TrackingAsync(root);
 await AdditionalContracts.DesignValidationAsync(root);
 await PasswordContracts.RunAsync();
+await FirebaseLogoutContracts.RunAsync();
 await AdditionalContracts.CheckoutFingerprintsAsync(root);
 AdditionalContracts.LocalSessionCookies();
 await AdditionalContracts.LocalRateLimitAsync(root);

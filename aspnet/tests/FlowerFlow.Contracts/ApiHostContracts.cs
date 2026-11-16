@@ -62,7 +62,7 @@ static class ApiHostContracts
             using var sessionRequest = new HttpRequestMessage(HttpMethod.Get,"/api/local-auth/session"); sessionRequest.Headers.Add("Cookie",cookie);
             using var session = await client.SendAsync(sessionRequest);
             AdditionalContracts.Require(session.IsSuccessStatusCode, "Actual local session was not persisted");
-            foreach (var path in new[] { "orders", "login", "payments", "vnpay-ipn", "products", "design-requests", "product-images", "review-images", "admin/users", "owner/users", "admin/audit", "bouquet-wrapping", "delivery-zones", "flower-prices" })
+            foreach (var path in new[] { "orders", "login", "auth/logout-all", "payments", "vnpay-ipn", "products", "design-requests", "product-images", "review-images", "admin/users", "owner/users", "admin/audit", "bouquet-wrapping", "delivery-zones", "flower-prices" })
             {
                 using var request = new HttpRequestMessage(HttpMethod.Put, "/api/" + path); request.Headers.Add("Cookie",cookie);
                 using var response = await client.SendAsync(request);
