@@ -9,6 +9,7 @@ using Microsoft.Extensions.Logging;
 // Differential contract checks against the actual JS source; no live Firebase credentials needed.
 var rootArgument = args.FirstOrDefault(argument => !argument.StartsWith("--", StringComparison.Ordinal));
 var root = rootArgument is not null ? Path.GetFullPath(rootArgument) : Directory.GetCurrentDirectory();
+if (args.Contains("--shared")) { await SharedContracts.RunAsync(root); return; }
 if (args.Contains("--local-accounts")) { await LocalAccountContracts.RunAsync(root); return; }
 if (args.Contains("--local-worker")) { await LocalWorkerContracts.RunAsync(); return; }
 if (args.Contains("--local-http")) { await LocalHttpContracts.RunAsync(root); return; }
@@ -119,6 +120,7 @@ Console.WriteLine($"PASS: {count} Firebase Admin contract/configuration scenario
 await AdditionalContracts.ImageRulesAsync(root);
 await AdditionalContracts.ApiRoutesAsync(root);
 await AdditionalContracts.IdentityAsync();
+await SharedContracts.RunAsync(root);
 AdditionalContracts.AdminAuditEntry();
 await AdditionalContracts.VnpayAsync(root);
 await AdditionalContracts.OrderValidationAsync(root);
