@@ -92,7 +92,12 @@ public sealed class FirebaseAdminService : IFirebaseAdminService, IDisposable
     public async Task<FirebaseIdentity> VerifyIdTokenAsync(
         string token, bool checkRevoked, CancellationToken cancellationToken)
     {
-        var decoded = await GetAdminAuth().VerifyIdTokenAsync(token, checkRevoked, cancellationToken);
+        var auth = GetAdminAuth();
+        var decoded = await auth.VerifyIdTokenAsync(token, checkRevoked, cancellationToken);
+        // Revocation checks alone do not reject a disabled user in the current .NET SDK.
+        // Read live account state for authorization; never cache it with the ID token.
+        if (checkRevoked && (await auth.GetUserAsync(decoded.Uid, cancellationToken)).Disabled)
+            throw new RequestIdentityException("auth/user-disabled", "Firebase account is disabled.");
         return new FirebaseIdentity(decoded.Uid, decoded.Claims);
     }
 
