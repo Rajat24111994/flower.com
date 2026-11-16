@@ -73,6 +73,16 @@ dotnet run --project aspnet/tests/FlowerFlow.Contracts --configuration Release -
 
 Bộ kiểm tra bao gồm differential contracts với nguồn JS, provider giả lập, SQLite/scrypt hai chiều Node–C#, AES-GCM backup hai chiều, HTTP socket và khởi chạy executable API thật với database local tạm. Không dùng credential hay database production.
 
+Kiểm thử các API nghiệp vụ qua HTTP trên chính host ASP.NET bằng bộ integration JS hiện có:
+
+```powershell
+npm ci --prefix flower.com
+npm ci --prefix tests
+node flower.com/node_modules/firebase-tools/lib/bin/firebase.js emulators:exec --only auth,firestore --project demo-flowerflow --config flower.com/firebase.json "node aspnet/test-api.cjs"
+```
+
+Runner yêu cầu build Release trước, tự chọn cổng loopback và chỉ dùng project `demo-` với cả hai emulator. Có thể truyền tên suite, ví dụ `node aspnet/test-api.cjs product-images.test.js`. Ba suite gọi trực tiếp JS local server/password provider không nằm trong lượt HTTP này; bản C# tương ứng đã có trong `FlowerFlow.Contracts`. Bốn test chuyển đổi bổ sung kiểm tra retry đơn từ JS sang C#, cấu hình wrapping/phân trang, giả mạo header IP và kiểu integer Firestore. Kết quả đối chiếu nhánh issue #141 và quyết định tích hợp: [INTEGRATION-141.md](INTEGRATION-141.md).
+
 Để kiểm tra transaction Firestore, khởi động emulator ở `127.0.0.1:8787`, project `demo-flowerflow-csharp`, rồi chạy:
 
 ```powershell
