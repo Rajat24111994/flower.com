@@ -5,6 +5,7 @@ using Xunit;
 
 namespace FlowerFlow.Backend.Tests;
 
+[Trait("Category", "Unit")]
 public sealed class RegressionTests
 {
     private static readonly CatalogTests.Actor Owner = new();

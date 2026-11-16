@@ -12,6 +12,7 @@ using Xunit;
 
 namespace FlowerFlow.Backend.Tests;
 
+[Trait("Category", "Integration")]
 public sealed class WorkflowApiTests
 {
     [Fact]

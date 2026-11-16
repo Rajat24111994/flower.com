@@ -8,8 +8,12 @@ namespace FlowerFlow.Backend.Controllers;
 [ApiController, Authorize(Policy = "Admin"), Route("api/v1/admin")]
 public sealed class AdminController(AdminService service) : ControllerBase
 {
-    [HttpGet("users")] public Task<IReadOnlyList<ShopUser>> Users(CancellationToken ct) => service.UsersAsync(ct);
+    [HttpGet("users")] public async Task<IReadOnlyList<UserResponse>> Users(CancellationToken ct) => (await service.UsersAsync(ct)).Select(item => item.ToResponse()).ToArray();
     [HttpPut("users/{id}/role"), Authorize(Policy = "Owner")]
-    public Task<ShopUser> Role(string id, UserRoleRequest request, CancellationToken ct) => service.RoleAsync(id, request, ct);
-    [HttpGet("audit")] public Task<Page<AuditEntry>> Audit(CancellationToken ct, int page = 1, int pageSize = 25) => service.AuditAsync(page, pageSize, ct);
+    public async Task<UserResponse> Role(string id, UserRoleRequest request, CancellationToken ct) => (await service.RoleAsync(id, request, ct)).ToResponse();
+    [HttpGet("audit")] public async Task<Page<AuditEntryResponse>> Audit(CancellationToken ct, int page = 1, int pageSize = 25)
+    {
+        var result = await service.AuditAsync(page, pageSize, ct);
+        return new(result.Items.Select(item => item.ToResponse()).ToArray(), result.Total, result.PageNumber, result.PageSize);
+    }
 }

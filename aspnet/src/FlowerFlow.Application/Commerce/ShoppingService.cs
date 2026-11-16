@@ -81,7 +81,7 @@ public sealed class ShoppingService(ICommerceUnitOfWork work, ICurrentActor acto
             var subtotal = Convert.ToDouble(totals["subtotal"]); var savings = Convert.ToDouble(totals["savings"]);
             return new(new(Money(subtotal), Money(savings), 0, Money(wrappingFee), Money(shipping), Money(subtotal - savings + wrappingFee + shipping)),
                 priced.ToArray(), bouquets.Select(item => new BouquetFee((string)item["id"], Convert.ToInt32(item["stemCount"]), Convert.ToInt64(item["wrappingFee"]))).ToArray(),
-                zone is null ? null : zones.First(item => item.Id == (string)zone["id"]));
+                zone is null ? null : zones.First(item => item.Id == (string)zone["id"]).ToResponse());
         }
         catch (BackendException exception) { throw CommerceException.Conflict(exception.Code, exception.Message); }
     }

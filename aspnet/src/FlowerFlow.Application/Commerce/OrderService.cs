@@ -44,7 +44,8 @@ public sealed class OrderService(ICommerceUnitOfWork work, ICurrentActor actor, 
             var duration = request.PaymentMethod == "vnpay" ? OrderConfig.VnpayReservationMs
                 : request.PaymentMethod == "qr" ? OrderConfig.QrReservationMs : OrderConfig.CodReservationMs;
             var order = new Order(Guid.NewGuid().ToString("N"), actor.UserId, customer, quote.Items.ToArray(), quote.Totals,
-                quote.DeliveryZone, request.PromotionId, request.PaymentMethod, OrderPricing.PaymentReferenceFor(request.IdempotencyKey),
+                new DeliveryZone(quote.DeliveryZone.Id, quote.DeliveryZone.Province, quote.DeliveryZone.District, quote.DeliveryZone.Fee, quote.DeliveryZone.Enabled),
+                request.PromotionId, request.PaymentMethod, OrderPricing.PaymentReferenceFor(request.IdempotencyKey),
                 "Chờ xác nhận", "reserved", now.AddMilliseconds(duration), false,
                 request.PaymentMethod == "qr" ? "Chờ xác minh thanh toán" : request.PaymentMethod == "vnpay" ? "chua_thanh_toan" : "Thanh toán khi nhận hàng",
                 false, [new("Chờ xác nhận", "Đơn hàng đã được gửi đến cửa hàng", "", now)], now);

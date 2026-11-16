@@ -8,6 +8,7 @@ using Xunit;
 
 namespace FlowerFlow.Backend.Tests;
 
+[Trait("Category", "Integration")]
 public sealed class ApiTests
 {
     internal sealed class Factory : WebApplicationFactory<Program>

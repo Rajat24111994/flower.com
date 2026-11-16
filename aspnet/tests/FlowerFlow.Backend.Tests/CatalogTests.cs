@@ -5,6 +5,7 @@ using Xunit;
 
 namespace FlowerFlow.Backend.Tests;
 
+[Trait("Category", "Unit")]
 public sealed class CatalogTests
 {
     internal sealed record Actor(string UserId = "owner", string Role = "owner") : ICurrentActor;

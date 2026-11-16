@@ -8,8 +8,8 @@ namespace FlowerFlow.Backend.Controllers;
 [ApiController, Authorize, Route("api/v1/cart")]
 public sealed class CartController(ShoppingService service) : ControllerBase
 {
-    [HttpGet] public Task<Cart> Get(CancellationToken ct) => service.CartAsync(ct);
-    [HttpPut] public Task<Cart> Put(CartRequest request, CancellationToken ct) => service.SaveCartAsync(request, ct);
+    [HttpGet] public async Task<CartResponse> Get(CancellationToken ct) => (await service.CartAsync(ct)).ToResponse();
+    [HttpPut] public async Task<CartResponse> Put(CartRequest request, CancellationToken ct) => (await service.SaveCartAsync(request, ct)).ToResponse();
 }
 
 [ApiController, Route("api/v1/quotes")]
@@ -21,13 +21,13 @@ public sealed class QuotesController(ShoppingService service) : ControllerBase
 [ApiController, Route("api/v1/shop-settings")]
 public sealed class ShopSettingsController(ShopSettingsService service) : ControllerBase
 {
-    [HttpGet("delivery-zones")] public Task<IReadOnlyList<DeliveryZone>> Zones(CancellationToken ct) => service.ZonesAsync(ct);
+    [HttpGet("delivery-zones")] public async Task<IReadOnlyList<DeliveryZoneResponse>> Zones(CancellationToken ct) => (await service.ZonesAsync(ct)).Select(item => item.ToResponse()).ToArray();
     [HttpPut("delivery-zones/{id}"), Authorize(Policy = "Owner")]
-    public Task<DeliveryZone> Zone(string id, DeliveryZoneRequest request, CancellationToken ct) => service.SaveZoneAsync(id, request, ct);
-    [HttpGet("promotions")] public Task<IReadOnlyList<Promotion>> Promotions(CancellationToken ct) => service.PromotionsAsync(ct);
+    public async Task<DeliveryZoneResponse> Zone(string id, DeliveryZoneRequest request, CancellationToken ct) => (await service.SaveZoneAsync(id, request, ct)).ToResponse();
+    [HttpGet("promotions")] public async Task<IReadOnlyList<PromotionResponse>> Promotions(CancellationToken ct) => (await service.PromotionsAsync(ct)).Select(item => item.ToResponse()).ToArray();
     [HttpPut("promotions/{id}"), Authorize(Policy = "Admin")]
-    public Task<Promotion> Promotion(string id, PromotionRequest request, CancellationToken ct) => service.SavePromotionAsync(id, request, ct);
-    [HttpGet("wrapping")] public Task<WrappingSettings?> Wrapping(CancellationToken ct) => service.WrappingAsync(ct);
+    public async Task<PromotionResponse> Promotion(string id, PromotionRequest request, CancellationToken ct) => (await service.SavePromotionAsync(id, request, ct)).ToResponse();
+    [HttpGet("wrapping")] public async Task<WrappingResponse?> Wrapping(CancellationToken ct) => (await service.WrappingAsync(ct))?.ToResponse();
     [HttpPut("wrapping"), Authorize(Policy = "Owner")]
-    public Task<WrappingSettings> Wrapping(WrappingRequest request, CancellationToken ct) => service.SaveWrappingAsync(request, ct);
+    public async Task<WrappingResponse> Wrapping(WrappingRequest request, CancellationToken ct) => (await service.SaveWrappingAsync(request, ct)).ToResponse();
 }

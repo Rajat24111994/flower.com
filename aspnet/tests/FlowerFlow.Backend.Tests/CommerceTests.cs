@@ -6,6 +6,7 @@ using Xunit;
 
 namespace FlowerFlow.Backend.Tests;
 
+[Trait("Category", "Unit")]
 public sealed class CommerceTests
 {
     internal sealed class Clock : TimeProvider

@@ -88,6 +88,12 @@ trường nội bộ; service điều phối nghiệp vụ; entity lưu trạng 
 repository che cách lưu; middleware thống nhất lỗi; DI quản lý lifetime.
 Unit of work singleton sở hữu dữ liệu chung; services/current actor scoped theo request.
 
+Entity là trạng thái nội bộ, response DTO là hợp đồng HTTP. Các controller ánh xạ
+entity sang DTO tường minh trong `ResponseDtos.cs`; bổ sung trường lưu trữ sau này
+không tự xuất hiện trong JSON. Value object ổn định (tổng tiền, dòng hàng, lịch sử)
+có thể dùng chung. Test kiến trúc kiểm tra không trả entity qua response và không
+tham chiếu Firebase/SQLite/EF/SQL từ các project của host mới.
+
 ## Nguồn nghiệp vụ và hợp đồng mới
 
 - Sản phẩm: `flower.com/js/admin/product-admin-validation.js`.
@@ -105,6 +111,9 @@ có lý do và lịch sử; xóa sản phẩm trên API mới là ẩn để gi�
 ```powershell
 dotnet test aspnet/tests/FlowerFlow.Backend.Tests --configuration Release
 ```
+
+Có thể chạy riêng theo nhóm bằng `--filter 'Category=Unit'`,
+`--filter 'Category=Integration'` hoặc `--filter 'Category=Architecture'`.
 
 Unit tests gọi service trực tiếp; integration tests dùng WebApplicationFactory,
 khởi động pipeline MVC thực và gửi HTTP qua TestServer. Mỗi factory có store riêng.
@@ -200,6 +209,8 @@ Các khoảng trống trước thay backend cũ: import/export backup, upload �
 wishlist và đồng bộ nhiều thiết bị, toàn bộ báo cáo/nội dung quản trị hiện ghi trực
 tiếp Firestore, tài khoản/xác thực thực, gateway thật và các công cụ vận hành.
 Những chức năng này tiếp tục ở hệ thống hiện tại; không bị xóa hoặc giả vờ đã chuyển.
+Xem [COMPATIBILITY-MATRIX.md](COMPATIBILITY-MATRIX.md) để phân biệt luồng đã kiểm thử
+trong bộ nhớ với những điều kiện cần trước khi thay backend chính thức.
 
 ## Ghi chú kiểm tra ban đầu
 

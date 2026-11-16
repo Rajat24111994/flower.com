@@ -25,11 +25,11 @@ public sealed class ProductsController(CatalogService service) : ControllerBase
     public async Task<IActionResult> Hide(string id, [FromQuery] long expectedVersion, CancellationToken ct)
     { await service.HideProductAsync(id, expectedVersion, ct); return NoContent(); }
     [HttpPut("{id}/flower-price"), Authorize(Policy = "Owner")]
-    public Task<PriceChange> Price(string id, PriceRequest request, CancellationToken ct) => service.ChangeFlowerPriceAsync(id, request, ct);
+    public async Task<PriceChangeResponse> Price(string id, PriceRequest request, CancellationToken ct) => (await service.ChangeFlowerPriceAsync(id, request, ct)).ToResponse();
     [HttpGet("{id}/price-history"), Authorize(Policy = "Owner")]
-    public Task<IReadOnlyList<PriceChange>> Prices(string id, CancellationToken ct) => service.PriceHistoryAsync(id, ct);
+    public async Task<IReadOnlyList<PriceChangeResponse>> Prices(string id, CancellationToken ct) => (await service.PriceHistoryAsync(id, ct)).Select(item => item.ToResponse()).ToArray();
     [HttpPost("{id}/inventory-adjustments"), Authorize(Policy = "Admin")]
-    public Task<InventoryChange> Inventory(string id, InventoryRequest request, CancellationToken ct) => service.AdjustInventoryAsync(id, request, ct);
+    public async Task<InventoryChangeResponse> Inventory(string id, InventoryRequest request, CancellationToken ct) => (await service.AdjustInventoryAsync(id, request, ct)).ToResponse();
     [HttpGet("{id}/inventory-adjustments"), Authorize(Policy = "Admin")]
-    public Task<IReadOnlyList<InventoryChange>> InventoryHistory(string id, CancellationToken ct) => service.InventoryHistoryAsync(id, ct);
+    public async Task<IReadOnlyList<InventoryChangeResponse>> InventoryHistory(string id, CancellationToken ct) => (await service.InventoryHistoryAsync(id, ct)).Select(item => item.ToResponse()).ToArray();
 }
