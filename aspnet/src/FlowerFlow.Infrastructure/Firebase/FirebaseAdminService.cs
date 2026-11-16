@@ -1,6 +1,6 @@
 using System.Text;
 using System.Text.Json;
-using System.Text.RegularExpressions;
+using BearerToken = FlowerFlow.Infrastructure.Http.BearerToken;
 using FirebaseAdmin;
 using FirebaseAdmin.Auth;
 using Google.Api.Gax;
@@ -133,10 +133,6 @@ public sealed class FirebaseAdminBackend : IFirebaseAdminBackend, IDisposable
 /// <summary>Preserves the legacy helpers' error body, status and live-role checks.</summary>
 public sealed class FirebaseAdminService(IFirebaseAdminBackend backend, ILogger<FirebaseAdminService> logger)
 {
-    // ECMAScript . excludes these four line terminators; keep the source regex semantics.
-    private static readonly Regex Bearer = new(@"^Bearer\s+([^\r\n\u2028\u2029]+)$",
-        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromSeconds(1));
-
     public static Task SendErrorAsync(HttpContext context, int status, string code, string message)
     {
         context.Response.StatusCode = status;
@@ -145,8 +141,8 @@ public sealed class FirebaseAdminService(IFirebaseAdminBackend backend, ILogger<
 
     public async Task<FirebaseIdentity?> VerifyRequestAsync(HttpContext context)
     {
-        var match = Bearer.Match(context.Request.Headers.Authorization.ToString());
-        if (!match.Success)
+        var token = BearerToken.Read(context.Request.Headers.Authorization.ToString(), singleToken: false);
+        if (token is null)
         {
             await SendErrorAsync(context, 401, "unauthenticated", "Cần mã xác thực Firebase để thực hiện thao tác này.");
             return null;
@@ -154,7 +150,7 @@ public sealed class FirebaseAdminService(IFirebaseAdminBackend backend, ILogger<
 
         try
         {
-            return await backend.VerifyIdTokenAsync(match.Groups[1].Value, true, context.RequestAborted);
+            return await backend.VerifyIdTokenAsync(token, true, context.RequestAborted);
         }
         catch
         {
