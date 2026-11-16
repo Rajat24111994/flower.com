@@ -12,12 +12,16 @@ public sealed class OrderService(ICommerceUnitOfWork work, ICurrentActor actor, 
         InputValidation.Validate(request);
         var normalized = OrderValidation.ValidateCheckout(ShoppingService.Json(request));
         if (normalized is null) throw new CommerceException(400, "invalid-checkout", "Thông tin đặt hàng không hợp lệ.");
+        var idempotencyKey = (string)normalized["idempotencyKey"];
+        var normalizedItems = ShoppingService.NormalizedItems(normalized);
+        var promotionId = (string)normalized["promotionId"];
+        var zoneId = (string)normalized["deliveryZoneId"];
         // Cleanup is a separate transaction; a rejected checkout cannot undo released holds.
         await ExpireAsync(ct);
         var fingerprint = Hash(ShoppingService.Json(new { checkout = normalized, orderNote = request.OrderNote?.Trim() ?? "" }).GetRawText());
         return await work.ExecuteAsync(async (session, token) =>
         {
-            var key = await session.Repository<OrderRequestKey>().FindAsync(request.IdempotencyKey, token);
+            var key = await session.Repository<OrderRequestKey>().FindAsync(idempotencyKey, token);
             if (key is not null)
             {
                 if (key.UserId != actor.UserId || key.RequestHash != fingerprint)
@@ -26,14 +30,14 @@ public sealed class OrderService(ICommerceUnitOfWork work, ICurrentActor actor, 
                 return new CreatedOrder(existing.Id, existing.PaymentReference, existing.Totals);
             }
             var now = time.GetUtcNow();
-            var error = OrderValidation.DeliveryScheduleError(request.DeliveryDate, request.DeliveryTime, now);
+            var error = OrderValidation.DeliveryScheduleError((string)normalized["deliveryDate"], (string)normalized["deliveryTime"], now);
             if (error.Length > 0) throw new CommerceException(400, "invalid-delivery-schedule", error);
-            if (actor.UserId.Length == 0 && request.Items.GroupBy(item => item.ProductId ?? item.Id).Any(group => group.Sum(item => item.Quantity) > 5))
+            if (actor.UserId.Length == 0 && normalizedItems.GroupBy(item => item.ProductId ?? item.Id).Any(group => group.Sum(item => item.Quantity) > 5))
                 throw new CommerceException(400, "guest-quantity-limit", "Khách chưa đăng nhập đặt tối đa 5 sản phẩm mỗi loại.");
             await ConsumeLimitAsync(session, "create:ip:" + actor.ClientKey, 5, TimeSpan.FromMinutes(15), now, token);
             await ConsumeLimitAsync(session, "create:phone:" + OrderValidation.NormalizePhone(request.Phone), 3, TimeSpan.FromMinutes(15), now, token);
             if (actor.UserId.Length > 0) await ConsumeLimitAsync(session, "create:user:" + actor.UserId, 5, TimeSpan.FromMinutes(15), now, token);
-            var quote = await ShoppingService.BuildQuoteAsync(session, new(request.Items, request.PromotionId, request.DeliveryZoneId), now, token);
+            var quote = await ShoppingService.BuildQuoteAsync(session, new(normalizedItems, promotionId, zoneId), now, token);
             if (quote.Totals != request.ExpectedTotals) throw CommerceException.Conflict("price-changed", "Giá hoặc ưu đãi đã thay đổi. Hãy kiểm tra báo giá mới.");
             if (quote.DeliveryZone is null) throw new CommerceException(400, "invalid-delivery-zone", "Cần chọn khu vực giao hàng.");
             await ChangeStockAsync(session, quote.Items, reserve: true, token);
@@ -45,12 +49,12 @@ public sealed class OrderService(ICommerceUnitOfWork work, ICurrentActor actor, 
                 : request.PaymentMethod == "qr" ? OrderConfig.QrReservationMs : OrderConfig.CodReservationMs;
             var order = new Order(Guid.NewGuid().ToString("N"), actor.UserId, customer, quote.Items.ToArray(), quote.Totals,
                 new DeliveryZone(quote.DeliveryZone.Id, quote.DeliveryZone.Province, quote.DeliveryZone.District, quote.DeliveryZone.Fee, quote.DeliveryZone.Enabled),
-                request.PromotionId, request.PaymentMethod, OrderPricing.PaymentReferenceFor(request.IdempotencyKey),
+                promotionId, request.PaymentMethod, OrderPricing.PaymentReferenceFor(idempotencyKey),
                 "Chờ xác nhận", "reserved", now.AddMilliseconds(duration), false,
                 request.PaymentMethod == "qr" ? "Chờ xác minh thanh toán" : request.PaymentMethod == "vnpay" ? "chua_thanh_toan" : "Thanh toán khi nhận hàng",
                 false, [new("Chờ xác nhận", "Đơn hàng đã được gửi đến cửa hàng", "", now)], now);
             await session.Repository<Order>().PutAsync(order, token);
-            await session.Repository<OrderRequestKey>().PutAsync(new(request.IdempotencyKey, actor.UserId, fingerprint, order.Id), token);
+            await session.Repository<OrderRequestKey>().PutAsync(new(idempotencyKey, actor.UserId, fingerprint, order.Id), token);
             await AuditAsync(session, "order.create", order.Id, now, token);
             return new CreatedOrder(order.Id, order.PaymentReference, order.Totals);
         }, ct);
@@ -116,7 +120,8 @@ public sealed class OrderService(ICommerceUnitOfWork work, ICurrentActor actor, 
                 }
             var duration = order.PaymentMethod == "vnpay" ? OrderConfig.VnpayReservationMs : OrderConfig.QrReservationMs;
             var updated = order with { Status = request.Status, InventoryState = state,
-                ReservationExpiresAt = reserveAgain && !order.PaymentVerified ? now.AddMilliseconds(duration) : null,
+                ReservationExpiresAt = request.Status != "Chờ xác nhận" || order.PaymentVerified ? null
+                    : reserveAgain ? now.AddMilliseconds(duration) : order.ReservationExpiresAt,
                 ReservationExpired = reserveAgain ? false : order.ReservationExpired,
                 SalesCounted = salesDelta == 0 ? order.SalesCounted : salesDelta > 0,
                 PaymentVerified = order.PaymentVerified || codPaid, PaymentStatus = codPaid ? "Đã thanh toán"

@@ -49,7 +49,11 @@ public sealed class ShoppingService(ICommerceUnitOfWork work, ICurrentActor acto
     internal static async Task<QuoteResponse> BuildQuoteAsync(ICommerceSession session, QuoteRequest request, DateTimeOffset now, CancellationToken ct)
     {
         InputValidation.Validate(request); ValidateLines(request.Items);
-        if (OrderValidation.ValidateQuote(Json(request)) is null) throw new CommerceException(400, "invalid-quote", "Yêu cầu báo giá không hợp lệ.");
+        var normalized = OrderValidation.ValidateQuote(Json(request))
+            ?? throw new CommerceException(400, "invalid-quote", "Yêu cầu báo giá không hợp lệ.");
+        // The legacy validator returns canonical values, not just a yes/no result.
+        // Use those values for lookups and aggregate demand as well as validation.
+        request = new QuoteRequest(NormalizedItems(normalized), (string)normalized["promotionId"], (string)normalized["deliveryZoneId"]);
         var items = new List<Dictionary<string, object>>(); var priced = new List<PricedLine>();
         var demand = request.Items.GroupBy(item => item.ProductId ?? item.Id).ToDictionary(group => group.Key, group => group.Sum(item => item.Quantity));
         foreach (var line in request.Items)
@@ -85,6 +89,13 @@ public sealed class ShoppingService(ICommerceUnitOfWork work, ICurrentActor acto
         }
         catch (BackendException exception) { throw CommerceException.Conflict(exception.Code, exception.Message); }
     }
+
+    internal static CartLine[] NormalizedItems(IReadOnlyDictionary<string, object> normalized) =>
+        ((List<Dictionary<string, object>>)normalized["items"]).Select(item => new CartLine(
+            (string)item["id"], Convert.ToInt32(item["quantity"]), item.GetValueOrDefault("productId") as string,
+            item.GetValueOrDefault("size") as string ?? "standard", item.GetValueOrDefault("color") as string ?? "original",
+            item.GetValueOrDefault("cardMessage") as string ?? "", item.GetValueOrDefault("personalNote") as string ?? "",
+            item.GetValueOrDefault("customBouquetId") as string ?? "")).ToArray();
 
     private static Cart Copy(Cart cart) => cart with { Items = cart.Items.ToArray() };
 }
