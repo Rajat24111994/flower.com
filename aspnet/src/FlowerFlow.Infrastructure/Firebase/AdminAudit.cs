@@ -1,4 +1,4 @@
-using System.Globalization;
+using FlowerFlow.Application.Compatibility;
 using Google.Cloud.Firestore;
 
 namespace FlowerFlow.Infrastructure.Firebase;
@@ -13,7 +13,7 @@ public static class AdminAudit
         string? resourceId, object? details)
     {
         var email = actor?.Claims.TryGetValue("email", out var value) == true
-            ? Convert.ToString(value, CultureInfo.InvariantCulture) ?? "" : "";
+            ? Js.StringOrEmpty(Js.Element(value)) : "";
         return new Dictionary<string, object>
         {
             ["actorUid"] = Cut(actor?.Uid ?? "", 128), ["actorEmail"] = Cut(email, 320),
