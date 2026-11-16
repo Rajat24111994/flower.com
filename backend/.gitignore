@@ -1,0 +1,5 @@
+bin/
+obj/
+.env*
+!.env.example
+publish/
