@@ -71,7 +71,7 @@
           icon.className = "cart-empty-icon";
           icon.setAttribute("aria-hidden", "true");
           icon.textContent = "✿";
-          heading.textContent = "Giỏ hàng đang trống";
+          heading.textContent = "Giỏ hàng trống";
           text.textContent = "Chọn bó hoa làm sẵn hoặc tự phối hoa theo giá trong ngày rồi quay lại thanh toán.";
           link.href = "./custom-bouquet.html";
           link.textContent = "Tự phối bó hoa";
