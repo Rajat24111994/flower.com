@@ -638,7 +638,7 @@
           : {}),
         ...(reserveAgain ? {
           reservationExpiresAt: firestoreSdk.Timestamp.fromDate(new Date(Date.now() + (
-            order.paymentMethod === "vnpay" ? 15 * 60 * 1000 : 30 * 60 * 1000
+            order.paymentMethod === "vnpay" ? 15 * 60 * 1000 : order.paymentMethod === "cod" ? 5 * 60 * 1000 : 30 * 60 * 1000
           ))),
           reservationExpiredAt: firestoreSdk.deleteField()
         } : {}),

@@ -10,7 +10,7 @@ public static class OrderConfig
 
     public const int QrReservationMs = 30 * 60 * 1000;
     public const int VnpayReservationMs = 15 * 60 * 1000;
-    public const int CodReservationMs = 30 * 60 * 1000;
+    public const int CodReservationMs = 5 * 60 * 1000;
 
     public const int OrderLookupWindowMs = 10 * 60 * 1000;
     public const int OrderLookupMaxAttempts = 20;

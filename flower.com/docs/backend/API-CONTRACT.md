@@ -70,7 +70,7 @@ Chờ xác nhận → Đang chuẩn bị → Đang giao → Đã giao
 Đã hủy → Chờ xác nhận (khôi phục có kiểm tra kho)
 ```
 
-- COD/QR giữ kho 30 phút; VNPay giữ 15 phút khi đơn còn chờ xác nhận.
+- COD giữ kho 5 phút, QR 30 phút; VNPay giữ 15 phút khi đơn còn chờ xác nhận.
 - Cập nhật đơn vẫn chờ xác nhận phải giữ nguyên deadline, không xóa hoặc kéo dài hạn.
 - Xác nhận chuẩn bị hoặc thanh toán hợp lệ ngăn đơn tự hết hạn; cleanup không hoàn kho đơn đã thanh toán.
 - Hết hạn/hủy chỉ hoàn kho một lần. Đơn đã giao chỉ hoàn kho khi xác nhận hàng đã trả (`restockSold=true`).

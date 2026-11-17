@@ -61,7 +61,7 @@
       paymentButton.textContent = "Gửi đơn hàng chờ xác minh";
       paymentNote.textContent = `Quét mã Vietcombank để chuyển khoản · STK 1063118243 · DO BA THAI. Nội dung: ${checkoutData.paymentReference || "mã đơn của bạn"}. Gửi đơn không xác nhận đã nhận tiền; cửa hàng cần đối chiếu giao dịch. Hàng được giữ 30 phút sau khi gửi đơn, quá hạn chưa nhận được tiền đơn sẽ tự hủy.`;
     } else if (checkoutData?.paymentMethod === "cod") {
-      paymentNote.textContent = "Đơn COD được giữ hàng trong 30 phút chờ cửa hàng xác nhận.";
+      paymentNote.textContent = "Đơn COD được giữ hàng trong 5 phút chờ cửa hàng xác nhận; quá hạn chưa xác nhận đơn sẽ tự hủy.";
     }
 
     async function saveOrderToAdmin() {
@@ -240,7 +240,7 @@
     cancelButton.addEventListener("click", () => {
       if (orderSubmissionInProgress) return;
       const message = pendingSubmission
-        ? "Bỏ đơn đang đặt?\n\nLần gửi trước chưa có kết quả. Nếu cửa hàng đã nhận, đơn đó chưa thanh toán sẽ tự hủy sau 30 phút. Thông tin giao hàng và giỏ hàng sẽ bị xóa."
+        ? "Bỏ đơn đang đặt?\n\nLần gửi trước chưa có kết quả. Nếu cửa hàng đã nhận, đơn đó sẽ tự hủy khi hết thời hạn giữ hàng (COD 5 phút, QR 30 phút). Thông tin giao hàng và giỏ hàng sẽ bị xóa."
         : "Bỏ đơn đang đặt?\n\nThông tin giao hàng và giỏ hàng sẽ bị xóa.";
       if (!window.confirm(message)) return;
       discardOrder();
