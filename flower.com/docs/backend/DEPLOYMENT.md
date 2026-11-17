@@ -38,6 +38,10 @@ Cần tài khoản Render đã được kết nối/đăng nhập để tạo we
 
 Host hiện tại do người dùng tạo thủ công; agent chưa có kết nối quản trị Render để bấm deploy hoặc đặt secrets thay người dùng. Nếu service không tự deploy, sau khi push bản sửa cần chọn Manual Deploy → Deploy latest commit rồi chờ Live.
 
+### Auto-deploy (17/11/2026)
+
+Service `flower.com` (`srv-dbsuj6rm8hqs73dqmhmg`) đặt Auto-Deploy = "After CI Checks Pass", nhánh `main`, Dockerfile Path `flower.com/backend/Dockerfile`. Render chỉ nhận sự kiện commit khi Render GitHub App được cài trên repo: app đã được cài trên tài khoản `Longg5048`, chỉ cho repo `flower.com`; credential Git của workspace Render là `Dol-tech07` (cộng tác viên repo) nên thấy được repo qua bản cài này. Nếu Render lại không tự deploy, kiểm tra Render → Account settings → Git Deployment Credentials có liệt kê `Longg5048/flower.com`, và GitHub → Settings → Applications → Render vẫn còn chọn repo này.
+
 Nếu người dùng tự đăng nhập để tạo dịch vụ, dùng [Deploy bản Free từ nhánh asp.net](https://render.com/deploy?repo=https%3A%2F%2Fgithub.com%2FLongg5048%2Fflower.com%2Ftree%2Fasp.net), kiểm tra `plan: free` trước khi tạo. Link chỉ mở quy trình trên tài khoản Render của người dùng; không có nghĩa agent đã tạo host hoặc website đã chuyển production. Quy tắc chọn nhánh theo [Deploy to Render](https://render.com/docs/deploy-to-render).
 
 Free được dùng cho bản thử theo lựa chọn của người dùng. Render khuyến cáo không dùng Free cho production; dịch vụ Free ngủ sau 15 phút không có truy cập. Không tự chuyển sang gói trả phí. Tham khảo [Render Free](https://render.com/docs/free) và [Render Docker](https://render.com/docs/docker).
