@@ -8,24 +8,53 @@ function table(headers, rows, caption) {
 function chart(report) {
   const rows = report.series;
   if (!rows.some((row) => row.orders > 0)) return '<p class="empty-state">Chưa có doanh thu đã ghi nhận trong kỳ.</p>';
-  const width = Math.max(640, Math.min(rows.length * 34 + 90, 2600));
+  const width = Math.max(640, Math.min(rows.length * 36 + 90, 2600));
   const max = Math.max(1, ...rows.map((row) => row.revenue));
+  const scaleMax = Math.sqrt(max);
   const plot = width - 90, step = plot / rows.length;
+  const groupUnit = report.groupBy === "year" ? "năm" : report.groupBy === "month" || report.monthly ? "tháng" : report.groupBy === "week" ? "tuần" : "ngày";
   const bars = rows.map((row, i) => {
-    const height = Math.max(0, row.revenue) / max * 165;
-    const x = 65 + i * step, label = row.key || "Chưa có ngày";
-    return `<rect x="${x + step * .15}" y="${190 - height}" width="${Math.max(1, step * .7)}" height="${height}" rx="2" fill="#8c415e"><title>${e(label)}: ${e(vnd(row.revenue))} · ${row.orders} đơn</title></rect>${i % Math.max(1, Math.ceil(rows.length / 8)) === 0 ? `<text x="${x}" y="215" font-size="11" fill="#65564e">${e(label)}</text>` : ""}`;
+    const height = row.revenue > 0 ? Math.max(5, (Math.sqrt(row.revenue) / scaleMax) * 165) : 0;
+    const x = 65 + i * step;
+    const label = row.label || row.key || "Chưa có ngày";
+    const fullDesc = `${row.fullLabel || label}: ${vnd(row.revenue)} · ${row.orders} đơn`;
+    const showLabel = rows.length <= 16 || (i % Math.max(1, Math.ceil(rows.length / 10)) === 0);
+    return `<g class="report-bar-group" tabindex="0">
+      <rect class="report-bar" x="${x + step * .15}" y="${190 - height}" width="${Math.max(2, step * .7)}" height="${height}" rx="2" fill="#8c415e">
+        <title>${e(fullDesc)}</title>
+      </rect>
+      ${showLabel ? `<text x="${x + step * .5}" y="215" font-size="11" text-anchor="middle" fill="#65564e">${e(label)}</text>` : ""}
+    </g>`;
   }).join("");
-  return `<div class="report-chart-scroll" tabindex="0" aria-label="Biểu đồ doanh thu, cuộn ngang để xem"><svg viewBox="0 0 ${width} 235" width="${width}" height="235" role="img" aria-label="Doanh thu theo ${report.monthly ? "tháng" : "ngày"}, đơn vị VND"><title>Doanh thu đã giao và thanh toán</title><desc>Số liệu đầy đủ trong bảng dưới biểu đồ.</desc><line x1="65" y1="190" x2="${width - 15}" y2="190" stroke="#cfc6bf"/><text x="5" y="20" font-size="11" fill="#65564e">${e(new Intl.NumberFormat("vi-VN", { notation: "compact" }).format(max))} ₫</text><text x="40" y="190" font-size="11">0</text>${bars}</svg></div>`;
+  return `<div class="report-chart-scroll" tabindex="0" aria-label="Biểu đồ doanh thu, cuộn ngang để xem"><svg viewBox="0 0 ${width} 235" width="${width}" height="235" role="img" aria-label="Doanh thu theo ${groupUnit}, đơn vị VND"><title>Doanh thu đã giao và thanh toán</title><desc>Số liệu đầy đủ trong bảng dưới biểu đồ.</desc><line x1="65" y1="190" x2="${width - 15}" y2="190" stroke="#cfc6bf"/><text x="5" y="20" font-size="11" fill="#65564e">${e(new Intl.NumberFormat("vi-VN", { notation: "compact" }).format(max))} ₫</text><text x="40" y="190" font-size="11" fill="#65564e">0</text>${bars}</svg></div>`;
 }
 export function mountReport({ container, orders, products, filters, onFilter }) {
   const report = buildReport(orders, products, filters);
   const interval = filters.period === "all" ? "Toàn thời gian" : `${report.bounds.start} → ${report.bounds.end}`;
   const metric = (label, value, note) => `<article class="report-metric"><h3>${e(label)}</h3><strong>${e(value)}</strong><small>${e(note)}</small></article>`;
+  const effectiveGroupBy = report.groupBy || (report.monthly ? "month" : "day");
+  const groupTitle = effectiveGroupBy === "year" ? "Năm" : effectiveGroupBy === "month" ? "Tháng" : effectiveGroupBy === "week" ? "Tuần" : "Ngày";
+  const groupLabel = effectiveGroupBy === "year" ? "năm" : effectiveGroupBy === "month" ? "tháng" : effectiveGroupBy === "week" ? "tuần" : "ngày";
+
   container.innerHTML = `<section class="admin-report panel" aria-labelledby="admin-report-title">
     <div class="report-heading"><div><p class="report-eyebrow">FLOWERFLOW · BÁO CÁO</p><h2 id="admin-report-title">Doanh thu & kho hàng</h2><p id="report-period-label">${e(interval)} · Giờ Việt Nam</p></div><button type="button" class="submit-btn" id="report-export">Xuất Excel (.xlsx)</button></div>
     <form id="admin-report-filters" class="report-filters">
-      <label>Khoảng thời gian<select name="period"><option value="today" ${filters.period === "today" ? "selected" : ""}>Hôm nay</option><option value="month" ${filters.period === "month" ? "selected" : ""}>Theo tháng</option><option value="custom" ${filters.period === "custom" ? "selected" : ""}>Tùy chọn ngày</option><option value="all" ${filters.period === "all" ? "selected" : ""}>Toàn thời gian</option></select></label>
+      <label>Khoảng thời gian<select name="period">
+        <option value="today" ${filters.period === "today" ? "selected" : ""}>Hôm nay</option>
+        <option value="7days" ${filters.period === "7days" || filters.period === "last7days" ? "selected" : ""}>7 ngày qua</option>
+        <option value="30days" ${filters.period === "30days" || filters.period === "last30days" ? "selected" : ""}>30 ngày qua</option>
+        <option value="thisMonth" ${filters.period === "thisMonth" ? "selected" : ""}>Tháng này</option>
+        <option value="thisYear" ${filters.period === "thisYear" || filters.period === "year" ? "selected" : ""}>Năm nay</option>
+        <option value="month" ${filters.period === "month" ? "selected" : ""}>Theo tháng</option>
+        <option value="custom" ${filters.period === "custom" ? "selected" : ""}>Tùy chọn ngày</option>
+        <option value="all" ${filters.period === "all" ? "selected" : ""}>Toàn thời gian</option>
+      </select></label>
+      <label>Cách hiển thị<select name="groupBy">
+        <option value="day" ${effectiveGroupBy === "day" ? "selected" : ""}>Theo ngày</option>
+        <option value="week" ${effectiveGroupBy === "week" ? "selected" : ""}>Theo tuần</option>
+        <option value="month" ${effectiveGroupBy === "month" ? "selected" : ""}>Theo tháng</option>
+        <option value="year" ${effectiveGroupBy === "year" ? "selected" : ""}>Theo năm</option>
+      </select></label>
       <label data-month ${filters.period !== "month" ? "hidden" : ""}>Tháng<input type="month" name="month" value="${e(filters.month)}"></label>
       <label data-custom ${filters.period !== "custom" ? "hidden" : ""}>Từ ngày<input type="date" name="start" value="${e(filters.start)}"></label>
       <label data-custom ${filters.period !== "custom" ? "hidden" : ""}>Đến ngày<input type="date" name="end" value="${e(filters.end)}"></label>
@@ -36,7 +65,7 @@ export function mountReport({ container, orders, products, filters, onFilter }) 
     <p class="report-method">Đơn hàng theo ngày đặt; doanh thu chỉ tính đơn hoàn thành, đã thanh toán và chưa hoàn tiền, theo ngày trả tiền (dự phòng ngày giao/ngày đặt). Tiền hoàn được thống kê riêng theo ngày ghi nhận hoàn tiền. Tồn kho là số hiện tại, không lọc theo ngày.</p>
     ${report.undatedOrders ? `<p class="report-warning">${report.undatedOrders} đơn thiếu ngày đặt; không được tính trong bộ lọc theo ngày.</p>` : ""}
     <div class="report-metrics">${metric("Doanh thu sau hoàn tiền", vnd(report.totalRevenue), `${report.revenueOrders.length} đơn hoàn thành, đã trả và chưa hoàn tiền`)}${metric("Đơn chưa thu / chưa xác minh", vnd(report.totalUnpaid), `${report.unpaidOrders.length} đơn, theo ngày đặt`)}${metric("Đã thu nhưng chưa giao", vnd(report.totalPaidNotDelivered), `${report.paidNotDeliveredOrders.length} đơn, gồm các đơn đã thanh toán nhưng chưa hoàn tất`)}${metric("Đã hoàn tiền trong kỳ", vnd(report.totalRefunded), `${report.refundedOrders.length} đơn, theo ngày ghi nhận hoàn tiền`)}${metric("Đơn đặt trong kỳ", report.placed.length, "Gồm mọi trạng thái, theo ngày đặt")}${metric("Số bó đã bán", report.soldUnits, "Theo đơn ghi nhận doanh thu")}${metric("Doanh thu / đơn", vnd(report.average), "Trung bình trên đơn ghi nhận")}${metric("Tồn kho hiện tại", report.currentStock, "Tất cả sản phẩm")}${metric("Sản phẩm tồn thấp", report.lowStock.length, `Ngưỡng ≤ ${filters.lowStock} bó, gồm hết hàng`)}</div>
-    <div class="report-panels"><section class="report-section report-wide"><h3>Biểu đồ doanh thu theo ${report.monthly ? "tháng" : "ngày"}</h3>${chart(report)}<details><summary>Xem bảng số liệu biểu đồ</summary>${table([report.monthly ? "Tháng" : "Ngày", "Doanh thu (VND)", "Đơn ghi nhận"], report.series.map((row) => [row.key || "Chưa có ngày", vnd(row.revenue), row.orders]), "Số liệu doanh thu")}</details></section>
+    <div class="report-panels"><section class="report-section report-wide"><h3>Biểu đồ doanh thu theo ${groupLabel}</h3>${chart(report)}<details><summary>Xem bảng số liệu biểu đồ</summary>${table([groupTitle, "Doanh thu (VND)", "Đơn ghi nhận"], report.series.map((row) => [row.fullLabel || row.label || row.key || "Chưa có ngày", vnd(row.revenue), row.orders]), "Số liệu doanh thu")}</details></section>
     <section class="report-section"><h3>Thống kê trạng thái đơn</h3>${table(["Trạng thái", "Số đơn"], report.states.map((row) => [row.label, row.count]), "Đơn đặt trong kỳ theo trạng thái")}</section>
     <section class="report-section"><h3>10 sản phẩm bán chạy</h3>${table(["Sản phẩm", "Số bó", "Số đơn"], report.bestSellers.slice(0, 10).map((row) => [row.title, row.quantity, row.orders]), "Bán chạy trong đơn hoàn thành, đã thanh toán và chưa hoàn tiền")}</section>
     <section class="report-section report-wide"><h3>Tồn kho thấp hiện tại</h3>${table(["Mã", "Sản phẩm", "Tồn", "Cảnh báo"], report.lowStock.map((row) => [row.id, row.title, row.quantity, row.quantity === 0 ? "Hết hàng" : "Sắp hết hàng"]), `Tồn kho ≤ ${filters.lowStock} bó`)}</section></div>
@@ -54,7 +83,7 @@ export function mountReport({ container, orders, products, filters, onFilter }) 
     try { buildReport(orders, products, next); onFilter(next); } catch (error) { feedback.textContent = error.message; }
   });
   container.querySelector("#report-reset").addEventListener("click", () => {
-    onFilter({ period: "month", month: dateKey(new Date()).slice(0, 7), start: "", end: "", lowStock: 5 });
+    onFilter({ period: "month", month: dateKey(new Date()).slice(0, 7), start: "", end: "", lowStock: 5, groupBy: "day" });
   });
   container.querySelector("#report-export").addEventListener("click", () => {
     try {
