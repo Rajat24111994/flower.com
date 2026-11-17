@@ -1,6 +1,6 @@
 import { registerAdminFunctions } from "./admin-state.js";
 import { normalizeOrderStatus } from "../order/order-status.js?v=2";
-import { isOrderPaid } from "./admin-analytics.js?v=2";
+import { isOrderPaid } from "./admin-analytics.js?v=3";
 
 function moneyFormat(value) {
    return new Intl.NumberFormat("vi-VN", {
