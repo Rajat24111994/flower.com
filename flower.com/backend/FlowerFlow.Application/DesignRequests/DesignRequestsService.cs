@@ -101,7 +101,7 @@ public sealed class DesignRequestsService(Func<FirestoreDb> database, IFirebaseA
                 await Task.WhenAll(productsTask, zonesTask, wrappingTask);
                 var productSnapshots = await productsTask; var zonesSnapshot = await zonesTask; var wrappingSnapshot = await wrappingTask;
                 var pricing = await WiltingPriceStore.LoadAsync(db, productSnapshots.Select(doc => doc.Id), transaction, context.RequestAborted);
-                var (zone, _) = PricingService.ResolveDeliveryZone(Js.Element(zonesSnapshot.ToDictionary()), zoneId);
+                var (zone, _) = PricingService.ResolveDeliveryZone(HanoiDeliveryZones.OrDefault(Js.Element(zonesSnapshot.ToDictionary())), zoneId);
                 var products = stems.Select((stem, index) =>
                 {
                     var snapshot = productSnapshots[index]; var data = snapshot.Exists ? snapshot.ToDictionary() : new Dictionary<string, object>();

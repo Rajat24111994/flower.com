@@ -66,7 +66,7 @@ public sealed class CheckoutService(Func<FirestoreDb> database, ReservationsServ
             await Task.WhenAll(productsTask, promotionsTask, deliveryTask, wrappingTask);
             var products = await productsTask; var promotions = await promotionsTask; var delivery = await deliveryTask; var wrapping = await wrappingTask;
             var pricing = await WiltingPriceStore.LoadAsync(db, products.Select(product => product.Id), cancellationToken: context.RequestAborted);
-            var (zone, shipping) = PricingService.ResolveDeliveryZone(Js.Element(delivery.ToDictionary()), (string)quote["deliveryZoneId"]);
+            var (zone, shipping) = PricingService.ResolveDeliveryZone(HanoiDeliveryZones.OrDefault(Js.Element(delivery.ToDictionary())), (string)quote["deliveryZoneId"]);
             var shortages = new List<Dictionary<string, object>>();
             var cart = items.Select((item, index) =>
             {
@@ -97,7 +97,7 @@ public sealed class CheckoutService(Func<FirestoreDb> database, ReservationsServ
             totals["wrappingFee"] = wrappingFee; totals["shippingFee"] = shipping; totals["total"] = Numeric(totals, "subtotal") - Numeric(totals, "savings") + wrappingFee + shipping;
             var publicZone = zone is null ? null : new Dictionary<string, object> { ["id"] = zone["id"], ["province"] = zone["province"], ["district"] = zone["district"], ["fee"] = zone["fee"] };
             await context.Response.WriteAsJsonAsync(new { totals, customBouquets = bouquets, deliveryZone = publicZone,
-                deliveryZonesConfigured = PricingService.GetEnabledDeliveryZones(Js.Element(delivery.ToDictionary())).Count > 0,
+                deliveryZonesConfigured = PricingService.GetEnabledDeliveryZones(HanoiDeliveryZones.OrDefault(Js.Element(delivery.ToDictionary()))).Count > 0,
                 items = cart.Select(item => FirestoreValues.JsonCompatible(PublicItem(item))).ToList() }, context.RequestAborted);
         }
         catch (BackendException error) when (new[] { "invalid-promotion", "insufficient-stock", "product-unavailable", "delivery-zone-unavailable", "invalid-custom-bouquet", "bouquet-quantity-limit", "bouquet-wrapping-unavailable" }.Contains(error.Code))
@@ -168,7 +168,7 @@ public sealed class CheckoutService(Func<FirestoreDb> database, ReservationsServ
                 await Task.WhenAll(productsTask, promosTask, deliveryTask, wrappingTask);
                 var snapshots = await productsTask; var promotions = await promosTask; var delivery = await deliveryTask; var wrapping = await wrappingTask;
                 var pricing = await WiltingPriceStore.LoadAsync(db, snapshots.Select(product => product.Id), transaction, context.RequestAborted);
-                var (zone, shipping) = PricingService.ResolveDeliveryZone(Js.Element(delivery.ToDictionary()), (string)checkout["deliveryZoneId"]);
+                var (zone, shipping) = PricingService.ResolveDeliveryZone(HanoiDeliveryZones.OrDefault(Js.Element(delivery.ToDictionary())), (string)checkout["deliveryZoneId"]);
                 var products = items.Select((item, index) =>
                 {
                     var snapshot = snapshots[index]; if (!snapshot.Exists) throw new BackendException("product-unavailable", "Một sản phẩm không còn bán.");
