@@ -66,7 +66,7 @@ test("local environment secrets are ignored and scripts load the local env file"
                 return [line.slice(0, separator), line.slice(separator + 1)];
             })
     );
-    for (const secret of ["FIREBASE_SERVICE_ACCOUNT_JSON", "VNPAY_TMN_CODE", "VNPAY_HASH_SECRET", "CRON_SECRET"]) {
+    for (const secret of ["FIREBASE_SERVICE_ACCOUNT_JSON", "CRON_SECRET"]) {
         assert.equal(values.get(secret), "", `${secret} must not contain a real credential`);
     }
     assert.equal(values.has("BACKUP_PASSPHRASE"), false, "backup passphrases must not be stored in the env file");

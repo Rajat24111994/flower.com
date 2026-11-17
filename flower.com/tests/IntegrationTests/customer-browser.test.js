@@ -34,24 +34,22 @@ for (const width of [1280, 390]) {
                 const quote = await api.quote(items, "", "test-zone");
                 const input = { customerName: "Khách trình duyệt", phone: "0908123456", address: "1 Lê Lợi",
                     deliveryDate, deliveryTime: "11:00–14:00", deliveryZoneId: "test-zone",
-                    paymentMethod: "vnpay", idempotencyKey: crypto.randomUUID(), items };
+                    paymentMethod: "qr", idempotencyKey: crypto.randomUUID(), items };
                 const id = await api.create(input, quote.totals);
                 const replay = await api.create(input, quote.totals);
                 const order = await api.getPublicOrder(id, input.phone);
                 return { catalogCount: catalog.products.length, quote, id, replay, order };
             }, h.deliveryDate());
             const created = (await (await createResponse).json()).order;
-            const payment = await page.evaluate(({ id, paymentReference }) =>
-                window.FlowerOrderStore.createPaymentLink(id, paymentReference), created);
             assert.equal(result.catalogCount, h.catalog.length);
             assert.equal(result.quote.totals.total, h.catalog[0].price);
             assert.equal(result.id, result.replay); assert.equal(result.order.id, result.id);
             assert.equal(result.order.uid, customer.uid);
-            assert.match(payment.paymentUrl, /^https:\/\/sandbox\.vnpayment\.vn\//);
+            assert.ok(created.paymentReference);
             assert.equal(await h.stockOf("1"), 9);
             assert.equal((await h.db().collection("orders").get()).size, 1);
             const ref = h.db().doc(`orders/${result.id}`);
-            assert.equal((await ref.get()).data().paymentVerified, false, "A payment link is not a provider confirmation");
+            assert.equal((await ref.get()).data().paymentVerified, false, "QR orders require manual reconciliation");
             // Back-office fixture: delivery itself is covered by the admin lifecycle suites.
             await ref.update({ status: "Đã giao", inventoryState: "sold", inventoryReserved: false });
             const review = await page.evaluate(async ({ id, token }) => {

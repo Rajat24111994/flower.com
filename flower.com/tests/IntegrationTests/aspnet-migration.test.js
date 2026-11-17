@@ -53,7 +53,7 @@ test("ASP.NET ignores spoofed forwarding headers for order lookup limits", { ski
 });
 
 test("ASP.NET writes Firestore integer fields with the existing types", { skip: !enabled }, async () => {
-    const placed = await h.placeOrder({ paymentMethod: "vnpay" });
+    const placed = await h.placeOrder({ paymentMethod: "qr" });
     assert.equal(placed.status, 201);
     // REST representation distinguishes Firestore integers from doubles; JS SDK numbers do not.
     const admin = await h.createUser("admin");

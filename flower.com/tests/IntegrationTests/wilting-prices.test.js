@@ -128,11 +128,13 @@ test("design requests use wilting estimates without reserving inventory", { skip
     assert.equal(await h.stockOf("1"), 10);
 });
 
-test("VNPay uses the saved wilting order total even after rules change", { skip: !enabled }, async () => {
+test("QR preserves the saved wilting order total even after rules change", { skip: !enabled }, async () => {
     const owner = await h.createUser("owner"); await received(owner); await save(owner);
-    const placed = await h.placeOrder({ paymentMethod: "vnpay" });
+    const placed = await h.placeOrder({ paymentMethod: "qr" });
+    assert.equal(placed.status, 201, JSON.stringify(placed.body));
     await save(owner, [rule({ dailyDiscountPercent: 50 })], 1);
-    const payment = await h.callApi("payments", { body: { action: "create", orderId: placed.body.order.id, paymentReference: placed.body.order.paymentReference } });
-    assert.equal(payment.status, 200, JSON.stringify(payment.body));
-    assert.equal(new URL(payment.body.paymentUrl).searchParams.get("vnp_Amount"), "22500000");
+    const stored = (await h.db().doc(`orders/${placed.body.order.id}`).get()).data();
+    assert.equal(stored.total, 225000);
+    assert.equal(stored.paymentMethod, "qr");
+    assert.equal(stored.paymentVerified, false);
 });
