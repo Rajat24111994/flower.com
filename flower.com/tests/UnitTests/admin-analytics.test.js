@@ -62,7 +62,7 @@ test("khoảng ngày hợp lệ, ngày nhuận, kỳ rỗng và tổng hợp th�
   assert.equal(empty.average, 0);
   assert.equal(empty.series.length, 30);
   assert.equal(empty.lowStock.length, 1);
-  const yearly = buildReport(orders, products, { period: "custom", start: "2026-01-01", end: "2026-12-31", lowStock: 5 });
+  const yearly = buildReport(orders, products, { period: "custom", start: "2026-01-01", end: "2026-12-31", lowStock: 5, groupBy: "month" });
   assert.equal(yearly.monthly, true);
   assert.equal(yearly.series.length, 12);
   assert.equal(yearly.series.find((row) => row.key === "2026-11").revenue, 770000);
@@ -100,4 +100,64 @@ test("Excel giữ 7 sheet, tách hoàn tiền, số VND, ngày thật và văn b
   assert.match(xml, /&amp; &lt;test&gt;/);
   assert.doesNotMatch(xml, /<f[ >]/);
   assert.match(xml, /<v>770000<\/v>/);
+});
+
+test("bộ lọc mới (7 ngày, 30 ngày, tháng này, năm nay) và bảo toàn doanh thu qua 4 chế độ gom nhóm (ngày, tuần, tháng, năm)", async () => {
+  const { buildReport, periodBounds, weekBounds, shiftDays } = await import("../../js/admin/admin-analytics.js");
+  const refDate = new Date("2026-11-17T12:00:00+07:00");
+  
+  // Kiểm tra tính khoảng thời gian
+  const b7 = periodBounds({ period: "7days" }, refDate);
+  assert.equal(b7.start, "2026-11-11");
+  assert.equal(b7.end, "2026-11-17");
+
+  const b30 = periodBounds({ period: "30days" }, refDate);
+  assert.equal(b30.start, "2026-10-19");
+  assert.equal(b30.end, "2026-11-17");
+
+  const bThisMonth = periodBounds({ period: "thisMonth" }, refDate);
+  assert.equal(bThisMonth.start, "2026-11-01");
+  assert.equal(bThisMonth.end, "2026-11-30");
+
+  const bThisYear = periodBounds({ period: "thisYear" }, refDate);
+  assert.equal(bThisYear.start, "2026-01-01");
+  assert.equal(bThisYear.end, "2026-12-31");
+
+  // Kiểm tra biên tuần (bắt đầu từ Thứ Hai)
+  const wb1 = weekBounds("2026-11-17"); // Thứ Ba
+  assert.equal(wb1.monday, "2026-11-16");
+  assert.equal(wb1.sunday, "2026-11-22");
+
+  const wbCrossYear = weekBounds("2025-12-31"); // Thứ Tư
+  assert.equal(wbCrossYear.monday, "2025-12-29");
+  assert.equal(wbCrossYear.sunday, "2026-01-04");
+
+  // Kiểm tra gom nhóm và bảo toàn doanh thu
+  const filterBase = { period: "month", month: "2026-11", lowStock: 5 };
+  const rDay = buildReport(orders, products, { ...filterBase, groupBy: "day" }, refDate);
+  const rWeek = buildReport(orders, products, { ...filterBase, groupBy: "week" }, refDate);
+  const rMonth = buildReport(orders, products, { ...filterBase, groupBy: "month" }, refDate);
+  const rYear = buildReport(orders, products, { ...filterBase, groupBy: "year" }, refDate);
+
+  // Tổng doanh thu phải bằng nhau chính xác ở cả 4 chế độ
+  assert.equal(rDay.totalRevenue, 770000);
+  assert.equal(rWeek.totalRevenue, 770000);
+  assert.equal(rMonth.totalRevenue, 770000);
+  assert.equal(rYear.totalRevenue, 770000);
+
+  // Tổng doanh thu cộng từ các cột (series) phải khớp với totalRevenue
+  assert.equal(rDay.series.reduce((s, r) => s + r.revenue, 0), 770000);
+  assert.equal(rWeek.series.reduce((s, r) => s + r.revenue, 0), 770000);
+  assert.equal(rMonth.series.reduce((s, r) => s + r.revenue, 0), 770000);
+  assert.equal(rYear.series.reduce((s, r) => s + r.revenue, 0), 770000);
+
+  // Kiểm tra số cột và zero-filling
+  assert.equal(rDay.series.length, 30); // 30 ngày trong tháng 11
+  assert.equal(rWeek.series.length, 6); // 6 tuần bao phủ tháng 11
+  assert.equal(rMonth.series.length, 1); // 1 tháng
+  assert.equal(rYear.series.length, 1); // 1 năm
+
+  // Các ngày không có doanh thu phải có revenue = 0
+  assert.equal(rDay.series.find((r) => r.key === "2026-11-01").revenue, 0);
+  assert.equal(rDay.series.find((r) => r.key === "2026-11-02").revenue, 770000);
 });
