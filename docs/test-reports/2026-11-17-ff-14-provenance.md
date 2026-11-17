@@ -36,7 +36,8 @@ dữ liệu khách hoặc gọi API nghiệp vụ production.
 - Chạy audit hai lần với cache: inventory JSON giống byte-for-byte.
 - Chạy audit không có cache: 15 NuGet records UNKNOWN thay vì đoán license;
   phần npm/assets/blob giữ nguyên.
-- Đối chiếu SHA-256 ba file license đã copy với file trong đúng package cài: khớp.
+- Đối chiếu SHA-256 nội dung ba license với file trong đúng package cài: khớp
+  sau chuẩn hóa CRLF/LF (Git trên Windows có thể đổi kiểu xuống dòng, không đổi license text).
 - Hai manifest/lockfile đều UNLICENSED ở root; cấu hình/version dependency không đổi.
 - Kiểm tra link tương đối của NOTICE/PROVENANCE/third-party/asset/report và anchor
   credits trong HTML; `git diff --check` và SEO/static checks đạt.
