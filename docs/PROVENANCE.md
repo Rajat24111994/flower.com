@@ -11,7 +11,7 @@ Tài liệu cho issue #130: phân biệt phần kế thừa từ repository gố
 | Tác giả gốc (theo git) | Rajat24111994 (22 commit), vaibhav mahandiratta (16), amanraj0111 (15), vkmr007 (9), Vikram Naik (7), Vikram043 (5) |
 | Nội dung | 45 file: trang HTML/CSS/JS tĩnh (trang chủ, sản phẩm, giỏ, đăng nhập, wishlist, đặt hàng, admin) và 21 ảnh; dữ liệu qua MockAPI |
 | Giấy phép | **Không có file LICENSE**, nên mặc định tác giả gốc giữ toàn bộ quyền |
-| Bản demo gốc | Netlify (`genuine-malabi-a05086.netlify.app`). Repo này vẫn để link đó ở phần About; xem #119 |
+| Bản demo gốc | Netlify (`genuine-malabi-a05086.netlify.app`), không còn dùng. Website hiện tại: `https://flower-com.onrender.com` (phần About của repo đã đổi sang link này; xem #119, #168) |
 
 `Longg5048/flower.com` là fork của repo trên. Commit chung cuối cùng là `9bd76dc` (13/03/2023, "Update README.md"). Nhóm FlowerFlow bắt đầu commit từ 05/10/2026.
 

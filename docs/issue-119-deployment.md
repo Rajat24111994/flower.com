@@ -4,37 +4,30 @@ Tài liệu ghi lại những gì đã kiểm tra được trên môi trường 
 
 ## 1. URL chính thức
 
-- **URL chính thức: `https://flower-com-six.vercel.app`**. Đây là project Vercel `banhoa/flower-com`, deploy từ nhánh `main` với Root Directory `flower.com/`. README, `sitemap.xml`, `robots.txt` và dữ liệu SEO đều dùng URL này.
+- **URL chính thức: `https://flower-com.onrender.com`** (Render, gói Free, Docker, region Singapore). Render tự deploy nhánh `main` sau khi CI xanh. Backend là ASP.NET Core C# trong `flower.com/backend/`. README, `sitemap.xml`, `robots.txt`, thẻ canonical và dữ liệu SEO đều dùng URL này.
+- Địa chỉ Vercel cũ `https://flower-com-six.vercel.app` chỉ còn chuyển hướng 307 sang Render (`redirects` trong `flower.com/vercel.json`).
 - Link Netlify (`genuine-malabi-a05086.netlify.app`) là bản demo của repo gốc năm 2023 (xem [`PROVENANCE.md`](PROVENANCE.md)), không còn liên quan.
-- **Chủ repo cần làm:** trên trang repo → bánh răng ⚙️ cạnh **About** → ô **Website** → thay link Netlify bằng `https://flower-com-six.vercel.app` → **Save changes**.
+- Phần **About → Website** của repo và biến GitHub Actions `FLOWER_APP_URL` đã đổi sang URL Render ngày 17/11/2026 (#168).
 
-## 2. Kiểm tra trang thật ngày 11/11/2026 (02:40 UTC)
+## 2. Kiểm tra trang thật ngày 17/11/2026 (03:05 UTC)
 
-Chạy bằng `curl` từ môi trường kiểm thử, sau khi gộp #132, #117 và #116.
+Chạy bằng `curl` trên URL Render. Lần kiểm tra trước (11/11/2026, trên Vercel) phát hiện toàn bộ API trả 500; lỗi đó không còn vì website đã chuyển sang backend C# trên Render.
 
 | Hạng mục | Kết quả | Đánh giá |
 | --- | --- | :---: |
-| Trang tĩnh `/`, `/product.html`, `/cart.html`, `/checkout.html`, `/admin.html`, `/login.html`, `/tracking.html` | HTTP 200, 0,14–0,39 giây | ✅ |
+| `/health` | HTTP 200 | ✅ |
+| Trang tĩnh `/`, `/product.html`, `/cart.html`, `/checkout.html`, `/admin.html`, `/login.html`, `/tracking.html` | HTTP 200, 0,21–0,27 giây | ✅ |
 | `sitemap.xml`, `robots.txt` | HTTP 200 | ✅ |
-| HTTPS và chứng chỉ | HTTP/2; chứng chỉ `*.vercel.app` do Google Trust Services (WR1) cấp, hết hạn 29/01/2027; xác minh hợp lệ | ✅ |
+| API `/api/products`, `/api/delivery-zones`, `/api/bouquet-wrapping` | HTTP 200, đọc được Firestore | ✅ |
+| `POST /api/login` với JSON rỗng | HTTP 400 `invalid-argument` (đúng); sai mật khẩu trả 401 `invalid-credential` | ✅ |
+| HTTPS và chứng chỉ | Chứng chỉ do Google Trust Services (WE1) cấp, hết hạn 20/12/2026, Render tự gia hạn | ✅ |
+| HTTP → HTTPS | `http://flower-com.onrender.com/` trả 301 sang HTTPS | ✅ |
+| Vercel cũ → Render | `flower-com-six.vercel.app/about.html` trả 307 sang `flower-com.onrender.com/about.html` | ✅ |
 | `Strict-Transport-Security` | `max-age=31536000; includeSubDomains` | ✅ |
-| `Content-Security-Policy` | Có; `script-src` không còn `'unsafe-inline'` (#120) | ✅ |
+| `Content-Security-Policy` | Có; `default-src 'self'`, `frame-ancestors 'none'`, `object-src 'none'` | ✅ |
 | `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy` | `DENY`, `nosniff`, `strict-origin-when-cross-origin`, camera/micro/vị trí tắt | ✅ |
-| HTTP → HTTPS | Chưa kiểm tra được: proxy của môi trường kiểm thử chặn HTTP thường. PR #113 đã tự kiểm tra và ghi nhận chuyển hướng 308 | ⚠️ |
-| **API** `/api/products`, `/api/orders`, `/api/login`, `/api/delivery-zones`, `/api/bouquet-wrapping`… | **HTTP 500 `FUNCTION_INVOCATION_FAILED` ở cả 11 hàm** | ❌ |
 
-### ❌ Lỗi chặn: toàn bộ API trả 500
-
-- **Lỗi:** từ lần deploy production đầu tiên sau khi sửa build (PR #132), mọi hàm trong `api/` đều trả `FUNCTION_INVOCATION_FAILED`, kể cả các hàm không bị sửa như `/api/login` và `/api/vnpay-ipn`. Khách không xem được giá từ máy chủ, không đặt hàng và không đăng nhập bằng mật khẩu được.
-- **Đã loại trừ:** trên máy, cả 11 hàm đều nạp và chạy được với Node 22, kể cả khi thiếu file `@firebase/util/dist/postinstall.js` mà npm trên Vercel bỏ không tạo. Khi đó API trả 503 đúng cách chứ không sập.
-- **Cần để tìm nguyên nhân:** log runtime của Vercel. Chủ repo chạy lệnh dưới, mở thử `/api/login`, rồi gửi dòng lỗi đầu tiên. Hoặc vào Vercel → project → **Logs**, lọc mã 500.
-
-```bash
-npx vercel logs flower-com-six.vercel.app
-```
-
-- **Kiểm tra thêm trên Vercel → Settings → Environment Variables (Production):** có `FIREBASE_SERVICE_ACCOUNT_JSON`, `FIREBASE_PROJECT_ID`, `CRON_SECRET`; và **Settings → General → Node.js Version** khớp `engines.node` (`24.x`) trong `flower.com/package.json`.
-- Trước khi sửa xong, có thể vào **Deployments**, chọn bản production còn chạy được trước đó và bấm **Instant Rollback**.
+Giới hạn: gói Render Free ngủ sau khoảng 15 phút không có truy cập; lần mở đầu tiên sau đó mất khoảng 30–60 giây.
 
 ## 3. Firestore Security Rules đã deploy
 
@@ -48,9 +41,9 @@ Sau đó chụp màn hình **Firebase Console → Firestore → Rules**, thấy 
 
 ## 4. Kiểm thử VNPay sandbox (#39)
 
-Cần tài khoản merchant sandbox. Cài `VNPAY_TMN_CODE`, `VNPAY_HASH_SECRET`, `VNPAY_ENV=sandbox`, `PUBLIC_APP_URL` trên Vercel (Preview hoặc Production) theo [`payments-vnpay.md`](payments-vnpay.md), rồi chạy đủ 5 kịch bản. Thẻ thử lấy từ trang tài liệu sandbox của VNPay.
+Cần tài khoản merchant sandbox. Chủ repo tự nhập `VNPAY_TMN_CODE`, `VNPAY_HASH_SECRET`, `VNPAY_ENV=sandbox`, `PUBLIC_APP_URL=https://flower-com.onrender.com` vào **Render → service flower.com → Environment** theo [`payments-vnpay.md`](payments-vnpay.md), rồi chạy đủ 5 kịch bản. Thẻ thử lấy từ trang tài liệu sandbox của VNPay.
 
-| # | Kịch bản | Cách làm | Kết quả mong đợi (theo `api/vnpay-ipn.js`) | Kết quả thật |
+| # | Kịch bản | Cách làm | Kết quả mong đợi (theo backend C#, `/api/vnpay-ipn`) | Kết quả thật |
 | --- | --- | --- | --- | --- |
 | 1 | Thanh toán thành công | Đặt đơn VNPay, trả bằng thẻ thử hợp lệ | IPN trả `RspCode 00`; đơn chuyển `paymentStatus = da_thanh_toan`, `paymentVerified = true`; trang kết quả báo thành công | |
 | 2 | Khách hủy hoặc thẻ bị từ chối | Bấm hủy trên trang VNPay hoặc dùng thẻ bị từ chối | IPN trả `00`; đơn `paymentStatus = that_bai`, hàng vẫn giữ tới hết 15 phút rồi hoàn kho | |
@@ -64,16 +57,23 @@ Ghi kết quả thật vào cột cuối kèm mã giao dịch sandbox (`vnp_Tran
 
 ## 5. Hiệu năng (Lighthouse)
 
-Sau khi API chạy lại, mở Chrome → DevTools → **Lighthouse** → Mobile → **Analyze page load** cho `/` và `/product.html` của URL chính thức. Lưu báo cáo HTML vào `docs/test-reports/` kèm ngày. NF-05 yêu cầu trang chọn hoa tải trong 5 giây.
+Chạy ngày 17/11/2026 (03:10 UTC) bằng Lighthouse 12.8.2, chế độ Mobile, Chrome headless trên máy Windows, URL Render đang chạy (không phải lần khởi động nguội).
+
+| Trang | Performance | Accessibility | Best Practices | SEO | FCP | LCP | TBT | CLS |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| `/` | 86 | 96 | 100 | 100 | 3,3 s | 3,3 s | 0 ms | 0 |
+| `/product.html` | 86 | 96 | 100 | 100 | 1,9 s | 3,9 s | 100 ms | 0 |
+
+Báo cáo đầy đủ: [`2026-11-17-lighthouse-render-home.html`](test-reports/2026-11-17-lighthouse-render-home.html), [`2026-11-17-lighthouse-render-product.html`](test-reports/2026-11-17-lighthouse-render-product.html). NF-05 yêu cầu trang chọn hoa tải trong 5 giây: `/product.html` đạt (LCP 3,9 s trên mô phỏng 4G chậm).
 
 ## Tóm tắt trạng thái
 
 | Hạng mục #119 | Trạng thái |
 | --- | --- |
-| Chọn URL chính thức | ✅ `flower-com-six.vercel.app`; chủ repo đổi link About |
-| Bằng chứng HTTPS/HSTS/CSP | ✅ Đã kiểm tra ngày 11/11/2026 (mục 2) |
-| API chạy trên production | ❌ Lỗi 500 toàn bộ, cần log Vercel |
+| Chọn URL chính thức | ✅ `flower-com.onrender.com`; About và `FLOWER_APP_URL` đã đổi (#168) |
+| Bằng chứng HTTPS/HSTS/CSP | ✅ Kiểm tra lại trên Render ngày 17/11/2026 (mục 2) |
+| API chạy trên production | ✅ Lỗi 500 trên Vercel không còn; API trên Render trả 200 (mục 2) |
 | Firestore Rules đã deploy | ⏳ Chủ repo chạy lệnh và chụp Console (mục 3) |
-| VNPay sandbox 5 kịch bản | ⏳ Cần tài khoản sandbox (mục 4) |
-| Lighthouse trên URL thật | ⏳ Làm sau khi API chạy lại (mục 5) |
-| Mô tả thanh toán chỉ còn COD và VNPay | ✅ Đã sửa README, release notes (#122) |
+| VNPay sandbox 5 kịch bản | ⏳ Cần tài khoản sandbox (mục 4, #160) |
+| Lighthouse trên URL thật | ✅ Đã chạy ngày 17/11/2026 (mục 5) |
+| Mô tả thanh toán chỉ còn COD và VNPay | ✅ README và `checkout.html` chỉ có COD và VNPay; đơn QR cũ chỉ còn để admin đối soát (#122) |
