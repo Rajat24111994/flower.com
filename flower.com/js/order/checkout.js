@@ -21,6 +21,7 @@
   let selectedDeliveryZoneId = "";
   let deliveryZonesConfigured = false;
   let deliveryZonesLoaded = false;
+  let deliveryZonesDefault = false;
   function updateOrderNoteCounter() {
     const length = orderNoteInput.value.length;
     orderNoteCounter.textContent = length >= 500 ? "500/500 ký tự · Đã đạt giới hạn" : `${length}/500 ký tự`;
@@ -135,6 +136,14 @@
   updateDeliveryAvailability();
   window.setInterval(updateDeliveryAvailability, 60000);
 
+  // Default Hà Nội areas carry the distance from the shop in Hà Đông; show it with the fee.
+  function deliveryZoneLabel(zone) {
+    const distance = Number(zone.distanceKm);
+    return Number.isFinite(distance) && distance > 0
+      ? `${zone.district} · ~${distance} km · ${formatVnd(zone.fee)}`
+      : zone.district;
+  }
+
   function renderProvinceOptions() {
     const previousProvince = deliveryProvinceInput.value;
     const previousZoneId = selectedDeliveryZoneId || deliveryDistrictInput.value;
@@ -154,7 +163,7 @@
       const districts = deliveryZones.filter((zone) => zone.province === previousProvince)
         .sort((left, right) => left.district.localeCompare(right.district, "vi"));
       deliveryDistrictInput.replaceChildren(new Option("Chọn quận / huyện", ""));
-      districts.forEach((zone) => deliveryDistrictInput.add(new Option(zone.district, zone.id)));
+      districts.forEach((zone) => deliveryDistrictInput.add(new Option(deliveryZoneLabel(zone), zone.id)));
       deliveryDistrictInput.disabled = false;
       if (districts.some((zone) => zone.id === previousZoneId)) {
         deliveryDistrictInput.value = previousZoneId;
@@ -166,6 +175,8 @@
       deliveryZoneMessage.textContent = "Đang tải khu vực giao hàng…";
     } else if (!deliveryZonesConfigured) {
       deliveryZoneMessage.textContent = "Cửa hàng chưa cấu hình khu vực giao hàng. Vui lòng liên hệ cửa hàng; quản trị viên cần thêm tỉnh/thành, quận/huyện và phí trong mục “Giao hàng” trước khi nhận đơn.";
+    } else if (deliveryZonesDefault) {
+      deliveryZoneMessage.textContent = "Cửa hàng chỉ giao trong nội thành Hà Nội. Phí giao tính 5.000đ/km từ cửa hàng ở Hà Đông đến quận nhận hoa (không tính thêm đường vào ngõ, ngách); hệ thống xác nhận phí khi đặt hàng.";
     } else {
       deliveryZoneMessage.textContent = "Chọn khu vực đã được cửa hàng cấu hình. Phí giao hàng sẽ được xác nhận từ hệ thống.";
     }
@@ -177,7 +188,7 @@
       ""
     ));
     districts.sort((left, right) => left.district.localeCompare(right.district, "vi"))
-      .forEach((zone) => deliveryDistrictInput.add(new Option(zone.district, zone.id)));
+      .forEach((zone) => deliveryDistrictInput.add(new Option(deliveryZoneLabel(zone), zone.id)));
     deliveryDistrictInput.disabled = districts.length === 0;
     selectedDeliveryZoneId = "";
     void refreshServerQuote();
@@ -535,6 +546,7 @@
       const result = zonesResult.value;
       deliveryZones = Array.isArray(result.zones) ? result.zones.filter((zone) => zone?.enabled === true) : [];
       deliveryZonesConfigured = result.configured === true && deliveryZones.length > 0;
+      deliveryZonesDefault = result.defaults === true;
       deliveryZonesLoaded = true;
       renderProvinceOptions();
     } else {

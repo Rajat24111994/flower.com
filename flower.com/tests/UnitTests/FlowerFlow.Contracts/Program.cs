@@ -9,6 +9,7 @@ using Microsoft.Extensions.Logging;
 var rootArgument = args.FirstOrDefault(argument => !argument.StartsWith("--", StringComparison.Ordinal));
 var root = rootArgument is not null ? Path.GetFullPath(rootArgument) : Directory.GetCurrentDirectory();
 if (args.Contains("--wilting")) { WiltingPriceContracts.Run(); return; }
+if (args.Contains("--hanoi-delivery")) { HanoiDeliveryContracts.Run(); return; }
 if (args.Contains("--shared")) { await SharedContracts.RunAsync(root); return; }
 if (args.Contains("--local-accounts")) { await LocalAccountContracts.RunAsync(root); return; }
 if (args.Contains("--local-worker")) { await LocalWorkerContracts.RunAsync(); return; }
@@ -123,6 +124,7 @@ await AdditionalContracts.ImageRulesAsync(root);
 await AdditionalContracts.ApiRoutesAsync(root);
 await AdditionalContracts.IdentityAsync();
 WiltingPriceContracts.Run();
+HanoiDeliveryContracts.Run();
 await SharedContracts.RunAsync(root);
 AdditionalContracts.AdminAuditEntry();
 await AdditionalContracts.VnpayAsync(root);

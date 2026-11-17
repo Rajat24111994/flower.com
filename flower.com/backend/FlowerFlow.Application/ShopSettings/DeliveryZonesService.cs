@@ -57,7 +57,10 @@ public sealed class DeliveryZonesService(Func<FirestoreDb> database, IFirebaseAu
             {
                 var snapshot = await db.Collection(FirestoreCollections.Metadata).Document(ZonesDocument).GetSnapshotAsync(context.RequestAborted);
                 var zones = ReadZones(snapshot.ToDictionary());
-                await context.Response.WriteAsJsonAsync(new { configured = zones.Any(zone => (bool)zone["enabled"]),
+                // Nothing saved yet: offer the default inner-city Hà Nội areas priced per km from the shop in Hà Đông.
+                var defaults = zones.Count == 0;
+                if (defaults) zones = HanoiDeliveryZones.Zones();
+                await context.Response.WriteAsJsonAsync(new { configured = zones.Any(zone => (bool)zone["enabled"]), defaults,
                     zones = manage ? zones : zones.Where(zone => (bool)zone["enabled"]).ToList() }, context.RequestAborted);
             }
             catch { logger.LogError("Delivery-zone read failed."); await Error(503, "delivery-zone-service-unavailable", "Chưa thể tải khu vực giao hàng."); }
