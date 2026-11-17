@@ -27,5 +27,5 @@ const { connectFirestore } = require("./firestore-client");
     console.log(`Xong: ${out} (đã mã hóa, ${Object.values(counts).reduce((sum, count) => sum + count, 0)} bản ghi).`);
 })().catch((error) => {
     console.error(`LỖI: ${error.message}`);
-    process.exitCode = 1;
+    process.exit(1);
 });
