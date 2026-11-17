@@ -6,8 +6,11 @@ const path = require("node:path");
 
 function review(storage, store) {
   const elements = new Map();
-  const element = () => ({ textContent: "", disabled: false, hidden: false,
-    classList: { toggle() {} }, append() {}, addEventListener() {} });
+  const element = () => {
+    const el = { textContent: "", disabled: false, hidden: false, listeners: {},
+      classList: { toggle() {} }, append() {}, addEventListener(type, listener) { el.listeners[type] = listener; } };
+    return el;
+  };
   const context = vm.createContext({
     FlowerBouquetOptions: require("../../js/catalog/bouquet-options.js"),
     document: {
@@ -31,7 +34,8 @@ function review(storage, store) {
       },
       countCartUnits: (cart) => cart.reduce((total, item) => total + Number(item.quantity || 1), 0)
     },
-    window: { FlowerOrderStore: store, location: { assign() {} } },
+    window: { FlowerOrderStore: store, confirm: () => storage.confirmAnswer !== false,
+      location: { assign(url) { storage.assignedUrl = url; } } },
     alert() {}, console: { error() {} },
     formatVnd: String,
   });
@@ -141,4 +145,29 @@ test("API báo giá lỗi mạng và quá thời gian trả lỗi có thể th�
     await assert.rejects(context.window.FlowerOrderStore.quote([{ id: "1", quantity: 1 }]),
       (error) => error.code === "order-network-error");
   }
+});
+
+test("nút ✕ bỏ đơn đang gửi dở: xóa đơn tạm, thông tin giao hàng, giỏ hàng rồi về trang chủ", async () => {
+  const data = storage();
+  data.sessionStorage.flowerPendingOrder = { order: { idempotencyKey: "k", paymentMethod: "cod" }, totals, cart: data.cart };
+  data.flowerPaymentReference = "FF123";
+  const page = review(data, { quote: async () => ({ items: [], totals, deliveryZone: { id: "zone-one" } }), create: async () => "x" });
+  await flush();
+  const cancel = page.elements.get("cancel-order");
+  assert.equal(cancel.hidden, false);
+  data.confirmAnswer = false;
+  cancel.listeners.click();
+  assert.ok(data.sessionStorage.flowerPendingOrder, "bấm Hủy trên hộp xác nhận thì giữ nguyên đơn");
+  data.confirmAnswer = true;
+  cancel.listeners.click();
+  assert.equal(data.sessionStorage.flowerPendingOrder, undefined);
+  assert.equal(data.sessionStorage.flowerCheckout, undefined);
+  assert.equal(data.cart, undefined);
+  assert.equal(data.flowerPaymentReference, undefined);
+  assert.equal(data.assignedUrl, "./index.html");
+});
+
+test("nút ✕ ẩn khi chưa có đơn để hủy", () => {
+  const page = review({ sessionStorage: {}, cart: [] }, { quote: async () => { throw new Error("none"); }, create: async () => "x" });
+  assert.equal(page.elements.get("cancel-order").hidden, true);
 });

@@ -9,7 +9,7 @@
   <link rel="icon" type="image/svg+xml" href="./favicon.svg">
   <title>Xác nhận đơn hàng</title>
   <link rel="stylesheet" href="./css/core/store-header.css?v=5">
-  <link rel="stylesheet" href="./css/order/cart.css?v=9">
+  <link rel="stylesheet" href="./css/order/cart.css?v=10">
   <link rel="stylesheet" href="./css/core/accessibility.css?v=1">
   <link rel="stylesheet" href="./css/core/store-footer.css?v=4">
 <link rel="stylesheet" href="./css/core/contact-tools.css?v=4">
@@ -22,6 +22,7 @@
     <div id="product-container"></div>
 
     <section class="order-review" aria-labelledby="order-review-title">
+      <button type="button" class="order-review-cancel" id="cancel-order" aria-label="Hủy đơn đang đặt" title="Hủy đơn đang đặt" hidden>✕</button>
       <h1 id="order-review-title">Kiểm tra thông tin giao hoa</h1>
       <p class="order-review-empty" id="order-review-empty" hidden>Chưa có thông tin đơn hàng để xác nhận. Hãy quay lại trang thanh toán để nhập thông tin giao hàng và kiểm tra đơn của bạn.</p>
       <dl id="order-review-details"></dl>
@@ -41,7 +42,7 @@
   <script src="./js/catalog/bouquet-options.js?v=1"></script>
   <script src="./js/core/currency.js?v=12"></script>
   <script src="./js/order/order-store.js?v=26"></script>
-  <script src="./js/order/placeorder.js?v=2"></script>
+  <script src="./js/order/placeorder.js?v=3"></script>
 <script src="./js/core/contact-tools.js?v=1"></script>
 </body>
 </html>

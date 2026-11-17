@@ -911,6 +911,32 @@ body {
     margin-top: 12px;
 }
 
+.checkout-pending-order {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px 16px;
+    margin: 0 0 20px;
+    padding: 14px 16px;
+    border: 1px solid #f1c9a5;
+    border-radius: 12px;
+    background: #fff7ef;
+    color: #5b4636;
+}
+
+.checkout-pending-order p { flex: 1 1 260px; margin: 0; }
+.checkout-pending-order a { color: #b2185a; font-weight: 600; }
+
+.checkout-pending-order button {
+    min-height: 40px;
+    padding: 8px 14px;
+    border: 1px solid #d9c3b3;
+    border-radius: 999px;
+    background: #fff;
+    color: #5b4636;
+    cursor: pointer;
+}
+
 @media (max-width: 820px) {
     .checkout-page {
         padding: 38px 20px 52px;

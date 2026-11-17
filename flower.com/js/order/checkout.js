@@ -87,7 +87,35 @@
     if (pendingOrder) FlowerSafeStorage.writeJson("flowerPendingOrder", pendingOrder, { required: true, storage: "session" });
   }
   FlowerSafeStorage.remove("flowerPendingOrder");
-  if (pendingOrder?.order?.idempotencyKey) window.location.replace("./placeorder.html");
+  if (pendingOrder?.order?.idempotencyKey) showPendingOrderNotice();
+
+  // Đơn đã bấm xác nhận nhưng chưa có kết quả: cho tiếp tục gửi lại hoặc bỏ đi,
+  // thay vì tự chuyển sang trang xác nhận (khách bấm Back sẽ bị kẹt ở đó).
+  function showPendingOrderNotice() {
+    const notice = document.createElement("div");
+    notice.className = "checkout-pending-order";
+    notice.setAttribute("role", "alert");
+    const text = document.createElement("p");
+    text.textContent = "Bạn còn một đơn đã bấm xác nhận nhưng chưa nhận được kết quả.";
+    const resume = document.createElement("a");
+    resume.href = "./placeorder.html";
+    resume.textContent = "Tiếp tục gửi đơn đó";
+    const discard = document.createElement("button");
+    discard.type = "button";
+    discard.textContent = "✕ Bỏ đơn đó";
+    discard.addEventListener("click", () => {
+      discardPendingOrder();
+      notice.remove();
+    });
+    notice.append(text, resume, discard);
+    checkoutForm.before(notice);
+  }
+
+  function discardPendingOrder() {
+    FlowerSafeStorage.remove("flowerPendingOrder", { storage: "session" });
+    FlowerSafeStorage.remove("flowerPendingOrder");
+    pendingOrder = null;
+  }
   const orderRequestId = createOrderRequestId();
   const paymentReference = `FF${orderRequestId.replaceAll("-", "").slice(0, 12).toUpperCase()}`;
   const deliveryDateInput = document.getElementById("delivery-date");
@@ -669,6 +697,8 @@
     try {
       FlowerSafeStorage.remove("flowerCheckout");
       FlowerSafeStorage.remove("flowerPaymentReference");
+      // Thông tin mới thay cho đơn cũ chưa gửi xong (nếu có).
+      discardPendingOrder();
       FlowerSafeStorage.writeJson("flowerCheckout", checkout, { required: true, storage: "session" });
       window.location.assign("./placeorder.html");
     } catch (error) {

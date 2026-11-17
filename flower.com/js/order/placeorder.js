@@ -233,6 +233,28 @@
 
     document.querySelector(".placeorder > button").addEventListener("click", saveOrderToAdmin);
 
+    // Cho khách bỏ hẳn đơn đang đặt (kể cả đơn đã bấm xác nhận nhưng chưa có kết quả),
+    // để không bị trang thanh toán giữ lại khi muốn mua lần khác.
+    const cancelButton = document.getElementById("cancel-order");
+    cancelButton.hidden = !checkoutData && !pendingSubmission;
+    cancelButton.addEventListener("click", () => {
+      if (orderSubmissionInProgress) return;
+      const message = pendingSubmission
+        ? "Bỏ đơn đang đặt?\n\nLần gửi trước chưa có kết quả. Nếu cửa hàng đã nhận, đơn đó chưa thanh toán sẽ tự hủy sau 30 phút. Thông tin giao hàng và giỏ hàng sẽ bị xóa."
+        : "Bỏ đơn đang đặt?\n\nThông tin giao hàng và giỏ hàng sẽ bị xóa.";
+      if (!window.confirm(message)) return;
+      discardOrder();
+      window.location.assign("./index.html");
+    });
+
+    function discardOrder() {
+      ["cart", "flowerCheckout", "flowerSelectedPromotion", "flowerPaymentReference", "flowerPendingOrder"]
+        .forEach((key) => FlowerSafeStorage.remove(key));
+      ["flowerCheckout", "flowerPendingOrder"].forEach((key) => FlowerSafeStorage.remove(key, { storage: "session" }));
+      pendingSubmission = null;
+      Cart = [];
+    }
+
     function DisplayProduct() {
       CartContainer.innerHTML = "";
       const cartTotal = document.getElementById("cartTotal");
