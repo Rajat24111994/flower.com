@@ -59,6 +59,13 @@ Cột **Kiểm chứng** lấy từ mô tả PR và kết quả CI khi gộp. C�
 
 ## Việc thành viên cần bổ sung
 
+Ngày 17/11/2026, #169: Codex hỗ trợ đối chiếu upstream/metadata npm/NuGet, lập
+inventory/tài sản, sửa kết luận quyền dựa trên blame và viết NOTICE/tài liệu.
+Người yêu cầu chọn giữ repo chưa cấp phép công khai. Không suy luận giấy phép,
+chủ quyền hay danh tính từ output AI; không đại diện tác giả upstream cấp quyền.
+Kiểm tra và CI được dẫn trong báo cáo FF-14/issue. Chưa ghi nhận người review độc
+lập cho thay đổi này; không gán tên một thành viên làm người phê duyệt khi chưa xác nhận.
+
 - [ ] Mỗi thành viên có commit `Co-authored-by: Copilot` thêm một dòng: PR nào, Copilot gợi ý phần nào, mình sửa lại gì.
 - [ ] Cuongvan-pixel, Anh.NV: ghi lại nhánh `copilot/payment-info*` và `codex/cart-stock-limit` dùng AI ở đâu, và lý do chưa gộp.
 - [ ] Người chịu trách nhiệm mỗi dòng xác nhận mình giải thích được phần code đó khi bảo vệ.

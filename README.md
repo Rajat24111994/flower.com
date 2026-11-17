@@ -275,7 +275,14 @@ Mọi thay đổi đi qua Pull Request, viết test trước (Red → Green → 
 
 ## Nguồn gốc và bản quyền
 
-Repository được fork từ [Rajat24111994/flower.com](https://github.com/Rajat24111994/flower.com), một dự án HTML/CSS/JS tĩnh năm 2023. Trên `main` hiện chỉ còn 77/43.530 dòng (≈ 0,18%) có nguồn gốc từ repo đó, đều là mẫu chung (dấu ngoặc, CSS reset, phần đầu HTML); ảnh gốc đã được thay hết bằng ảnh có giấy phép ([`docs/product-image-credits.md`](docs/product-image-credits.md)). Repo gốc không khai báo giấy phép nên repo này **chưa có file `LICENSE`**; phân tích chi tiết và hai hướng xử lý ở [`docs/PROVENANCE.md`](docs/PROVENANCE.md).
+Repository được fork từ [Rajat24111994/flower.com](https://github.com/Rajat24111994/flower.com).
+Theo lựa chọn người duy trì ngày 17/11/2026, **repo chưa cấp phép công khai**;
+không có LICENSE chung và không tuyên bố quyền phân phối/thương mại cho mã upstream.
+Xem [NOTICE](NOTICE.md), [nguồn gốc và giới hạn bằng chứng](docs/PROVENANCE.md),
+[dependency/font](docs/licensing/THIRD-PARTY.md) và [sổ tài sản](docs/licensing/ASSETS.md).
+Ảnh/dependency có license riêng tiếp tục theo license của chúng; bảng ghi công không
+tự giải quyết quyền của mã fork hoặc tài sản chưa đủ hồ sơ.
+
 
 ---
 

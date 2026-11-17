@@ -1,6 +1,7 @@
 {
   "name": "flowerflow-tests",
   "private": true,
+  "license": "UNLICENSED",
   "description": "Test tools for FlowerFlow. The site itself only depends on flower.com/package.json.",
   "scripts": {
     "integration": "node -e \"require('fs').mkdirSync('coverage', { recursive: true })\" && firebase emulators:exec --only auth,firestore --project demo-flowerflow --config ../firebase.json \"node --test --test-concurrency=1 --experimental-test-coverage --test-coverage-include=../** --test-coverage-exclude=../node_modules/** --test-coverage-exclude=../tests/** --test-reporter=spec --test-reporter-destination=stdout --test-reporter=lcov --test-reporter-destination=coverage/lcov.info IntegrationTests/*.test.js\"",

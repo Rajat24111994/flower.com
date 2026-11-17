@@ -1,6 +1,7 @@
 {
     "name": "flowerflow-web",
     "private": true,
+    "license": "UNLICENSED",
     "engines": {
         "node": "24.x"
     },
