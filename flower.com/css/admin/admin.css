@@ -1567,6 +1567,8 @@ main { min-width: 0; max-width: 100%; }
 .report-table th { position: sticky; top: 0; background: #f8f5f1; z-index: 1; overflow-wrap: normal; }
 .report-section summary { cursor: pointer; min-height: 44px; padding: 12px 0; }
 .admin-report button { min-height: 44px; }
+.report-bar { transition: fill 0.15s ease, opacity 0.15s ease; cursor: pointer; }
+.report-bar:hover, .report-bar:focus { fill: #b35677; outline: none; }
 @media(max-width: 800px) {
   nav { position: static; }
   .report-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
