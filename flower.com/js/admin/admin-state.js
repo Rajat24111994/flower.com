@@ -1,4 +1,4 @@
-import { dateKey as reportDateKey } from "./admin-analytics.js?v=2";
+import { dateKey as reportDateKey } from "./admin-analytics.js?v=3";
 
 const state = {
   productPage: document.getElementById("product_page"),
@@ -53,7 +53,7 @@ const state = {
   flowerPricesMessage: "",
   editingFlowerPriceId: null,
   flowerPriceHistory: null,
-  reportFilters: { period: "month", month: reportDateKey(new Date()).slice(0, 7), start: "", end: "", lowStock: 5 },
+  reportFilters: { period: "month", month: reportDateKey(new Date()).slice(0, 7), start: "", end: "", lowStock: 5, groupBy: "day" },
   STORAGE_KEYS: { categories: "flowerCategories", offers: "flowerPromotions" }
 };
 
