@@ -1,10 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
-
 namespace FlowerFlow.Api.Controllers;
-
-/// <summary>Callback IPN có chữ ký từ VNPay. Mọi phương thức HTTP đi tới service; service tự trả mã lỗi/405 như API cũ.</summary>
-public sealed class VnpayIpnController(VnpayIpnService ipn) : ControllerBase
+public sealed class VnpayIpnController : ControllerBase
 {
     [Route("api/vnpay-ipn")]
-    public Task Ipn() => ipn.HandleAsync(HttpContext);
+    public IActionResult Ipn() => StatusCode(410, new { code = "payment-method-removed", error = "Vui lòng thanh toán bằng QR chuyển khoản." });
 }

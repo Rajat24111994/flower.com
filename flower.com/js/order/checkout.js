@@ -199,7 +199,7 @@
   });
 
   function updatePaymentOnlinePanel() {
-    paymentOnlinePanel.hidden = checkoutForm.querySelector('input[name="paymentMethod"]:checked')?.value !== "vnpay";
+    paymentOnlinePanel.hidden = checkoutForm.querySelector('input[name="paymentMethod"]:checked')?.value !== "qr";
   }
 
   checkoutForm.querySelectorAll('input[name="paymentMethod"]').forEach((input) => {

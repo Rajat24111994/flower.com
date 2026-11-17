@@ -45,7 +45,8 @@ test("validateCheckout() nhận đơn hợp lệ và chuẩn hóa dữ liệu", 
     assert.equal(result.recipientPhone, "0908 123 456");
     assert.equal(result.giftWrap, "none");
     assert.deepEqual(result.items, [{ id: "1", quantity: 2 }]);
-    assert.equal(validateCheckout(checkout({ paymentMethod: "vnpay" })).paymentMethod, "vnpay");
+    assert.equal(validateCheckout(checkout({ paymentMethod: "vnpay" })), null);
+    assert.equal(validateCheckout(checkout({ paymentMethod: "qr" })).paymentMethod, "qr");
 });
 
 test("validateCheckout() từ chối thông tin khách thiếu hoặc sai", () => {

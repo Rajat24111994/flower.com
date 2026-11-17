@@ -9,7 +9,7 @@ public sealed record CheckoutRequest(
     [Required, StringLength(30)] string Phone,
     [Required, StringLength(500)] string Address,
     [Required] string DeliveryDate, [Required] string DeliveryTime, [Required] string DeliveryZoneId,
-    [Required, RegularExpression("^(cod|qr|vnpay)$")] string PaymentMethod,
+    [Required, RegularExpression("^(cod|qr)$")] string PaymentMethod,
     [Required] string IdempotencyKey, [Required] MoneyTotals ExpectedTotals,
     string RecipientName = "", string RecipientPhone = "", bool CustomerIsRecipient = true,
     [StringLength(300)] string GreetingCard = "", bool AnonymousGreetingCard = false,

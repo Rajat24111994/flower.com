@@ -50,7 +50,7 @@ public static class OrderValidationService
         if (customerName.Length is < 1 or > 100 || address.Length is < 1 or > 500
             || NormalizePhone(phone).Length is < 8 or > 15 || recipientName.Length > 120 || NormalizePhone(recipientPhone).Length is < 8 or > 15
             || !IsValidDate(date) || !OrderConfig.DeliveryTimeWindows.Contains(time) || !ValidZoneId(zone) || card.Length > 300
-            || wrap is not ("none" or "pastel" or "classic") || payment is not ("qr" or "cod" or "vnpay")
+            || wrap is not ("none" or "pastel" or "classic") || payment is not ("qr" or "cod")
             || !Regex.IsMatch(key, @"\A[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\z", RegexOptions.IgnoreCase)
             || promotion.Length > 100 || !Js.Truthy(totals)
             || !new[] { "subtotal", "savings", "tax", "shippingFee", "total" }.All(name => Js.SafeInteger(Js.Get(totals, name)) && Js.Number(Js.Get(totals, name)) >= 0)) return null;

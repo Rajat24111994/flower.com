@@ -1,10 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
-
 namespace FlowerFlow.Api.Controllers;
-
-/// <summary>Tạo và theo dõi thanh toán VNPay. Mọi phương thức HTTP đi tới service; service tự trả mã lỗi/405 như API cũ.</summary>
-public sealed class PaymentsController(PaymentsService payments) : ControllerBase
+public sealed class PaymentsController : ControllerBase
 {
     [Route("api/payments")]
-    public Task Payments() => payments.HandleAsync(HttpContext);
+    public IActionResult Payments() => StatusCode(410, new { code = "payment-method-removed", error = "Vui lòng thanh toán bằng QR chuyển khoản." });
 }

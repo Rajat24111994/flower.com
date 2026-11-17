@@ -35,7 +35,6 @@
         ["Địa chỉ giao", checkoutData.address],
         ["Người nhận", checkoutData.customerIsRecipient ? "Người đặt (tôi là người nhận)" : checkoutData.recipientName || checkoutData.customerName],
         ["Thanh toán", checkoutData.paymentMethod === "qr" ? "Chuyển khoản QR"
-          : checkoutData.paymentMethod === "vnpay" ? "VNPay"
             : "Thanh toán khi nhận hàng"],
         ["Điện thoại người nhận", checkoutData.recipientPhone || checkoutData.phone],
         ["Khu vực giao hàng", [checkoutData.deliveryDistrict, checkoutData.deliveryProvince].filter(Boolean).join(", ")],
@@ -61,21 +60,23 @@
     if (checkoutData?.paymentMethod === "qr") {
       paymentButton.textContent = "Gửi đơn hàng chờ xác minh";
       paymentNote.textContent = `Quét mã Vietcombank để chuyển khoản · STK 1063118243 · DO BA THAI. Nội dung: ${checkoutData.paymentReference || "mã đơn của bạn"}. Gửi đơn không xác nhận đã nhận tiền; cửa hàng cần đối chiếu giao dịch. Hàng được giữ 30 phút sau khi gửi đơn, quá hạn chưa nhận được tiền đơn sẽ tự hủy.`;
-    } else if (checkoutData?.paymentMethod === "vnpay") {
-      paymentButton.textContent = "Xác nhận và đến VNPay";
-      paymentNote.textContent = "Đơn sẽ được tạo với tổng tiền đã xác minh và giữ hàng trong 15 phút. Thanh toán chỉ được xác nhận sau khi máy chủ nhận IPN hợp lệ từ VNPay.";
     } else if (checkoutData?.paymentMethod === "cod") {
-      paymentNote.textContent = "Đơn COD được giữ hàng trong 30 phút chờ cửa hàng xác nhận. Nếu chưa được xác nhận khi hết hạn, hàng sẽ được trả về kho.";
+      paymentNote.textContent = "Đơn COD được giữ hàng trong 30 phút chờ cửa hàng xác nhận.";
     }
 
     async function saveOrderToAdmin() {
+      if (pendingSubmission && !["qr", "cod"].includes(pendingSubmission.order?.paymentMethod)) {
+        paymentNote.textContent = "Phương thức cũ đã ngừng hỗ trợ. Vui lòng tra cứu đơn hoặc liên hệ cửa hàng trước khi đặt lại.";
+        paymentButton.disabled = true;
+        return;
+      }
       if (orderSubmissionInProgress) return;
       if (!Cart.length && !pendingSubmission) {
         alert("Giỏ hàng đang trống.");
         return;
       }
 
-      if (!checkoutData?.customerName || !checkoutData?.phone || !checkoutData?.address || !checkoutData?.paymentMethod || !checkoutData?.idempotencyKey) {
+      if (!checkoutData?.customerName || !checkoutData?.phone || !checkoutData?.address || !["qr", "cod"].includes(checkoutData?.paymentMethod) || !checkoutData?.idempotencyKey) {
         alert("Vui lòng hoàn tất thông tin giao hàng và thanh toán trước.");
         window.location.assign("./checkout.html");
         return;
@@ -114,17 +115,12 @@
       };
 
       let orderId;
-      let paymentUrl = "";
       orderSubmissionInProgress = true;
       paymentButton.disabled = true;
       try {
         pendingSubmission = pendingSubmission || { order, totals: serverQuote.totals, cart: Cart };
         FlowerSafeStorage.writeJson("flowerPendingOrder", pendingSubmission, { required: true, storage: "session" });
         orderId = await window.FlowerOrderStore.create(pendingSubmission.order, pendingSubmission.totals);
-        if (checkoutData.paymentMethod === "vnpay") {
-          const payment = await window.FlowerOrderStore.createPaymentLink(orderId, checkoutData.paymentReference);
-          paymentUrl = payment.paymentUrl;
-        }
       } catch (error) {
         console.error("Không thể lưu đơn hàng tập trung:", error);
         orderSubmissionInProgress = false;
@@ -142,11 +138,6 @@
           void verifyOrderBeforeConfirmation({ keepNote: true });
           return;
         }
-        if (checkoutData.paymentMethod === "vnpay" && orderId) {
-          paymentButton.disabled = false;
-          paymentNote.textContent = `Đơn hàng đã được lưu nhưng chưa tạo được liên kết VNPay. Bấm nút để thử lại, đơn sẽ không bị tạo trùng. ${error.message || ""}`;
-          return;
-        }
         // Network or server trouble: the same request can be sent again without a duplicate order.
         paymentButton.disabled = false;
         paymentNote.textContent = error.message || "Mất kết nối khi gửi đơn. Bấm xác nhận để thử lại cùng yêu cầu; giỏ hàng vẫn được giữ.";
@@ -162,10 +153,6 @@
       const successMessage = checkoutData.paymentMethod === "qr"
         ? "Đã nhận đơn hàng. Cửa hàng sẽ đối chiếu giao dịch trước khi xác nhận thanh toán."
         : "Đặt hàng thành công! Đơn hàng đã được gửi tới cửa hàng.";
-      if (paymentUrl) {
-        window.location.assign(paymentUrl);
-        return;
-      }
       alert(cleanupSucceeded
         ? successMessage
         : `${successMessage}\n\nĐơn đã được lưu, nhưng trình duyệt chưa xóa được giỏ hàng. Đừng gửi lại đơn này; hãy theo dõi mã đơn ở trang tiếp theo.`);
@@ -212,13 +199,11 @@
           .map((item) => [String(item.id), Number(item.price)]));
         const itemPriceChanged = serverQuote.items.some((item) => previousPrices.has(String(item.id))
           && previousPrices.get(String(item.id)) !== Number(item.price));
-        if (amountChanged || itemPriceChanged || (!previousQuote && ["qr", "vnpay"].includes(checkoutData?.paymentMethod))) {
+        if (amountChanged || itemPriceChanged || (!previousQuote && (checkoutData?.paymentMethod === "qr"))) {
           const newTotal = formatVnd(serverQuote.totals.total);
           if (!keepNote) {
             paymentNote.textContent = checkoutData?.paymentMethod === "qr"
               ? `Giá hoặc ưu đãi đã thay đổi từ lúc tạo mã QR (tổng mới ${newTotal}). ĐỪNG chuyển khoản theo mã cũ; hãy quay lại trang thanh toán để lấy mã QR mới.`
-              : checkoutData?.paymentMethod === "vnpay"
-                ? `Giá hoặc ưu đãi đã thay đổi (tổng mới ${newTotal}). Hãy quay lại trang thanh toán để xác nhận đơn với tổng tiền mới.`
               : `Giá hoặc ưu đãi đã thay đổi (tổng mới ${newTotal}). Hãy quay lại trang thanh toán để kiểm tra trước khi đặt hàng.`;
           }
           paymentButton.disabled = true;
