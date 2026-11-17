@@ -8,15 +8,57 @@ export function dateKey(value) {
   const parts = Object.fromEntries(dateFormatter.formatToParts(date).map((part) => [part.type, part.value]));
   return `${parts.year}-${parts.month}-${parts.day}`;
 }
+export function shiftDays(dateStr, delta) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const date = new Date(Date.UTC(y, m - 1, d + delta));
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(date.getUTCDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+export function weekBounds(dateStr) {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const date = new Date(Date.UTC(y, m - 1, d));
+  const dayOfWeek = date.getUTCDay(); // 0 is Sunday, 1 is Monday, ..., 6 is Saturday
+  const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+  const monday = new Date(Date.UTC(y, m - 1, d + diffToMonday));
+  const sunday = new Date(Date.UTC(y, m - 1, d + diffToMonday + 6));
+  const fmt = (dt) => {
+    const yr = dt.getUTCFullYear();
+    const mo = String(dt.getUTCMonth() + 1).padStart(2, "0");
+    const da = String(dt.getUTCDate()).padStart(2, "0");
+    return `${yr}-${mo}-${da}`;
+  };
+  return { monday: fmt(monday), sunday: fmt(sunday) };
+}
+
 export function periodBounds(filters, now = new Date()) {
   const today = dateKey(now);
   if (filters.period === "today") return { start: today, end: today };
+  if (filters.period === "7days" || filters.period === "last7days") {
+    return { start: shiftDays(today, -6), end: today };
+  }
+  if (filters.period === "30days" || filters.period === "last30days") {
+    return { start: shiftDays(today, -29), end: today };
+  }
+  if (filters.period === "thisMonth") {
+    const month = today.slice(0, 7);
+    const [year, number] = month.split("-").map(Number);
+    const last = new Date(Date.UTC(year, number, 0)).getUTCDate();
+    return { start: `${month}-01`, end: `${month}-${String(last).padStart(2, "0")}` };
+  }
+  if (filters.period === "thisYear" || filters.period === "year") {
+    const year = today.slice(0, 4);
+    return { start: `${year}-01-01`, end: `${year}-12-31` };
+  }
   if (filters.period === "month") {
     const month = filters.month || today.slice(0, 7);
     if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) throw new Error("Tháng báo cáo không hợp lệ.");
     const [year, number] = month.split("-").map(Number);
     const last = new Date(Date.UTC(year, number, 0)).getUTCDate();
-    return { start: `${month}-01`, end: `${month}-${last}` };
+    return { start: `${month}-01`, end: `${month}-${String(last).padStart(2, "0")}` };
   }
   if (filters.period === "all") return { start: "", end: "" };
   if (filters.period !== "custom") throw new Error("Khoảng thời gian không hợp lệ.");
@@ -69,38 +111,90 @@ export function buildReport(orders, products, filters, now = new Date()) {
   });
   const bestSellers = [...sales.values()].map(({ orderIds, ...row }) => ({ ...row, orders: orderIds.size }))
     .sort((a, b) => b.quantity - a.quantity || a.title.localeCompare(b.title, "vi"));
-  const days = new Map();
-  revenueOrders.forEach((order) => {
-    const key = revenueDate(order);
-    if (!days.has(key)) days.set(key, { key, revenue: 0, orders: 0 });
-    const row = days.get(key); row.revenue += money(order.total); row.orders++;
-  });
-  let start = bounds.start || [...days.keys()].filter(Boolean).sort()[0];
-  let end = bounds.end || [...days.keys()].filter(Boolean).sort().at(-1);
-  const span = start && end ? (Date.parse(end) - Date.parse(start)) / 86400000 : 0;
-  const monthly = span > 90;
-  const buckets = new Map();
-  if (monthly) {
-    for (const row of days.values()) {
-      const key = row.key.slice(0, 7);
-      if (!buckets.has(key)) buckets.set(key, { key, revenue: 0, orders: 0 });
-      const bucket = buckets.get(key); bucket.revenue += row.revenue; bucket.orders += row.orders;
-    }
-    if (start && end) {
-      let [year, month] = start.slice(0, 7).split("-").map(Number);
-      while (`${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}` <= end.slice(0, 7)) {
-        const key = `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}`;
-        if (!buckets.has(key)) buckets.set(key, { key, revenue: 0, orders: 0 });
-        if (++month > 12) { month = 1; year++; }
-      }
-    }
-  } else {
-    for (let time = Date.parse(start); Number.isFinite(time) && time <= Date.parse(end); time += 86400000) {
-      const key = new Date(time).toISOString().slice(0, 10);
-      if (!days.has(key)) days.set(key, { key, revenue: 0, orders: 0 });
-    }
+  const orderDates = revenueOrders.map(revenueDate).filter(Boolean).sort();
+  const today = dateKey(now);
+  let start = bounds.start || orderDates[0] || today;
+  let end = bounds.end || orderDates.at(-1) || today;
+  if (start > end) end = start;
+
+  const validGroupings = ["day", "week", "month", "year"];
+  let groupBy = filters.groupBy;
+  if (!validGroupings.includes(groupBy)) {
+    groupBy = "day";
   }
-  const series = [...(monthly ? buckets : days).values()].sort((a, b) => (a.key || "9999").localeCompare(b.key || "9999"));
+  const monthly = groupBy === "month";
+
+  const buckets = new Map();
+
+  if (groupBy === "year") {
+    const startYear = Number(start.slice(0, 4));
+    const endYear = Number(end.slice(0, 4));
+    for (let yr = startYear; yr <= endYear; yr++) {
+      const key = String(yr);
+      buckets.set(key, { key, label: key, fullLabel: `Năm ${key}`, revenue: 0, orders: 0 });
+    }
+    revenueOrders.forEach((order) => {
+      const key = revenueDate(order).slice(0, 4);
+      if (buckets.has(key)) {
+        const row = buckets.get(key);
+        row.revenue += money(order.total);
+        row.orders++;
+      }
+    });
+  } else if (groupBy === "month") {
+    let [year, month] = start.slice(0, 7).split("-").map(Number);
+    const endMonthKey = end.slice(0, 7);
+    while (`${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}` <= endMonthKey) {
+      const key = `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}`;
+      const label = `${String(month).padStart(2, "0")}/${year}`;
+      buckets.set(key, { key, label, fullLabel: `Tháng ${label}`, revenue: 0, orders: 0 });
+      if (++month > 12) { month = 1; year++; }
+    }
+    revenueOrders.forEach((order) => {
+      const key = revenueDate(order).slice(0, 7);
+      if (buckets.has(key)) {
+        const row = buckets.get(key);
+        row.revenue += money(order.total);
+        row.orders++;
+      }
+    });
+  } else if (groupBy === "week") {
+    const startMon = weekBounds(start).monday;
+    const endMon = weekBounds(end).monday;
+    for (let curr = startMon; curr <= endMon; curr = shiftDays(curr, 7)) {
+      const sun = shiftDays(curr, 6);
+      const label = curr.slice(0, 4) === sun.slice(0, 4)
+        ? `${curr.slice(8, 10)}/${curr.slice(5, 7)} - ${sun.slice(8, 10)}/${sun.slice(5, 7)}`
+        : `${curr.slice(8, 10)}/${curr.slice(5, 7)}/${curr.slice(2, 4)} - ${sun.slice(8, 10)}/${sun.slice(5, 7)}/${sun.slice(2, 4)}`;
+      const fullLabel = `Tuần ${curr.slice(8, 10)}/${curr.slice(5, 7)}/${curr.slice(0, 4)} – ${sun.slice(8, 10)}/${sun.slice(5, 7)}/${sun.slice(0, 4)}`;
+      buckets.set(curr, { key: curr, label, fullLabel, startDay: curr, endDay: sun, revenue: 0, orders: 0 });
+    }
+    revenueOrders.forEach((order) => {
+      const day = revenueDate(order);
+      const mon = weekBounds(day).monday;
+      if (buckets.has(mon)) {
+        const row = buckets.get(mon);
+        row.revenue += money(order.total);
+        row.orders++;
+      }
+    });
+  } else {
+    for (let curr = start; curr <= end; curr = shiftDays(curr, 1)) {
+      const label = `${curr.slice(8, 10)}/${curr.slice(5, 7)}`;
+      const fullLabel = `${curr.slice(8, 10)}/${curr.slice(5, 7)}/${curr.slice(0, 4)}`;
+      buckets.set(curr, { key: curr, label, fullLabel, revenue: 0, orders: 0 });
+    }
+    revenueOrders.forEach((order) => {
+      const key = revenueDate(order);
+      if (buckets.has(key)) {
+        const row = buckets.get(key);
+        row.revenue += money(order.total);
+        row.orders++;
+      }
+    });
+  }
+
+  const series = [...buckets.values()].sort((a, b) => (a.key || "9999").localeCompare(b.key || "9999"));
   const lowStock = products.filter((product) => Number.isInteger(Number(product.quantity)) && Number(product.quantity) >= 0 && Number(product.quantity) <= threshold)
     .map((product) => ({ id: String(product.id), title: product.title, quantity: Number(product.quantity) }))
     .sort((a, b) => a.quantity - b.quantity || a.title.localeCompare(b.title, "vi"));
@@ -109,7 +203,7 @@ export function buildReport(orders, products, filters, now = new Date()) {
     average: revenueOrders.length ? totalRevenue / revenueOrders.length : 0,
     soldUnits: bestSellers.reduce((sum, row) => sum + row.quantity, 0),
     states: [...states].map(([status, count]) => ({ status, label: orderStatusLabel(status), count })),
-    bestSellers, lowStock, series, monthly, currentStock: products.reduce((sum, product) => sum + Math.max(0, Number(product.quantity) || 0), 0),
+    bestSellers, lowStock, series, monthly, groupBy, currentStock: products.reduce((sum, product) => sum + Math.max(0, Number(product.quantity) || 0), 0),
     undatedOrders: orders.filter((order) => !dateKey(order.createdAt)).length };
 }
 
@@ -117,6 +211,7 @@ export function reportSheets(report) {
   const c = (title, type = "text", width = 25) => ({ title, type, width });
   const interval = report.filters.period === "all" ? "Toàn thời gian" : `${report.bounds.start} đến ${report.bounds.end}`;
   const date = (key) => key && key.length === 10 ? new Date(`${key}T00:00:00Z`) : key || "Chưa có ngày";
+  const groupTitle = report.groupBy === "year" ? "Năm" : report.groupBy === "month" || report.monthly ? "Tháng" : report.groupBy === "week" ? "Tuần" : "Ngày";
   return [
     { name: "Tong quan", columns: [c("Chỉ tiêu", "text", 45), c("Giá trị", "text", 38)], rows: [
       ["Flowerflow · Báo cáo quản trị", interval], ["Múi giờ", "Asia/Ho_Chi_Minh"],
@@ -128,8 +223,8 @@ export function reportSheets(report) {
       ["Doanh thu / đơn (VND)", Math.round(report.average)], ["Tồn kho hiện tại", report.currentStock],
       ["Ngưỡng tồn kho thấp", Number(report.filters.lowStock ?? 5)],
       ["Cơ sở doanh thu", "Theo ngày trả tiền, dự phòng ngày giao/ngày đặt"], ["Kho", "Tồn hiện tại, không phải kho lịch sử"] ] },
-    { name: "Doanh thu", columns: [c(report.monthly ? "Tháng" : "Ngày", "date"), c("Doanh thu (VND)", "money"), c("Đơn ghi nhận", "number")],
-      rows: report.series.map((row) => [date(row.key), row.revenue, row.orders]) },
+    { name: "Doanh thu", columns: [c(groupTitle, report.groupBy === "day" ? "date" : "text"), c("Doanh thu (VND)", "money"), c("Đơn ghi nhận", "number")],
+      rows: report.series.map((row) => [row.fullLabel || (report.groupBy === "day" ? date(row.key) : row.label || row.key), row.revenue, row.orders]) },
     { name: "Trang thai don", columns: [c("Trạng thái"), c("Số đơn theo ngày đặt", "number")], rows: report.states.map((row) => [row.label, row.count]) },
     { name: "Ban chay", columns: [c("Mã sản phẩm"), c("Tên sản phẩm", "text", 45), c("Số bó", "number"), c("Số đơn", "number")],
       rows: report.bestSellers.map((row) => [row.id, row.title, row.quantity, row.orders]) },
