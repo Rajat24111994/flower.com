@@ -4,22 +4,25 @@
 // Keep the passphrase somewhere safe: without it the backup cannot be opened.
 const fs = require("fs");
 const path = require("path");
-const { exportDatabase, countDocuments, encryptBackup } = require("../lib/firestore-backup");
+const { exportDatabase, summarizeDocuments, encryptBackup } = require("../lib/firestore-backup");
 const { connectFirestore } = require("./firestore-client");
 
 (async () => {
     const passphrase = process.env.BACKUP_PASSPHRASE;
     if (!passphrase) throw new Error("Thiếu BACKUP_PASSPHRASE (mật khẩu dùng để mã hóa bản sao lưu).");
+    if (passphrase.length < 12) throw new Error("BACKUP_PASSPHRASE cần ít nhất 12 ký tự.");
     const outIndex = process.argv.indexOf("--out");
     const stamp = new Date().toISOString().replace(/[:.]/g, "-");
     const out = outIndex > -1 ? process.argv[outIndex + 1] : path.join(__dirname, "..", "backups", `flowerflow-${stamp}.json.enc`);
+    if (!out || out.startsWith("--")) throw new Error("Cần đường dẫn file sau --out.");
 
     const { db, projectId } = connectFirestore();
     console.log(`Sao lưu Firestore của project ${projectId}...`);
     const backup = await exportDatabase(db);
     fs.mkdirSync(path.dirname(out), { recursive: true });
     fs.writeFileSync(out, encryptBackup(backup, passphrase));
-    const counts = countDocuments(backup);
+    const counts = summarizeDocuments(backup);
+    console.log("Số document theo collection gốc (gồm collection con):");
     Object.entries(counts).forEach(([collection, count]) => console.log(`  ${collection}: ${count}`));
     console.log(`Xong: ${out} (đã mã hóa, ${Object.values(counts).reduce((sum, count) => sum + count, 0)} bản ghi).`);
 })().catch((error) => {

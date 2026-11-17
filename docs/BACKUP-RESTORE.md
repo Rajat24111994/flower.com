@@ -10,7 +10,7 @@ Sao lưu tự động có sẵn của Firestore (Scheduled Backups) cần gói t
   3. lưu file trên GitHub (artifact), **giữ 30 ngày**.
 - **Bằng tay** trên máy quản lý: `npm run backup` lưu một bản mã hóa vào thư mục `flower.com/backups/`.
 
-Bản sao lưu gồm mọi collection: sản phẩm, đơn hàng, đánh giá, lời nhắn, danh mục, ưu đãi, `adminRoles`, `orderRequests`… Chỉ bỏ `orderLookupLimits` (bộ đếm chống dò mã đơn, không cần khôi phục).
+Bản sao lưu gồm collection gốc và subcollection đệ quy, kể cả subcollection dưới document cha đã xóa: sản phẩm, đơn hàng, đánh giá, lời nhắn, danh mục, ưu đãi, `adminRoles`, `orderRequests`… Chỉ bỏ cây `orderLookupLimits` cấp gốc (bộ đếm chống dò mã đơn, không cần khôi phục). Format v1 lưu collection con bằng đường dẫn đầy đủ, ví dụ `orders/order-id/events`, vẫn đọc được archive phẳng cũ.
 
 Không sao lưu được: tài khoản Firebase Authentication (email, mật khẩu) và mã nguồn (mã nguồn đã nằm trên GitHub).
 
@@ -22,7 +22,7 @@ Chủ repository vào GitHub → **Settings → Secrets and variables → Action
 
 | Tên | Giá trị |
 | --- | --- |
-| `FIREBASE_SERVICE_ACCOUNT_JSON` | Nội dung JSON của service account, giống biến cùng tên trên Vercel |
+| `FIREBASE_SERVICE_ACCOUNT_JSON` | Service account của project cần sao lưu, đặt qua secret manager; không lấy từ source hoặc gửi qua chat |
 | `BACKUP_PASSPHRASE` | Mật khẩu mã hóa bản sao lưu, ít nhất 12 ký tự, tự đặt và cất kỹ |
 
 Sau đó vào tab **Actions → Sao lưu Firestore → Run workflow** để chạy thử. Chỉ coi sao lưu là đã bật khi lần chạy đó **xanh** và cuối trang có file `firestore-backup-…`. Thiếu secret thì workflow báo đỏ và ghi rõ còn thiếu secret nào.
@@ -73,16 +73,29 @@ File mới nằm trong `flower.com/backups/`.
 4. Khôi phục thật:
 
    ```powershell
-   npm run restore -- "đường-dẫn\flowerflow-....json.enc" --dong-y
+   npm run restore -- "đường-dẫn\flowerflow-....json.enc" --dong-y --project "project-id-dich-da-xac-nhan"
    ```
 
    - Mọi bản ghi trong file được ghi lại: tạo mới nếu mất, ghi đè nếu đã có.
    - Bản ghi phát sinh **sau** lúc sao lưu (không có trong file) được **giữ nguyên**, không bị xóa.
+   - `--project` bắt buộc khi ghi và phải khớp project trong cấu hình Firestore/credential. Lệnh từ chối trước khi ghi nếu thiếu hoặc không khớp. Có thể cố ý restore sang project staging đã cấu hình, nhưng cần đối chiếu project nguồn được in trong preview.
 5. Mở trang admin, bấm Ctrl + F5, kiểm tra đơn hàng, sản phẩm, đánh giá. Ghi lại bản sao lưu đã dùng và kết quả.
 
 ## Diễn tập phục hồi
 
 Mỗi quý, chạy bước 3 với một bản sao lưu gần đây để chắc chắn mật khẩu còn đúng và file mở được. Muốn diễn tập cả bước 4 thì làm trên Firebase Emulator, **không** làm trên dữ liệu thật. Test tự động `flower.com/tests/IntegrationTests/backup.test.js` cũng diễn tập toàn bộ vòng sao lưu → mất dữ liệu → khôi phục trên emulator mỗi lần CI chạy.
+
+Preview không cần credential và không kết nối Firestore; nó chỉ giải mã, kiểm tra cấu trúc và đếm document. Bài diễn tập còn kiểm tra 400+ document, subcollection, cha bị thiếu, giữ document ngoài archive, sai mật khẩu/file sửa, và CLI với project đích sai.
+Log/preview gộp số document theo collection gốc, gồm cả collection con; không in ID document cha trong đường dẫn subcollection lên workflow công khai. Archive mã hóa vẫn lưu đường dẫn đầy đủ để restore đúng vị trí.
+
+## Giới hạn và trạng thái vận hành
+
+- Ngày 17/11/2026: repository chưa có hai secret backup; các lượt theo lịch gần nhất thất bại ở preflight. **Chưa có bằng chứng backup production tự động đang hoạt động.** Phần cấu hình và theo dõi lịch thật tiếp tục ở issue #118; báo cáo kiểm thử #165 ghi riêng kết quả Emulator.
+- Export duyệt nhiều collection, không phải snapshot toàn database tại cùng một thời điểm. Tạm dừng các thao tác ghi quan trọng trong maintenance window nếu cần khôi phục nhất quán kho/đơn/thanh toán.
+- Import chia batch 400; mỗi batch nguyên tử, toàn archive không phải một transaction. Lỗi mạng/quyền giữa chừng có thể để lại bản restore một phần; dừng ứng dụng, xử lý nguyên nhân rồi chạy lại cùng archive. Không tự replay callback thanh toán.
+- Restore giữ document ngoài archive: phải đối soát các đơn/giao dịch phát sinh sau thời điểm backup với tồn kho cũ trước khi mở ghi lại.
+- Không bao gồm Firebase Auth, file Cloud Storage, Rules, indexes, IAM hay secret. DocumentReference được phục hồi theo đường dẫn trong project đích; timestamp v1 giữ độ chính xác mili giây. Không coi test Timestamp mili giây là bằng chứng bảo toàn nano giây hoặc mọi kiểu dữ liệu Firestore.
+- Duyệt subcollection tăng số lần gọi/read và thời gian theo kích thước dữ liệu. Bộ dữ liệu test không chứng minh workflow 15 phút phù hợp mọi quy mô; cần đo lại trên staging đại diện.
 
 ## Tùy chọn khi có gói Blaze
 

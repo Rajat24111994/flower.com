@@ -12,7 +12,6 @@ public static class FirestoreBackup
 {
     public const string Format = "flowerflow-backup-v1";
     private const string EncryptedFormat = Format + "+aes-256-gcm";
-    private static bool IsNumber(object? value) => value is byte or sbyte or short or ushort or int or uint or long or ulong or float or double or decimal;
     private static Dictionary<string, object> Marker(string type, object value) => new() { ["__type"] = type, ["value"] = value };
     public static object? SerializeValue(object? value) => value switch
     {
@@ -23,8 +22,6 @@ public static class FirestoreBackup
         Blob blob => Marker("bytes", Convert.ToBase64String(blob.ByteString.ToByteArray())),
         ByteString bytes => Marker("bytes", Convert.ToBase64String(bytes.ToByteArray())),
         byte[] bytes => Marker("bytes", Convert.ToBase64String(bytes)),
-        IDictionary<string, object> map when map.TryGetValue("latitude", out var latitude) && IsNumber(latitude) && map.TryGetValue("longitude", out var longitude) && IsNumber(longitude) =>
-            Marker("geopoint", new Dictionary<string, object> { ["latitude"] = latitude, ["longitude"] = longitude }),
         IDictionary<string, object> map => map.ToDictionary(pair => pair.Key, pair => SerializeValue(pair.Value)),
         IEnumerable sequence when value is not string => sequence.Cast<object?>().Select(SerializeValue).ToList(),
         _ => value
@@ -47,20 +44,45 @@ public static class FirestoreBackup
     public static async Task<Dictionary<string, object>> ExportAsync(FirestoreDb db, CancellationToken cancellationToken = default)
     {
         var collections = new Dictionary<string, object>();
-        await foreach (var collection in db.ListRootCollectionsAsync().WithCancellation(cancellationToken))
+        async Task VisitAsync(CollectionReference collection)
         {
-            if (collection.Id == "orderLookupLimits") continue;
+            var prefix = collection.Path.IndexOf("/documents/", StringComparison.Ordinal);
+            var path = prefix < 0 ? collection.Path : collection.Path[(prefix + 11)..];
+            if (path == "orderLookupLimits") return;
             var snapshot = await collection.GetSnapshotAsync(cancellationToken);
-            collections[collection.Id] = snapshot.Documents.ToDictionary(document => document.Id, document => SerializeValue(document.ToDictionary()));
+            collections[path] = snapshot.Documents.ToDictionary(document => document.Id, document => SerializeValue(document.ToDictionary()));
+            await foreach (var reference in collection.ListDocumentsAsync().WithCancellation(cancellationToken))
+                await foreach (var child in reference.ListCollectionsAsync().WithCancellation(cancellationToken))
+                    await VisitAsync(child);
         }
-        return new() { ["format"] = Format, ["createdAt"] = DateTimeOffset.UtcNow.ToString("yyyy-MM-dd'T'HH:mm:ss.fff'Z'"), ["collections"] = collections };
+        await foreach (var collection in db.ListRootCollectionsAsync().WithCancellation(cancellationToken)) await VisitAsync(collection);
+        return new() { ["format"] = Format, ["projectId"] = db.ProjectId, ["createdAt"] = DateTimeOffset.UtcNow.ToString("yyyy-MM-dd'T'HH:mm:ss.fff'Z'"), ["collections"] = collections };
     }
-    public static Dictionary<string, int> CountDocuments(JsonElement backup) => backup.GetProperty("collections").EnumerateObject()
-        .ToDictionary(collection => collection.Name, collection => collection.Value.EnumerateObject().Count());
+    private static void ValidateBackup(JsonElement backup)
+    {
+        static bool Segment(string value) => value.Length > 0 && value is not "." and not "..";
+        if (Js.Get(backup, "format").ValueKind != JsonValueKind.String || Js.Get(backup, "format").GetString() != Format
+            || Js.Get(backup, "collections").ValueKind != JsonValueKind.Object)
+            throw new InvalidOperationException("File không phải bản sao lưu FlowerFlow hợp lệ.");
+        foreach (var collection in backup.GetProperty("collections").EnumerateObject())
+        {
+            var parts = collection.Name.Split('/');
+            if (parts.Length % 2 != 1 || !parts.All(Segment) || collection.Value.ValueKind != JsonValueKind.Object)
+                throw new InvalidOperationException("Đường dẫn collection hoặc dữ liệu sao lưu không hợp lệ.");
+            foreach (var document in collection.Value.EnumerateObject())
+                if (!Segment(document.Name) || document.Name.Contains('/') || document.Value.ValueKind != JsonValueKind.Object)
+                    throw new InvalidOperationException("Document sao lưu không hợp lệ.");
+        }
+    }
+    public static Dictionary<string, int> CountDocuments(JsonElement backup)
+    {
+        ValidateBackup(backup);
+        return backup.GetProperty("collections").EnumerateObject()
+            .ToDictionary(collection => collection.Name, collection => collection.Value.EnumerateObject().Count());
+    }
     public static async Task<Dictionary<string, int>> ImportAsync(FirestoreDb db, JsonElement backup, CancellationToken cancellationToken = default)
     {
-        if (Js.Get(backup, "format").ValueKind != JsonValueKind.String || Js.Get(backup, "format").GetString() != Format || Js.Get(backup, "collections").ValueKind != JsonValueKind.Object)
-            throw new InvalidOperationException("File không phải bản sao lưu FlowerFlow hợp lệ.");
+        ValidateBackup(backup);
         var writes = new List<(DocumentReference Reference, Dictionary<string, object> Data)>();
         foreach (var collection in backup.GetProperty("collections").EnumerateObject())
             foreach (var document in collection.Value.EnumerateObject())

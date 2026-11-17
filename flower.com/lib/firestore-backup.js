@@ -12,7 +12,7 @@ const MIN_PASSPHRASE_LENGTH = 12;
 function serializeValue(value) {
     if (value === null || value === undefined) return value ?? null;
     if (typeof value.toDate === "function") return { __type: "timestamp", value: value.toDate().toISOString() };
-    if (typeof value.latitude === "number" && typeof value.longitude === "number") {
+    if (typeof value.latitude === "number" && typeof value.longitude === "number" && typeof value.isEqual === "function") {
         return { __type: "geopoint", value: { latitude: value.latitude, longitude: value.longitude } };
     }
     if (typeof value.path === "string" && typeof value.firestore === "object") return { __type: "reference", value: value.path };
@@ -35,21 +35,38 @@ function deserializeValue(value, makeTimestamp, helpers = {}) {
 }
 
 async function exportDatabase(db) {
-    const collections = {};
-    for (const collection of await db.listCollections()) {
-        if (SKIPPED_COLLECTIONS.has(collection.id)) continue;
+    const collections = new Map();
+    async function visit(collection) {
+        if (SKIPPED_COLLECTIONS.has(collection.path)) return;
         const snapshot = await collection.get();
-        collections[collection.id] = Object.fromEntries(snapshot.docs.map((doc) => [doc.id, serializeValue(doc.data())]));
+        collections.set(collection.path, Object.fromEntries(snapshot.docs.map((doc) => [doc.id, serializeValue(doc.data())])));
+        // listDocuments includes missing parent documents which still have children.
+        for (const reference of await collection.listDocuments()) {
+            for (const child of await reference.listCollections()) await visit(child);
+        }
     }
-    return { format: FORMAT, createdAt: new Date().toISOString(), collections };
+    for (const collection of await db.listCollections()) await visit(collection);
+    return { format: FORMAT, projectId: db.projectId, createdAt: new Date().toISOString(), collections: Object.fromEntries(collections) };
+}
+
+function validateBackup(backup) {
+    const record = value => value !== null && typeof value === "object" && !Array.isArray(value);
+    const segment = value => value.length > 0 && value !== "." && value !== "..";
+    if (backup?.format !== FORMAT || !record(backup.collections)) throw new Error("File không phải bản sao lưu FlowerFlow hợp lệ.");
+    for (const [collectionPath, documents] of Object.entries(backup.collections)) {
+        const parts = collectionPath.split("/");
+        if (parts.length % 2 !== 1 || !parts.every(segment) || !record(documents))
+            throw new Error("Đường dẫn collection hoặc dữ liệu sao lưu không hợp lệ.");
+        for (const [id, data] of Object.entries(documents)) {
+            if (!segment(id) || id.includes("/") || !record(data)) throw new Error("Document sao lưu không hợp lệ.");
+        }
+    }
 }
 
 // Writes every document of the backup back (creating or overwriting it). Documents that exist in
 // the database but not in the backup are left alone.
 async function importDatabase(db, backup, { Timestamp, GeoPoint } = {}) {
-    if (backup?.format !== FORMAT || typeof backup.collections !== "object") {
-        throw new Error("File không phải bản sao lưu FlowerFlow hợp lệ.");
-    }
+    validateBackup(backup);
     const helpers = {
         makeGeoPoint: GeoPoint ? ({ latitude, longitude }) => new GeoPoint(latitude, longitude) : undefined,
         makeReference: (documentPath) => db.doc(documentPath)
@@ -69,7 +86,18 @@ async function importDatabase(db, backup, { Timestamp, GeoPoint } = {}) {
 }
 
 function countDocuments(backup) {
+    validateBackup(backup);
     return Object.fromEntries(Object.entries(backup.collections).map(([id, documents]) => [id, Object.keys(documents).length]));
+}
+
+// Public workflow logs must not expose parent document IDs from subcollection paths.
+function summarizeDocuments(backup) {
+    const totals = new Map();
+    for (const [collectionPath, count] of Object.entries(countDocuments(backup))) {
+        const root = collectionPath.split("/")[0];
+        totals.set(root, (totals.get(root) || 0) + count);
+    }
+    return Object.fromEntries(totals);
 }
 
 function deriveKey(passphrase, salt) {
@@ -118,6 +146,7 @@ module.exports = {
     exportDatabase,
     importDatabase,
     countDocuments,
+    summarizeDocuments,
     encryptBackup,
     decryptBackup
 };

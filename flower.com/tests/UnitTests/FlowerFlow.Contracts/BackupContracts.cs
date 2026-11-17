@@ -29,7 +29,8 @@ static class BackupContracts
         var original = new Dictionary<string, object> { ["time"] = Timestamp.FromDateTime(new DateTime(2026,11,15,0,0,0,DateTimeKind.Utc)), ["point"] = new GeoPoint(10,106), ["ref"] = db.Document("items/one"), ["bytes"] = Blob.CopyFrom([1,2,3]), ["nested"] = new List<object> { 3d, false } };
         var serialized = JsonSerializer.SerializeToElement(FirestoreBackup.SerializeValue(original));
         var integerPoint = JsonSerializer.SerializeToElement(FirestoreBackup.SerializeValue(new Dictionary<string, object> { ["latitude"] = 10L, ["longitude"] = 106L }));
-        AdditionalContracts.Require(integerPoint.GetProperty("__type").GetString() == "geopoint", "Node numeric geopoint detection lost integer coordinates");
+        AdditionalContracts.Require(!integerPoint.TryGetProperty("__type", out _) && integerPoint.GetProperty("latitude").GetInt64() == 10,
+            "A plain map with coordinates must not be retyped as a GeoPoint");
         var jsonBytes = JsonSerializer.SerializeToElement(FirestoreValues.JsonCompatible(Blob.CopyFrom([1,2,3])));
         AdditionalContracts.Require(jsonBytes.GetProperty("type").GetString() == "Buffer" && jsonBytes.GetProperty("data")[2].GetInt32() == 3, "Firestore blob JSON differs from Node Buffer.toJSON");
         var restored = (Dictionary<string, object>)FirestoreBackup.DeserializeValue(serialized, db)!;
@@ -40,6 +41,8 @@ static class BackupContracts
     {
         var id = "backup-test-" + Guid.NewGuid().ToString("N");
         await db.Collection(id).Document("keep").SetAsync(new { untouched = true });
+        await db.Document(id + "/keep/events/child").SetAsync(new { value = "nested" });
+        await db.Document(id + "/missing/events/orphan").SetAsync(new { value = "orphan" });
         await db.Collection("orderLookupLimits").Document("backup-skip").SetAsync(new { count = 1 });
         var documents = Enumerable.Range(0,401).ToDictionary(index => "doc" + index, index => (object)new Dictionary<string, object> { ["quantity"] = (double)index });
         var backup = JsonSerializer.SerializeToElement(new Dictionary<string, object> { ["format"] = FirestoreBackup.Format, ["collections"] = new Dictionary<string, object> { [id] = documents } });
@@ -47,6 +50,18 @@ static class BackupContracts
         AdditionalContracts.Require(counts[id] == 401 && (await db.Collection(id).GetSnapshotAsync()).Count == 402 && (await db.Collection(id).Document("doc1").GetSnapshotAsync()).ToDictionary()["quantity"] is long, "Backup import batching or preservation of unrelated documents changed");
         var exported = JsonSerializer.SerializeToElement(await FirestoreBackup.ExportAsync(db));
         AdditionalContracts.Require(!exported.GetProperty("collections").TryGetProperty("orderLookupLimits", out _) && FirestoreBackup.CountDocuments(exported)[id] == 402, "Backup export skipped business data or included lookup counters");
-        Console.WriteLine("PASS: Firestore backup import spans 400-write batches, preserves other documents and export skips lookup counters only.");
+        AdditionalContracts.Require(FirestoreBackup.CountDocuments(exported)[id + "/missing/events"] == 1,
+            "Backup export lost a subcollection beneath a missing parent");
+        var clone = id + "-clone";
+        var tree = JsonNode.Parse(exported.GetRawText())!["collections"]!.AsObject();
+        var selected = new JsonObject();
+        foreach (var pair in tree.Where(pair => pair.Key == id || pair.Key.StartsWith(id + "/", StringComparison.Ordinal)))
+            selected[clone + pair.Key[id.Length..]] = pair.Value!.DeepClone();
+        var cloneArchive = JsonSerializer.SerializeToElement(new { format = FirestoreBackup.Format, collections = selected });
+        await FirestoreBackup.ImportAsync(db, cloneArchive);
+        AdditionalContracts.Require((await db.Document(clone + "/keep/events/child").GetSnapshotAsync()).GetValue<string>("value") == "nested"
+            && (await db.Document(clone + "/missing/events/orphan").GetSnapshotAsync()).Exists
+            && !(await db.Document(clone + "/missing").GetSnapshotAsync()).Exists, "Nested restore created a missing parent or lost children");
+        Console.WriteLine("PASS: Firestore backup batching, nested/orphan subcollections, unrelated document preservation and skipped lookup counters.");
     }
 }
