@@ -1,6 +1,6 @@
 import { registerAdminFunctions } from "./admin-state.js";
-import { mountReport } from "./admin-report-view.js?v=2";
-import { dateKey as reportDateKey, isOrderPaid } from "./admin-analytics.js?v=2";
+import { mountReport } from "./admin-report-view.js?v=3";
+import { dateKey as reportDateKey, isOrderPaid } from "./admin-analytics.js?v=3";
 import { ORDER_STATUSES, normalizeOrderStatus, orderStatusLabel } from "../order/order-status.js?v=2";
 
 function renderDashboard() {
