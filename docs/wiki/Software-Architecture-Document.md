@@ -1,76 +1,142 @@
-<div align="center">
+# Kiến trúc phần mềm — FlowerFlow
 
-# 🏛️ Kiến trúc phần mềm
+Đối chiếu **17/11/2026**, baseline source `a1b9bef`. Mô tả mã/cấu hình trên main,
+không xác nhận mọi thiết lập dashboard hoặc dịch vụ production đã được kiểm tra.
 
-**FlowerFlow được xây dựng từ những phần nào và chúng nối với nhau ra sao**
+[Trang chủ](Home.md) · [Mô hình dữ liệu](Data-Model.md) · [Ma trận bằng chứng](Traceability-Matrix.md)
 
-[🏠 Trang chủ](Home) · [📋 Yêu cầu chức năng](Functional-Requirements) · [⚡ Yêu cầu phi chức năng](Non‐Functional-Requirements)
+## 1. Phạm vi và quyết định kiến trúc
 
-</div>
+Website dùng HTML/CSS/JavaScript thuần, ASP.NET Core .NET 10 và Firebase.
+Render/Docker phục vụ frontend cùng `/api/...` trên một origin. Node 24 chỉ dùng
+công cụ/test/launcher local; nguồn `legacy-node` giữ làm baseline đối chiếu.
+`FlowerFlow.Backend` là host độc lập InMemory, development identity, payment
+simulator và `/api/v1`, chưa thay website. SQL Server mới là đề xuất, chưa kết nối/migrate.
 
----
+```mermaid
+flowchart LR
+    Browser[Trình duyệt khách / admin / owner] --> Render[Render Docker: frontend + FlowerFlow.Api]
+    Browser --> Auth[Firebase Authentication]
+    Browser -->|SDK client và Security Rules| DB[(Cloud Firestore)]
+    Render -->|Admin SDK và quyền do API kiểm tra| DB
+    Render --> Auth
+    Render -->|URL thanh toán ký HMAC| VNPay[VNPay]
+    VNPay -->|IPN xác minh chữ ký và số tiền| Render
+    Actions[GitHub Actions cleanup] -->|CRON_SECRET| Render
+```
 
-## 1. Các thành phần
+Frontend còn truy cập Firestore trực tiếp ở catalog, shopping snapshot và một số
+thao tác admin. Rules phải triển khai riêng; Admin SDK bỏ qua Rules nên API vẫn
+phải kiểm tra quyền và dữ liệu. Firebase Auth quản lý tài khoản production;
+cache/giỏ ngoại tuyến còn trong trình duyệt, local auth dùng SQLite.
 
-![Các thành phần hệ thống](https://raw.githubusercontent.com/Longg5048/flower.com/main/docs/wiki/thanh-phan.png)
+## 2. Thành phần và phụ thuộc
 
-| Thành phần | Nhiệm vụ |
+```mermaid
+flowchart TD
+    Api[FlowerFlow.Api: Controller, Middleware, DI] --> App[FlowerFlow.Application: nghiệp vụ và interfaces]
+    Api --> Infra[FlowerFlow.Infrastructure: Firebase, VNPay, audit, local]
+    Infra --> App
+    App --> Domain[FlowerFlow.Domain: constants, entities, quy tắc thuần]
+    Infra --> Domain
+    Separate[Backend / Commerce / InMemory: host riêng] -.-> Domain
+```
+
+| Thành phần | Trách nhiệm |
 | --- | --- |
-| **Trang khách hàng** | Xem hoa, giỏ hàng, thanh toán, theo dõi đơn, đánh giá |
-| **Trang quản trị** | Quản lý sản phẩm, đơn, ưu đãi, khu vực giao, báo cáo (`admin`); cấp quyền (`owner`) |
-| **API đơn hàng** (`/api/orders`) | Báo giá, tạo đơn, giữ hàng, tự trả hàng khi đơn quá hạn |
-| **API thanh toán** (`/api/payments`, `/api/vnpay-ipn`) | Tạo link VNPay và nhận kết quả thanh toán |
-| **API khác** | Sản phẩm, khu vực giao, ảnh đánh giá, quản lý người dùng |
-| **Firebase Authentication** | Đăng nhập bằng email hoặc Google |
-| **Firestore** | Lưu toàn bộ dữ liệu cửa hàng |
+| Api | `/api/...`, static frontend, CSP/headers, origin/body limits và local identity |
+| Application | Accounts/Admin/Catalog/Orders/Payments/DesignRequests/ShopSettings; giá, quyền, trạng thái và transaction |
+| Infrastructure | Firebase Admin/Firestore, signature VNPay, audit, SQLite/scrypt và HTTP helpers |
+| Domain | Tên collection, trạng thái, tiền/lịch/giá héo và khu vực Hà Nội |
+| Frontend | Hiển thị, cache/giỏ tạm, Firebase Web SDK; không quyết định giá/kho/thanh toán |
 
-## 2. Công nghệ
+`npm run dev` tải `.env`, khởi động C# Development cổng 3000. `dotnet run --project
+flower.com/backend/FlowerFlow.Api` dùng launch profile (5080), không tự tải `.env`.
+Production dùng Firebase auth; local auth chỉ bật Development và loopback. Xem
+[ranh giới backend](https://github.com/Longg5048/flower.com/blob/main/flower.com/docs/backend/BACKEND-BOUNDARIES.md).
 
-| Phần | Công nghệ |
-| --- | --- |
-| Giao diện | HTML, CSS, JavaScript thuần (không dùng framework) |
-| Máy chủ | Vercel Serverless Functions (Node.js) |
-| Dữ liệu | Firebase Firestore, Firebase Authentication |
-| Thanh toán | VNPay |
-| Kiểm thử | Node test runner, Firebase Emulator, Playwright |
-| Tự động hóa | GitHub Actions (CI, sao lưu hằng ngày, smoke test) |
+## 3. Dữ liệu và luồng nghiệp vụ
 
-## 3. Dữ liệu
+[Data-Model](Data-Model.md) có sơ đồ và bảng quyền từng collection. Các liên kết là
+logic trong code, không phải khóa ngoại/cascade SQL; dòng sản phẩm trong đơn là snapshot.
 
-![Mô hình dữ liệu](https://raw.githubusercontent.com/Longg5048/flower.com/main/docs/wiki/du-lieu.png)
+```mermaid
+sequenceDiagram
+    participant C as Trình duyệt
+    participant A as C# API
+    participant F as Firestore
+    participant V as VNPay
+    C->>A: Báo giá (productId, quantity, khu vực)
+    A->>F: Đọc giá / kho / ưu đãi / phí
+    A-->>C: Tổng do server tính
+    C->>A: Xác nhận + idempotency key
+    A->>F: Transaction: đọc lại, giữ kho, tạo order + request record
+    A-->>C: Mã đơn và thông tin thanh toán
+    opt VNPay
+        C->>A: Tạo hoặc dùng lại payment attempt
+        A->>F: Lưu attempt gắn order, amount và hạn
+        A-->>C: URL ký HMAC-SHA512
+        C->>V: Thanh toán tại provider
+        V->>A: IPN
+        A->>F: Transaction sau kiểm tra chữ ký, số tiền, trạng thái
+        A-->>V: Kết quả callback
+    end
+```
 
-| Bảng (collection) | Lưu gì |
-| --- | --- |
-| `products` | Sản phẩm: tên, giá, ảnh, tồn kho, loài, màu, dịp |
-| `orders` | Đơn hàng: sản phẩm, người nhận, giao hàng, thanh toán, lịch sử trạng thái |
-| `paymentTransactions` | Các lần thanh toán VNPay của đơn |
-| `reviews`, `reviewImages` | Đánh giá của khách và ảnh kèm theo |
-| `metadata` | Danh mục, ưu đãi đang chạy, khu vực giao hàng |
-| `adminRoles` | Ai có quyền quản lý |
-| `orderRequests`, `orderLookupLimits` | Chống đặt trùng đơn và chống dò mã đơn |
+Redirect trình duyệt không tự xác nhận đã thanh toán. IPN cần hợp lệ và xử lý lặp
+an toàn; sandbox/IPN thật chưa nghiệm thu (#160). Giữ kho: VNPay 15 phút, COD 30
+phút, QR cũ 30 phút. Worker/scheduler hết hạn hoặc hủy hoàn kho một lần; giao thành
+công chốt sold. Chuyển trạng thái phải phù hợp payment/inventory, không chỉ nhãn UI.
 
-## 4. Luồng chính
+Khi chưa lưu khu vực riêng, C# cung cấp khu vực nội thành Hà Nội từ Hà Đông,
+5.000 VND/km theo khoảng cách định sẵn, không gọi routing/GPS để đo địa chỉ thật.
+Danh sách admin đã lưu được ưu tiên. Nguồn: `HanoiDeliveryZones.cs`, `DeliveryZonesService.cs`.
 
-**Mua hàng:** khách chọn hoa → máy chủ báo giá → khách xác nhận → máy chủ kiểm tra lại và giữ hàng → tạo đơn.
+## 4. Bảo mật
 
-![Luồng mua hàng](https://raw.githubusercontent.com/Longg5048/flower.com/main/docs/wiki/luong-mua-hang.png)
+- Firebase ID token kiểm tra cả thu hồi; admin cần claim và live `adminRoles`, Owner
+  cấp/gỡ quyền qua API. Ẩn nút UI không thay phân quyền.
+- Giá/kho/tổng tiền được server đọc lại. Idempotency không thay transaction.
+- PII đơn được lọc khi tra cứu công khai; token thiết kế chỉ lưu hash.
+- CSP, headers, Origin và proxy tin cậy bảo vệ host; không tin forwarded header tùy ý.
+- Service account/VNPay/cron/backup secrets ở Render/GitHub, không trong Git/frontend.
+  Firebase Web config công khai không phải service account.
+- SQLite Development lưu mật khẩu/PIN/câu trả lời băm scrypt, không dùng cho production.
+  Password Policy Firebase và MFA cần xác minh/triển khai riêng.
 
-**Trạng thái đơn hàng:**
+## 5. Triển khai, vận hành, rollback
 
-![Vòng đời đơn hàng](https://raw.githubusercontent.com/Longg5048/flower.com/main/docs/wiki/vong-doi-don.png)
+```mermaid
+flowchart LR
+    Commit[Push main] --> CI[GitHub Actions]
+    CI --> Node[Legacy / frontend: unit, emulator, Playwright]
+    CI --> Native[C#: xUnit, contracts, HTTP emulator, Docker smoke]
+    CI --> Separate[Independent tests / publish]
+    Native --> Image[Docker: FlowerFlow.Api.dll + frontend]
+    Image --> Deploy[Render theo cấu hình service]
+    Deploy --> Health[health / diagnostic / smoke]
+```
 
-## 5. Bảo mật
+`render.yaml`: main, Dockerfile `flower.com/backend/Dockerfile`, `/health`, checksPass.
+Dashboard service phải khớp; CI xanh không chứng minh deployment hoặc Firebase đã
+kết nối. `/health` chỉ liveness; không có endpoint readiness kiểm tra Firebase riêng.
+Diagnostic `--check-firebase` là lệnh read-only chạy riêng với credential đúng project theo
+[runbook](https://github.com/Longg5048/flower.com/blob/main/flower.com/docs/backend/DEPLOYMENT.md).
+Runtime image không cần Node. Domain Vercel cũ chuyển hướng Render; không cam kết
+Vercel preview cho C# PR. Worker C# dọn đơn và GitHub scheduler gọi API có CRON_SECRET.
 
-- **Tiền do máy chủ tính:** giá, ưu đãi, phí giao đều tính lại ở máy chủ; số liệu từ trình duyệt không được tin.
-- **Phân quyền 2 lớp:** API kiểm tra quyền, và Firestore Security Rules chặn truy cập trái phép.
-- **Thanh toán:** kết quả VNPay phải có chữ ký hợp lệ mới được ghi nhận.
-- **Không lộ thông tin khách:** tra cứu đơn bằng mã đơn chỉ hiện tiến độ, có giới hạn số lần thử.
-- **Khóa bí mật:** lưu trong cài đặt của Vercel và GitHub, không nằm trong code.
+Backup mã hóa export Firestore, restore preview và lưu artifact; hiện thiếu hai
+secrets nên chưa có bằng chứng backup production thành công (#118). Emulator đã
+diễn tập restore; export không phải snapshot toàn DB, restore atomic theo batch.
+Không backup Auth/Storage/Rules/indexes/IAM/secrets. Xem
+[runbook backup](https://github.com/Longg5048/flower.com/blob/main/docs/BACKUP-RESTORE.md).
 
-## 6. Triển khai
+Rollback bằng image/commit C# đã xác minh, không chuyển sang Node cũ hoặc InMemory.
+Thay schema tương lai cần backup, kế hoạch chuyển riêng và đối soát đơn/thanh toán/kho.
 
-![Quy trình triển khai](https://raw.githubusercontent.com/Longg5048/flower.com/main/docs/wiki/trien-khai.png)
+## 6. Bằng chứng và giới hạn
 
-1. Mỗi lần push code, GitHub Actions chạy 3 nhóm test: unit, emulator và trình duyệt.
-2. Vercel tạo một bản xem thử riêng cho mỗi PR.
-3. Khi test xanh và PR được gộp vào `main`, Vercel tự đưa bản mới lên web thật.
+Baseline `a1b9bef`: 93 xUnit (35 native + 58 independent), contracts local và ba
+workflow CI thành công; xem [mốc FF-11](Traceability-Matrix.md). Emulator/fixture/
+simulator không thay provider/production. Render Free không đồng nghĩa uptime 99,9%;
+Lighthouse, tải/latency production, RPO/RTO, VNPay thật và backup còn cần đo/xác minh.

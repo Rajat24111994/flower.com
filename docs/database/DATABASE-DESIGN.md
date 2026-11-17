@@ -2,6 +2,7 @@
 
 > **Trạng thái:** bản đề xuất, chưa dùng trong hệ thống đang chạy. Web hiện tại vẫn dùng Cloud Firestore.
 > Tài liệu này phục vụ phương án chuyển dữ liệu nghiệp vụ sang SQL Server (phương án A).
+> Sơ đồ production hiện tại nằm tại [Data-Model.md](../wiki/Data-Model.md). Các bảng/trigger dưới đây không phải collection hay migration đã chạy; host độc lập hiện chỉ dùng InMemory.
 
 | File | Nội dung |
 | --- | --- |

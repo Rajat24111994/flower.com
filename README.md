@@ -86,7 +86,7 @@ FlowerFlow là website bán hoa gồm ba lớp:
 | Backend | ASP.NET Core .NET 10 (Docker), Firebase Admin SDK; GitHub Actions gọi cleanup đơn hết hạn |
 | Cơ sở dữ liệu | Cloud Firestore (Security Rules, chỉ mục trong `firestore.indexes.json`) |
 | Thanh toán | VNPay (URL thanh toán + IPN ký HMAC-SHA512), COD; VietQR chỉ còn cho đơn QR tạo trước đây |
-| Kiểm thử | `node:assert` có sẵn của Node.js, không cần thư viện ngoài |
+| Kiểm thử | Node Test Runner, xUnit C#, contracts JS/C#, Firebase Emulator và Playwright |
 | Hosting | Render (Docker, region Singapore) |
 
 Ở chế độ triển khai, Firebase Authentication quản lý mật khẩu và lưu giá trị băm phía máy chủ; ở chế độ local, máy chủ dùng scrypt với salt riêng và lưu vào SQLite. Cả hai chế độ đều không ghi mật khẩu gốc vào Firestore hoặc bộ nhớ trình duyệt. Bản sao phiên `localStorage.loggedUser` chỉ chứa hồ sơ cần thiết; nhật ký xác thực chỉ ghi mã lỗi đã lọc, không ghi đối tượng lỗi hay mật khẩu.
@@ -152,18 +152,15 @@ nguồn nội bộ qua HTTP.
 Live Server/Python HTTP server chỉ phù hợp xem giao diện tĩnh. Các máy chủ đó không chạy API
 đăng nhập, đặt hàng hoặc quản trị; nút đăng nhập sẽ báo thiếu API thay vì bỏ qua giới hạn bảo mật.
 
-### Chạy bằng Vercel CLI (tùy chọn)
+### Backend cũ và backend độc lập
 
-Một lựa chọn khác để chạy các Vercel Functions ở máy cục bộ:
+Node cũ ở `legacy-node` dùng đối chiếu kiểm thử; host `FlowerFlow.Backend` là InMemory, chưa thay website production. Không chạy `vercel dev` để thay host C#. Xem [ranh giới backend](flower.com/docs/backend/BACKEND-BOUNDARIES.md).
 
-```sh
-cd flower.com
-npm install
-vercel link
-vercel dev
-```
+## Tài liệu kiến trúc và dữ liệu
 
-Cần cấu hình biến môi trường như mô tả ở mục [Cấu hình](#cấu-hình).
+- [Wiki nguồn trong repo](docs/wiki/Home.md) và [GitHub Wiki](https://github.com/Longg5048/flower.com/wiki).
+- [SAD: kiến trúc phần mềm](docs/wiki/Software-Architecture-Document.md), [mô hình Firestore hiện tại](docs/wiki/Data-Model.md), [ma trận bằng chứng](docs/wiki/Traceability-Matrix.md).
+- [Thiết kế SQL Server](docs/database/DATABASE-DESIGN.md) là đề xuất, chưa dùng production.
 
 ## Cấu hình
 
@@ -184,9 +181,10 @@ Quy tắc bảo mật được quản lý trong [`flower.com/firestore.rules`](f
 | Collection | Đọc | Ghi |
 | --- | --- | --- |
 | `products` | Công khai | Chỉ admin |
-| `reviews` | Công khai | Tạo: người dùng đã đăng nhập (kiểm tra schema, 1–5 sao, tối đa 1000 ký tự); sửa/xóa: chỉ admin |
-| `orders` | Admin, hoặc khách đọc đơn có UID của mình | Tạo: chỉ backend; sửa/xóa: chỉ admin |
-| `metadata` (ưu đãi, phân loại, trạng thái catalog) | Chỉ admin | Chỉ admin |
+| `reviews` | Approved công khai; tác giả/admin có quyền đọc thêm | Tạo qua API kiểm tra đơn đã giao; admin chỉ sửa các trường moderation/reply cho phép, client không create/delete |
+| `orders` | Admin, hoặc đúng UID của mình | Tạo qua API; admin update giới hạn trường/trạng thái/payment/inventory, delete cho admin |
+| `metadata` | Get activePromotions/storeCategories công khai; còn lại admin | Admin; riêng wiltingPricing ghi qua Owner API |
+| `shoppingCarts/{uid}` | Chỉ chủ UID, không list | Chỉ chủ UID, cart/wish tối đa 100 dòng mỗi danh sách |
 | Còn lại | Từ chối | Từ chối |
 
 Triển khai quy tắc bằng [Firebase CLI](https://firebase.google.com/docs/cli):
@@ -225,11 +223,13 @@ Hướng dẫn từng bước, bao gồm cách gán quyền Owner bằng Applica
 
 | Loại | Lệnh | Nội dung |
 | --- | --- | --- |
-| Unit test | `cd flower.com && npm test` | 231 test: tính giá, ưu đãi, dữ liệu đơn hàng, trạng thái đơn, giỏ hàng, danh mục, sản phẩm, cấu hình bảo mật |
+| Unit test | `cd flower.com && npm test` | Tính giá, ưu đãi, dữ liệu đơn hàng, trạng thái đơn, giỏ hàng, danh mục, sản phẩm, cấu hình bảo mật |
 | Coverage | `cd flower.com && npm run test:coverage` | Như trên, kèm tỉ lệ dòng/nhánh/hàm được test; CI yêu cầu tối thiểu 70% coverage dòng |
-| Feature, system, security | `cd flower.com/tests && npm ci && npm run integration` | 91 test: đặt hàng, đăng nhập, quản lý, luồng xuyên hệ thống và Security Rules trên Firebase Emulator (cần Java 11+) |
-| Browser E2E | `cd flower.com && npm run test:e2e:emulator` | 148 test (74 kịch bản × desktop/mobile): xem sản phẩm, giỏ hàng, đăng nhập, đặt hàng trên desktop/mobile; Firebase Emulator và Playwright |
-| Tài khoản trên máy | `cd flower.com && npm run test:e2e:local` | 24 test: đăng ký, PIN, câu hỏi khôi phục, khóa tài khoản (không cần emulator) |
+| Feature, system, security | `cd flower.com/tests && npm ci && npm run integration` | Legacy Node: đặt hàng, đăng nhập, quản lý, luồng xuyên hệ thống và Security Rules trên Firebase Emulator (cần Java 21) |
+| Browser E2E | `cd flower.com && npm run test:e2e:emulator` | Xem sản phẩm, giỏ hàng, đăng nhập, đặt hàng trên desktop/mobile; Firebase Emulator và Playwright |
+| Tài khoản trên máy | `cd flower.com && npm run test:e2e:local` | Đăng ký, PIN, câu hỏi khôi phục, khóa tài khoản (không cần emulator) |
+| Native C# xUnit | `dotnet test flower.com/FlowerFlow.sln -c Release` (từ gốc repo) | API production và backend độc lập; số test hiện tại xem CI |
+| Native HTTP | Runner `flower.com/tests/IntegrationTests/test-api.cjs` theo [hướng dẫn test](flower.com/tests/README.md) | C# thật với Auth/Firestore Emulator; không phải coverage Node |
 | Smoke test sau deploy | `cd flower.com && SMOKE_URL=https://... npm run smoke` | Trang và API còn chạy, không đổi dữ liệu |
 
 CI trên GitHub Actions chạy unit test, test tích hợp và browser E2E cho mọi Pull Request và mỗi lần push lên `main`; báo cáo coverage và ảnh/trace trình duyệt được lưu trong kết quả chạy. Chi tiết: [`tests/README.md`](flower.com/tests/README.md). Sau mỗi đợt kiểm thử, tạo báo cáo từ [mẫu báo cáo](docs/test-reports/TEMPLATE.md) trong `docs/test-reports/` ([ví dụ ngày 2026-10-28](docs/test-reports/2026-10-28.md)). Trước mỗi lần phát hành làm theo [`docs/RELEASE-CHECKLIST.md`](docs/RELEASE-CHECKLIST.md).

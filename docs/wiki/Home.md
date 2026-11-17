@@ -4,12 +4,13 @@
 
 **Website bán hoa tươi trực tuyến kèm hệ thống quản lý cửa hàng**
 
-![Vercel](https://img.shields.io/badge/Hosting-Vercel-111111?logo=vercel&logoColor=white)
+![Render](https://img.shields.io/badge/Hosting-Render-111111?logo=render&logoColor=white)
+![ASP.NET](https://img.shields.io/badge/Backend-ASP.NET_Core_10-111111)
 ![Firebase](https://img.shields.io/badge/Dữ_liệu-Firebase-111111?logo=firebase&logoColor=white)
 ![JavaScript](https://img.shields.io/badge/Code-JavaScript-111111?logo=javascript&logoColor=white)
 ![Tests](https://img.shields.io/badge/Kiểm_thử-Unit_·_Emulator_·_Playwright-111111)
 
-[Yêu cầu chức năng](Functional-Requirements) · [Yêu cầu phi chức năng](Non‐Functional-Requirements) · [Kiến trúc phần mềm](Software-Architecture-Document)
+[Yêu cầu chức năng](Functional-Requirements.md) · [Yêu cầu phi chức năng](Non-Functional-Requirements.md) · [Kiến trúc phần mềm](Software-Architecture-Document.md)
 
 </div>
 
@@ -35,15 +36,51 @@ FlowerFlow giúp khách hàng **tìm, chọn và đặt hoa trong vài phút**, 
 
 ## 🏗️ Kiến trúc tổng quan
 
-![Kiến trúc tổng quan](https://raw.githubusercontent.com/Longg5048/flower.com/main/docs/wiki/kien-truc.png)
+```mermaid
+flowchart LR
+    Browser[Frontend HTML / CSS / JS] --> Host[Render Docker: ASP.NET Core C#]
+    Browser --> Auth[Firebase Authentication]
+    Browser -->|Security Rules| DB[(Firestore)]
+    Host -->|Admin SDK và quyền API| DB
+    Host --> Auth
+    Host <--> VNPay[VNPay / IPN]
+```
+
+Cập nhật 17/11/2026: `FlowerFlow.Api` là backend chính; Node legacy chỉ để đối chiếu, backend độc lập InMemory chưa thay production. [SAD](Software-Architecture-Document.md) · [Mô hình dữ liệu](Data-Model.md).
 
 ## 🛒 Luồng mua hàng
 
-![Luồng mua hàng](https://raw.githubusercontent.com/Longg5048/flower.com/main/docs/wiki/luong-mua-hang.png)
+```mermaid
+flowchart LR
+    Catalog[Chọn hoa] --> Cart[Giỏ hàng]
+    Cart --> Quote[C# báo giá]
+    Quote --> Checkout[Xác nhận và giữ kho trong transaction]
+    Checkout --> Pay[COD hoặc VNPay]
+    Pay --> Track[Theo dõi đơn]
+```
 
 ## 📦 Vòng đời đơn hàng
 
-![Vòng đời đơn hàng](https://raw.githubusercontent.com/Longg5048/flower.com/main/docs/wiki/vong-doi-don.png)
+```mermaid
+stateDiagram-v2
+    [*] --> Pending
+    Pending --> Preparing
+    Preparing --> Shipping
+    Shipping --> Delivered
+    Pending --> Cancelled
+    Preparing --> Cancelled
+    Shipping --> Cancelled
+    Delivered --> Cancelled: theo quy tắc hủy và hoàn kho
+    Cancelled --> Pending: phục hồi phải kiểm tra kho và payment
+    state "Chờ xác nhận" as Pending
+    state "Đang chuẩn bị" as Preparing
+    state "Đang giao" as Shipping
+    state "Đã giao" as Delivered
+    state "Đã hủy" as Cancelled
+```
+
+Sơ đồ là trạng thái chuẩn; quyền chuyển, điều kiện thanh toán và reserved/sold/released
+được kiểm tra riêng trong API/Rules, không phải mọi caller đều thực hiện được mọi cạnh.
 
 > ⏱️ **Thời gian giữ hàng khi chưa thanh toán:** VNPay 15 phút · COD 30 phút. Quá hạn, hàng tự trả lại kho.
 
@@ -61,10 +98,11 @@ FlowerFlow giúp khách hàng **tìm, chọn và đặt hoa trong vài phút**, 
 
 | Trang | Nội dung |
 | --- | --- |
-| 📋 [Yêu cầu chức năng](Functional-Requirements) | Danh sách chức năng cho khách hàng và quản trị |
-| ⚡ [Yêu cầu phi chức năng](Non‐Functional-Requirements) | Hiệu năng, bảo mật, sao lưu, kiểm thử |
-| 🏛️ [Kiến trúc phần mềm](Software-Architecture-Document) | Thành phần hệ thống, dữ liệu, triển khai |
-| 🔗 [Ma trận truy vết](Traceability-Matrix) | Mỗi yêu cầu nối tới issue, Pull Request và test |
+| 📋 [Yêu cầu chức năng](Functional-Requirements.md) | Danh sách chức năng cho khách hàng và quản trị |
+| ⚡ [Yêu cầu phi chức năng](Non-Functional-Requirements.md) | Hiệu năng, bảo mật, sao lưu, kiểm thử |
+| 🏛️ [Kiến trúc phần mềm](Software-Architecture-Document.md) | Thành phần hệ thống, dữ liệu, triển khai |
+| 🗄️ [Mô hình dữ liệu](Data-Model.md) | Firestore hiện tại và ranh giới với SQL đề xuất |
+| 🔗 [Ma trận truy vết](Traceability-Matrix.md) | Mỗi yêu cầu nối tới issue, Pull Request và test |
 | 🗂️ [Project charter](https://github.com/Longg5048/flower.com/blob/main/docs/product/PROJECT-CHARTER.md) | Mục tiêu, phạm vi, phân công, Definition of Done, rủi ro |
 | 👥 [Persona](https://github.com/Longg5048/flower.com/blob/main/docs/product/PERSONAS.md) | Persona hiện là giả định, chưa được xác minh bằng nghiên cứu thật |
 | 🔎 [Kế hoạch nghiên cứu người dùng](https://github.com/Longg5048/flower.com/blob/main/docs/product/USER-RESEARCH-PLAN.md) | Cách thực hiện phỏng vấn và usability test; chưa có kết quả nghiên cứu |

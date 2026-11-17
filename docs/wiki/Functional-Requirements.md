@@ -4,11 +4,13 @@
 
 **Những gì FlowerFlow làm được cho khách hàng và cho cửa hàng**
 
-[🏠 Trang chủ](Home) · [⚡ Yêu cầu phi chức năng](Non‐Functional-Requirements) · [🏛️ Kiến trúc phần mềm](Software-Architecture-Document)
+[🏠 Trang chủ](Home.md) · [⚡ Yêu cầu phi chức năng](Non-Functional-Requirements.md) · [🏛️ Kiến trúc phần mềm](Software-Architecture-Document.md)
 
 </div>
 
 ---
+
+Đối chiếu kiến trúc 17/11/2026: website dùng C# trên Render; các dấu ✅ dưới đây chỉ tình trạng chức năng trong code/test, không xác nhận provider production. Sandbox/IPN VNPay thật còn #160. Xem [SAD](Software-Architecture-Document.md) và [mốc bằng chứng mới](Traceability-Matrix.md).
 
 ## 🛍️ Chức năng cho khách hàng
 
@@ -49,12 +51,13 @@ Xem [ma trận truy vết KH/QT/NF](Traceability-Matrix.md) để đối chiếu
 | QT‑10 | Người dùng | Quản lý xem danh sách tài khoản; chủ cửa hàng cấp hoặc thu hồi quyền quản lý | ✅ |
 | QT‑11 | Sao lưu | Tự sao lưu dữ liệu mỗi ngày và khôi phục khi có sự cố | ⚠️ |
 
-> ✅ Đã có và đã kiểm thử · ⚠️ Đã có code, cần cài thêm trên GitHub để chạy (xem [Yêu cầu phi chức năng](Non‐Functional-Requirements)) · ❌ Chưa có
+> ✅ Đã có và đã kiểm thử · ⚠️ Đã có code, cần cài thêm trên GitHub để chạy (xem [Yêu cầu phi chức năng](Non-Functional-Requirements.md)) · ❌ Chưa có
 
 ## 💳 Thanh toán VNPay
 
-![Luồng thanh toán VNPay](https://raw.githubusercontent.com/Longg5048/flower.com/main/docs/wiki/thanh-toan-vnpay.png)
+Luồng tạo payment attempt → URL ký → provider → IPN → transaction được mô tả bằng
+sơ đồ sequence hiện tại trong [SAD](Software-Architecture-Document.md).
 
 - Số tiền do máy chủ tính, khách không sửa được.
 - Đơn chỉ được coi là **đã thanh toán** khi VNPay gửi kết quả có chữ ký hợp lệ về máy chủ.
-- Muốn chạy thật, cửa hàng cần đăng ký tài khoản VNPay và cài mã vào Vercel.
+- Muốn chạy thật, cửa hàng cần đăng ký tài khoản VNPay và cấu hình merchant secrets trên Render và xác minh callback sandbox thật (#160).

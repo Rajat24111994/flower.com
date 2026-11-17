@@ -4,7 +4,20 @@ Ngày đối chiếu: **11/11/2026**. Bao phủ **38/38** yêu cầu: KH-01…KH
 
 [Yêu cầu chức năng](Functional-Requirements.md) · [Yêu cầu phi chức năng](Non-Functional-Requirements.md)
 
-## Mốc nguồn và cách đọc bằng chứng
+## Mốc hiện tại — 17/11/2026
+
+Các bảng 38 yêu cầu bên dưới là **snapshot lịch sử 11/11**, giữ nguyên link SHA để truy vết, không phải chứng nhận production hiện tại. Sau chuyển backend, dùng thêm các bằng chứng sau:
+
+| Phạm vi | Nguồn/bằng chứng mới | Giới hạn |
+| --- | --- | --- |
+| Backend/host | [#166](https://github.com/Longg5048/flower.com/issues/166), commit `a1b9bef`; [CI C#](https://github.com/Longg5048/flower.com/actions/runs/44003100755), [CI Node](https://github.com/Longg5048/flower.com/actions/runs/44003100942), [independent](https://github.com/Longg5048/flower.com/actions/runs/44003100803): success | Native C# 35 + independent 58 xUnit, contracts, HTTP/Docker và Node/browser; không phải deploy dashboard |
+| Backup/restore NF-03/04 | [#165](https://github.com/Longg5048/flower.com/issues/165), commit `3eb88dc`, [báo cáo](https://github.com/Longg5048/flower.com/blob/main/docs/test-reports/2026-11-17-ff-10-backup-restore.md) | Diễn tập emulator/CLI; production secrets và lịch ≥24h còn [#118](https://github.com/Longg5048/flower.com/issues/118) |
+| Security/stock | [#158](https://github.com/Longg5048/flower.com/issues/158), [#159](https://github.com/Longg5048/flower.com/issues/159), [báo cáo Rules/stock](https://github.com/Longg5048/flower.com/blob/main/docs/test-reports/2026-11-17-ff-04-firestore-stock.md) | Không thay xác minh Console/Rules đã deploy |
+| VNPay NF-06/09 | [#160](https://github.com/Longg5048/flower.com/issues/160) vẫn mở | Callback sandbox/merchant thật chưa đủ điều kiện |
+| Khách hàng/admin/tests/performance | #161–#164; [test reports](https://github.com/Longg5048/flower.com/tree/main/docs/test-reports) | Không suy diễn fixture/local sang SLA production |
+| README/Wiki/SAD/dữ liệu | [#167](https://github.com/Longg5048/flower.com/issues/167), [SAD](Software-Architecture-Document.md), [Firestore](Data-Model.md) | SQL chỉ đề xuất; không đọc dữ liệu production |
+
+## Mốc nguồn và cách đọc bằng chứng lịch sử
 
 - **[M]** là commit snapshot `44fa7aa3e3065c64bc94eb9223017b437c7ee759` trên main, chứa các file mã/test được dẫn. Đây là mốc đối chiếu, không khẳng định mọi chức năng được viết trong commit merge này. Mỗi dòng có issue liên quan và commit snapshot để truy ngược mã.
 - **[U]**: job **Unit test + coverage**, kết quả API GitHub khi đối chiếu: **success**.
