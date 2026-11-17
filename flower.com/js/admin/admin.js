@@ -1,7 +1,7 @@
 ﻿import "./admin-state.js";
 import "./admin-data.js?v=1";
 import "./admin-lifecycle.js?v=1";
-import "./admin-dashboard.js?v=2";
+import "./admin-dashboard.js?v=3";
 import "./admin-products.js?v=2";
 import "./admin-categories.js?v=1";
 import "./admin-promotions.js?v=1";
