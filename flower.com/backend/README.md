@@ -4,7 +4,7 @@
 > Chạy `dotnet run --project flower.com/backend/FlowerFlow.Backend`, mở `http://localhost:5090/swagger`.
 > Host Firebase `FlowerFlow.Api` được giữ nguyên; host mới chưa thay website production.
 
-Backend C# trên nhánh `asp.net` đã có bản chuyển đổi của 32 module `flower.com/backend` và 8 thư viện server `flower.com/lib`. URL API, phương thức, dữ liệu JSON, logic giá/khuyến mãi/tồn kho/đơn hàng/thanh toán và Firebase được giữ theo nguồn JS. Nhật ký từng file và kiểm thử: [MIGRATION-STATUS.md](../docs/backend/MIGRATION-STATUS.md).
+Backend production trên `main` là `FlowerFlow.Api`, đã chuyển đổi từ 32 module hiện lưu tại `flower.com/legacy-node/backend` và 8 thư viện server. Xem [ranh giới backend](../docs/backend/BACKEND-BOUNDARIES.md). URL API, phương thức, dữ liệu JSON, logic giá/khuyến mãi/tồn kho/đơn hàng/thanh toán và Firebase được giữ theo nguồn JS. Nhật ký từng file và kiểm thử: [MIGRATION-STATUS.md](../docs/backend/MIGRATION-STATUS.md).
 
 ## Chạy trên máy
 
@@ -69,7 +69,7 @@ Nếu có reverse proxy, cấu hình IP của proxy tin cậy bằng `ReversePro
 
 Trên Render, origin HTTPS công khai được nhận từ `RENDER_EXTERNAL_URL` do nền tảng cấp; `PUBLIC_APP_URL` cũng được nhận nếu cấu hình domain riêng. Điều này cho phép request trình duyệt hợp lệ sau TLS proxy mà không nới quy tắc tin cậy IP hoặc nhận Origin tùy ý. Cần deploy commit mới để bản sửa có hiệu lực trên host đang chạy.
 
-Commit/push không chuyển deployment Vercel hiện tại sang .NET. `vercel.json` và các JS entry point cũ vẫn được giữ để đối chiếu và cho deployment Node cũ; muốn chạy bản C# phải triển khai output ASP.NET trên host phù hợp. Các script quản trị/maintenance Node vẫn là công cụ vận hành riêng; không được gọi bởi runtime API C#. Bản C# của export/import/mã hóa backup nằm tại `Firebase/FirestoreBackup.cs`, giữ định dạng backup cũ và không mở thêm endpoint sao lưu công khai.
+Render/Docker chạy `FlowerFlow.Api` từ `main`; domain Vercel cũ chuyển hướng sang Render. `vercel.json` còn dùng làm nguồn cấu hình CSP/rewrite tương thích; JS entry point chỉ nằm trong `legacy-node` để đối chiếu. Không dùng Vercel để triển khai backend C#. Các script quản trị/maintenance Node vẫn là công cụ vận hành riêng; không được gọi bởi runtime API C#. Bản C# của export/import/mã hóa backup nằm tại `Firebase/FirestoreBackup.cs`, giữ định dạng backup cũ và không mở thêm endpoint sao lưu công khai.
 
 ## Kiểm tra
 

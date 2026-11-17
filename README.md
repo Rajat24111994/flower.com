@@ -18,7 +18,7 @@
 
 </div>
 
-> **Hosting:** Website chạy trên Render tại `https://flower-com.onrender.com` bằng backend ASP.NET Core C# (Docker), giữ nguyên Firebase/Firestore và frontend. `npm run dev` khởi động backend C# và cần .NET 10 SDK. Xem [hướng dẫn ASP.NET](flower.com/backend/README.md) và [triển khai Render](flower.com/docs/backend/DEPLOYMENT.md). Địa chỉ Vercel cũ `flower-com-six.vercel.app` chỉ còn chuyển hướng sang Render; backend Node trong `flower.com/api` và `flower.com/backend` được giữ làm nguồn đối chiếu test.
+> **Hosting:** Website chạy trên Render tại `https://flower-com.onrender.com` bằng backend ASP.NET Core C# (Docker), giữ nguyên Firebase/Firestore và frontend. `npm run dev` khởi động backend C# và cần .NET 10 SDK. Xem [hướng dẫn ASP.NET](flower.com/backend/README.md) và [triển khai Render](flower.com/docs/backend/DEPLOYMENT.md). Địa chỉ Vercel cũ `flower-com-six.vercel.app` chỉ còn chuyển hướng sang Render; backend Node trong `flower.com/legacy-node/api` và `flower.com/legacy-node/backend` được giữ làm nguồn đối chiếu test.
 
 ---
 
@@ -121,8 +121,8 @@ Mô tả chi tiết kiến trúc và luồng dữ liệu nằm trong [`flower.co
 ### Yêu cầu
 
 - [Node.js](https://nodejs.org/) 24.x (để chạy kiểm thử và script quản trị)
-- Tài khoản tự tạo trên máy hoạt động ngay với Node.js, không cần Firebase hoặc email thật
-- (Tùy chọn) [Vercel CLI](https://vercel.com/docs/cli) nếu muốn dùng `vercel dev`
+- Tài khoản tự tạo trên máy do backend C# quản lý, không cần Firebase hoặc email thật
+- .NET 10 SDK để chạy backend C#; Java 21 nếu chạy Firebase Emulator
 
 ### Chạy giao diện và API trên máy cục bộ
 
@@ -134,7 +134,7 @@ npm run dev
 ```
 
 Mở <http://127.0.0.1:3000> hoặc <http://127.0.0.1:3000/login.html> trong trình duyệt.
-Máy chủ Node phục vụ cả giao diện lẫn `/api/*` trên cùng địa chỉ, không cần bật Live Server.
+ASP.NET Core phục vụ cả giao diện lẫn `/api/*` trên cùng địa chỉ; Node chỉ tải `.env` và khởi động C#. Xem [phạm vi từng backend](flower.com/docs/backend/BACKEND-BOUNDARIES.md).
 
 Mặc định `AUTH_MODE=local`: vào **Tạo tài khoản**, dùng tên có `@` như `ban@demo`, chọn mật khẩu
 và tự đặt PIN gồm 4–6 chữ số cùng 3 câu hỏi khôi phục PIN. Tên đăng nhập không cần là email có thật. Tài khoản, mật khẩu băm

@@ -2,7 +2,7 @@
 
 ## Yêu cầu áp dụng
 
-- Nguồn đối chiếu: `../flower.com/backend/`, các entry point `../flower.com/api/`, rewrite trong `vercel.json` và các module dùng chung được backend import.
+- Đường dẫn hiện tại tính từ gốc repo: nguồn đối chiếu `flower.com/legacy-node/backend/`, entry point `flower.com/legacy-node/api/`, rewrite trong `vercel.json` và các module dùng chung được backend import.
 - Giữ Firebase Authentication và Cloud Firestore hiện tại. Dùng Firebase Admin SDK cho xác thực và Google.Cloud.Firestore cho truy cập Firestore trong các bước tích hợp C#.
 - Không chuyển dữ liệu sang SQL Server, tạo lại database, đổi collection/document/field hoặc chạy EF migration cho công việc chuyển đổi này.
 - Giữ nguyên frontend, URL, HTTP method, query, body, response, mã lỗi, thông báo lỗi, header, điều kiện phân quyền và transaction.

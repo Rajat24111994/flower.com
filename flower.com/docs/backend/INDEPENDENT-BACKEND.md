@@ -3,7 +3,7 @@
 ## Phạm vi và đích đến
 
 Tài liệu này tổng hợp cả 10 mục yêu cầu ngày 16/11/2026. Host mới là
-`src/FlowerFlow.Backend`; host chuyển đổi Firebase cũ `src/FlowerFlow.Api` được giữ nguyên.
+`flower.com/backend/FlowerFlow.Backend`; host Firebase production `flower.com/backend/FlowerFlow.Api` được giữ nguyên.
 
 | Mục | Cam kết thực hiện |
 | --- | --- |

@@ -2,7 +2,7 @@
 
 Tài liệu này mô tả kiến trúc, luồng dữ liệu và các module chính của website. Hướng dẫn cài đặt và tổng quan dự án nằm ở [README gốc](../README.md).
 
-Trên nhánh `asp.net`, các API và máy chủ local chạy bằng ASP.NET Core C# trong `../aspnet/`, giữ các luồng Firebase/Firestore mô tả bên dưới. Các tham chiếu Vercel Functions/JS backend trong tài liệu là nguồn cũ được giữ để kiểm thử đối chiếu. Xem [cách chạy và triển khai bản C#](backend/README.md).
+Trên `main`, website và API chạy bằng ASP.NET Core C# tại `backend/FlowerFlow.Api`, giữ Firebase/Firestore. Backend Node cũ nằm tại `legacy-node/`, chỉ dùng đối chiếu kiểm thử. Host `backend/FlowerFlow.Backend` là bản độc lập in-memory, chưa thay production. Xem [ranh giới và quy trình thay đổi](docs/backend/BACKEND-BOUNDARIES.md). Xem [cách chạy và triển khai bản C#](backend/README.md).
 
 ## Tổng quan
 
@@ -10,7 +10,7 @@ FlowerFlow là ứng dụng frontend tĩnh (HTML, CSS, JavaScript thuần, khôn
 
 - **Firebase Authentication** để đăng nhập khách hàng và quản trị viên.
 - **Cloud Firestore** để lưu catalog, đánh giá và đơn hàng dùng chung giữa các thiết bị.
-- **Vercel Functions** (`api/`) để chạy các thao tác cần Firebase Admin SDK.
+- **ASP.NET Core** (`backend/FlowerFlow.Api` → Application/Infrastructure) xử lý `/api/...`, Firebase Admin SDK và phục vụ frontend trên Render.
 - **`localStorage`** để cache catalog, duy trì giỏ hàng cục bộ và làm bản lưu ngoại tuyến.
 
 ```mermaid
@@ -54,7 +54,7 @@ flowchart LR
 | Trang chủ | `index.html`, `homepage.css` | Giới thiệu, danh mục nổi bật, điều hướng |
 | Catalog | `product-store.js`, `flower.json` | Đồng bộ catalog do cửa hàng quản lý với Firestore, cache vào `localStorage`, lắng nghe thay đổi theo thời gian thực; không tự nạp sản phẩm hoặc danh mục mẫu, chỉ thêm danh mục mẫu khi quản trị viên chủ động xác nhận |
 | Tự phối bó | `custom-bouquet.html`, `custom-bouquet.js` | Chọn loại hoa, số lượng, màu mong muốn, vai trò hoa chính/phụ, bố cục và kiểu gói; xem dự toán, lưu bản nháp hoặc gửi yêu cầu tư vấn |
-| Yêu cầu thiết kế riêng | `design-request.html`, `api/design-requests.js` | Lưu yêu cầu vào Firestore, theo dõi lịch sử, nhận báo giá cửa hàng và chấp nhận/từ chối bằng mã truy cập riêng |
+| Yêu cầu thiết kế riêng | `design-request.html`, C# `DesignRequestsController` | Lưu yêu cầu vào Firestore, theo dõi lịch sử, nhận báo giá cửa hàng và chấp nhận/từ chối bằng mã truy cập riêng |
 | Danh mục và chi tiết | `product.html`, `product.js`, `product-categories.js`, `related-products.js` | Tìm kiếm, lọc, sắp xếp; trang chi tiết, thư viện ảnh, gợi ý sản phẩm liên quan |
 | Đánh giá | `review-store.js` | Đọc đánh giá công khai và gửi đánh giá mới (yêu cầu đăng nhập) lên Firestore |
 | Giỏ hàng và yêu thích | `shopping-store.js`, `shopping-sync.js`, `cart.html`, `wish.html` | Lưu ngoại tuyến, đồng bộ Firestore theo UID khi đăng nhập; giá/tồn kho vẫn do API đặt hàng xác minh |
@@ -65,7 +65,7 @@ flowchart LR
 | Liên hệ | `contact-tools.js/.css` | Thanh liên hệ Facebook và Zalo (ẩn trên trang quản trị) |
 | Quản trị | `admin.html`, `admin.js`, `admin.css` | Sản phẩm, danh mục, ưu đãi, cấu hình khu vực/phí giao và bậc phí gói bó hoa, xử lý yêu cầu thiết kế/báo giá, đơn hàng, xác minh QR và xem audit đối soát, doanh thu, đánh giá, lời nhắn, người dùng |
 | Owner | `owner.html`, `owner.js`, mục “Quản lý giá hoa” trong `admin.html` | Cấp/gỡ quyền admin; cập nhật giá hoa nguyên liệu và xem lịch sử giá |
-| API | `api/*.js` (điểm vào, mỗi file 1 dòng) → `backend/<module>/` (xử lý thật, xem [`backend/README.md`](backend/README.md)): `orders`, `payments`, `catalog` (kèm giá hoa `/api/flower-prices`), `shop-settings` (kèm phí gói `/api/bouquet-wrapping`), `design-requests`, `accounts`, `admin` (kèm nhật ký `/api/admin/audit`), `shared` | API giá hoa chỉ Owner dùng, cập nhật giá và lịch sử trong cùng giao dịch; quản lý khu vực/phí bó, yêu cầu thiết kế; báo giá/tạo đơn authoritative, tra cứu đơn khách và đối soát thanh toán |
+| API | `backend/FlowerFlow.Api/Controllers` → `backend/FlowerFlow.Application` → `backend/FlowerFlow.Infrastructure` (nguồn JS đối chiếu: `legacy-node/api/*.js` → `legacy-node/backend/<module>/`; xem [`backend/README.md`](backend/README.md)): `orders`, `payments`, `catalog` (kèm giá hoa `/api/flower-prices`), `shop-settings` (kèm phí gói `/api/bouquet-wrapping`), `design-requests`, `accounts`, `admin` (kèm nhật ký `/api/admin/audit`), `shared` | API giá hoa chỉ Owner dùng, cập nhật giá và lịch sử trong cùng giao dịch; quản lý khu vực/phí bó, yêu cầu thiết kế; báo giá/tạo đơn authoritative, tra cứu đơn khách và đối soát thanh toán |
 
 ## Dữ liệu
 
@@ -124,7 +124,7 @@ Firestore vẫn là nguồn dữ liệu chính; `product-store.js` đồng bộ 
 
 Admin có thể chuyển đơn sang các trạng thái giao hàng. Security Rules chỉ cho trình duyệt cập nhật các trường vận hành nằm trong danh sách cho phép; trạng thái xác minh thanh toán chỉ do API máy chủ ghi. Các tên trạng thái cũ (ví dụ "Đã vận chuyển", "Giao hàng thất bại") được tự động chuyển sang tên mới tương ứng.
 
-Đơn mới được gửi tới `/api/orders`. Backend chỉ nhận mã sản phẩm, số lượng và thông tin giao hàng; tự đọc giá, tồn kho, ưu đãi từ Firestore, tính lại tổng tiền và dành tồn kho trong cùng một transaction trước khi ghi đơn. Hệ thống giữ hàng 15 phút với VNPay chưa thanh toán, 30 phút với COD chưa được xác nhận và 30 phút với đơn QR cũ chưa xác minh (`api/orders.js`); đơn hết hạn hoặc bị hủy sẽ được hoàn kho bằng transaction. QR đã xác minh giữ hàng đến khi hoàn tất hoặc hủy đơn. Đơn đã giao chốt phần tồn kho đã bán, không hoàn kho khi dọn đơn. Việc dọn chạy khi báo giá/đặt hàng, lúc quản trị mở dashboard, theo GitHub Actions mỗi 15 phút và theo lịch Vercel hằng ngày làm dự phòng. Trên Vercel Hobby, cron chỉ chạy tối đa một lần mỗi ngày; cần cấu hình `FLOWER_APP_URL` và `CRON_SECRET` cho GitHub Actions như hướng dẫn tại [`../ADMIN-SETUP.md`](../ADMIN-SETUP.md). Khách đã đăng nhập chỉ đọc được đơn có UID của mình; khách chưa đăng nhập tra cứu qua API bằng mã đơn và số điện thoại. Chỉ tài khoản có claim `admin: true` được xem danh sách, cập nhật hoặc xóa đơn. Dữ liệu đơn cũ trong `localStorage.flowerOrders` không tự động chuyển lên Firestore.
+Đơn mới được gửi tới `/api/orders`. Backend chỉ nhận mã sản phẩm, số lượng và thông tin giao hàng; tự đọc giá, tồn kho, ưu đãi từ Firestore, tính lại tổng tiền và dành tồn kho trong cùng một transaction trước khi ghi đơn. Hệ thống giữ hàng 15 phút với VNPay chưa thanh toán, 30 phút với COD chưa được xác nhận và 30 phút với đơn QR cũ chưa xác minh (`backend/FlowerFlow.Application/Orders`); đơn hết hạn hoặc bị hủy sẽ được hoàn kho bằng transaction. QR đã xác minh giữ hàng đến khi hoàn tất hoặc hủy đơn. Đơn đã giao chốt phần tồn kho đã bán, không hoàn kho khi dọn đơn. Việc dọn chạy khi báo giá/đặt hàng, lúc quản trị mở dashboard, qua worker C# và GitHub Actions mỗi 15 phút. Scheduler ngoài cần `FLOWER_APP_URL` và `CRON_SECRET`; xem [hướng dẫn quản trị](../docs/ADMIN-SETUP.md). Khách đã đăng nhập chỉ đọc được đơn có UID của mình; khách chưa đăng nhập tra cứu qua API bằng mã đơn và số điện thoại. Chỉ tài khoản có claim `admin: true` được xem danh sách, cập nhật hoặc xóa đơn. Dữ liệu đơn cũ trong `localStorage.flowerOrders` không tự động chuyển lên Firestore.
 
 Khu vực giao hàng được quản trị viên cấu hình thủ công trong mục **Giao hàng**; không có danh sách địa bàn hoặc mức phí mẫu. Mỗi khu vực gồm tỉnh/thành, quận/huyện, trạng thái phục vụ và phí VND (mặc định khi thêm là 0 ₫). Khách chỉ chọn được khu vực đang bật. Nếu chưa có khu vực bật, checkout giải thích cấu hình cần thiết và không cho gửi đơn. `/api/orders` đọc khu vực/fee từ Firestore để báo giá và kiểm tra lại trong transaction khi tạo đơn; số phí từ trình duyệt không được tin cậy. Lịch dùng múi giờ `Asia/Ho_Chi_Minh`, nhận giao trong ngày trước 15:00, với các khung 08:00–11:00, 11:00–14:00, 14:00–17:00 và 17:00–20:00.
 
@@ -166,9 +166,9 @@ Triển khai: `firebase deploy --only firestore:rules,firestore:indexes`. Lệnh
 
 ## Ghi chú phát triển
 
-- Luôn chạy qua HTTP (`python -m http.server` hoặc `vercel dev`), không mở bằng `file://`.
+- Chạy `npm run dev` (launcher C#) hoặc `dotnet run --project backend/FlowerFlow.Api`; không mở bằng `file://`. Static server riêng không cung cấp API.
 - Các script được nạp kèm tham số phiên bản (`?v=N`) để tránh cache trình duyệt; tăng số này khi thay đổi file JS/CSS tương ứng.
 - Firebase Web SDK được nạp từ CDN `gstatic.com` (phiên bản 11.6.0).
 - Chạy `npm test` trước khi commit.
-- **Giới hạn 12 hàm của Vercel Hobby:** mỗi file `.js` trong `api/` là một hàm, và vượt 12 hàm thì Vercel không deploy được. Hiện có 11 hàm. API mới đặt trong module phù hợp ở `backend/`, đăng ký vào một hàm có sẵn bằng `withRoutes` (`backend/shared/api-routes.js`), rồi thêm `rewrites` trong `vercel.json` để giữ URL riêng. Test `tests/vercel-functions.test.js` sẽ báo đỏ nếu vượt giới hạn.
+- **Backend Node lưu trữ:** `legacy-node/api` và `legacy-node/backend` dùng làm oracle/fixture. Không thêm endpoint production vào đây hoặc triển khai Vercel để thay C#. URL mới được khai báo bằng controller C#; chạy kiểm thử native HTTP và contracts. Các giới hạn Vercel chỉ thuộc bản cũ.
 - Không đặt lệnh `"build"` trong `package.json`: Vercel sẽ chạy nó rồi đòi thư mục kết quả `public`. Dùng `npm run check:generated` để cập nhật dữ liệu SEO và hash CSP.

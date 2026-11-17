@@ -28,6 +28,9 @@ jobs:
       - name: Cài thư viện
         working-directory: flower.com
         run: npm ci
+      - name: Verify production and legacy backend boundaries
+        working-directory: flower.com
+        run: npm run check:backends
       - name: Build kiểm tra dữ liệu SEO và CSP
         working-directory: flower.com
         run: npm run check:generated

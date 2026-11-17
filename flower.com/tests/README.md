@@ -27,7 +27,7 @@ response của test server, không sửa file production. Chạy `npm run test:e
 
 - Node.js 24.x (kiểm tra bằng `node --version`).
 - Unit test không cần cài thư viện riêng; các test dùng `node:assert` và Node.js Test Runner.
-- Test tích hợp (feature, system, security) cần thêm Java 11+ cho Firebase Emulator và `npm ci` trong thư mục `tests`.
+- Test tích hợp (feature, system, security) cần thêm Java 21 cho Firebase Emulator và `npm ci` trong thư mục `tests`.
 
 ## Chạy kiểm thử
 
@@ -47,7 +47,7 @@ Trên Windows, nếu PowerShell chặn `npm` (execution policy), dùng `npm.cmd`
 node --test tests/UnitTests/product-page.test.js
 ```
 
-Test tích hợp chạy API thật (`flower.com/legacy-node/api/*.js`) và `firestore.rules` thật trên **Firebase Emulator** với project `demo-flowerflow`, nên không đụng tới dữ liệu thật. CI trên GitHub Actions chạy cả unit test và test tích hợp cho mọi Pull Request.
+Job Node integration chạy API legacy (`flower.com/legacy-node/api/*.js`); job ASP.NET HTTP chạy cùng suite trên host `FlowerFlow.Api` bằng `IntegrationTests/test-api.cjs`. Hai job đều dùng `firestore.rules` thật trên **Firebase Emulator** với project `demo-flowerflow`, nên không đụng tới dữ liệu thật. CI trên GitHub Actions chạy cả unit test và test tích hợp cho mọi Pull Request.
 
 ## Các phạm vi đang được kiểm thử
 

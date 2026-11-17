@@ -1,11 +1,13 @@
-# Backend FlowerFlow
+# Backend Node cũ — nguồn đối chiếu
 
-Backend chạy dưới dạng **Vercel Functions** (Node.js), dữ liệu ở **Cloud Firestore**, đăng nhập bằng **Firebase Authentication**. Code chia thành từng **module theo nghiệp vụ**; mỗi module tự chứa phần xử lý của nó.
+> Không phải backend production. Website chạy C# tại `flower.com/backend/FlowerFlow.Api`; Node chỉ dùng oracle, integration fixtures và một số script quản trị còn phụ thuộc helper cũ. Không xóa khi các phụ thuộc đó chưa được chuyển. Xem [ranh giới backend](../../docs/backend/BACKEND-BOUNDARIES.md).
+
+Bản cũ từng chạy dưới dạng **Vercel Functions** (Node.js), dữ liệu ở **Cloud Firestore**, đăng nhập bằng **Firebase Authentication**. Code chia thành từng **module theo nghiệp vụ**; mỗi module tự chứa phần xử lý của nó.
 
 ## Cách tổ chức
 
 ```text
-flower.com/
+flower.com/legacy-node/
 ├── api/                  # Điểm vào của Vercel: mỗi file là một URL /api/..., chỉ 1 dòng trỏ sang backend/
 └── backend/
     ├── orders/           # Đơn hàng
