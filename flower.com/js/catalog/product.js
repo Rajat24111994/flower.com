@@ -637,6 +637,18 @@ function renderProductDetail(product) {
   document.getElementById("detail-breadcrumb-name").textContent = productName
   document.getElementById("detail-name").textContent = productName
   document.getElementById("detail-category").textContent = getProductCategory(product)
+  const detailBadges = document.getElementById("detail-badges")
+  detailBadges.replaceChildren()
+  for (const badgeInfo of [
+    product.onSale ? { text: "Đang có ưu đãi", className: "detail-badge--sale" } : null,
+    product.sameDayDelivery ? { text: "Có giao trong ngày", className: "detail-badge--delivery" } : null
+  ].filter(Boolean)) {
+    const badge = document.createElement("span")
+    badge.className = `detail-badge ${badgeInfo.className}`
+    badge.textContent = badgeInfo.text
+    detailBadges.append(badge)
+  }
+  detailBadges.hidden = detailBadges.childElementCount === 0
   document.getElementById("detail-price").textContent = formatVnd(product.price)
   document.getElementById("detail-stock").textContent = stock > 0 ? `Còn hàng · ${stock} bó · Có thể thêm ${Math.max(0, stock - quantityInCart)} bó` : "Hiện đã hết hàng"
   document.getElementById("detail-stock").classList.toggle("out-of-stock", stock === 0)
@@ -653,6 +665,12 @@ function renderProductDetail(product) {
   detailQuantityError.textContent = ""
   detailQuantity.setCustomValidity("")
   thumbnails.replaceChildren()
+  const imageFallback = document.getElementById("gallery-image-fallback")
+  const imageFallbackMessage = document.getElementById("gallery-image-fallback-message")
+  const showImageFallback = (message) => {
+    imageFallbackMessage.textContent = message
+    imageFallback.hidden = false
+  }
   mainImage.hidden = images.length === 0
   mainImage.alt = productName
   mainImage.fetchPriority = "high"
@@ -660,9 +678,16 @@ function renderProductDetail(product) {
   mainImage.onerror = () => {
     mainImage.hidden = true
     mainImage.parentElement.classList.add("image-unavailable")
+    showImageFallback(`Ảnh của ${productName} không tải được.`)
   }
   mainImage.parentElement.classList.toggle("image-unavailable", images.length === 0)
-  mainImage.src = images[selectedImageIndex] || ""
+  if (images.length) {
+    imageFallback.hidden = true
+    mainImage.src = images[selectedImageIndex]
+  } else {
+    mainImage.removeAttribute("src")
+    showImageFallback(`Sản phẩm ${productName} chưa có ảnh.`)
+  }
   mainImage.parentElement.classList.remove("is-closeup")
   document.getElementById("detail-gallery-caption").textContent = "Ảnh toàn cảnh sản phẩm"
 
@@ -686,6 +711,7 @@ function renderProductDetail(product) {
       document.getElementById("detail-gallery-caption").textContent = `Ảnh sản phẩm ${index + 1}`
       mainImage.src = imageUrl
       mainImage.hidden = false
+      imageFallback.hidden = true
       mainImage.parentElement.classList.remove("image-unavailable")
       thumbnails.querySelectorAll(".gallery-thumbnail").forEach((item) => {
         const isActive = item === thumbnail
@@ -708,6 +734,7 @@ function renderProductDetail(product) {
     closeup.addEventListener("click", () => {
       mainImage.src = images[0]
       mainImage.hidden = false
+      imageFallback.hidden = true
       mainImage.parentElement.classList.remove("image-unavailable")
       mainImage.parentElement.classList.add("is-closeup")
       document.getElementById("detail-gallery-caption").textContent = "Cận cảnh phóng to từ ảnh gốc"

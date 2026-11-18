@@ -49,7 +49,10 @@
         <div class="product-gallery">
           <div class="product-gallery-main">
             <img id="detail-main-image" alt="" width="800" height="800" fetchpriority="high" decoding="async">
-            <span class="gallery-image-fallback" aria-hidden="true">✿</span>
+            <p id="gallery-image-fallback" class="gallery-image-fallback" role="status" aria-live="polite" hidden>
+              <span aria-hidden="true">✿</span>
+              <span id="gallery-image-fallback-message"></span>
+            </p>
           </div>
           <div class="product-gallery-thumbnails" id="detail-thumbnails" role="group" aria-label="Thư viện ảnh sản phẩm"></div>
           <p id="detail-gallery-caption" class="bouquet-help" aria-live="polite"></p>
@@ -58,6 +61,7 @@
           <p class="catalog-eyebrow">FLOWERFLOW · HOA TƯƠI</p>
           <h1 id="detail-name"></h1>
           <p class="detail-category"><span>Danh mục</span><strong id="detail-category"></strong></p>
+          <div class="detail-badges" id="detail-badges" aria-label="Thông tin sản phẩm" hidden></div>
           <p class="detail-price" id="detail-price"></p>
           <p class="detail-stock" id="detail-stock"></p>
           <div class="detail-description">
