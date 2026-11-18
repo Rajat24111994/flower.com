@@ -156,7 +156,12 @@
             </label>
           </div>
           <div id="payment-online-panel" class="payment-online-panel" hidden>
-            <p>Sau khi xác nhận đặt hàng, trang theo dõi đơn sẽ hiển thị mã QR với đúng số tiền và nội dung chuyển khoản.</p>
+            <div class="checkout-qr">
+              <img id="checkout-payment-qr" src="https://img.vietqr.io/image/VCB-1063118243-compact2.png?accountName=DO%20BA%20THAI" alt="Mã QR chuyển khoản Vietcombank cho DO BA THAI, tài khoản 1063118243" width="280" height="350">
+              <a id="checkout-payment-qr-link" href="https://img.vietqr.io/image/VCB-1063118243-compact2.png?accountName=DO%20BA%20THAI" target="_blank" rel="noopener noreferrer">Mở mã QR để xem hoặc lưu ảnh</a>
+            </div>
+            <p id="checkout-payment-details" aria-live="polite">Đang chờ xác minh số tiền của đơn hàng.</p>
+            <p><strong>Chưa chuyển tiền ở bước này.</strong> Hãy xác nhận đặt hàng trước, rồi thanh toán theo QR tại trang theo dõi đơn để cửa hàng đối chiếu đúng đơn.</p>
             <p class="payment-online-note">Vietcombank · STK 1063118243 · DO BA THAI. Cửa hàng đối chiếu và xác nhận tiền thủ công.</p>
             <p class="payment-online-note"><strong>Hàng được giữ trong 30 phút.</strong> Đơn chưa được xác minh thanh toán khi hết thời hạn giữ hàng sẽ tự hủy.</p>
           </div>

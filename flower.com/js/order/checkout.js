@@ -228,6 +228,21 @@
 
   function updatePaymentOnlinePanel() {
     paymentOnlinePanel.hidden = checkoutForm.querySelector('input[name="paymentMethod"]:checked')?.value !== "qr";
+    const qr = document.getElementById("checkout-payment-qr");
+    const link = document.getElementById("checkout-payment-qr-link");
+    const details = document.getElementById("checkout-payment-details");
+    const url = new URL("https://img.vietqr.io/image/VCB-1063118243-compact2.png");
+    url.searchParams.set("accountName", "DO BA THAI");
+    const total = Number(serverQuote?.totals?.total);
+    if (Number.isSafeInteger(total) && total > 0) {
+      url.searchParams.set("amount", String(total));
+      url.searchParams.set("addInfo", paymentReference);
+      details.textContent = `Số tiền dự kiến: ${total.toLocaleString("vi-VN")} ₫ · Nội dung: ${paymentReference}`;
+    } else {
+      details.textContent = "QR tài khoản nhận tiền. Số tiền sẽ được cập nhật sau khi máy chủ xác minh đơn hàng.";
+    }
+    if (qr.src !== url.toString()) qr.src = url.toString();
+    link.href = url.toString();
   }
 
   checkoutForm.querySelectorAll('input[name="paymentMethod"]').forEach((input) => {

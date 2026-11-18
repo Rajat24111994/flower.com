@@ -305,6 +305,9 @@ body {
 }
 
 .payment-online-panel[hidden] { display: none; }
+.checkout-qr { display: grid; justify-items: center; gap: 10px; width: 100%; }
+.checkout-qr img { display: block; width: min(100%, 280px); height: auto; background: #fff; border-radius: 12px; }
+.checkout-qr a { font-size: 14px; text-align: center; text-decoration: underline; }
 .payment-online-panel p { margin: 0; }
 .payment-online-note { max-width: 390px; color: #87938c; font-size: 12px; line-height: 1.5; }
 

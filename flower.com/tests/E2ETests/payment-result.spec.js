@@ -6,6 +6,13 @@ test("checkout defaults to QR and keeps COD available", async ({ page }) => {
  const cod = page.locator('[name="paymentMethod"][value="cod"]');
  const details = page.locator("#payment-online-panel");
  await expect(qr).toBeChecked();
+ const image = page.locator("#checkout-payment-qr");
+ await expect(image).toBeVisible();
+ const imageUrl = new URL(await image.getAttribute("src"));
+ expect(imageUrl.hostname).toBe("img.vietqr.io");
+ expect(imageUrl.pathname).toBe("/image/VCB-1063118243-compact2.png");
+ expect(imageUrl.searchParams.get("accountName")).toBe("DO BA THAI");
+ await expect(page.locator("#checkout-payment-qr-link")).toHaveAttribute("href", imageUrl.toString());
  await expect(page.locator('[name="paymentMethod"][value="vnpay"]')).toHaveCount(0);
  await expect(page.getByText(/VNPay/)).toHaveCount(0);
  await cod.check(); await expect(details).toBeHidden();
