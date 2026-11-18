@@ -175,3 +175,6 @@ Triển khai: `firebase deploy --only firestore:rules,firestore:indexes`. Lệnh
 - Chạy `npm test` trước khi commit.
 - **Backend Node lưu trữ:** `legacy-node/api` và `legacy-node/backend` dùng làm oracle/fixture. Không thêm endpoint production vào đây hoặc triển khai Vercel để thay C#. URL mới được khai báo bằng controller C#; chạy kiểm thử native HTTP và contracts. Các giới hạn Vercel chỉ thuộc bản cũ.
 - Không đặt lệnh `"build"` trong `package.json`: Vercel sẽ chạy nó rồi đòi thư mục kết quả `public`. Dùng `npm run check:generated` để cập nhật dữ liệu SEO và hash CSP.
+
+## Issue #128
+- Admin module extraction completed (js/admin/*.js).
