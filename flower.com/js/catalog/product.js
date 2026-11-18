@@ -177,6 +177,7 @@ function display(data) {
         const productName = el.title || "Sản phẩm hoa"
         const box = document.createElement("article")
         const imageFrame = document.createElement("div")
+        const imagePlaceholder = document.createElement("p")
         let img = document.createElement("img")
         let title = document.createElement("h2")
         let price = document.createElement("p")
@@ -190,7 +191,19 @@ function display(data) {
         const quantity = Math.max(0, Number(el.quantity) || 0)
 
         imageFrame.className = "product-image"
-        img.src = el.image || ""
+        imagePlaceholder.className = "product-image-placeholder"
+        imagePlaceholder.setAttribute("role", "img")
+        imagePlaceholder.hidden = true
+        const imageSource = typeof el.image === "string" ? el.image.trim() : ""
+        if (imageSource) {
+          img.src = imageSource
+        } else {
+          img.hidden = true
+          imageFrame.classList.add("image-unavailable")
+          imagePlaceholder.hidden = false
+          imagePlaceholder.textContent = `Chưa có ảnh cho ${productName}`
+          imagePlaceholder.setAttribute("aria-label", `Chưa có ảnh cho ${productName}`)
+        }
         img.alt = productName
         img.width = 420
         img.height = 315
@@ -200,7 +213,9 @@ function display(data) {
         img.addEventListener("error", () => {
           img.hidden = true
           imageFrame.classList.add("image-unavailable")
-          imageFrame.setAttribute("aria-label", `Ảnh ${productName} hiện không khả dụng`)
+          imagePlaceholder.hidden = false
+          imagePlaceholder.textContent = `Ảnh của ${productName} không tải được`
+          imagePlaceholder.setAttribute("aria-label", `Ảnh của ${productName} không tải được`)
         }, { once: true })
         title.innerText = productName
         price.className = "product-price"
@@ -251,7 +266,7 @@ function display(data) {
           toggleProductWishlist(el)
         })
 
-        imageFrame.append(img)
+        imageFrame.append(img, imagePlaceholder)
         actions.append(orderButton, cartButton, wishlistButton, detailsButton)
         box.append(imageFrame, title)
         if (badges.childElementCount) box.append(badges)
@@ -489,6 +504,10 @@ function watchProductReviews(product) {
 }
 
 const pageParams = new URLSearchParams(window.location.search)
+const catalogPageSize = 12
+let currentCatalogPage = Math.max(1, Number.parseInt(pageParams.get("page") || "1", 10) || 1)
+const catalogPagination = document.getElementById("catalog-pagination")
+const catalogResultsRegion = document.getElementById("catalog-results-region")
 const initialSearch = pageParams.get("search") || pageParams.get("q") || ""
 const initialFlowerType = pageParams.get("flower") || ""
 const initialCategoryKey = pageParams.get("category") || ""
@@ -905,7 +924,53 @@ for (const [id, key] of [["price-min", "min"], ["price-max", "max"], ["price-fil
   if (value !== null && (input.tagName !== "SELECT" || [...input.options].some((option) => option.value === value))) input.value = value
 }
 
-function renderProducts() {
+function renderCatalogPagination(pageCount, restoreFocus = false) {
+  if (!catalogPagination) return
+  catalogPagination.replaceChildren()
+  catalogPagination.hidden = pageCount <= 1
+  if (pageCount <= 1) return
+
+  const addPageButton = (label, page, { disabled = false, current = false } = {}) => {
+    const button = document.createElement("button")
+    button.type = "button"
+    button.className = "catalog-page-button"
+    button.textContent = label
+    button.disabled = disabled
+    button.setAttribute("aria-label", current ? `Trang ${page}, trang hiện tại` : `Đến trang ${page}`)
+    if (current) button.setAttribute("aria-current", "page")
+    button.addEventListener("click", () => {
+      if (page === currentCatalogPage || disabled) return
+      currentCatalogPage = page
+      renderProducts(false, true)
+    })
+    catalogPagination.append(button)
+  }
+
+  addPageButton("Trước", Math.max(1, currentCatalogPage - 1), { disabled: currentCatalogPage === 1 })
+  const visiblePages = new Set([1, pageCount, currentCatalogPage - 1, currentCatalogPage, currentCatalogPage + 1]
+    .filter((page) => page >= 1 && page <= pageCount))
+  let previousPage = 0
+  for (const page of [...visiblePages].sort((first, second) => first - second)) {
+    if (previousPage && page - previousPage > 1) {
+      const ellipsis = document.createElement("span")
+      ellipsis.className = "catalog-page-ellipsis"
+      ellipsis.setAttribute("aria-hidden", "true")
+      ellipsis.textContent = "…"
+      catalogPagination.append(ellipsis)
+    }
+    addPageButton(String(page), page, { current: page === currentCatalogPage })
+    previousPage = page
+  }
+  addPageButton("Sau", Math.min(pageCount, currentCatalogPage + 1), { disabled: currentCatalogPage === pageCount })
+  if (restoreFocus) {
+    catalogPagination.querySelector('[aria-current="page"]')?.focus({ preventScroll: true })
+    const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    catalogResultsRegion?.scrollIntoView({ behavior: prefersReducedMotion ? "auto" : "smooth", block: "start" })
+  }
+}
+
+function renderProducts(resetToFirstPage = true, restorePaginationFocus = false) {
+  if (resetToFirstPage) currentCatalogPage = 1
   updateCatalogStructuredData(products)
   const visibleProducts = getCatalogResults()
   if (!visibleProducts.length) {
@@ -920,10 +985,26 @@ function renderProducts() {
     allProductsLink.href = products.length ? "./product.html" : "./custom-bouquet.html"
     allProductsLink.textContent = products.length ? "Xem tất cả sản phẩm" : "Tự phối bó hoa"
     container.append(allProductsLink)
+    catalogPagination.hidden = true
+    const params = new URLSearchParams(window.location.search)
+    params.delete("page")
+    const query = params.toString()
+    window.history.replaceState(null, "", window.location.pathname + (query ? `?${query}` : "") + window.location.hash)
     return
   }
 
-  display(visibleProducts)
+  const pageCount = Math.ceil(visibleProducts.length / catalogPageSize)
+  currentCatalogPage = Math.min(currentCatalogPage, pageCount)
+  const pageStart = (currentCatalogPage - 1) * catalogPageSize
+  document.getElementById("catalog-results-count").textContent =
+    `Trang ${currentCatalogPage} / ${pageCount} · Hiển thị ${pageStart + 1}–${Math.min(pageStart + catalogPageSize, visibleProducts.length)} trong ${visibleProducts.length} sản phẩm phù hợp`
+  display(visibleProducts.slice(pageStart, pageStart + catalogPageSize))
+  renderCatalogPagination(pageCount, restorePaginationFocus)
+  const params = new URLSearchParams(window.location.search)
+  if (currentCatalogPage > 1) params.set("page", String(currentCatalogPage))
+  else params.delete("page")
+  const query = params.toString()
+  window.history.replaceState(null, "", window.location.pathname + (query ? `?${query}` : "") + window.location.hash)
   navigateToProductDetail()
 }
 
@@ -1017,7 +1098,11 @@ async function fetchAndRenderProducts() {
     navigateToProductDetail()
   } catch (error) {
     console.error("Không thể tải danh sách hoa:", error)
-    container.textContent = "Chưa thể tải danh sách sản phẩm. Vui lòng tải lại trang."
+    const loadError = document.createElement("p")
+    loadError.className = "catalog-load-error"
+    loadError.setAttribute("role", "alert")
+    loadError.textContent = "Chưa thể tải danh sách sản phẩm. Vui lòng tải lại trang."
+    container.replaceChildren(loadError)
     if (requestedProductId) {
       setRelatedFlowersStatus("Chưa thể tải gợi ý hoa lúc này. Vui lòng tải lại trang.", "error")
     }
