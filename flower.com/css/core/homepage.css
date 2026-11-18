@@ -240,6 +240,96 @@
   margin: 0 auto;
 }
 
+.featured-section {
+  padding-top: 68px;
+  padding-bottom: 16px;
+}
+
+.featured-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.featured-card {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  transition: transform 180ms ease, box-shadow 180ms ease;
+}
+
+.featured-card:hover {
+  box-shadow: 0 12px 28px rgb(67 40 52 / 10%);
+  transform: translateY(-3px);
+}
+
+.featured-card-image {
+  display: block;
+  overflow: hidden;
+  background: var(--cream);
+}
+
+.featured-card-image img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1 / 0.9;
+  object-fit: cover;
+  transition: transform 240ms ease;
+}
+
+.featured-card:hover .featured-card-image img {
+  transform: scale(1.035);
+}
+
+.featured-card-content {
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+}
+
+.featured-card-content h3 {
+  min-height: 2.8em;
+  margin: 0;
+  font-family: var(--serif);
+  font-size: 1.05rem;
+  line-height: 1.4;
+}
+
+.featured-card-price {
+  color: var(--berry-dark);
+  font-weight: 700;
+}
+
+.featured-card-action {
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #b895a4;
+  border-radius: 999px;
+  color: var(--berry);
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.featured-card-action:hover {
+  color: #fff;
+  background: var(--berry);
+}
+
+.featured-status {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--muted);
+  text-align: center;
+}
+
 .category-section {
   padding-top: 82px;
   padding-bottom: 84px;
@@ -424,6 +514,10 @@
   .category-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .featured-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 640px) {
@@ -510,6 +604,29 @@
   .category-grid {
     grid-template-columns: minmax(0, 1fr);
     gap: 12px;
+  }
+
+  .featured-section {
+    padding-top: 48px;
+  }
+
+  .featured-grid {
+    gap: 12px;
+  }
+
+  .featured-card-content {
+    gap: 8px;
+    padding: 12px;
+  }
+
+  .featured-card-content h3 {
+    min-height: 0;
+    font-size: 0.96rem;
+  }
+
+  .featured-card-action {
+    min-height: 36px;
+    font-size: 0.74rem;
   }
 
   .category-card {
