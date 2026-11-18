@@ -24,7 +24,7 @@ FlowerFlow giúp khách hàng **tìm, chọn và đặt hoa trong vài phút**, 
 | --- | --- | --- |
 | Tìm và lọc hoa theo loài, dịp, màu, giá | Xác nhận và cập nhật trạng thái đơn | Toàn quyền nhân viên quản lý |
 | Tùy chọn bó hoa, thiệp, gói quà | Quản lý sản phẩm, tồn kho, danh mục | Cấp và thu hồi quyền quản lý |
-| Thanh toán COD hoặc VNPay | Duyệt đánh giá, trả lời lời nhắn | Xuất báo cáo doanh thu ra Excel |
+| Thanh toán COD hoặc chuyển khoản VietQR | Duyệt đánh giá, trả lời lời nhắn | Xuất báo cáo doanh thu ra Excel |
 | Theo dõi đơn, đánh giá kèm ảnh | Theo dõi thanh toán, xem báo cáo doanh thu | |
 
 ## 🎯 Mục tiêu chính
@@ -43,10 +43,11 @@ flowchart LR
     Browser -->|Security Rules| DB[(Firestore)]
     Host -->|Admin SDK và quyền API| DB
     Host --> Auth
-    Host <--> VNPay[VNPay / IPN]
+    Admin[Trang quản trị] -->|Đối chiếu sao kê VietQR| Host
+    Actions[GitHub Actions] -->|Dọn đơn hết hạn, sao lưu| Host
 ```
 
-Cập nhật 17/11/2026: `FlowerFlow.Api` là backend chính; Node legacy chỉ để đối chiếu, backend độc lập InMemory chưa thay production. [SAD](Software-Architecture-Document.md) · [Mô hình dữ liệu](Data-Model.md).
+Cập nhật 18/11/2026: `FlowerFlow.Api` là backend chính, website tại <https://flower-com.onrender.com>; VNPay đã tắt từ 17/11/2026, thanh toán online chỉ còn chuyển khoản VietQR do cửa hàng xác nhận; Node legacy chỉ để đối chiếu, backend độc lập InMemory chưa thay production. [SAD](Software-Architecture-Document.md) · [Mô hình dữ liệu](Data-Model.md).
 
 ## 🛒 Luồng mua hàng
 
@@ -55,7 +56,7 @@ flowchart LR
     Catalog[Chọn hoa] --> Cart[Giỏ hàng]
     Cart --> Quote[C# báo giá]
     Quote --> Checkout[Xác nhận và giữ kho trong transaction]
-    Checkout --> Pay[COD hoặc VNPay]
+    Checkout --> Pay[COD hoặc chuyển khoản VietQR]
     Pay --> Track[Theo dõi đơn]
 ```
 
@@ -82,7 +83,9 @@ stateDiagram-v2
 Sơ đồ là trạng thái chuẩn; quyền chuyển, điều kiện thanh toán và reserved/sold/released
 được kiểm tra riêng trong API/Rules, không phải mọi caller đều thực hiện được mọi cạnh.
 
-> ⏱️ **Thời gian giữ hàng khi chưa thanh toán:** VNPay 15 phút · COD 30 phút. Quá hạn, hàng tự trả lại kho.
+> ⏱️ **Thời gian giữ hàng:** COD 5 phút chờ cửa hàng xác nhận · chuyển khoản QR 30 phút chờ tiền về. Quá hạn, đơn tự hủy và hàng trả lại kho ở lần dọn đơn kế tiếp (khi có báo giá/đặt hàng, admin mở dashboard hoặc lịch GitHub Actions).
+>
+> 🚚 **Giao hàng:** chỉ nội thành Hà Nội (12 quận), 5.000 VND/km tính từ cửa hàng ở Hà Đông.
 
 ## 🧭 Phạm vi
 
@@ -90,7 +93,7 @@ Sơ đồ là trạng thái chuẩn; quyền chuyển, điều kiện thanh toá
 | --- | --- |
 | **Người dùng** | Khách mua hoa, nhân viên quản lý, chủ cửa hàng |
 | **Nền tảng** | Website (máy tính và điện thoại) + trang quản trị |
-| **Chức năng cốt lõi** | Danh mục và tìm kiếm, giỏ hàng, đặt hàng, thanh toán, theo dõi đơn, đánh giá |
+| **Chức năng cốt lõi** | Danh mục và tìm kiếm, giỏ hàng, đặt hàng, thanh toán COD/VietQR, giao nội thành Hà Nội, theo dõi đơn, đánh giá |
 | **Quản trị** | Sản phẩm, tồn kho, danh mục, ưu đãi, khu vực giao, đơn hàng, doanh thu, người dùng |
 | **Ngoài phạm vi** | Nhiều chi nhánh, ứng dụng di động riêng, thanh toán thẻ tín dụng trực tiếp |
 

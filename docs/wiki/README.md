@@ -1,7 +1,7 @@
 # Ảnh và nội dung cho GitHub Wiki
 
 Thư mục này chứa nguồn cho [wiki của dự án](https://github.com/Longg5048/flower.com/wiki).
-Đã đối chiếu kiến trúc C#/Render và Firestore ngày 17/11/2026 (#167).
+Đã đối chiếu kiến trúc C#/Render và Firestore ngày 17/11/2026 (#167); cập nhật thanh toán (VNPay tắt, VietQR), giữ hàng COD 5 phút, sao lưu, mật khẩu và Lighthouse ngày 18/11/2026.
 
 ## Cách cập nhật một trang wiki
 

@@ -21,8 +21,8 @@ Xem [ma trận truy vết KH/QT/NF](Traceability-Matrix.md) để biết test n�
 | --- | --- | --- | --- |
 | NF‑01 | Hoạt động liên tục | Chạy 24/7, uptime ≥ 99,9% | ⚠️ Render Free và Firebase; không cam kết uptime 99,9%; chưa có công cụ đo uptime |
 | NF‑02 | Chịu tải dịp lễ | Ổn định khi lượng truy cập tăng 10–20 lần (14/2, 8/3, 20/10) | ⚠️ Load test trên emulator: đọc/báo giá > 700 yêu cầu/giây, p95 < 45 ms; nhưng ≥ 100 khách cùng mua một sản phẩm có thể bị lỗi 503 dù còn hàng ([báo cáo](https://github.com/Longg5048/flower.com/blob/main/docs/test-reports/2026-11-11-load-test.md)) |
-| NF‑03 | Sao lưu tự động | Sao lưu dữ liệu mỗi ngày | ⚠️ Có workflow nhưng thiếu service account/passphrase, chưa có bằng chứng backup production thành công (#118) |
-| NF‑04 | Khôi phục dữ liệu | Khôi phục được từ bản sao lưu | ⚠️ Đã diễn tập emulator/CLI/Node-C# (#165), chưa xác minh restore/RPO/RTO production |
+| NF‑03 | Sao lưu tự động | Sao lưu dữ liệu mỗi ngày | ⚠️ Đã cấu hình secret; chạy thật thành công 17/11/2026 ([run 44018473975](https://github.com/Longg5048/flower.com/actions/runs/44018473975), 200 document, file mã hóa). Lịch 01:23 hằng ngày bị GitHub trì hoãn; chưa đủ 24 giờ bằng chứng chạy theo lịch (#118) |
+| NF‑04 | Khôi phục dữ liệu | Khôi phục được từ bản sao lưu | ⚠️ Diễn tập emulator/CLI/Node-C# (#165); bản backup production 17/11 giải mã và xem trước khớp số document. Chưa restore thật vào project, chưa đo RPO/RTO |
 
 ```mermaid
 flowchart LR
@@ -34,14 +34,14 @@ flowchart LR
     Confirm --> Restore[Restore theo batch]
 ```
 
-Workflow production chưa chạy thành công do thiếu secret; sơ đồ không phải bằng chứng vận hành. [Runbook](https://github.com/Longg5048/flower.com/blob/main/docs/BACKUP-RESTORE.md).
+Workflow production đã chạy thành công lần đầu ngày 17/11/2026 (sao lưu + xem trước khôi phục, không ghi Firestore). [Runbook](https://github.com/Longg5048/flower.com/blob/main/docs/BACKUP-RESTORE.md).
 
 ## 🚀 Hiệu năng
 
 | Mã | Yêu cầu | Chỉ tiêu | Hiện trạng |
 | --- | --- | --- | --- |
-| NF‑05 | Tải trang chọn hoa | ≤ 5 giây | ⚠️ Có budget/đo local (#164); chưa có bằng chứng Lighthouse production hiện tại ≥90 |
-| NF‑06 | Xử lý thanh toán | ≤ 5 giây, không tính thời gian chờ ngân hàng | ⚠️ VNPay đã tích hợp; chưa đo thời gian |
+| NF‑05 | Tải trang chọn hoa | ≤ 5 giây | ✅ Lighthouse Mobile trên Render 17/11/2026: `/product.html` LCP 3,9 s, Performance 86, Accessibility 96, Best Practices 100, SEO 100 ([báo cáo](https://github.com/Longg5048/flower.com/blob/main/docs/issue-119-deployment.md)). Chưa đạt mốc Performance ≥ 90; lần mở đầu khi Render Free đang ngủ chậm hơn |
+| NF‑06 | Xử lý thanh toán | ≤ 5 giây, không tính thời gian chờ ngân hàng | ⚠️ Không còn cổng thanh toán (VNPay tắt 17/11/2026); tạo đơn COD/QR trên Render phản hồi trong vài giây khi instance đang thức, chưa đo có hệ thống |
 | NF‑07 | Đồng bộ tồn kho | Website và trang quản trị cập nhật trong ≤ 10 giây | ⚠️ Có đồng bộ Firestore; chưa đo ngưỡng 10 giây trên production |
 | NF‑08 | Không bán vượt kho | An toàn khi nhiều người mua cùng lúc | ✅ Kiểm tra và trừ kho trong cùng một giao dịch; có test |
 
@@ -49,9 +49,9 @@ Workflow production chưa chạy thành công do thiếu secret; sơ đồ khôn
 
 | Mã | Yêu cầu | Chỉ tiêu | Hiện trạng |
 | --- | --- | --- | --- |
-| NF‑09 | Thanh toán an toàn | Không lưu thông tin thẻ; kết quả thanh toán phải xác thực được | ⚠️ Code xác minh HMAC-SHA512 và test emulator; sandbox/IPN thật còn #160 |
+| NF‑09 | Thanh toán an toàn | Không lưu thông tin thẻ; kết quả thanh toán phải xác thực được | ✅ Website không nhận thông tin thẻ. Chuyển khoản VietQR chỉ được ghi nhận khi admin đối chiếu sao kê và xác nhận qua API, có audit `orderPaymentAudit`. Mã VNPay (HMAC-SHA512) đã tắt |
 | NF‑10 | Giá không bị sửa | Tiền hàng do máy chủ tính | ✅ Máy chủ tính lại giá, ưu đãi, phí giao trước khi tạo đơn |
-| NF‑11 | Mật khẩu mạnh | Mật khẩu mới có 8–4096 ký tự, chữ thường (a–z) và số (0–9) | ⚠️ Đã kiểm tra trên form đăng ký/đặt lại và API local; chưa xác minh Password Policy Firebase production |
+| NF‑11 | Mật khẩu mạnh | Mật khẩu mới có 8–4096 ký tự, chữ thường (a–z) và số (0–9) | ✅ Form, API local và Firebase Password Policy (Require) trên production. Gọi thẳng Firebase signUp với 4 mật khẩu yếu đều bị từ chối `PASSWORD_DOES_NOT_MEET_REQUIREMENTS` (#121, 17/11/2026) |
 | NF‑12 | Phân quyền | Khách, quản lý, chủ cửa hàng chỉ làm được việc của mình | ✅ Kiểm tra ở máy chủ và Firestore Rules; có test |
 | NF‑13 | Thao tác nhạy cảm | Chỉ chủ cửa hàng được cấp quyền và giảm giá lớn | ⚠️ Chỉ chủ cấp quyền; nhưng quản lý vẫn tạo được ưu đãi tới 100% |
 
@@ -61,7 +61,7 @@ Workflow production chưa chạy thành công do thiếu secret; sơ đồ khôn
 
 Form đăng ký và đặt lại mật khẩu local dùng cùng chính sách với máy chủ local; đăng nhập vẫn chấp nhận mật khẩu cũ. Không thay thuật toán băm của tài khoản local và không tự băm mật khẩu Firebase. Trang đặt lại mật khẩu Firebase dùng email dẫn tới giao diện do Firebase quản lý, nên phải bật chính sách ở dịch vụ để chống bỏ qua kiểm tra trình duyệt.
 
-Chủ repo cần vào Firebase Console → Authentication → Settings → Password policy: chọn **Require**, minimum length **8**, maximum **4096**, **Lowercase character required** và **Numeric character required**. Không bật force upgrade on sign-in trong đợt này để tránh khóa luồng đăng nhập cũ. Chữ hoa/ký tự đặc biệt được khuyến khích nhưng chưa bắt buộc. Chưa có bằng chứng cấu hình production đã được lưu; không coi kiểm tra form là thay thế cho chính sách Firebase. Xem [hướng dẫn chính thức](https://firebase.google.com/docs/auth/web/password-auth).
+Chủ repo cần vào Firebase Console → Authentication → Settings → Password policy: chọn **Require**, minimum length **8**, maximum **4096**, **Lowercase character required** và **Numeric character required**. Không bật force upgrade on sign-in để tránh khóa luồng đăng nhập cũ. Chữ hoa/ký tự đặc biệt được khuyến khích nhưng chưa bắt buộc. **Đã bật trên project `web-ban-hoa-9fe0b` ngày 17/11/2026** (trước đó: Notify, tối thiểu 6) và kiểm tra bằng cách gọi thẳng Firebase signUp bỏ qua form: `abcdefgh`, `abc1234`, `12345678`, `ABCDEFG1` đều bị từ chối, không tạo tài khoản. Xem [hướng dẫn chính thức](https://firebase.google.com/docs/auth/web/password-auth).
 
 Kết luận MFA: đề xuất TOTP cho admin/owner sau khi nâng Firebase Authentication lên Identity Platform và xác nhận chi phí/hạn mức phù hợp. [Firebase yêu cầu email đã xác minh và luồng đăng ký/xác thực yếu tố thứ hai](https://firebase.google.com/docs/auth/web/totp-mfa). PIN và câu hỏi khôi phục local hiện có không phải MFA của Firebase.
 
@@ -78,6 +78,6 @@ Chưa bật MFA trong issue này. Luồng đăng nhập mật khẩu hiện đi 
 | --- | --- |
 | Khôi phục dữ liệu từ bản sao lưu | ✅ Test tự động trên emulator |
 | Tải tăng 10–20 lần | ⚠️ Có kịch bản `cd flower.com/tests && npm run load` trên emulator; phát hiện lỗi khi nhiều người cùng mua một sản phẩm |
-| Đo thời gian tải trang và thanh toán | ⚠️ Có phép đo/budget local; chưa xác minh Lighthouse và thanh toán production |
+| Đo thời gian tải trang và thanh toán | ⚠️ Lighthouse production đã đo (17/11/2026); thời gian xử lý đơn chưa đo có hệ thống |
 | Nhiều người cùng mua sản phẩm cuối cùng | ✅ Không bán vượt kho với 5–200 người cùng mua (load test); ⚠️ có thể báo lỗi 503 oan khi ≥ 100 người |
 | Quyền của khách, quản lý, chủ cửa hàng | ✅ Có test tự động |

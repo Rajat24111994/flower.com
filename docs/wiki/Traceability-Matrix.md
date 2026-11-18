@@ -4,7 +4,7 @@ Ngày đối chiếu: **11/11/2026**. Bao phủ **38/38** yêu cầu: KH-01…KH
 
 [Yêu cầu chức năng](Functional-Requirements.md) · [Yêu cầu phi chức năng](Non-Functional-Requirements.md)
 
-## Mốc hiện tại — 17/11/2026
+## Mốc hiện tại — 18/11/2026
 
 Các bảng 38 yêu cầu bên dưới là **snapshot lịch sử 11/11**, giữ nguyên link SHA để truy vết, không phải chứng nhận production hiện tại. Sau chuyển backend, dùng thêm các bằng chứng sau:
 
@@ -13,7 +13,12 @@ Các bảng 38 yêu cầu bên dưới là **snapshot lịch sử 11/11**, giữ
 | Backend/host | [#166](https://github.com/Longg5048/flower.com/issues/166), commit `a1b9bef`; [CI C#](https://github.com/Longg5048/flower.com/actions/runs/44003100755), [CI Node](https://github.com/Longg5048/flower.com/actions/runs/44003100942), [independent](https://github.com/Longg5048/flower.com/actions/runs/44003100803): success | Native C# 35 + independent 58 xUnit, contracts, HTTP/Docker và Node/browser; không phải deploy dashboard |
 | Backup/restore NF-03/04 | [#165](https://github.com/Longg5048/flower.com/issues/165), commit `3eb88dc`, [báo cáo](https://github.com/Longg5048/flower.com/blob/main/docs/test-reports/2026-11-17-ff-10-backup-restore.md) | Diễn tập emulator/CLI; production secrets và lịch ≥24h còn [#118](https://github.com/Longg5048/flower.com/issues/118) |
 | Security/stock | [#158](https://github.com/Longg5048/flower.com/issues/158), [#159](https://github.com/Longg5048/flower.com/issues/159), [báo cáo Rules/stock](https://github.com/Longg5048/flower.com/blob/main/docs/test-reports/2026-11-17-ff-04-firestore-stock.md) | Không thay xác minh Console/Rules đã deploy |
-| VNPay NF-06/09 | [#160](https://github.com/Longg5048/flower.com/issues/160) vẫn mở | Callback sandbox/merchant thật chưa đủ điều kiện |
+| Thanh toán KH-09, QT-06, NF-06/09 | Commit `25ca5ba` (17/11/2026): VNPay tắt, `/api/payments` và `/api/vnpay-ipn` trả 410; thanh toán còn COD và chuyển khoản VietQR đối soát thủ công | Các dòng VNPay trong bảng lịch sử 11/11 không còn áp dụng; [#160](https://github.com/Longg5048/flower.com/issues/160) không còn cần nếu không bật lại VNPay |
+| Đặt hàng KH-08 | Commit `533ce76` (nút ✕ bỏ đơn đang đặt, không còn bị kéo về đơn gửi dở) và `3258fa2` (COD giữ hàng 5 phút, QR 30 phút); đặt thử đơn COD thật trên Render 17/11/2026 | Đơn hết hạn chỉ bị hủy ở lần dọn kế tiếp; GitHub Actions thực tế chạy vài lần mỗi ngày |
+| Dọn đơn hết hạn | 4 composite index tạo trên production 17/11/2026; `CRON_SECRET` đồng bộ Render/GitHub; [run 44014866452](https://github.com/Longg5048/flower.com/actions/runs/44014866452) success | Không có cron ngoài nên không hủy đúng phút |
+| Backup NF-03/04 production | Secret đủ; [run 44018473975](https://github.com/Longg5048/flower.com/actions/runs/44018473975) success: 200 document, artifact mã hóa, xem trước khôi phục khớp | Chưa đủ 24 giờ chạy theo lịch (#118) |
+| Mật khẩu NF-11 | [#121](https://github.com/Longg5048/flower.com/issues/121) đã đóng: Firebase Password Policy Require, gọi thẳng signUp với 4 mật khẩu yếu đều bị từ chối | Chưa thử luồng đặt lại mật khẩu bằng email |
+| Hiệu năng NF-05, triển khai | [#119](https://github.com/Longg5048/flower.com/issues/119), [#168](https://github.com/Longg5048/flower.com/issues/168): URL chính thức Render, Lighthouse Mobile 86/96/100/100 | Thiếu ảnh/log deploy Firestore Rules |
 | Khách hàng/admin/tests/performance | #161–#164; [test reports](https://github.com/Longg5048/flower.com/tree/main/docs/test-reports) | Không suy diễn fixture/local sang SLA production |
 | README/Wiki/SAD/dữ liệu | [#167](https://github.com/Longg5048/flower.com/issues/167), [SAD](Software-Architecture-Document.md), [Firestore](Data-Model.md) | SQL chỉ đề xuất; không đọc dữ liệu production |
 

@@ -30,7 +30,7 @@ khi sản phẩm bị xóa; snapshot trong đơn giữ giá/tên tại lúc mua.
 | --- | --- | --- |
 | `products/{id}` | Giá, quantity, saleType, ảnh, phân loại; snapshot khi checkout | Đọc công khai; admin ghi có kiểm tra trường, đổi giá hoa qua Owner API |
 | `orders/{id}` | uid, items[], tổng tiền, giao hàng, trạng thái, payment/inventory, hạn giữ kho | Admin hoặc đúng uid đọc; tạo qua API; admin update giới hạn trường/trạng thái, delete cho admin |
-| `paymentTransactions/{txnRef}` | orderId, amount, attempt, status, thời hạn và kết quả VNPay | Không đọc/ghi trực tiếp; API kiểm tra caller/chữ ký |
+| `paymentTransactions/{txnRef}` | orderId, amount, attempt, status, thời hạn và kết quả VNPay. VNPay đã tắt từ 17/11/2026 nên không còn ghi mới; chỉ còn dữ liệu cũ | Không đọc/ghi trực tiếp |
 | `orderRequests/{key}` | orderId, requestHash, uid; chống tạo đơn trùng | Chỉ backend; không phải mã tra cứu công khai |
 | `orderPaymentAudit/{id}` | Nhật ký đối soát/hoàn tiền của đơn | Chỉ backend; API admin lọc dữ liệu |
 | `reviews/{id}` | id = 40 ký tự đầu SHA256("review:" + orderId); authorUid, productIds, photoIds, moderationStatus, reply; orderId được suy ra ở API, không ghi như field khi tạo | Công khai chỉ approved; tác giả/admin có quyền đọc thêm; tạo qua API, admin sửa trường cho phép |
@@ -56,8 +56,13 @@ xác thực, phân quyền và validate riêng. Collection không có match cụ
 
 - Checkout đọc lại giá/ưu đãi/phí giao và giữ quantity cùng transaction tạo đơn và
   idempotency record. Đổi giá về sau không sửa snapshot đơn cũ.
-- Inventory có vòng đời reserved/sold/released. Hết hạn/hủy và IPN cạnh tranh cần
-  transaction và kiểm tra trạng thái để không trả kho hoặc ghi nhận thanh toán lặp.
+- Inventory có vòng đời reserved/sold/released. Hạn giữ (`reservationExpiresAt`): COD
+  5 phút, QR 30 phút. Hết hạn/hủy và xác nhận tiền cạnh tranh cần transaction và kiểm
+  tra trạng thái để không trả kho hoặc ghi nhận thanh toán lặp.
+- Composite index (`flower.com/firestore.indexes.json`, đã tạo trên production
+  17/11/2026): `orders(inventoryReserved, reservationExpiresAt)` cho dọn đơn hết hạn,
+  `orders(uid, createdAt)` cho đơn của tôi, `reviews(moderationStatus, productIds)`,
+  `orderPaymentAudit(orderId, createdAt)`. Thiếu index thì API tương ứng trả 503.
 - Giá héo đọc `metadata/wiltingPricing` và `productFreshness`; mặc định tắt.
 - PII đơn hàng, audit, token hash và bộ đếm không công khai. Firebase quản lý tài khoản
   production; SQLite local chỉ dùng Development, không phải collection Firestore.

@@ -29,11 +29,8 @@ flowchart LR
     Admin["admin.js"] <-->|Đọc/cập nhật đơn| Orders
     Tracking["tracking.js"] -->|Đơn tài khoản| Orders
     Tracking -->|Mã đơn + số điện thoại| OrderAPI --> Orders
-    Checkout -->|Tạo đơn, giá do server tính| Payments["/api/payments"]
-    Payments -->|Link có chữ ký| VNPay[VNPay]
-    VNPay -->|IPN đã ký| IPN["/api/vnpay-ipn"] --> Orders
-    Browser -->|Trạng thái chỉ đọc| Payments
-    Checkout --> VietQR[VietQR]
+    Checkout -->|COD hoặc chuyển khoản| VietQR[VietQR Vietcombank]
+    Admin -->|Đối chiếu sao kê, xác nhận tiền| OrderAPI
     Admin["admin.js"] -->|Cập nhật sản phẩm| Store
     Admin <-->|Đơn, ưu đãi, phân loại, đánh giá| Firestore
     Admin -->|ID token| AdminAPI["/api/admin/users"]
@@ -61,7 +58,7 @@ flowchart LR
 | Danh mục và chi tiết | `product.html`, `product.js`, `product-categories.js`, `related-products.js` | Tìm kiếm, lọc, sắp xếp; trang chi tiết, thư viện ảnh, gợi ý sản phẩm liên quan |
 | Đánh giá | `review-store.js` | Đọc đánh giá công khai và gửi đánh giá mới (yêu cầu đăng nhập) lên Firestore |
 | Giỏ hàng và yêu thích | `shopping-store.js`, `shopping-sync.js`, `cart.html`, `wish.html` | Lưu ngoại tuyến, đồng bộ Firestore theo UID khi đăng nhập; giá/tồn kho vẫn do API đặt hàng xác minh |
-| Thanh toán | `checkout.html`, `placeorder.html` | Người gửi/người nhận, lịch giao giờ Việt Nam, khu vực và phí giao do máy chủ báo giá, ưu đãi, QR, tạo đơn |
+| Thanh toán | `checkout.html`, `placeorder.html` | Người gửi/người nhận, lịch giao giờ Việt Nam, khu vực và phí giao do máy chủ báo giá, ưu đãi, COD hoặc VietQR, tạo đơn; nút ✕ bỏ đơn đang đặt |
 | Theo dõi đơn | `tracking.html`, `tracking.js`, `order-status.js` | Tra cứu công khai giới hạn thông tin; đơn tài khoản hiển thị chi tiết người gửi/nhận và phí |
 | Tài khoản | `login.*`, `account.*`, `forgot-password.*` | Đăng ký, đăng nhập, khôi phục mật khẩu, hồ sơ |
 | Tiền tệ | `currency.js` | Định dạng giá VND; mọi giá lưu là số nguyên VND (ví dụ `450000`) |
@@ -127,7 +124,7 @@ Firestore vẫn là nguồn dữ liệu chính; `product-store.js` đồng bộ 
 
 Admin có thể chuyển đơn sang các trạng thái giao hàng. Security Rules chỉ cho trình duyệt cập nhật các trường vận hành nằm trong danh sách cho phép; trạng thái xác minh thanh toán chỉ do API máy chủ ghi. Các tên trạng thái cũ (ví dụ "Đã vận chuyển", "Giao hàng thất bại") được tự động chuyển sang tên mới tương ứng.
 
-Đơn mới được gửi tới `/api/orders`. Backend chỉ nhận mã sản phẩm, số lượng và thông tin giao hàng; tự đọc giá, tồn kho, ưu đãi từ Firestore, tính lại tổng tiền và dành tồn kho trong cùng một transaction trước khi ghi đơn. Hệ thống giữ hàng 15 phút với VNPay chưa thanh toán, 5 phút với COD chưa được xác nhận và 30 phút với đơn QR cũ chưa xác minh (`backend/FlowerFlow.Application/Orders`); đơn hết hạn hoặc bị hủy sẽ được hoàn kho bằng transaction. QR đã xác minh giữ hàng đến khi hoàn tất hoặc hủy đơn. Đơn đã giao chốt phần tồn kho đã bán, không hoàn kho khi dọn đơn. Việc dọn chạy khi báo giá/đặt hàng, lúc quản trị mở dashboard, qua worker C# và GitHub Actions mỗi 15 phút. Scheduler ngoài cần `FLOWER_APP_URL` và `CRON_SECRET`; xem [hướng dẫn quản trị](../docs/ADMIN-SETUP.md). Khách đã đăng nhập chỉ đọc được đơn có UID của mình; khách chưa đăng nhập tra cứu qua API bằng mã đơn và số điện thoại. Chỉ tài khoản có claim `admin: true` được xem danh sách, cập nhật hoặc xóa đơn. Dữ liệu đơn cũ trong `localStorage.flowerOrders` không tự động chuyển lên Firestore.
+Đơn mới được gửi tới `/api/orders`. Backend chỉ nhận mã sản phẩm, số lượng và thông tin giao hàng; tự đọc giá, tồn kho, ưu đãi từ Firestore, tính lại tổng tiền và dành tồn kho trong cùng một transaction trước khi ghi đơn. Hệ thống giữ hàng 5 phút với COD chưa được xác nhận và 30 phút với đơn QR chưa xác minh (`OrderConfig.cs`, `backend/FlowerFlow.Application/Orders`); VNPay đã tắt từ 17/11/2026, `/api/payments` và `/api/vnpay-ipn` trả 410; đơn hết hạn hoặc bị hủy sẽ được hoàn kho bằng transaction. QR đã xác minh giữ hàng đến khi hoàn tất hoặc hủy đơn. Đơn đã giao chốt phần tồn kho đã bán, không hoàn kho khi dọn đơn. Việc dọn chạy khi báo giá/đặt hàng, lúc quản trị mở dashboard, qua worker C# (chỉ khi instance Render đang thức) và GitHub Actions (lịch 15 phút, nhưng GitHub thực tế chỉ chạy vài lần mỗi ngày). Truy vấn dọn đơn cần composite index `orders(inventoryReserved, reservationExpiresAt)`. Scheduler ngoài cần `FLOWER_APP_URL` và `CRON_SECRET`; xem [hướng dẫn quản trị](../docs/ADMIN-SETUP.md). Khách đã đăng nhập chỉ đọc được đơn có UID của mình; khách chưa đăng nhập tra cứu qua API bằng mã đơn và số điện thoại. Chỉ tài khoản có claim `admin: true` được xem danh sách, cập nhật hoặc xóa đơn. Dữ liệu đơn cũ trong `localStorage.flowerOrders` không tự động chuyển lên Firestore.
 
 Khu vực giao hàng được quản trị viên cấu hình trong mục **Giao hàng**. Khi chưa có danh sách hợp lệ đã lưu, C# cung cấp các quận nội thành Hà Nội với phí 5.000 VND/km từ Hà Đông theo khoảng cách định sẵn (không phải định tuyến địa chỉ thực); cấu hình admin lưu được ưu tiên. Mỗi khu vực gồm tỉnh/thành, quận/huyện, trạng thái phục vụ và phí VND (mặc định khi thêm là 0 ₫). Khách chỉ chọn được khu vực đang bật. Nếu chưa có khu vực bật, checkout giải thích cấu hình cần thiết và không cho gửi đơn. `/api/orders` đọc khu vực/fee từ Firestore để báo giá và kiểm tra lại trong transaction khi tạo đơn; số phí từ trình duyệt không được tin cậy. Lịch dùng múi giờ `Asia/Ho_Chi_Minh`, nhận giao trong ngày trước 15:00, với các khung 08:00–11:00, 11:00–14:00, 14:00–17:00 và 17:00–20:00.
 
@@ -176,5 +173,4 @@ Triển khai: `firebase deploy --only firestore:rules,firestore:indexes`. Lệnh
 - **Backend Node lưu trữ:** `legacy-node/api` và `legacy-node/backend` dùng làm oracle/fixture. Không thêm endpoint production vào đây hoặc triển khai Vercel để thay C#. URL mới được khai báo bằng controller C#; chạy kiểm thử native HTTP và contracts. Các giới hạn Vercel chỉ thuộc bản cũ.
 - Không đặt lệnh `"build"` trong `package.json`: Vercel sẽ chạy nó rồi đòi thư mục kết quả `public`. Dùng `npm run check:generated` để cập nhật dữ liệu SEO và hash CSP.
 
-## Issue #128
-- [x] Tách `admin.js` thành các module theo chức năng (#128) - hoàn thành (`js/admin/*.js`).
+- Trang quản trị đã tách thành các module trong `js/admin/*.js` (#128).

@@ -4,7 +4,7 @@
 
 # FlowerFlow
 
-**Website cửa hàng hoa tươi trực tuyến: danh mục sản phẩm, giỏ hàng, thanh toán COD/VNPay và trang quản trị.**
+**Website cửa hàng hoa tươi trực tuyến: danh mục sản phẩm, giỏ hàng, thanh toán COD hoặc chuyển khoản VietQR, giao hoa nội thành Hà Nội và trang quản trị.**
 
 [Xem bản demo](https://flower-com.onrender.com) · [Kiến trúc kỹ thuật](flower.com/README.md) · [Cấu hình quản trị](docs/ADMIN-SETUP.md) · [Ghi chú phát hành](docs/RELEASE_NOTES_v0.2.0.md)
 
@@ -58,10 +58,11 @@ FlowerFlow là website bán hoa gồm ba lớp:
 | Đánh giá sản phẩm | Khách đã đăng nhập gửi đánh giá 1–5 sao; đánh giá hiển thị công khai trên trang sản phẩm |
 | Giỏ hàng và yêu thích | Đồng bộ giữa các trang và thiết bị khi đăng nhập, gộp dữ liệu cũ, giới hạn theo tồn kho |
 | Ưu đãi | Chọn chương trình khuyến mãi áp dụng cho các sản phẩm phù hợp khi thanh toán |
-| Đặt hàng | Server báo giá, kiểm tra tồn kho và giữ hàng (VNPay 15 phút, COD 30 phút; đơn QR cũ 30 phút); đơn hết hạn tự hủy và hoàn kho |
-| Thanh toán | Thanh toán khi nhận hàng (COD) hoặc VNPay; VNPay xác nhận tự động qua IPN có chữ ký. Đơn chuyển khoản QR cũ vẫn được admin đối soát thủ công |
+| Giao hàng | Chỉ giao nội thành Hà Nội (12 quận). Phí 5.000 VND/km tính từ cửa hàng ở Hà Đông theo khoảng cách ước lượng từng quận, ví dụ Nam Từ Liêm ~7 km = 35.000 VND; admin có thể lưu danh sách khu vực/phí riêng |
+| Đặt hàng | Server báo giá, kiểm tra tồn kho và giữ hàng (COD 5 phút chờ cửa hàng xác nhận, QR 30 phút chờ chuyển khoản); đơn hết hạn tự hủy và hoàn kho. Trang xác nhận có nút ✕ để bỏ đơn đang đặt; trang thanh toán không còn tự kéo về đơn gửi dở |
+| Thanh toán | Thanh toán khi nhận hàng (COD) hoặc chuyển khoản VietQR (Vietcombank). Admin đối chiếu sao kê, nhập mã giao dịch và xác nhận. VNPay đã tắt từ 17/11/2026: `/api/payments` và `/api/vnpay-ipn` trả 410 |
 | Theo dõi đơn | Tra cứu bằng mã đơn và số điện thoại; tự hiển thị đơn của tài khoản đang đăng nhập |
-| Tài khoản | Đăng ký, đăng nhập bằng email/mật khẩu hoặc Google, quên mật khẩu, trang hồ sơ |
+| Tài khoản | Đăng ký, đăng nhập bằng email/mật khẩu hoặc Google, quên mật khẩu, trang hồ sơ. Mật khẩu mới tối thiểu 8 ký tự, có chữ thường và chữ số; Firebase Password Policy ở chế độ Require nên dịch vụ tự chặn mật khẩu yếu |
 | Liên hệ | Thanh liên hệ nhanh qua Facebook và Zalo |
 
 ### Quản trị
@@ -83,9 +84,9 @@ FlowerFlow là website bán hoa gồm ba lớp:
 | --- | --- |
 | Giao diện | HTML5, CSS3, JavaScript (ES modules), không framework |
 | Xác thực | Firebase Authentication (Email/Password, Google) |
-| Backend | ASP.NET Core .NET 10 (Docker), Firebase Admin SDK; GitHub Actions gọi cleanup đơn hết hạn |
+| Backend | ASP.NET Core .NET 10 (Docker), Firebase Admin SDK; GitHub Actions gọi cleanup đơn hết hạn và sao lưu Firestore hằng ngày |
 | Cơ sở dữ liệu | Cloud Firestore (Security Rules, chỉ mục trong `firestore.indexes.json`) |
-| Thanh toán | VNPay (URL thanh toán + IPN ký HMAC-SHA512), COD; VietQR chỉ còn cho đơn QR tạo trước đây |
+| Thanh toán | COD và chuyển khoản VietQR đối soát thủ công; mã VNPay còn trong repo nhưng endpoint đã tắt |
 | Kiểm thử | Node Test Runner, xUnit C#, contracts JS/C#, Firebase Emulator và Playwright |
 | Hosting | Render (Docker, region Singapore) |
 
@@ -201,8 +202,10 @@ firebase deploy --only firestore:rules,firestore:indexes
 | `FIREBASE_SERVICE_ACCOUNT_FILE` hoặc `FIREBASE_SERVICE_ACCOUNT_JSON` | ✅ | Đường dẫn Secret File (`/etc/secrets/firebase-service-account.json`) hoặc toàn bộ nội dung JSON của service account có vai trò *Firebase Authentication Admin* |
 | `FIREBASE_PROJECT_ID` | ➖ | Project ID của Firebase; mặc định lấy từ service account |
 | `FIREBASE_AUTH_PUBLIC_API_KEY`, `FIREBASE_AUTH_SERVER_API_KEY` | ✅ | Khóa dùng cho API đăng nhập phía server |
-| `CRON_SECRET` | ✅ | Bảo vệ `/api/orders?action=expire` |
-| `VNPAY_TMN_CODE`, `VNPAY_HASH_SECRET`, `VNPAY_ENV`, `PUBLIC_APP_URL` | ➖ | Khi bật VNPay |
+| `CRON_SECRET` | ✅ | Bảo vệ `/api/orders?action=expire`; phải trùng với secret `CRON_SECRET` của GitHub Actions |
+| `PUBLIC_APP_URL` | ➖ | URL công khai của website (`https://flower-com.onrender.com`) |
+
+GitHub Actions cần variable `FLOWER_APP_URL` và các secret `CRON_SECRET`, `FIREBASE_SERVICE_ACCOUNT_JSON` (nội dung JSON, không phải đường dẫn), `BACKUP_PASSPHRASE` (≥ 12 ký tự, lưu thêm ngoài GitHub). Cả bốn đã được cấu hình ngày 17/11/2026 (#118).
 
 Danh sách đầy đủ và cách kiểm tra kết nối (`--check-firebase`) có trong [`flower.com/docs/backend/DEPLOYMENT.md`](flower.com/docs/backend/DEPLOYMENT.md).
 
@@ -215,9 +218,11 @@ Danh sách đầy đủ và cách kiểm tra kết nối (`--check-firebase`) c�
 2. Thêm biến môi trường và Secret File ở trên trong **Environment** của service.
 3. Deploy, sau đó gán quyền Owner đầu tiên bằng script `npm run set-owner`.
 4. Thêm domain Render vào **Firebase Authentication → Authorized domains** và cập nhật biến GitHub Actions `FLOWER_APP_URL`.
-5. Triển khai Firestore Security Rules và composite indexes bằng `firebase deploy --only firestore:rules,firestore:indexes` (chọn đúng Firebase project trước khi chạy).
+5. Triển khai Firestore Security Rules và composite indexes bằng `firebase deploy --only firestore:rules,firestore:indexes` (chọn đúng Firebase project trước khi chạy). Thiếu index thì dọn đơn hết hạn trả 503; bốn index trong `firestore.indexes.json` đã được tạo trên project `web-ban-hoa-9fe0b` ngày 17/11/2026.
 
-Hướng dẫn từng bước, bao gồm cách gán quyền Owner bằng Application Default Credentials mà không cần tải key, có trong [`docs/ADMIN-SETUP.md`](docs/ADMIN-SETUP.md). URL chính thức là `https://flower-com.onrender.com`; kết quả kiểm tra bản đang chạy và các bằng chứng còn thiếu (Firestore Rules, VNPay sandbox, Lighthouse) ghi trong [`docs/issue-119-deployment.md`](docs/issue-119-deployment.md).
+Render tự deploy nhánh `main` sau khi CI xanh (Auto-Deploy: After CI Checks Pass). Một check đỏ trên commit sẽ chặn bản đó lên production.
+
+Hướng dẫn từng bước, bao gồm cách gán quyền Owner bằng Application Default Credentials mà không cần tải key, có trong [`docs/ADMIN-SETUP.md`](docs/ADMIN-SETUP.md). URL chính thức là `https://flower-com.onrender.com`; kết quả kiểm tra bản đang chạy (HTTPS, header bảo mật, Lighthouse) và bằng chứng còn thiếu (ảnh hoặc log deploy Firestore Rules) ghi trong [`docs/issue-119-deployment.md`](docs/issue-119-deployment.md).
 
 ## Kiểm thử
 
@@ -234,7 +239,7 @@ Hướng dẫn từng bước, bao gồm cách gán quyền Owner bằng Applica
 
 CI trên GitHub Actions chạy unit test, test tích hợp và browser E2E cho mọi Pull Request và mỗi lần push lên `main`; báo cáo coverage và ảnh/trace trình duyệt được lưu trong kết quả chạy. Chi tiết: [`tests/README.md`](flower.com/tests/README.md). Sau mỗi đợt kiểm thử, tạo báo cáo từ [mẫu báo cáo](docs/test-reports/TEMPLATE.md) trong `docs/test-reports/` ([ví dụ ngày 2026-10-28](docs/test-reports/2026-10-28.md)). Trước mỗi lần phát hành làm theo [`docs/RELEASE-CHECKLIST.md`](docs/RELEASE-CHECKLIST.md).
 
-Để cấu hình VNPay sandbox và kiểm tra giao dịch thật trước khi bật production, xem [`docs/payments-vnpay.md`](docs/payments-vnpay.md). Không commit merchant secrets; chỉ bật VNPay sau khi đã cấu hình biến môi trường trên host triển khai và xác nhận luồng IPN trên sandbox.
+VNPay đã tắt từ 17/11/2026 (commit `25ca5ba`); [`docs/payments-vnpay.md`](docs/payments-vnpay.md) chỉ còn để tham khảo nếu sau này bật lại. Khi đó cần merchant sandbox, cấu hình biến môi trường trên Render và xác nhận IPN thật trước khi mở cho khách.
 
 ## Phân quyền
 
@@ -250,10 +255,11 @@ Mỗi lần đổi vai trò, refresh token của người dùng bị thu hồi �
 
 Bản **v0.1.0** đã phát hành ngày 14/10/2026 ([release](https://github.com/Longg5048/flower.com/releases/tag/v0.1.0)); **v0.2.0** đang phát triển trên `main`. Trước khi vận hành thật, cần lưu ý:
 
-- **VNPay mới kiểm thử bằng test tự động, chưa có giao dịch sandbox thật** (#39, #119). Cần tài khoản merchant sandbox để xác nhận luồng IPN trên môi trường thật.
-- Trang thanh toán chỉ còn COD và VNPay. Đơn chuyển khoản QR tạo trước đây vẫn cần admin tự kiểm tra sao kê rồi bấm “Xác nhận đã nhận tiền”.
+- **Không có cổng thanh toán tự xác nhận.** Trang thanh toán chỉ có COD và chuyển khoản VietQR; admin phải tự kiểm tra sao kê rồi bấm “Xác nhận đã nhận tiền”.
 - Ghi nhận hoàn tiền chỉ hỗ trợ hoàn toàn bộ giá trị đơn sau khi cửa hàng đã chuyển tiền và nhập mã giao dịch. Không có chuyển tiền tự động, hoàn một phần hoặc nhiều khoản hoàn trên cùng đơn.
-- **Render Free ngủ sau 15 phút không có truy cập**; lần mở đầu tiên sau đó có thể chờ khoảng một phút. Cleanup đơn hết hạn chạy bằng GitHub Actions mỗi 15 phút, cần cấu hình `FLOWER_APP_URL` và `CRON_SECRET` theo [`ADMIN-SETUP.md`](docs/ADMIN-SETUP.md).
+- **Render Free ngủ sau 15 phút không có truy cập**; lần mở đầu tiên sau đó có thể chờ khoảng một phút.
+- **Đơn hết hạn không bị hủy đúng phút.** Workflow cleanup đặt lịch 15 phút một lần, nhưng GitHub thực tế chỉ chạy vài lần mỗi ngày với repo ít hoạt động. Đơn hết hạn vẫn được dọn mỗi khi có người báo giá, đặt hàng hoặc admin mở dashboard, nên không làm thiếu hàng cho khách mới; nhưng trong admin một đơn COD quá 5 phút có thể còn hiện “Chờ xác nhận” vài giờ. Muốn hủy đúng hạn cần cron ngoài gọi API dọn đơn.
+- Sao lưu Firestore chạy hằng ngày lúc 01:23 giờ Việt Nam (cũng bị GitHub trì hoãn như trên). Lần chạy thật đầu tiên thành công ngày 17/11/2026: 200 document, file mã hóa và diễn tập khôi phục khớp số liệu.
 - Dữ liệu cũ chỉ lưu trong `localStorage` (đơn hàng, đánh giá, lời nhắn trước khi có backend) không được chuyển lên Firestore. Phân loại cũ được tải lên ở lần đầu admin mở trang quản trị.
 - **Tài khoản tự tạo trên máy** (`AUTH_MODE=local`, chỉ khi chạy `npm run dev`) lưu trong SQLite trên máy chạy, mật khẩu/PIN băm bằng scrypt; không dùng trên bản Render. Bản triển khai dùng Firebase Authentication.
 - Khách chưa đăng nhập chỉ lưu giỏ hàng và yêu thích trên thiết bị hiện tại. Tài khoản đăng nhập được đồng bộ hai danh sách qua Firestore; khi ngoại tuyến, bản cục bộ vẫn dùng được và sẽ báo nếu đồng bộ thất bại.
@@ -265,9 +271,12 @@ Bản **v0.1.0** đã phát hành ngày 14/10/2026 ([release](https://github.com
 - [x] Backend tạo đơn: báo giá, kiểm tra tồn kho, giữ hàng và tự hủy đơn hết hạn
 - [x] Chuyển đơn hàng, ưu đãi, phân loại, lời nhắn và trang quản lý đánh giá lên Firestore
 - [x] Xác minh thanh toán QR thủ công trong trang quản trị
-- [x] Tích hợp VNPay: tạo URL thanh toán, IPN kiểm tra chữ ký và số tiền (còn chờ kiểm thử sandbox thật, #39)
+- [x] Tích hợp VNPay: tạo URL thanh toán, IPN kiểm tra chữ ký và số tiền (đã tắt 17/11/2026, quay lại chuyển khoản VietQR)
 - [x] Thiết lập CI chạy unit test và test tích hợp trên GitHub Actions, kèm coverage
-- [ ] Tách `admin.js` thành các module theo chức năng (#128)
+- [x] Tách `admin.js` thành các module theo chức năng (#128)
+- [x] Chuyển hosting từ Vercel sang Render, backend ASP.NET Core C#
+- [x] Giao hàng nội thành Hà Nội, phí tính theo km từ Hà Đông
+- [x] Sao lưu Firestore hằng ngày có mã hóa và diễn tập khôi phục (#118)
 
 ## Đóng góp
 

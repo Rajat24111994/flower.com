@@ -20,9 +20,8 @@ flowchart LR
     Browser -->|SDK client và Security Rules| DB[(Cloud Firestore)]
     Render -->|Admin SDK và quyền do API kiểm tra| DB
     Render --> Auth
-    Render -->|URL thanh toán ký HMAC| VNPay[VNPay]
-    VNPay -->|IPN xác minh chữ ký và số tiền| Render
-    Actions[GitHub Actions cleanup] -->|CRON_SECRET| Render
+    Actions[GitHub Actions: cleanup, backup] -->|CRON_SECRET| Render
+    Actions -->|Service account, export mã hóa| DB
 ```
 
 Frontend còn truy cập Firestore trực tiếp ở catalog, shopping snapshot và một số
@@ -35,7 +34,7 @@ cache/giỏ ngoại tuyến còn trong trình duyệt, local auth dùng SQLite.
 ```mermaid
 flowchart TD
     Api[FlowerFlow.Api: Controller, Middleware, DI] --> App[FlowerFlow.Application: nghiệp vụ và interfaces]
-    Api --> Infra[FlowerFlow.Infrastructure: Firebase, VNPay, audit, local]
+    Api --> Infra[FlowerFlow.Infrastructure: Firebase, audit, local]
     Infra --> App
     App --> Domain[FlowerFlow.Domain: constants, entities, quy tắc thuần]
     Infra --> Domain
@@ -46,7 +45,7 @@ flowchart TD
 | --- | --- |
 | Api | `/api/...`, static frontend, CSP/headers, origin/body limits và local identity |
 | Application | Accounts/Admin/Catalog/Orders/Payments/DesignRequests/ShopSettings; giá, quyền, trạng thái và transaction |
-| Infrastructure | Firebase Admin/Firestore, signature VNPay, audit, SQLite/scrypt và HTTP helpers |
+| Infrastructure | Firebase Admin/Firestore, audit, SQLite/scrypt và HTTP helpers (mã ký VNPay còn nhưng endpoint đã tắt) |
 | Domain | Tên collection, trạng thái, tiền/lịch/giá héo và khu vực Hà Nội |
 | Frontend | Hiển thị, cache/giỏ tạm, Firebase Web SDK; không quyết định giá/kho/thanh toán |
 
@@ -65,27 +64,25 @@ sequenceDiagram
     participant C as Trình duyệt
     participant A as C# API
     participant F as Firestore
-    participant V as VNPay
     C->>A: Báo giá (productId, quantity, khu vực)
     A->>F: Đọc giá / kho / ưu đãi / phí
     A-->>C: Tổng do server tính
     C->>A: Xác nhận + idempotency key
     A->>F: Transaction: đọc lại, giữ kho, tạo order + request record
-    A-->>C: Mã đơn và thông tin thanh toán
-    opt VNPay
-        C->>A: Tạo hoặc dùng lại payment attempt
-        A->>F: Lưu attempt gắn order, amount và hạn
-        A-->>C: URL ký HMAC-SHA512
-        C->>V: Thanh toán tại provider
-        V->>A: IPN
-        A->>F: Transaction sau kiểm tra chữ ký, số tiền, trạng thái
-        A-->>V: Kết quả callback
+    A-->>C: Mã đơn và thông tin thanh toán (COD hoặc mã VietQR)
+    opt Chuyển khoản QR
+        C->>C: Khách chuyển khoản theo QR, đúng số tiền và nội dung
+        Note over A,F: Admin đối chiếu sao kê ngân hàng
+        A->>F: Transaction: kiểm tra quyền admin, số tiền, trạng thái; ghi orderPaymentAudit
     end
 ```
 
-Redirect trình duyệt không tự xác nhận đã thanh toán. IPN cần hợp lệ và xử lý lặp
-an toàn; sandbox/IPN thật chưa nghiệm thu (#160). Giữ kho: VNPay 15 phút, COD 30
-phút, QR cũ 30 phút. Worker/scheduler hết hạn hoặc hủy hoàn kho một lần; giao thành
+Không có cổng thanh toán tự xác nhận: VNPay đã tắt từ 17/11/2026 (`/api/payments`,
+`/api/vnpay-ipn` trả 410). Giữ kho: COD 5 phút chờ cửa hàng xác nhận, QR 30 phút chờ
+chuyển khoản (`OrderConfig.cs`). Đơn hết hạn được hủy và hoàn kho một lần ở lần dọn
+kế tiếp: khi báo giá/đặt hàng, admin mở dashboard, worker C# lúc instance thức hoặc
+GitHub Actions (lịch 15 phút nhưng thực tế chỉ vài lần mỗi ngày). Truy vấn dọn đơn
+cần composite index `orders(inventoryReserved, reservationExpiresAt)`. Giao thành
 công chốt sold. Chuyển trạng thái phải phù hợp payment/inventory, không chỉ nhãn UI.
 
 Khi chưa lưu khu vực riêng, C# cung cấp khu vực nội thành Hà Nội từ Hà Đông,
@@ -99,10 +96,11 @@ Danh sách admin đã lưu được ưu tiên. Nguồn: `HanoiDeliveryZones.cs`,
 - Giá/kho/tổng tiền được server đọc lại. Idempotency không thay transaction.
 - PII đơn được lọc khi tra cứu công khai; token thiết kế chỉ lưu hash.
 - CSP, headers, Origin và proxy tin cậy bảo vệ host; không tin forwarded header tùy ý.
-- Service account/VNPay/cron/backup secrets ở Render/GitHub, không trong Git/frontend.
+- Service account/cron/backup secrets ở Render/GitHub, không trong Git/frontend.
   Firebase Web config công khai không phải service account.
 - SQLite Development lưu mật khẩu/PIN/câu trả lời băm scrypt, không dùng cho production.
-  Password Policy Firebase và MFA cần xác minh/triển khai riêng.
+  Firebase Password Policy đã bật Require (≥ 8 ký tự, chữ thường, số) ngày 17/11/2026;
+  MFA cho admin mới được đánh giá, chưa bật.
 
 ## 5. Triển khai, vận hành, rollback
 
@@ -118,16 +116,17 @@ flowchart LR
 ```
 
 `render.yaml`: main, Dockerfile `flower.com/backend/Dockerfile`, `/health`, checksPass.
-Dashboard service phải khớp; CI xanh không chứng minh deployment hoặc Firebase đã
+Dashboard service đang đặt Auto-Deploy "After CI Checks Pass" cho `main`; một check đỏ
+trên commit chặn bản đó lên production. Dashboard phải khớp file này; CI xanh không chứng minh deployment hoặc Firebase đã
 kết nối. `/health` chỉ liveness; không có endpoint readiness kiểm tra Firebase riêng.
 Diagnostic `--check-firebase` là lệnh read-only chạy riêng với credential đúng project theo
 [runbook](https://github.com/Longg5048/flower.com/blob/main/flower.com/docs/backend/DEPLOYMENT.md).
 Runtime image không cần Node. Domain Vercel cũ chuyển hướng Render; không cam kết
 Vercel preview cho C# PR. Worker C# dọn đơn và GitHub scheduler gọi API có CRON_SECRET.
 
-Backup mã hóa export Firestore, restore preview và lưu artifact; hiện thiếu hai
-secrets nên chưa có bằng chứng backup production thành công (#118). Emulator đã
-diễn tập restore; export không phải snapshot toàn DB, restore atomic theo batch.
+Backup mã hóa export Firestore, restore preview và lưu artifact. Secret đã cấu hình;
+lần chạy production đầu tiên thành công 17/11/2026 (200 document, xem trước khôi phục
+khớp số liệu), còn chờ bằng chứng chạy theo lịch (#118). Emulator đã diễn tập restore; export không phải snapshot toàn DB, restore atomic theo batch.
 Không backup Auth/Storage/Rules/indexes/IAM/secrets. Xem
 [runbook backup](https://github.com/Longg5048/flower.com/blob/main/docs/BACKUP-RESTORE.md).
 
@@ -139,4 +138,5 @@ Thay schema tương lai cần backup, kế hoạch chuyển riêng và đối so
 Baseline `a1b9bef`: 93 xUnit (35 native + 58 independent), contracts local và ba
 workflow CI thành công; xem [mốc FF-11](Traceability-Matrix.md). Emulator/fixture/
 simulator không thay provider/production. Render Free không đồng nghĩa uptime 99,9%;
-Lighthouse, tải/latency production, RPO/RTO, VNPay thật và backup còn cần đo/xác minh.
+tải/latency production, RPO/RTO và backup theo lịch còn cần đo/xác minh. Lighthouse
+production đã đo 17/11/2026 (Performance 86, LCP trang sản phẩm 3,9 s).
