@@ -27,5 +27,8 @@ Người dùng đã chọn: **để #160 mở và tiếp tục #161–#164**.
 4. Đối chiếu thành công, hủy/thất bại, callback lặp, tiền đến muộn; sai chữ ký/số tiền
    kiểm tra riêng bằng fixture. Không gọi callback tự ký là bằng chứng provider thật.
 
-Kết quả: **chưa nghiệm thu**, issue giữ mở. Không tự đăng ký merchant, đổi secret,
-đổi routing hoặc phát sinh thanh toán thật.
+## Cập nhật kiểm thử mã nguồn (18/11/2026)
+
+- `tests/UnitTests/vnpay.test.js`: 4/4 pass.
+- Kiểm tra chữ ký IPN, timestamp GMT+7, cấu hình sandbox và origin HTTPS.
+- Vẫn chưa có merchant sandbox/secret/IPN thật, nên chưa nghiệm thu end-to-end.
