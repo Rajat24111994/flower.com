@@ -177,4 +177,4 @@ Triển khai: `firebase deploy --only firestore:rules,firestore:indexes`. Lệnh
 - Không đặt lệnh `"build"` trong `package.json`: Vercel sẽ chạy nó rồi đòi thư mục kết quả `public`. Dùng `npm run check:generated` để cập nhật dữ liệu SEO và hash CSP.
 
 ## Issue #128
-- Admin module extraction completed (js/admin/*.js).
+- [x] Tách `admin.js` thành các module theo chức năng (#128) - hoàn thành (`js/admin/*.js`).
